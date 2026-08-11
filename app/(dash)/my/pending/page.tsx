@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * 승인 대기도 로그인 후 화면이라 회원 존(대시보드 껍데기) 안에 둔다.
+ * 예전에는 /signup/pending으로 가입 존에 있어서, 로그인하자마자 마케팅 헤더를 이고
+ * 있는 화면을 만났다. 승인 전에는 레일도 홈·설정만 남는다(DashShell).
+ */
+
 const steps = [
   { t: "가입 신청 접수", d: "입력하신 소속 정보로 신청이 접수되었습니다.", done: true },
   { t: "기관 관리자 확인", d: "소속 기관의 관리자가 재직 여부를 확인합니다.", done: true },
@@ -62,12 +68,19 @@ export default function PendingPage() {
         </LegalNote>
       </div>
 
+      {/* 승인 전에는 갈 수 있는 회원 화면이 설정뿐이라 그쪽만 남긴다.
+          고객지원은 공개 존이라 같은 탭에서 열면 대시보드가 마케팅 껍데기로 바뀐다. */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <Link href="/support/inquiry" className={btnPrimary}>
+        <a
+          href="/support/inquiry"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={btnPrimary}
+        >
           승인 문의하기
-        </Link>
-        <Link href="/" className={`${btnGhost} w-full`}>
-          홈으로
+        </a>
+        <Link href="/mypage" className={`${btnGhost} w-full`}>
+          내 정보 확인
         </Link>
       </div>
     </>

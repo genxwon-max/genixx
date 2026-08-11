@@ -550,9 +550,14 @@ function ConsentSection({ variant }: { variant: Variant }) {
         <Link href="/my/children/consent-stages" className={t.btnQuiet}>
           동의 이력 보기
         </Link>
-        <Link href="/legal/privacy" className={t.btnQuiet}>
+        <a
+          href="/legal/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={t.btnQuiet}
+        >
           개인정보처리방침
-        </Link>
+        </a>
       </div>
     </>
   );
@@ -752,9 +757,9 @@ function InquirySection({ variant, audience }: { variant: Variant; audience: Aud
           className={`flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${rule}`}
         >
           <h3 className="text-[16px] font-bold">문의 {rows.length}건</h3>
-          <Link href="/support/inquiry" className={t.btnQuiet}>
+          <a href="/support/inquiry" target="_blank" rel="noopener noreferrer" className={t.btnQuiet}>
             새 문의
-          </Link>
+          </a>
         </div>
         <ul className={`divide-y ${variant === 1 ? "divide-acc-hairline" : "divide-slate-100"}`}>
           {rows.map((q, i) => (
@@ -918,9 +923,9 @@ function LeaveSection({ variant, audience }: { variant: Variant; audience: Audie
           >
             탈퇴 절차 계속하기
           </Link>
-          <Link href="/support/inquiry" className={t.btnQuiet}>
+          <a href="/support/inquiry" target="_blank" rel="noopener noreferrer" className={t.btnQuiet}>
             먼저 문의하기
-          </Link>
+          </a>
         </div>
       </section>
     </>

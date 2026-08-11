@@ -146,11 +146,14 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           {[
             { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
             { href: "/exam/result", t: "결과 리포트", d: "발행 상태와 열람" },
-            { href: "/support/faq", t: "자주 묻는 질문", d: "응시·결과·개인정보" },
+            // 고객지원은 공개 존이라 같은 탭에서 열면 대시보드가 마케팅 껍데기로 바뀐다
+            { href: "/support/faq", t: "자주 묻는 질문", d: "응시·결과·개인정보", away: true },
           ].map((l) => (
             <Link
               key={l.href}
               href={l.href}
+              target={l.away ? "_blank" : undefined}
+              rel={l.away ? "noopener noreferrer" : undefined}
               className={`${t.card} p-5 transition-colors ${
                 variant === 1 ? "hover:border-acc-primary" : "hover:border-soft-primary"
               }`}

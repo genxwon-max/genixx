@@ -253,7 +253,7 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
       loginId: social ? undefined : loginId,
       approved: !type.needsApproval,
     });
-    router.push(type.needsApproval ? "/signup/pending" : type.next);
+    router.push(type.needsApproval ? "/my/pending" : type.next);
   };
 
   return (

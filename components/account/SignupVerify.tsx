@@ -104,7 +104,7 @@ export default function SignupVerify() {
       email: draft.email || undefined,
       approved: !type.needsApproval,
     });
-    router.push(type.needsApproval ? "/signup/pending" : "/signup/done");
+    router.push(type.needsApproval ? "/my/pending" : "/signup/done");
   };
 
   return (

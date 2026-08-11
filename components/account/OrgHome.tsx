@@ -22,7 +22,7 @@ import { EmptyChild } from "./AuthArt";
  * 과목 제출 수만 표시하며, 최소 인원 미만이면 집단 통계를 내지 않는다.
  *
  * 권한은 기관담당자(I)와 교사(T) 둘 다. 승인 전 계정은 여기 서지 못하고 승인 진행
- * 화면(/signup/pending)으로 넘어간다.
+ * 화면(/my/pending)으로 넘어간다.
  *
  * 껍데기(좌측 레일·상단 상태바)는 app/(dash)/layout.tsx가 두르므로 여기서는 본문만
  * 그린다. 학생이 없을 때의 빈 상태는 학부모 홈과 같은 구성을 쓰되, 기관은 CSV로
@@ -36,7 +36,8 @@ const MIN_GROUP = 5;
 const quickLinks = [
   { href: "/mypage", t: "구성원 관리", d: "교사 초대와 승인" },
   { href: "/exam/result", t: "결과 리포트", d: "발행 상태와 열람" },
-  { href: "/support/inquiry", t: "1:1 문의", d: "도입·운영 문의" },
+  // 고객지원은 공개 존이라 같은 탭에서 열면 대시보드가 마케팅 껍데기로 바뀐다
+  { href: "/support/inquiry", t: "1:1 문의", d: "도입·운영 문의", away: true },
 ];
 
 export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
@@ -55,7 +56,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
    */
   const notApproved = hydrated && session?.approved === false;
   useEffect(() => {
-    if (notApproved) router.replace("/signup/pending");
+    if (notApproved) router.replace("/my/pending");
   }, [notApproved, router]);
 
   /* 시안별 잔가지 */
@@ -244,6 +245,8 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
             <Link
               key={l.href}
               href={l.href}
+              target={l.away ? "_blank" : undefined}
+              rel={l.away ? "noopener noreferrer" : undefined}
               className={`${t.card} p-5 transition-colors ${
                 variant === 1 ? "hover:border-acc-primary" : "hover:border-soft-primary"
               }`}

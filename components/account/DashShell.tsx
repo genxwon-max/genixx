@@ -142,7 +142,17 @@ const orgMenu: Item[] = [
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
 
-function menuFor(role: Role | undefined) {
+/**
+ * 승인 전 계정 — 볼 수 있는 데이터가 없다. 명부·결과를 세워 두면 눌러 봐야 빈 화면이라
+ * 승인 진행 상태와 설정만 남긴다.
+ */
+const pendingMenu: Item[] = [
+  { href: "/my/pending", label: "승인 대기", sid: "ACC-01-4", icon: <Icon>{ic.home}</Icon> },
+  { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
+];
+
+function menuFor(role: Role | undefined, approved: boolean) {
+  if (!approved) return pendingMenu;
   return role === "director" || role === "teacher" ? orgMenu : parentMenu;
 }
 
@@ -212,14 +222,16 @@ function UserMenu({ name, role }: { name: string; role: Role | undefined }) {
           >
             마이페이지
           </Link>
-          <Link
+          <a
             href="/support/inquiry"
+            target="_blank"
+            rel="noopener noreferrer"
             role="menuitem"
             onClick={() => setOpen(false)}
             className="block px-4 py-3 text-[14px] text-soft-ink transition-colors hover:bg-slate-50"
           >
             1:1 문의
-          </Link>
+          </a>
           <button
             type="button"
             role="menuitem"
@@ -256,7 +268,9 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const roster = useRoster();
 
-  const menu = menuFor(session?.role);
+  // 승인 전에는 레일을 줄인다. 세션이 아직 없는 동안(하이드레이션 전)은 정상으로 본다.
+  const approved = session?.approved !== false;
+  const menu = menuFor(session?.role, approved);
   const current = activeHref(menu, pathname);
   const name = session?.name ?? "회원";
   const isOrg = session?.role === "director" || session?.role === "teacher";

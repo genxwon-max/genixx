@@ -80,7 +80,7 @@ export default function LoginPanel({
   );
 
   const routeAfterLogin = (role: Role, approved?: boolean) => {
-    if ((role === "teacher" || role === "director") && approved === false) return "/signup/pending";
+    if ((role === "teacher" || role === "director") && approved === false) return "/my/pending";
     if (role === "parent") {
       // 자녀가 없으면 홈에 세워 둘 게 없으므로 등록 흐름 최선행으로 바로 보낸다
       const mine = getRoster().filter((s) => s.owner === "parent");

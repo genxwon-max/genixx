@@ -198,7 +198,7 @@ export const signupTypes: SignupType[] = [
     tagline: "학급 학생의 관찰 설문을 입력합니다",
     detail:
       "소속 기관 관리자의 승인 후 활성화됩니다. 승인 전에는 학생 데이터에 전혀 접근할 수 없습니다.",
-    next: "/signup/pending",
+    next: "/my/pending",
     needsApproval: true,
     tone: "border-emerald-300 bg-emerald-50 text-emerald-800",
     badge: "승인 필요",
@@ -209,7 +209,7 @@ export const signupTypes: SignupType[] = [
     tagline: "학교·학원·교육청 단위로 운영합니다",
     detail:
       "학생 명부와 접속코드, 응시권·정산을 관리합니다. 사업자 정보 확인 후 계정이 개설됩니다.",
-    next: "/signup/pending",
+    next: "/my/pending",
     needsApproval: true,
     tone: "border-amber-300 bg-amber-50 text-amber-800",
     badge: "승인 필요",
