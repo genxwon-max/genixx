@@ -1,5 +1,5 @@
 import { inquiries, inquiryStates } from "@/lib/admin";
-import { PageHead, TableCard, Badge, StatCard } from "@/components/admin/Parts";
+import { PageHead, TableCard, Badge, CountRows } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -22,21 +22,23 @@ export default function InquiriesPage() {
       />
 
       <PermissionGate need="inquiry.reply">
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <StatCard
-            label="아직 담당자가 없는 문의"
-            value={inquiries.filter((i) => i.state === "new").length}
-            unit="건"
-            tone="warn"
+        <div className="mb-6">
+          <CountRows
+            rows={[
+              {
+                label: "아직 담당자가 없는 문의",
+                value: inquiries.filter((i) => i.state === "new").length,
+                unit: "건",
+              },
+              {
+                label: "24시간을 넘긴 문의",
+                value: overdue,
+                unit: "건",
+                note: overdue ? "개인정보 관련 문의가 포함되어 있습니다" : "없습니다",
+              },
+              { label: "오늘 답변 완료", value: 14, unit: "건" },
+            ]}
           />
-          <StatCard
-            label="24시간을 넘긴 문의"
-            value={overdue}
-            unit="건"
-            note={overdue ? "개인정보 관련 문의가 포함되어 있습니다" : "없습니다"}
-            tone={overdue ? "warn" : "good"}
-          />
-          <StatCard label="오늘 답변 완료" value={14} unit="건" tone="good" />
         </div>
 
         <TableCard
@@ -58,7 +60,7 @@ export default function InquiriesPage() {
             </thead>
             <tbody>
               {inquiries.map((q) => (
-                <tr key={q.id} className={q.overdue ? "bg-rose-50/60" : undefined}>
+                <tr key={q.id}>
                   <td className={a.td}>{q.id}</td>
                   <td className={a.td}>{q.channel}</td>
                   <td className={a.td}>{q.category}</td>
@@ -95,10 +97,10 @@ export default function InquiriesPage() {
           </table>
         </TableCard>
 
-        <p className="mt-4 rounded-md border border-exam-line bg-exam-panel px-5 py-4 adm-t-sm text-exam-muted">
+        <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
           접속코드 분실 문의는 <b className="text-exam-text">학생·접속코드</b> 화면에서 코드를 다시
-          발급한 뒤, 발급한 코드가 아니라 <b className="text-exam-text">발급했다는 사실</b>만
-          답변에 적습니다. 코드는 보호자 화면에서 직접 확인하도록 안내합니다.
+          발급한 뒤, 발급한 코드가 아니라 <b className="text-exam-text">발급했다는 사실</b>만 답변에
+          적습니다. 코드는 보호자 화면에서 직접 확인하도록 안내합니다.
         </p>
       </PermissionGate>
     </>

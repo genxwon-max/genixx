@@ -30,7 +30,8 @@ export default function AccountPanel() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (current.length < 8) return setMsg({ kind: "error", text: "지금 비밀번호를 입력해 주세요." });
+    if (current.length < 8)
+      return setMsg({ kind: "error", text: "지금 비밀번호를 입력해 주세요." });
     if (!strong)
       return setMsg({
         kind: "error",
@@ -80,7 +81,7 @@ export default function AccountPanel() {
               </div>
             ))}
           </dl>
-          <p className="mt-4 rounded-md bg-exam-panel px-4 py-3 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
             역할을 바꾸려면 슈퍼 관리자에게 요청하세요. 권한 변경은 전건 감사 로그에 남습니다.
           </p>
         </section>

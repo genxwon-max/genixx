@@ -1,6 +1,6 @@
 import { rounds } from "@/lib/admin";
 import { subjects } from "@/lib/exam";
-import { PageHead, TableCard, Progress, Badge, StatCard } from "@/components/admin/Parts";
+import { PageHead, TableCard, Progress, Badge, CountRows } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -131,49 +131,58 @@ export default function RoundsPage() {
           </TableCard>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <StatCard label="측정하는 재능 축" value={3} unit="개" note="언어 · 수리·논리 · 자연·탐구" />
-          <StatCard
-            label="이번 회차 미측정 축"
-            value={5}
-            unit="개"
-            note="공간·청각·신체·관계·자기이해 — 2027 심화진단"
+        <div className="mt-6">
+          <CountRows
+            rows={[
+              {
+                label: "측정하는 재능 축",
+                value: 3,
+                unit: "개",
+                note: "언어 · 수리·논리 · 자연·탐구",
+              },
+              {
+                label: "이번 회차 미측정 축",
+                value: 5,
+                unit: "개",
+                note: "공간·청각·신체·관계·자기이해 — 2027 심화진단",
+              },
+              { label: "평균 응시 소요", value: "27", unit: "분", note: "과목당 · 제한 40분" },
+            ]}
           />
-          <StatCard label="평균 응시 소요" value="27" unit="분" note="과목당 · 제한 40분" />
         </div>
 
         <div className="mt-6">
           <TableCard title="지난 회차" caption="마감된 회차는 자료를 읽기만 할 수 있습니다.">
-          <table className={a.table}>
-            <thead>
-              <tr>
-                <th className={a.th}>회차</th>
-                <th className={a.th}>기간</th>
-                <th className={a.th}>상태</th>
-                <th className={a.th}>대상</th>
-                <th className={a.th}>제출</th>
-                <th className={a.th}>발행</th>
-                <th className={a.th}>할 일</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rounds.map((r) => (
-                <tr key={r.id}>
-                  <td className={a.tdStrong}>{r.label}</td>
-                  <td className={a.td}>{r.period}</td>
-                  <td className={a.td}>
-                    <Badge {...roundState[r.state]} />
-                  </td>
-                  <td className={a.tdNum}>{r.target.toLocaleString("ko-KR")}</td>
-                  <td className={a.tdNum}>{r.submitted.toLocaleString("ko-KR")}</td>
-                  <td className={a.tdNum}>{r.published.toLocaleString("ko-KR")}</td>
-                  <td className={a.td}>
-                    <button type="button" className={a.btnRowGhost}>
-                      자세히 보기
-                    </button>
-                  </td>
+            <table className={a.table}>
+              <thead>
+                <tr>
+                  <th className={a.th}>회차</th>
+                  <th className={a.th}>기간</th>
+                  <th className={a.th}>상태</th>
+                  <th className={a.th}>대상</th>
+                  <th className={a.th}>제출</th>
+                  <th className={a.th}>발행</th>
+                  <th className={a.th}>할 일</th>
                 </tr>
-              ))}
+              </thead>
+              <tbody>
+                {rounds.map((r) => (
+                  <tr key={r.id}>
+                    <td className={a.tdStrong}>{r.label}</td>
+                    <td className={a.td}>{r.period}</td>
+                    <td className={a.td}>
+                      <Badge {...roundState[r.state]} />
+                    </td>
+                    <td className={a.tdNum}>{r.target.toLocaleString("ko-KR")}</td>
+                    <td className={a.tdNum}>{r.submitted.toLocaleString("ko-KR")}</td>
+                    <td className={a.tdNum}>{r.published.toLocaleString("ko-KR")}</td>
+                    <td className={a.td}>
+                      <button type="button" className={a.btnRowGhost}>
+                        자세히 보기
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </TableCard>

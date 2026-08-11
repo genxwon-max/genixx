@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { accessReasons } from "@/lib/admin";
 import { recordAccess, useAdminPrefs } from "@/lib/adminStore";
+import { Callout } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -60,9 +61,9 @@ export default function ReasonDialog({
           개인정보를 열기 전에 사유를 적어 주세요
         </h2>
         <p className={`${a.bodyText} mt-2.5`}>
-          지금 열려는 것은 <b className="text-exam-text">{target}</b> 의 개인정보입니다. 여시는
-          즉시 <b className="text-exam-text">{staffName}</b> 님의 이름·시각·사유가 감사 로그에
-          기록되며, 보호자가 요청하면 그대로 보여 드립니다.
+          지금 열려는 것은 <b className="text-exam-text">{target}</b> 의 개인정보입니다. 여시는 즉시{" "}
+          <b className="text-exam-text">{staffName}</b> 님의 이름·시각·사유가 감사 로그에 기록되며,
+          보호자가 요청하면 그대로 보여 드립니다.
         </p>
 
         <fieldset className="mt-6">
@@ -76,8 +77,8 @@ export default function ReasonDialog({
                 aria-pressed={picked === r}
                 className={`min-h-[3rem] rounded-md border px-4 py-2.5 text-left adm-t-sm font-bold transition-colors ${
                   picked === r
-                    ? "border-brand-900 bg-brand-50 text-brand-900 ring-2 ring-brand-200"
-                    : "border-exam-line bg-white text-exam-text hover:bg-exam-raised"
+                    ? "border-brand-900 text-brand-900"
+                    : "border-exam-line text-exam-text hover:bg-exam-raised"
                 }`}
               >
                 {picked === r && <span aria-hidden>✓ </span>}
@@ -105,18 +106,18 @@ export default function ReasonDialog({
           <p
             className={`mt-1.5 adm-t-sm font-bold ${short ? "text-rose-700" : "text-emerald-700"}`}
           >
-            {short
-              ? `${10 - detail.trim().length}자 더 적어 주세요`
-              : "충분히 입력되었습니다"}
+            {short ? `${10 - detail.trim().length}자 더 적어 주세요` : "충분히 입력되었습니다"}
           </p>
         </div>
 
         {!ready && (
-          <p className="mt-5 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 adm-t-sm font-bold text-amber-900">
-            {picked === null
-              ? "열람 사유를 아직 고르지 않으셨습니다."
-              : "사유 설명이 짧습니다. 조금 더 적어 주세요."}
-          </p>
+          <div className="mt-5">
+            <Callout tone="warn">
+              {picked === null
+                ? "열람 사유를 아직 고르지 않으셨습니다."
+                : "사유 설명이 짧습니다. 조금 더 적어 주세요."}
+            </Callout>
+          </div>
         )}
 
         <div className="mt-7 flex flex-wrap gap-3">

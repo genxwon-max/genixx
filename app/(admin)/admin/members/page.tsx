@@ -1,5 +1,5 @@
 import { members, memberStateLabel, memberTypeLabel } from "@/lib/admin";
-import { PageHead, TableCard, Badge, StatCard } from "@/components/admin/Parts";
+import { PageHead, TableCard, Badge, CountRows } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -34,11 +34,25 @@ export default function MembersPage() {
       />
 
       <PermissionGate need="member.read">
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="학부모" value={count("parent")} unit="명" note="자녀를 등록하는 대표 회원" />
-          <StatCard label="교사" value={count("teacher")} unit="명" note="승인 후 설문만 입력" />
-          <StatCard label="기관" value={count("org")} unit="곳" note="명부·응시권 관리" />
-          <StatCard label="학생 본인" value={count("student")} unit="명" note="만 14세 이상 직접 신청" />
+        <div className="mb-6">
+          <CountRows
+            rows={[
+              {
+                label: "학부모",
+                value: count("parent"),
+                unit: "명",
+                note: "자녀를 등록하는 대표 회원",
+              },
+              { label: "교사", value: count("teacher"), unit: "명", note: "승인 후 설문만 입력" },
+              { label: "기관", value: count("org"), unit: "곳", note: "명부·응시권 관리" },
+              {
+                label: "학생 본인",
+                value: count("student"),
+                unit: "명",
+                note: "만 14세 이상 직접 신청",
+              },
+            ]}
+          />
         </div>
 
         <TableCard
@@ -88,10 +102,10 @@ export default function MembersPage() {
           </table>
         </TableCard>
 
-        <p className="mt-4 rounded-md border border-exam-line bg-exam-panel px-5 py-4 adm-t-sm text-exam-muted">
-          탈퇴 회원의 자료는 관련 법령이 정한 기간이 지나면 자동으로 파기됩니다. 파기 전에 미리
-          지워 달라는 요청이 오면 <b className="text-exam-text">개인정보·감사 로그</b> 화면에서
-          처리하고 결과를 통지합니다.
+        <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+          탈퇴 회원의 자료는 관련 법령이 정한 기간이 지나면 자동으로 파기됩니다. 파기 전에 미리 지워
+          달라는 요청이 오면 <b className="text-exam-text">개인정보·감사 로그</b> 화면에서 처리하고
+          결과를 통지합니다.
         </p>
       </PermissionGate>
     </>

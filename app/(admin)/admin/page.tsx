@@ -1,14 +1,6 @@
 import Link from "next/link";
-import {
-  approvals,
-  gradingQueue,
-  hitlFlow,
-  inquiries,
-  items,
-  roleOf,
-  rounds,
-} from "@/lib/admin";
-import { PageHead, StatCard, Progress, TableCard, Badge } from "@/components/admin/Parts";
+import { approvals, gradingQueue, hitlFlow, inquiries, items, roleOf, rounds } from "@/lib/admin";
+import { PageHead, CountRows, Progress, TableCard, Badge } from "@/components/admin/Parts";
 import TodayQueue from "@/components/admin/TodayQueue";
 import { caseStates } from "@/lib/admin";
 import * as a from "@/components/admin/ui";
@@ -31,62 +23,47 @@ export default function AdminHome() {
       {/* ① 할 일 — 지표가 아니라 처리할 목록이 먼저다. 역할이 손댈 수 있는 것만 남는다 */}
       <TodayQueue />
 
-      {/* ② 사람이 도는 순환 — 이 콘솔이 무엇을 위한 도구인지 한 줄로 보여 주는 자리 */}
-      <section className={`${a.panel} mt-6 p-5`}>
+      {/* ② 사람이 도는 순환 — 네 칸을 늘어놓지 않고 한 줄씩 눕힌다. 단계마다 대기 건수가
+          오른쪽 끝에 모여, 어디가 막혀 있는지 세로로 훑힌다. */}
+      <section className="mt-7">
         <h2 className={a.cardTitle}>문항이 도는 길</h2>
         <p className="mt-1.5 adm-t-sm text-exam-muted">
           AI가 초안을 내도 확정은 사람이 합니다. 출제자와 검수자는 권한이 갈려 있어, 자기가 쓴
           문항을 자기가 승인할 수 없습니다.
         </p>
 
-        <ol className="mt-5 grid gap-3 lg:grid-cols-4">
+        <ol className="mt-4 border-b border-exam-line">
           {hitlFlow.map((step, i) => (
-            <li key={step.id} className="relative">
+            <li key={step.id} className="border-t border-exam-line">
               <Link
                 href={step.href}
-                className="flex h-full flex-col rounded-lg border border-exam-line bg-exam-panel p-4 transition-colors hover:border-brand-600 hover:bg-white"
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3 transition-colors hover:bg-exam-raised"
               >
-                <span className="flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-900 adm-t-xs font-black text-white"
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="adm-t-md font-black text-exam-text">{step.title}</span>
+                <span aria-hidden className="adm-t-sm tabular-nums text-exam-muted">
+                  {i + 1}
                 </span>
-                <span className="mt-1 adm-t-xs font-bold text-brand-700">
-                  {roleOf(step.role).short}
+                <span className="adm-t-md font-bold text-exam-text">{step.title}</span>
+                <span className="adm-t-sm text-exam-muted">
+                  {roleOf(step.role).short} · {step.desc}
                 </span>
-                <span className="mt-2 flex-1 adm-t-sm leading-relaxed text-exam-muted">
-                  {step.desc}
+                <span className="ml-auto adm-t-md font-bold tabular-nums text-exam-text">
+                  {step.count}건
                 </span>
-                <span className="mt-3 adm-t-sm font-bold text-exam-text">
-                  대기 <span className="tabular-nums">{step.count}</span>건
-                </span>
+                <span className="adm-t-sm font-bold text-brand-700">→</span>
               </Link>
-              {/* 마지막 칸 뒤에는 화살표를 붙이지 않는다 */}
-              {i < hitlFlow.length - 1 && (
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute -right-2.5 top-1/2 hidden -translate-y-1/2 adm-t-md text-exam-muted lg:block"
-                >
-                  →
-                </span>
-              )}
             </li>
           ))}
         </ol>
 
-        <p className="mt-4 rounded-md bg-exam-panel px-4 py-3 adm-t-sm text-exam-muted">
-          반려되면 2번에서 1번으로 되돌아갑니다. 사유 코드와 코멘트가 문항에 붙어 출제자에게
-          그대로 전달됩니다.
+        <p className="mt-3 adm-t-sm leading-relaxed text-exam-muted">
+          반려되면 2번에서 1번으로 되돌아갑니다. 사유 코드와 코멘트가 문항에 붙어 출제자에게 그대로
+          전달됩니다.
         </p>
       </section>
 
       {/* ③ 회차 진행 */}
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
-        <section className={`${a.panel} p-5`}>
+      <div className="mt-7 grid gap-x-8 gap-y-6 lg:grid-cols-[1.15fr_1fr]">
+        <section>
           <h2 className={a.cardTitle}>{round.label} 진행 상황</h2>
           <p className="mt-1 adm-t-sm text-exam-muted">
             응시 대상 {round.target.toLocaleString("ko-KR")}명 · {round.period}
@@ -96,30 +73,31 @@ export default function AdminHome() {
             <Progress label="채점·판정 확정" value={round.graded} total={round.submitted} />
             <Progress label="리포트 발행" value={round.published} total={round.submitted} />
           </div>
-          <p className="mt-5 rounded-md bg-exam-panel px-4 py-3 adm-t-sm text-exam-muted">
-            리포트는 전문가가 확정한 뒤에만 학부모 화면에 나갑니다. 확정 전 자료는 보호자에게
-            보이지 않습니다.
+          <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+            리포트는 전문가가 확정한 뒤에만 학부모 화면에 나갑니다. 확정 전 자료는 보호자에게 보이지
+            않습니다.
           </p>
         </section>
 
-        <div className="grid grid-cols-2 gap-4 self-start">
-          <StatCard label="오늘 응시 제출" value={128} unit="건" note="어제 같은 시각 111건" />
-          <StatCard
-            label="설문 수집률"
-            value="74"
-            unit="%"
-            note="학부모 설문 기준"
-            tone="warn"
-          />
-          <StatCard label="활성 기관" value={5} unit="곳" note="시범 2곳 포함" href="/admin/orgs" />
-          <StatCard
-            label="어제 발행한 리포트"
-            value={62}
-            unit="건"
-            note="반송 0건"
-            tone="good"
-          />
-        </div>
+        <section className="self-start">
+          <h2 className={a.cardTitle}>오늘 숫자</h2>
+          <div className="mt-4">
+            <CountRows
+              rows={[
+                { label: "오늘 응시 제출", value: 128, unit: "건", note: "어제 같은 시각 111건" },
+                { label: "설문 수집률", value: "74", unit: "%", note: "학부모 설문 기준" },
+                {
+                  label: "활성 기관",
+                  value: 5,
+                  unit: "곳",
+                  note: "시범 2곳 포함",
+                  href: "/admin/orgs",
+                },
+                { label: "어제 발행한 리포트", value: 62, unit: "건", note: "반송 0건" },
+              ]}
+            />
+          </div>
+        </section>
       </div>
 
       {/* ③ 지금 큐 맨 앞 */}
@@ -169,30 +147,36 @@ export default function AdminHome() {
       </div>
 
       {/* ④ 참고 지표 — 아래로 내린다 */}
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="승인 대기 중 확인 필요"
-          value={approvals.filter((x) => x.warning).length}
-          unit="건"
-          note="증빙이 부족하거나 메일 도메인이 다릅니다"
-          href="/admin/approvals"
-        />
-        <StatCard
-          label="24시간 넘긴 문의"
-          value={inquiries.filter((x) => x.overdue).length}
-          unit="건"
-          note="개인정보 파기 요청 포함"
-          tone="warn"
-          href="/admin/inquiries"
-        />
-        <StatCard
-          label="수정 요청된 문항"
-          value={items.filter((x) => x.state === "revise").length}
-          unit="건"
-          note="다음 회차 전까지 반영해야 합니다"
-          href="/admin/items"
-        />
-      </div>
+      <section className="mt-7">
+        <h2 className={a.cardTitle}>눈여겨볼 것</h2>
+        <div className="mt-4">
+          <CountRows
+            rows={[
+              {
+                label: "승인 대기 중 확인 필요",
+                value: approvals.filter((x) => x.warning).length,
+                unit: "건",
+                note: "증빙이 부족하거나 메일 도메인이 다릅니다",
+                href: "/admin/approvals",
+              },
+              {
+                label: "24시간 넘긴 문의",
+                value: inquiries.filter((x) => x.overdue).length,
+                unit: "건",
+                note: "개인정보 파기 요청 포함",
+                href: "/admin/inquiries",
+              },
+              {
+                label: "수정 요청된 문항",
+                value: items.filter((x) => x.state === "revise").length,
+                unit: "건",
+                note: "다음 회차 전까지 반영해야 합니다",
+                href: "/admin/items",
+              },
+            ]}
+          />
+        </div>
+      </section>
     </>
   );
 }

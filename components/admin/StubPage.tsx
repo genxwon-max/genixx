@@ -14,16 +14,15 @@ export default function StubPage({ section }: { section: keyof typeof stubSectio
     <>
       <PageHead id={s.id} title={s.title} lead={s.lead} />
 
-      <section className={`${a.panel} p-6 sm:p-8`}>
+      <section>
         <h2 className={a.cardTitle}>이 화면에 들어갈 것</h2>
         <p className={`${a.bodyText} mt-2`}>
           화면 설계가 확정되면 이 자리를 개별 화면으로 나눕니다. 지금은 무엇을 담을지만 적어 둡니다.
         </p>
-        <ul className="mt-5 space-y-3">
+        <ul className="mt-4 border-b border-exam-line">
           {s.todo.map((t) => (
-            <li key={t} className="flex gap-3 border-b border-exam-line pb-3 last:border-b-0">
-              <span aria-hidden className="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand-700" />
-              <span className="adm-t-md text-exam-text">{t}</span>
+            <li key={t} className="border-t border-exam-line py-3 adm-t-md text-exam-text">
+              {t}
             </li>
           ))}
         </ul>

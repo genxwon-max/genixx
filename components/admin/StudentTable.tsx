@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatCode } from "@/lib/roster";
-import { Badge, TableCard } from "./Parts";
+import { Badge, Callout, TableCard } from "./Parts";
 import ReasonDialog from "./ReasonDialog";
 import * as a from "./ui";
 
@@ -27,12 +27,72 @@ type Row = {
 };
 
 const rows: Row[] = [
-  { id: "S-30118", name: "김서준", birth: "20150312", grade: "초5", klass: "A반", org: "서울 강서 위드학원", code: "H4KQ7RXM", guardian: "010-2***-**41", state: "제출완료" },
-  { id: "S-30119", name: "박지우", birth: "20140825", grade: "초6", klass: "A반", org: "서울 강서 위드학원", code: "T9BDN2VP", guardian: "010-3***-**07", state: "응시중" },
-  { id: "S-30124", name: "이하윤", birth: "20160204", grade: "초4", klass: "B반", org: "서울 강서 위드학원", code: "M6XCJ5WQ", guardian: "010-5***-**88", state: "미응시" },
-  { id: "S-30140", name: "정도현", birth: "20130917", grade: "중1", klass: "—", org: "개인 신청", code: "K2VRT8HN", guardian: "010-7***-**23", state: "발행완료" },
-  { id: "S-30155", name: "최나린", birth: "20150630", grade: "초5", klass: "1기", org: "인천 미추홀 영재교육원", code: "P3WGF9DC", guardian: "010-4***-**16", state: "제출완료" },
-  { id: "S-30161", name: "한소율", birth: "20141119", grade: "초6", klass: "2기", org: "경기 성남 한빛교육원", code: "R7NHQ4BJ", guardian: "010-8***-**52", state: "응시중" },
+  {
+    id: "S-30118",
+    name: "김서준",
+    birth: "20150312",
+    grade: "초5",
+    klass: "A반",
+    org: "서울 강서 위드학원",
+    code: "H4KQ7RXM",
+    guardian: "010-2***-**41",
+    state: "제출완료",
+  },
+  {
+    id: "S-30119",
+    name: "박지우",
+    birth: "20140825",
+    grade: "초6",
+    klass: "A반",
+    org: "서울 강서 위드학원",
+    code: "T9BDN2VP",
+    guardian: "010-3***-**07",
+    state: "응시중",
+  },
+  {
+    id: "S-30124",
+    name: "이하윤",
+    birth: "20160204",
+    grade: "초4",
+    klass: "B반",
+    org: "서울 강서 위드학원",
+    code: "M6XCJ5WQ",
+    guardian: "010-5***-**88",
+    state: "미응시",
+  },
+  {
+    id: "S-30140",
+    name: "정도현",
+    birth: "20130917",
+    grade: "중1",
+    klass: "—",
+    org: "개인 신청",
+    code: "K2VRT8HN",
+    guardian: "010-7***-**23",
+    state: "발행완료",
+  },
+  {
+    id: "S-30155",
+    name: "최나린",
+    birth: "20150630",
+    grade: "초5",
+    klass: "1기",
+    org: "인천 미추홀 영재교육원",
+    code: "P3WGF9DC",
+    guardian: "010-4***-**16",
+    state: "제출완료",
+  },
+  {
+    id: "S-30161",
+    name: "한소율",
+    birth: "20141119",
+    grade: "초6",
+    klass: "2기",
+    org: "경기 성남 한빛교육원",
+    code: "R7NHQ4BJ",
+    guardian: "010-8***-**52",
+    state: "응시중",
+  },
 ];
 
 const stateTone: Record<Row["state"], string> = {
@@ -59,15 +119,17 @@ export default function StudentTable() {
 
   return (
     <>
-      <p className="mb-5 rounded-md border border-brand-200 bg-brand-50 px-5 py-4 adm-t-md text-brand-900">
-        이름과 생년월일은 <b>가려서</b> 보여 드립니다. 확인이 꼭 필요할 때만 해당 학생의
-        <b> 가림 해제</b>를 누르시고, 사유를 적어 주세요. 누가 언제 무엇을 봤는지 전부 기록됩니다.
-      </p>
+      <div className="mb-5">
+        <Callout title="이름과 생년월일은 가려서 보여 드립니다">
+          확인이 꼭 필요할 때만 해당 학생의 <b>가림 해제</b>를 누르시고, 사유를 적어 주세요. 누가
+          언제 무엇을 봤는지 전부 기록됩니다.
+        </Callout>
+      </div>
 
       {notice && (
-        <p className="mb-5 rounded-md border border-emerald-300 bg-emerald-50 px-5 py-4 adm-t-md font-bold text-emerald-800">
-          {notice}
-        </p>
+        <div className="mb-5">
+          <Callout tone="good">{notice}</Callout>
+        </div>
       )}
 
       <TableCard
@@ -92,7 +154,7 @@ export default function StudentTable() {
             {rows.map((s) => {
               const shown = open.has(s.id);
               return (
-                <tr key={s.id} className={shown ? "bg-brand-50/40" : undefined}>
+                <tr key={s.id}>
                   <td className={a.td}>{s.id}</td>
                   <td className={a.tdStrong}>{shown ? s.name : maskName(s.name)}</td>
                   <td className={a.td}>

@@ -13,7 +13,6 @@
 
 /* ── 면 ── */
 export const panel = "rounded-lg border border-exam-line bg-white";
-export const panelSoft = "rounded-lg border border-exam-line bg-exam-panel";
 
 /* ── 글자 ── */
 export const pageTitle = "adm-t-xl font-black tracking-tight text-exam-text";

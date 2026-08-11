@@ -1,5 +1,5 @@
 import { contractLabel, orgs } from "@/lib/admin";
-import { PageHead, TableCard, Badge, StatCard, Progress } from "@/components/admin/Parts";
+import { PageHead, TableCard, Badge, CountRows, Progress } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -28,8 +28,8 @@ export default function OrgsPage() {
       />
 
       <PermissionGate need="org.manage">
-        <div className="mb-6 grid gap-5 lg:grid-cols-[1fr_1.3fr]">
-          <section className={`${a.panel} p-5`}>
+        <div className="mb-6 grid gap-x-8 gap-y-6 lg:grid-cols-[1fr_1.3fr]">
+          <section>
             <h2 className={a.cardTitle}>응시권 배정 현황</h2>
             <p className="mt-1 adm-t-sm text-exam-muted">
               배정한 응시권 가운데 실제로 쓴 비율입니다.
@@ -38,35 +38,37 @@ export default function OrgsPage() {
               <Progress label="전체 응시권 사용" value={usedSeats} total={totalSeats} />
             </div>
             <p className="mt-4 adm-t-sm text-exam-muted">
-              파일럿 회차는 전액 무료라 금액이 발생하지 않습니다. 정식 요금 적용 시점부터
-              이 숫자가 그대로 정산 근거가 됩니다.
+              파일럿 회차는 전액 무료라 금액이 발생하지 않습니다. 정식 요금 적용 시점부터 이 숫자가
+              그대로 정산 근거가 됩니다.
             </p>
           </section>
 
-          <div className="grid grid-cols-2 gap-4 self-start">
-            <StatCard
-              label="계약중 기관"
-              value={orgs.filter((o) => o.contract === "active").length}
-              unit="곳"
-              tone="good"
-            />
-            <StatCard
-              label="시범 운영"
-              value={orgs.filter((o) => o.contract === "trial").length}
-              unit="곳"
-              note="기간이 끝나기 전에 연락해야 합니다"
-            />
-            <StatCard
-              label="만료"
-              value={orgs.filter((o) => o.contract === "expired").length}
-              unit="곳"
-              tone="warn"
-              note="재계약 문의 필요"
-            />
-            <StatCard
-              label="등록 학생"
-              value={orgs.reduce((s, o) => s + o.students, 0)}
-              unit="명"
+          <div className="self-start">
+            <CountRows
+              rows={[
+                {
+                  label: "계약중 기관",
+                  value: orgs.filter((o) => o.contract === "active").length,
+                  unit: "곳",
+                },
+                {
+                  label: "시범 운영",
+                  value: orgs.filter((o) => o.contract === "trial").length,
+                  unit: "곳",
+                  note: "기간이 끝나기 전에 연락해야 합니다",
+                },
+                {
+                  label: "만료",
+                  value: orgs.filter((o) => o.contract === "expired").length,
+                  unit: "곳",
+                  note: "재계약 문의 필요",
+                },
+                {
+                  label: "등록 학생",
+                  value: orgs.reduce((s, o) => s + o.students, 0),
+                  unit: "명",
+                },
+              ]}
             />
           </div>
         </div>

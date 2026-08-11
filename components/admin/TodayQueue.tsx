@@ -96,8 +96,8 @@ export default function TodayQueue() {
       <section className={`${a.panel} p-6`}>
         <h2 className={a.cardTitle}>지금 처리할 것이 없습니다</h2>
         <p className={`${a.bodyText} mt-2`}>
-          {roleOf(role).label} 권한으로 처리할 대기 건이 없습니다. 왼쪽 메뉴에서 담당 화면을
-          여시면 됩니다.
+          {roleOf(role).label} 권한으로 처리할 대기 건이 없습니다. 왼쪽 메뉴에서 담당 화면을 여시면
+          됩니다.
         </p>
       </section>
     );
@@ -118,7 +118,10 @@ export default function TodayQueue() {
               href={q.href}
               className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 transition-colors hover:bg-exam-raised"
             >
-              <span aria-hidden className={`${a.dot} ${q.urgent ? "bg-rose-500" : "bg-exam-line"}`} />
+              <span
+                aria-hidden
+                className={`${a.dot} ${q.urgent ? "bg-rose-500" : "bg-exam-line"}`}
+              />
               <span className="min-w-0 flex-1">
                 <span className="block adm-t-md font-bold text-exam-text">{q.label}</span>
                 <span className="mt-0.5 block adm-t-sm text-exam-muted">{q.note}</span>

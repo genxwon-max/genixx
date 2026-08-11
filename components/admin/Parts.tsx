@@ -26,54 +26,107 @@ export function PageHead({
   );
 }
 
-/** 숫자 카드. 숫자만 크게 두지 않고 무슨 숫자인지 항상 함께 적는다. */
-export function StatCard({
-  label,
-  value,
-  unit,
-  note,
-  tone = "plain",
-  href,
-}: {
+export type CountRow = {
   label: string;
   value: number | string;
   unit?: string;
   note?: string;
-  tone?: "plain" | "warn" | "good";
   href?: string;
-}) {
-  const toneClass =
-    tone === "warn"
-      ? "border-rose-300 bg-rose-50"
-      : tone === "good"
-        ? "border-emerald-300 bg-emerald-50"
-        : "border-exam-line bg-white";
+};
 
-  const inner = (
-    <>
-      <p className="adm-t-sm font-bold text-exam-muted">{label}</p>
-      <p className="mt-2 flex items-baseline gap-1.5">
-        <span className="adm-num font-black text-exam-text">
-          {typeof value === "number" ? value.toLocaleString("ko-KR") : value}
-        </span>
-        {unit && <span className="adm-t-md font-bold text-exam-muted">{unit}</span>}
-      </p>
-      {note && <p className="mt-1.5 adm-t-xs text-exam-muted">{note}</p>}
-    </>
+/**
+ * 건수 줄.
+ *
+ * 숫자를 카드로 세우지 않는다. 카드는 한 칸에 하나씩만 담기고, 색으로 급한 것과 안 급한
+ * 것을 나누기 시작하면 화면이 알록달록해지는데 정작 눈은 숫자를 세로로 훑지 못한다.
+ * 한 줄에 하나씩 눕히고 숫자를 오른쪽 끝에 모으면 위에서 아래로 한 번에 읽힌다.
+ */
+export function CountRows({ rows }: { rows: CountRow[] }) {
+  return (
+    <ul className="border-b border-exam-line">
+      {rows.map((r) => {
+        const inner = (
+          <>
+            <span className="adm-t-md font-bold text-exam-text">{r.label}</span>
+            {r.note && <span className="adm-t-sm text-exam-muted">{r.note}</span>}
+            <span className="ml-auto adm-t-md font-bold tabular-nums text-exam-text">
+              {typeof r.value === "number" ? r.value.toLocaleString("ko-KR") : r.value}
+              {r.unit && <span className="ml-0.5 font-bold text-exam-muted">{r.unit}</span>}
+            </span>
+            {r.href && <span className="adm-t-sm font-bold text-brand-700">→</span>}
+          </>
+        );
+        const shape = "flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3";
+        return (
+          <li key={r.label} className="border-t border-exam-line">
+            {r.href ? (
+              <Link href={r.href} className={`${shape} transition-colors hover:bg-exam-raised`}>
+                {inner}
+              </Link>
+            ) : (
+              <div className={shape}>{inner}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
+}
 
-  if (href) {
-    return (
-      <Link
-        href={href}
-        className={`block rounded-lg border p-5 transition-colors hover:border-brand-500 ${toneClass}`}
-      >
-        {inner}
-        <span className="mt-3 inline-block adm-t-xs font-bold text-brand-700">바로 가기 →</span>
-      </Link>
-    );
-  }
-  return <div className={`rounded-lg border p-5 ${toneClass}`}>{inner}</div>;
+/**
+ * 접었다 펴는 설명.
+ *
+ * 규칙·절차 설명은 처음 한 번 읽으면 되는 글이다. 매일 오는 사람에게 화면 위쪽을 계속
+ * 내주지 않도록 접어 두고, 필요할 때만 펼치게 한다.
+ */
+export function Foldable({
+  title,
+  open,
+  children,
+}: {
+  title: string;
+  open?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group border-y border-exam-line" open={open}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 adm-t-md font-bold text-exam-text marker:content-none">
+        <span className="adm-t-sm text-exam-muted group-open:hidden">펼치기 ▾</span>
+        <span className="hidden adm-t-sm text-exam-muted group-open:inline">접기 ▴</span>
+        {title}
+      </summary>
+      <div className="pb-4">{children}</div>
+    </details>
+  );
+}
+
+/**
+ * 짚고 넘어갈 것.
+ *
+ * 면을 깔지 않고 왼쪽 굵은 선으로 세운다. 노란 상자·붉은 상자를 늘어놓으면 정작 급한
+ * 것이 묻힌다. 색은 선과 제목 글자에만 얹고 본문은 늘 같은 색으로 읽는다.
+ */
+export function Callout({
+  tone = "info",
+  title,
+  children,
+}: {
+  tone?: "info" | "warn" | "good";
+  title?: string;
+  children: React.ReactNode;
+}) {
+  const rule = { info: "border-brand-700", warn: "border-rose-500", good: "border-emerald-500" }[
+    tone
+  ];
+  const head = { info: "text-brand-800", warn: "text-rose-700", good: "text-emerald-700" }[tone];
+  return (
+    <div className={`border-l-4 pl-4 ${rule}`}>
+      {title && <p className={`adm-t-md font-bold ${head}`}>{title}</p>}
+      <div className={`${title ? "mt-1.5 " : ""}adm-t-sm leading-relaxed text-exam-text`}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 /** 상태 — 상자 없이 글자만. 색은 거들 뿐이고 라벨이 본체다. */

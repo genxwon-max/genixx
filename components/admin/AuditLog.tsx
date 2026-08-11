@@ -2,7 +2,7 @@
 
 import { auditLog, roleOf } from "@/lib/admin";
 import { useLocalAudit } from "@/lib/adminStore";
-import { TableCard, StatCard } from "./Parts";
+import { TableCard, CountRows } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -19,15 +19,24 @@ export default function AuditLog() {
 
   return (
     <>
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="오늘 개인정보 열람"
-          value={piiCount}
-          unit="건"
-          note="모두 사유가 함께 기록되어 있습니다"
+      <div className="mb-6">
+        <CountRows
+          rows={[
+            {
+              label: "오늘 개인정보 열람",
+              value: piiCount,
+              unit: "건",
+              note: "모두 사유가 함께 기록되어 있습니다",
+            },
+            { label: "처리 대기 중인 파기 요청", value: 1, unit: "건", note: "접수 후 31시간" },
+            {
+              label: "사유 없이 열린 기록",
+              value: 0,
+              unit: "건",
+              note: "사유 입력을 건너뛸 수 없습니다",
+            },
+          ]}
         />
-        <StatCard label="처리 대기 중인 파기 요청" value={1} unit="건" tone="warn" note="접수 후 31시간" />
-        <StatCard label="사유 없이 열린 기록" value={0} unit="건" tone="good" note="사유 입력을 건너뛸 수 없습니다" />
       </div>
 
       {local.length > 0 && (
@@ -48,7 +57,7 @@ export default function AuditLog() {
               </thead>
               <tbody>
                 {local.map((r) => (
-                  <tr key={r.id} className="bg-brand-50/50">
+                  <tr key={r.id}>
                     <td className={a.td}>{r.id}</td>
                     <td className={a.td}>
                       <span className="tabular-nums">{r.at}</span>

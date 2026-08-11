@@ -1,15 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  can,
-  caseStates,
-  gradingQueue,
-  type CaseState,
-  type GradingCase,
-} from "@/lib/admin";
+import { can, caseStates, gradingQueue, type CaseState, type GradingCase } from "@/lib/admin";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { Badge, TableCard } from "./Parts";
+import { Badge, Callout, TableCard } from "./Parts";
 import ReasonDialog from "./ReasonDialog";
 import * as a from "./ui";
 
@@ -81,9 +75,9 @@ export default function GradingQueue() {
       </div>
 
       {done && (
-        <p className="mb-5 rounded-md border border-emerald-300 bg-emerald-50 px-5 py-4 adm-t-md font-bold text-emerald-800">
-          {done}
-        </p>
+        <div className="mb-5">
+          <Callout tone="good">{done}</Callout>
+        </div>
       )}
 
       <TableCard
@@ -135,7 +129,11 @@ export default function GradingQueue() {
                   <td className={a.td}>
                     <span className="font-bold text-exam-text tabular-nums">{surveyCount} / 3</span>
                     <span className="mt-0.5 block adm-t-sm">
-                      {surveyCount === 0 ? "설문 없음" : surveyCount === 3 ? "모두 수집" : "일부 수집"}
+                      {surveyCount === 0
+                        ? "설문 없음"
+                        : surveyCount === 3
+                          ? "모두 수집"
+                          : "일부 수집"}
                     </span>
                   </td>
                   <td className={a.td}>
@@ -191,7 +189,7 @@ export default function GradingQueue() {
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
             {/* AI가 낸 것 */}
-            <div className="rounded-lg border border-exam-line bg-exam-panel p-5">
+            <div className="rounded-lg border border-exam-line p-5">
               <h3 className={a.cardTitle}>AI가 1차로 낸 값</h3>
               <p className="mt-1.5 adm-t-sm text-exam-muted">
                 아래는 제안일 뿐입니다. 확정하기 전까지 보호자에게 보이지 않습니다.
@@ -229,8 +227,9 @@ export default function GradingQueue() {
                 ))}
               </ul>
               <p className="mt-3 adm-t-sm text-exam-muted">
-                나머지 다섯 축(공간·청각·신체·관계·자기이해)은 이번 회차에서 <b>측정하지 않았습니다</b>.
-                점수가 낮은 것이 아니라 아직 보지 않은 영역이므로 그대로 표기합니다.
+                나머지 다섯 축(공간·청각·신체·관계·자기이해)은 이번 회차에서{" "}
+                <b>측정하지 않았습니다</b>. 점수가 낮은 것이 아니라 아직 보지 않은 영역이므로 그대로
+                표기합니다.
               </p>
             </div>
 
@@ -248,23 +247,18 @@ export default function GradingQueue() {
                     <span className={a.label}>{s.k}</span>
                     <Badge
                       label={s.v ? "제출됨" : "제출 안 됨"}
-                      className={
-                        s.v
-                          ? "text-emerald-700"
-                          : "text-exam-muted"
-                      }
+                      className={s.v ? "text-emerald-700" : "text-exam-muted"}
                     />
                   </li>
                 ))}
               </ul>
 
               {opened.flag && (
-                <p className="mt-4 rounded-md border border-rose-300 bg-rose-50 px-4 py-3 adm-t-sm font-bold text-rose-800">
-                  확인 필요: {opened.flag}
-                  <span className="mt-1 block font-normal">
+                <div className="mt-4">
+                  <Callout tone="warn" title={`확인 필요 — ${opened.flag}`}>
                     이 경우 바로 확정하지 말고 케이스 회의로 넘기는 것이 원칙입니다.
-                  </span>
-                </p>
+                  </Callout>
+                </div>
               )}
 
               <div className="mt-5">
@@ -290,16 +284,20 @@ export default function GradingQueue() {
           <div className="mt-6 border-t border-exam-line pt-5">
             <p className={a.label}>이 응시를 어떻게 처리할까요?</p>
             {!mayConfirm && (
-              <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 adm-t-sm font-bold text-amber-900">
-                지금 역할에는 판정 확정 권한이 없습니다. 의견만 남길 수 있습니다.
-              </p>
+              <div className="mt-2">
+                <Callout tone="warn">
+                  지금 역할에는 판정 확정 권한이 없습니다. 의견만 남길 수 있습니다.
+                </Callout>
+              </div>
             )}
             <div className="mt-3 flex flex-wrap gap-3">
               <button
                 type="button"
                 disabled={!mayConfirm || note.trim().length < 10}
                 onClick={() => {
-                  setDone(`응시번호 ${opened.seat} 판정을 확정했습니다. 리포트 발행 대기로 넘어갑니다.`);
+                  setDone(
+                    `응시번호 ${opened.seat} 판정을 확정했습니다. 리포트 발행 대기로 넘어갑니다.`,
+                  );
                   setOpened(null);
                 }}
                 className={mayConfirm && note.trim().length >= 10 ? a.btnPrimary : a.btnDisabled}

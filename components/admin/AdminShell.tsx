@@ -218,9 +218,7 @@ function MenuLink({
     >
       <span className="flex-1">{item.label}</span>
       {count > 0 && (
-        <span className="shrink-0 rounded-md bg-rose-500/20 px-2 py-0.5 adm-t-xs font-bold tabular-nums text-rose-300">
-          {count}
-        </span>
+        <span className="shrink-0 adm-t-sm font-bold tabular-nums text-rose-300">{count}</span>
       )}
     </Link>
   );

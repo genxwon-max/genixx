@@ -26,7 +26,12 @@ export default function StaffIssue() {
   const hydrated = useHydrated();
   const accounts = useStaffAccounts();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ loginId: "", name: "", role: "author" as StaffRoleId, team: "" });
+  const [form, setForm] = useState({
+    loginId: "",
+    name: "",
+    role: "author" as StaffRoleId,
+    team: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ account: StaffAccount; password: string } | null>(null);
 
@@ -55,11 +60,11 @@ export default function StaffIssue() {
 
       {/* ── 발급 결과 — 한 번만 보여 준다 ── */}
       {issued && (
-        <section className="mb-6 rounded-lg border border-emerald-300 bg-emerald-50 p-5 sm:p-6">
-          <h3 className="adm-t-lg font-black text-emerald-900">
+        <section className="mb-6 border-l-4 border-emerald-500 py-1 pl-4">
+          <h3 className="adm-t-lg font-black text-emerald-700">
             {issued.account.name} 계정을 만들었습니다
           </h3>
-          <p className="mt-1.5 adm-t-sm leading-relaxed text-emerald-900">
+          <p className="mt-1.5 adm-t-sm leading-relaxed text-exam-text">
             아래 임시 비밀번호를 본인에게 전달해 주세요. 이 창을 닫으면 다시 볼 수 없습니다 —
             저장하지 않기 때문입니다. 잊으면 재발급하시면 됩니다.
           </p>
@@ -70,7 +75,7 @@ export default function StaffIssue() {
               { k: "역할", v: roleOf(issued.account.role).label },
               { k: "임시 비밀번호", v: issued.password },
             ].map((row) => (
-              <div key={row.k} className="rounded-md bg-white px-4 py-3">
+              <div key={row.k} className="rounded-md border border-exam-line px-4 py-3">
                 <dt className="adm-t-xs font-bold text-exam-muted">{row.k}</dt>
                 <dd className="mt-1 adm-t-md font-black tracking-tight text-exam-text">{row.v}</dd>
               </div>
@@ -106,7 +111,10 @@ export default function StaffIssue() {
               <input
                 value={form.loginId}
                 onChange={(e) => {
-                  setForm({ ...form, loginId: e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "") });
+                  setForm({
+                    ...form,
+                    loginId: e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ""),
+                  });
                   setError(null);
                 }}
                 placeholder="author.kim"
@@ -152,7 +160,7 @@ export default function StaffIssue() {
             </label>
           </div>
 
-          <p className="mt-4 rounded-md bg-exam-panel px-4 py-3 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
             고른 역할이 곧 권한입니다 — {roleOf(form.role).desc}
           </p>
 
@@ -195,21 +203,13 @@ export default function StaffIssue() {
                 <td className={a.td}>
                   <Badge
                     label={s.temp ? "임시 — 아직 안 바꿈" : "변경됨"}
-                    className={
-                      s.temp
-                        ? "text-amber-700"
-                        : "text-emerald-700"
-                    }
+                    className={s.temp ? "text-amber-700" : "text-emerald-700"}
                   />
                 </td>
                 <td className={a.td}>
                   <Badge
                     label={s.mfa ? "켜짐" : "꺼짐 — 확인 필요"}
-                    className={
-                      s.mfa
-                        ? "text-emerald-700"
-                        : "text-rose-700"
-                    }
+                    className={s.mfa ? "text-emerald-700" : "text-rose-700"}
                   />
                 </td>
                 <td className={a.td}>{s.lastSeen ?? "접속 전"}</td>

@@ -1,5 +1,5 @@
 import { items, itemStates } from "@/lib/admin";
-import { PageHead, TableCard, Badge } from "@/components/admin/Parts";
+import { PageHead, TableCard, Badge, CountRows, Foldable } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -17,9 +17,24 @@ const countOf = (state: (typeof items)[number]["state"]) =>
   items.filter((i) => i.state === state).length;
 
 const counts = [
-  { label: "검수를 기다리는 문항", value: countOf("review"), note: "다음 회차 배치 전까지" },
-  { label: "승인된 문항", value: countOf("approved"), note: "회차에 바로 넣을 수 있습니다" },
-  { label: "사용 중지", value: countOf("retired"), note: "정답률이 한쪽으로 치우친 문항" },
+  {
+    label: "검수를 기다리는 문항",
+    value: countOf("review"),
+    unit: "건",
+    note: "다음 회차 배치 전까지",
+  },
+  {
+    label: "승인된 문항",
+    value: countOf("approved"),
+    unit: "건",
+    note: "회차에 바로 넣을 수 있습니다",
+  },
+  {
+    label: "사용 중지",
+    value: countOf("retired"),
+    unit: "건",
+    note: "정답률이 한쪽으로 치우친 문항",
+  },
 ];
 
 export default function ItemsPage() {
@@ -44,38 +59,23 @@ export default function ItemsPage() {
       <PermissionGate need="item.review">
         {/* 단계 설명은 처음 한 번 읽으면 되는 글이다. 매일 오는 사람에게 화면 위쪽
             네 칸을 계속 내주지 않도록 접어 두고, 필요할 때만 펼치게 한다. */}
-        <details className="group mb-5 border-y border-exam-line">
-          <summary className="flex cursor-pointer list-none items-center gap-2 py-3 adm-t-md font-bold text-exam-text marker:content-none">
-            <span className="adm-t-sm text-exam-muted group-open:hidden">펼치기 ▾</span>
-            <span className="hidden adm-t-sm text-exam-muted group-open:inline">접기 ▴</span>
-            문항이 거치는 네 단계
-          </summary>
-          <ol className="pb-3">
-            {flow.map((f) => (
-              <li key={f.step} className="flex flex-wrap items-baseline gap-x-2.5 py-1.5">
-                <span className="adm-t-sm tabular-nums text-exam-muted">{f.step}</span>
-                <span className="adm-t-md font-bold text-exam-text">{f.label}</span>
-                <span className="adm-t-sm text-exam-muted">{f.desc}</span>
-              </li>
-            ))}
-          </ol>
-        </details>
+        <div className="mb-5">
+          <Foldable title="문항이 거치는 네 단계">
+            <ol>
+              {flow.map((f) => (
+                <li key={f.step} className="flex flex-wrap items-baseline gap-x-2.5 py-1.5">
+                  <span className="adm-t-sm tabular-nums text-exam-muted">{f.step}</span>
+                  <span className="adm-t-md font-bold text-exam-text">{f.label}</span>
+                  <span className="adm-t-sm text-exam-muted">{f.desc}</span>
+                </li>
+              ))}
+            </ol>
+          </Foldable>
+        </div>
 
-        {/* 건수는 카드로 세우지 않는다. 세 줄이면 눈이 한 번에 훑는다. */}
-        <ul className="mb-6 border-b border-exam-line">
-          {counts.map((c) => (
-            <li
-              key={c.label}
-              className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-exam-line py-3"
-            >
-              <span className="adm-t-md font-bold text-exam-text">{c.label}</span>
-              <span className="adm-t-sm text-exam-muted">{c.note}</span>
-              <span className="ml-auto adm-t-md font-bold tabular-nums text-exam-text">
-                {c.value}건
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="mb-6">
+          <CountRows rows={counts} />
+        </div>
 
         <TableCard
           title={`전체 문항 ${items.length}건`}

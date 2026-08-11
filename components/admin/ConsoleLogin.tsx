@@ -43,11 +43,7 @@ export default function ConsoleLogin() {
         <p className="text-center text-2xl font-black tracking-tight text-white">GENIXX</p>
         <p className="mt-1.5 text-center adm-t-sm font-bold text-slate-400">관리자 콘솔</p>
 
-        <form
-          onSubmit={submit}
-          noValidate
-          className="mt-7 rounded-lg bg-white p-6 sm:p-7"
-        >
+        <form onSubmit={submit} noValidate className="mt-7 rounded-lg bg-white p-6 sm:p-7">
           <h1 className="adm-t-lg font-black text-exam-text">운영자 로그인</h1>
           <p className="mt-1.5 adm-t-sm leading-relaxed text-exam-muted">
             슈퍼 관리자가 발급한 아이디로 들어옵니다. 이 콘솔에는 가입 절차가 없습니다.

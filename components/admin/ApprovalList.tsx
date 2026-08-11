@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { approvals, type Approval } from "@/lib/admin";
-import { Badge } from "./Parts";
+import { Badge, Callout } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -14,9 +14,10 @@ import * as a from "./ui";
  */
 export default function ApprovalList() {
   const [handled, setHandled] = useState<Record<string, "approved" | "rejected">>({});
-  const [confirming, setConfirming] = useState<{ item: Approval; kind: "approve" | "reject" } | null>(
-    null,
-  );
+  const [confirming, setConfirming] = useState<{
+    item: Approval;
+    kind: "approve" | "reject";
+  } | null>(null);
 
   const waiting = approvals.filter((x) => !handled[x.id]);
 
@@ -33,8 +34,9 @@ export default function ApprovalList() {
           return (
             <li
               key={item.id}
-              className={`rounded-lg border p-5 sm:p-6 ${
-                state ? "border-exam-line bg-exam-panel" : "border-exam-line bg-white"
+              // 처리한 건은 흐리게 둔다. 면을 갈아 끼우지 않고 글자만 물러나게 한다.
+              className={`rounded-lg border border-exam-line p-5 sm:p-6 ${
+                state ? "opacity-70" : ""
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -42,11 +44,7 @@ export default function ApprovalList() {
                   <div className="flex flex-wrap items-center gap-2.5">
                     <Badge
                       label={item.kind === "teacher" ? "교사" : "기관"}
-                      className={
-                        item.kind === "teacher"
-                          ? "text-emerald-700"
-                          : "text-accent-600"
-                      }
+                      className={item.kind === "teacher" ? "text-emerald-700" : "text-accent-600"}
                     />
                     <h2 className="adm-t-lg font-black text-exam-text">
                       {item.name} · {item.org}
@@ -66,9 +64,11 @@ export default function ApprovalList() {
                   </dl>
 
                   {item.warning && (
-                    <p className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 adm-t-sm font-bold text-amber-900">
-                      확인이 필요합니다 — {item.warning}
-                    </p>
+                    <div className="mt-4">
+                      <Callout tone="warn" title="확인이 필요합니다">
+                        {item.warning}
+                      </Callout>
+                    </div>
                   )}
                 </div>
 
@@ -76,11 +76,7 @@ export default function ApprovalList() {
                   {state ? (
                     <Badge
                       label={state === "approved" ? "승인 완료" : "반려 처리됨"}
-                      className={
-                        state === "approved"
-                          ? "text-emerald-700"
-                          : "text-rose-700"
-                      }
+                      className={state === "approved" ? "text-emerald-700" : "text-rose-700"}
                     />
                   ) : (
                     <>
@@ -176,11 +172,7 @@ function ConfirmDialog({
         </ul>
 
         <div className="mt-7 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={onDone}
-            className={approve ? a.btnPrimary : a.btnDanger}
-          >
+          <button type="button" onClick={onDone} className={approve ? a.btnPrimary : a.btnDanger}>
             네, {approve ? "승인합니다" : "반려합니다"}
           </button>
           <button type="button" onClick={onClose} className={a.btnGhost}>

@@ -82,10 +82,8 @@ export default function StaffPage() {
                       <td key={r.id} className={`${a.td} text-center`}>
                         {/* 기호만 두면 못 읽는 사람이 생겨 글자를 함께 적는다 */}
                         <span
-                          className={`inline-flex min-h-[2rem] items-center justify-center gap-1 rounded-md px-2.5 adm-t-xs font-bold ${
-                            ok
-                              ? "bg-emerald-50 text-emerald-800"
-                              : "bg-exam-raised text-exam-muted"
+                          className={`adm-t-sm font-bold ${
+                            ok ? "text-emerald-700" : "text-exam-muted"
                           }`}
                         >
                           {ok ? "✓ 가능" : "불가"}
@@ -98,7 +96,6 @@ export default function StaffPage() {
             </tbody>
           </table>
         </TableCard>
-
       </PermissionGate>
     </>
   );
