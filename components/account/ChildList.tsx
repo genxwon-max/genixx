@@ -18,7 +18,7 @@ export default function ChildList() {
   const children = all.filter((s) => s.owner === "parent");
 
   if (!hydrated) {
-    return <p className="py-16 text-center text-[13px] text-exam-muted">확인 중입니다…</p>;
+    return <p className="py-16 text-center text-[13px] text-soft-muted">확인 중입니다…</p>;
   }
 
   return (
@@ -31,8 +31,8 @@ export default function ChildList() {
 
       {children.length === 0 ? (
         <div className={`${card} ${cardPad} text-center`}>
-          <p className="text-[16px] font-black text-exam-text">아직 등록된 자녀가 없습니다</p>
-          <p className="mt-2.5 text-[14px] leading-relaxed text-exam-muted">
+          <p className="text-[16px] font-black text-soft-ink">아직 등록된 자녀가 없습니다</p>
+          <p className="mt-2.5 text-[14px] leading-relaxed text-soft-muted">
             등록은 <b>법정대리인 동의</b>부터 시작합니다. 아이 생년월일에 따라 누가 동의해야 하는지
             안내해 드립니다.
           </p>
@@ -51,8 +51,8 @@ export default function ChildList() {
               <li key={c.id} className={`${card} p-5 sm:p-6`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[18px] font-black text-exam-text">{c.name}</p>
-                    <p className="mt-1 text-[13px] text-exam-muted">
+                    <p className="text-[18px] font-black text-soft-ink">{c.name}</p>
+                    <p className="mt-1 text-[13px] text-soft-muted">
                       {c.grade} · 만 {age ?? "—"}세
                     </p>
                   </div>
@@ -69,12 +69,12 @@ export default function ChildList() {
                   )}
                 </div>
 
-                <div className="mt-4 rounded-lg bg-exam-raised px-4 py-3.5">
-                  <span className="text-[12px] font-bold text-exam-muted">접속코드</span>
-                  <span className="mt-1 block text-[20px] font-black tracking-[0.1em] tabular-nums text-exam-text">
+                <div className="mt-4 rounded-lg bg-slate-50 px-4 py-3.5">
+                  <span className="text-[12px] font-bold text-soft-muted">접속코드</span>
+                  <span className="mt-1 block text-[20px] font-black tracking-[0.1em] tabular-nums text-soft-ink">
                     {formatCode(c.code)}
                   </span>
-                  <span className="mt-1 block text-[12px] text-exam-muted">
+                  <span className="mt-1 block text-[12px] text-soft-muted">
                     생년월일과 함께 입력해야 들어갑니다.
                   </span>
                 </div>
@@ -108,8 +108,8 @@ export default function ChildList() {
       )}
 
       <div className={`${card} mt-4 p-5`}>
-        <p className="text-[14px] font-black text-exam-text">아이는 따로 가입하지 않습니다</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-exam-muted">
+        <p className="text-[14px] font-black text-soft-ink">아이는 따로 가입하지 않습니다</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
           만 14세 이상이어도 마찬가지입니다. 동의의 주체만 아이 본인으로 바뀔 뿐, 계정은 이 보호자
           계정 하나입니다. 아이 화면에서는 결제 정보나 형제자매의 결과가 보이지 않습니다.
         </p>

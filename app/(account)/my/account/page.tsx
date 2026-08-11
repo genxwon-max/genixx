@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fieldLabel, input } from "@/components/exam/ui";
+import { labelText as fieldLabel, field as input } from "@/components/account/ui";
 import { AccHead, btnGhost, btnPrimary, card, cardPad } from "@/components/account/ui";
 import { ArrowRight } from "@/components/Icons";
 
@@ -29,7 +29,7 @@ export default function AccountPage() {
             휴대폰 번호
           </label>
           <input id="a-phone" type="tel" defaultValue="010-1234-5678" className={`mt-2 ${input}`} />
-          <p className="mt-1.5 text-[12px] text-exam-muted">
+          <p className="mt-1.5 text-[12px] text-soft-muted">
             본인확인에 쓰인 번호입니다. 바꾸시면 다시 인증해야 합니다.
           </p>
         </div>
@@ -68,13 +68,13 @@ export default function AccountPage() {
           <li key={l.href}>
             <Link
               href={l.href}
-              className="group flex items-center gap-4 rounded-xl border border-exam-line bg-exam-panel px-5 py-4 transition-colors hover:border-brand-500"
+              className="group flex items-center gap-4 rounded-xl border border-soft-line bg-slate-50 px-5 py-4 transition-colors hover:border-soft-primary"
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-bold text-exam-text">{l.label}</span>
-                <span className="mt-0.5 block text-[13px] text-exam-muted">{l.desc}</span>
+                <span className="block text-[15px] font-bold text-soft-ink">{l.label}</span>
+                <span className="mt-0.5 block text-[13px] text-soft-muted">{l.desc}</span>
               </span>
-              <ArrowRight className="h-5 w-5 shrink-0 text-exam-muted transition-colors group-hover:text-brand-700" />
+              <ArrowRight className="h-5 w-5 shrink-0 text-soft-muted transition-colors group-hover:text-soft-primary-dark" />
             </Link>
           </li>
         ))}

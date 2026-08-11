@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
@@ -16,7 +18,8 @@ import { VariantSwitch } from "./AuthTabs";
  * 보여 주고, 기본 제공은 비식별 집단 통계로 한정한다. 그래서 답안·결과는 열지 않고
  * 과목 제출 수만 표시하며, 최소 인원 미만이면 집단 통계를 내지 않는다.
  *
- * 권한은 기관담당자(I)와 교사(T) 둘 다. 승인 전 계정에는 아무 숫자도 주지 않는다.
+ * 권한은 기관담당자(I)와 교사(T) 둘 다. 승인 전 계정은 여기 서지 못하고 승인 진행
+ * 화면(/signup/pending)으로 넘어간다.
  * 로그인·회원가입과 같은 두 시안(전문가 / 둥글둥글)을 그대로 따른다.
  */
 
@@ -29,12 +32,24 @@ const quickLinks = [
   { href: "/mypage", t: "마이페이지", d: "기관 정보·구성원·결제" },
 ];
 
-export default function OrgHome({ variant = 1 }: { variant?: Variant }) {
+export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
   const t = themeOf(variant);
+  const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
   const all = useRoster();
   const students = all.filter((s) => s.owner === "director");
+
+  /**
+   * 승인 전에는 학생 데이터가 하나도 보이지 않아 0만 가득한 대시보드가 된다.
+   * 그럴 바에는 승인 진행 상태를 보여 주는 편이 낫다.
+   *
+   * replace로 보낸다 — push면 뒤로가기가 이 화면을 다시 열어 그대로 튕겨 나간다.
+   */
+  const notApproved = hydrated && session?.approved === false;
+  useEffect(() => {
+    if (notApproved) router.replace("/signup/pending");
+  }, [notApproved, router]);
 
   /* 시안별 잔가지 */
   const bar = variant === 1 ? "bg-acc-primary" : "bg-soft-primary";
@@ -45,13 +60,13 @@ export default function OrgHome({ variant = 1 }: { variant?: Variant }) {
     variant === 1
       ? "rounded bg-acc-panel text-acc-ink"
       : "rounded-full bg-soft-primary-soft text-soft-primary";
-  const warnBox =
-    variant === 1
-      ? "border border-amber-300 bg-amber-50"
-      : "rounded-[14px] border border-amber-200 bg-amber-50";
 
-  if (!hydrated) {
-    return <p className={`container-x py-20 text-center text-[14px] ${t.muted}`}>확인 중입니다…</p>;
+  if (!hydrated || notApproved) {
+    return (
+      <p className={`container-x py-20 text-center text-[14px] ${t.muted}`}>
+        {notApproved ? "승인 진행 상태로 이동합니다…" : "확인 중입니다…"}
+      </p>
+    );
   }
 
   const rows = students.map(progressOf);
@@ -60,7 +75,6 @@ export default function OrgHome({ variant = 1 }: { variant?: Variant }) {
   const running = rows.filter((r) => r.phase === "응시중");
   const rate = rows.length ? Math.round((submittedAll / rows.length) * 100) : 0;
   const enoughForStats = rows.length >= MIN_GROUP;
-  const approved = session?.approved !== false;
 
   return (
     <div className={`min-h-full ${t.page}`}>
@@ -75,26 +89,13 @@ export default function OrgHome({ variant = 1 }: { variant?: Variant }) {
             </p>
           </header>
 
-          {!approved && (
-            <div className={`${warnBox} mb-5 p-5`}>
-              <p className="text-[15px] font-bold text-amber-900">아직 소속 승인 전입니다</p>
-              <p className="mt-1.5 text-[13.5px] leading-[1.7] text-amber-900">
-                승인이 끝나기 전에는 학생 데이터가 보이지 않습니다. 아래 숫자는 모두 0으로
-                표시됩니다.
-              </p>
-              <Link href="/signup/pending" className={`${t.btnQuiet} mt-4`}>
-                승인 진행 상태 보기
-              </Link>
-            </div>
-          )}
-
           {/* 요약 */}
           <div className="grid gap-3 sm:grid-cols-4">
             {[
-              { k: "등록 학생", v: approved ? `${students.length}명` : "0명" },
-              { k: "응시 진행 중", v: approved ? `${running.length}명` : "0명" },
-              { k: "전 과목 제출", v: approved ? `${submittedAll}명` : "0명" },
-              { k: "제출률", v: approved ? `${rate}%` : "—" },
+              { k: "등록 학생", v: `${students.length}명` },
+              { k: "응시 진행 중", v: `${running.length}명` },
+              { k: "전 과목 제출", v: `${submittedAll}명` },
+              { k: "제출률", v: `${rate}%` },
             ].map((s) => (
               <div key={s.k} className={`${t.card} p-5`}>
                 <p className={`text-[13px] font-semibold ${t.muted}`}>{s.k}</p>
@@ -103,7 +104,7 @@ export default function OrgHome({ variant = 1 }: { variant?: Variant }) {
             ))}
           </div>
 
-          {!approved ? null : students.length === 0 ? (
+          {students.length === 0 ? (
             <div className={`${t.card} mt-5 p-8 text-center`}>
               <p className="text-[17px] font-bold">등록된 학생이 없습니다</p>
               <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>

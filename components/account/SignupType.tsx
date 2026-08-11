@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { signupTypes, type SignupTypeId } from "@/lib/account";
 import { patchSignupDraft, useSignupDraft } from "@/lib/signupStore";
@@ -79,7 +79,7 @@ function PickCard({
 }
 
 export default function SignupType({
-  variant = 1,
+  variant = 2,
   /** 어느 단계로 열지. 디자인 검토·시안 반출용으로 URL(?stage=)에서 지정할 수 있다. */
   initialStage = "bucket",
   initialType = null,
@@ -90,6 +90,7 @@ export default function SignupType({
 }) {
   const t = themeOf(variant);
   const router = useRouter();
+  const pathname = usePathname();
   const draft = useSignupDraft();
   const accent = variant === 1 ? "#0b4d8f" : "#365eef";
 
@@ -106,10 +107,13 @@ export default function SignupType({
         ? { provider, name: "김보호", email: "genix.kim@example.com" }
         : { provider: null }),
     });
-    // 시안 2는 간편·이메일이 같은 화면으로 모인다. 간편 가입은 제공자가 계정을 이미
+    // 시안 2는 간편·아이디가 같은 화면으로 모인다. 간편 가입은 제공자가 계정을 이미
     // 확인해 주므로 ① 인증 칸을 건너뛰고 ② 정보 입력부터 시작한다.
+    //
+    // 정본(/signup/type)에서 왔으면 정본 주소로, 시안 비교용(/signup2)에서 왔으면
+    // 그쪽 주소로 보낸다. 둘은 같은 화면이고 주소만 다르다.
     if (variant === 2) {
-      router.push("/signup2/join");
+      router.push(/^\/signup[12]$/.test(pathname) ? "/signup2/join" : "/signup/join");
       return;
     }
     router.push("/signup/consent");

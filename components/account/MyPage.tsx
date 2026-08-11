@@ -875,7 +875,7 @@ function LeaveSection({ variant, audience }: { variant: Variant; audience: Audie
 /* ───────────────────────── 껍데기 ───────────────────────── */
 
 export default function MyPage({
-  variant = 1,
+  variant = 2,
   /** 검토·시안 반출용으로 바깥에서 첫 화면을 지정할 수 있다 (SignupType의 initialStage와 같은 방식) */
   initialSection = "profile",
   initialAudience,

@@ -36,17 +36,17 @@ export default function PendingPage() {
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded border text-[13px] font-bold tabular-nums ${
                   s.done
                     ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                    : "border-exam-line text-exam-muted"
+                    : "border-soft-line text-soft-muted"
                 }`}
               >
                 {i + 1}
               </span>
               <div>
-                <p className={`text-[15px] font-bold ${s.done ? "text-exam-text" : "text-exam-muted"}`}>
+                <p className={`text-[15px] font-bold ${s.done ? "text-soft-ink" : "text-soft-muted"}`}>
                   {s.t}
                   {s.done && <span className="ml-2 text-[12px] text-emerald-600">완료</span>}
                 </p>
-                <p className="mt-1 text-[13px] leading-relaxed text-exam-muted">{s.d}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-soft-muted">{s.d}</p>
               </div>
             </li>
           ))}

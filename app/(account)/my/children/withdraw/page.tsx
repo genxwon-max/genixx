@@ -27,16 +27,16 @@ export default function WithdrawPage() {
       />
 
       <div className={`${card} ${cardPad}`}>
-        <h2 className="text-[16px] font-black text-exam-text">요청하면 이렇게 진행됩니다</h2>
+        <h2 className="text-[16px] font-black text-soft-ink">요청하면 이렇게 진행됩니다</h2>
         <ol className="mt-5 space-y-4">
           {steps.map((s, i) => (
             <li key={s.t} className="flex gap-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-900 text-[13px] font-black text-white tabular-nums">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-soft-ink text-[13px] font-black text-white tabular-nums">
                 {i + 1}
               </span>
               <div>
-                <p className="text-[15px] font-bold text-exam-text">{s.t}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-exam-muted">{s.d}</p>
+                <p className="text-[15px] font-bold text-soft-ink">{s.t}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-soft-muted">{s.d}</p>
               </div>
             </li>
           ))}
@@ -56,7 +56,7 @@ export default function WithdrawPage() {
       <Link href="/support/inquiry" className={`${btnGhost} mt-6 w-full`}>
         철회·파기 요청 접수하기
       </Link>
-      <p className="mt-3 text-center text-[13px] text-exam-muted">
+      <p className="mt-3 text-center text-[13px] text-soft-muted">
         접수 후 처리 상황은 등록하신 연락처로 안내해 드립니다.
       </p>
     </>

@@ -28,12 +28,12 @@ export default function LeavePage() {
       />
 
       <div className={`${card} ${cardPad}`}>
-        <h2 className="text-[16px] font-black text-exam-text">탈퇴하면 이렇게 됩니다</h2>
+        <h2 className="text-[16px] font-black text-soft-ink">탈퇴하면 이렇게 됩니다</h2>
         <ul className="mt-5 space-y-4">
           {effects.map((e) => (
-            <li key={e.t} className="border-b border-exam-line pb-4 last:border-b-0 last:pb-0">
-              <p className="text-[15px] font-bold text-exam-text">{e.t}</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-exam-muted">{e.d}</p>
+            <li key={e.t} className="border-b border-soft-line pb-4 last:border-b-0 last:pb-0">
+              <p className="text-[15px] font-bold text-soft-ink">{e.t}</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-soft-muted">{e.d}</p>
             </li>
           ))}
         </ul>

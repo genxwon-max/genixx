@@ -25,12 +25,12 @@ export default function ConsentStagesPage() {
         {consentStages.map((s) => (
           <li key={s.id} className={`${card} p-5 sm:p-6`}>
             <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-[16px] font-black text-exam-text">{s.label}</h2>
+              <h2 className="text-[16px] font-black text-soft-ink">{s.label}</h2>
               <span
                 className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${
                   s.required
                     ? "border-rose-300 bg-rose-50 text-rose-700"
-                    : "border-exam-line bg-exam-raised text-exam-muted"
+                    : "border-soft-line bg-slate-50 text-soft-muted"
                 }`}
               >
                 {s.required ? "필수" : "선택"}
@@ -38,7 +38,7 @@ export default function ConsentStagesPage() {
               <span
                 className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${
                   s.upfront
-                    ? "border-brand-300 bg-brand-50 text-brand-700"
+                    ? "border-soft-primary bg-soft-primary-soft text-soft-primary-dark"
                     : "border-amber-300 bg-amber-50 text-amber-800"
                 }`}
               >
@@ -48,20 +48,20 @@ export default function ConsentStagesPage() {
 
             <dl className="mt-4 grid gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
               <div className="flex gap-2">
-                <dt className="shrink-0 font-bold text-exam-text">받는 시점</dt>
-                <dd className="text-exam-muted">{s.when}</dd>
+                <dt className="shrink-0 font-bold text-soft-ink">받는 시점</dt>
+                <dd className="text-soft-muted">{s.when}</dd>
               </div>
               <div className="flex gap-2">
-                <dt className="shrink-0 font-bold text-exam-text">이용 목적</dt>
-                <dd className="text-exam-muted">{s.purpose}</dd>
+                <dt className="shrink-0 font-bold text-soft-ink">이용 목적</dt>
+                <dd className="text-soft-muted">{s.purpose}</dd>
               </div>
               <div className="flex gap-2">
-                <dt className="shrink-0 font-bold text-exam-text">수집 항목</dt>
-                <dd className="text-exam-muted">{s.items}</dd>
+                <dt className="shrink-0 font-bold text-soft-ink">수집 항목</dt>
+                <dd className="text-soft-muted">{s.items}</dd>
               </div>
               <div className="flex gap-2">
-                <dt className="shrink-0 font-bold text-exam-text">보관 기간</dt>
-                <dd className="text-exam-muted">{s.keep}</dd>
+                <dt className="shrink-0 font-bold text-soft-ink">보관 기간</dt>
+                <dd className="text-soft-muted">{s.keep}</dd>
               </div>
             </dl>
           </li>

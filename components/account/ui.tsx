@@ -14,34 +14,38 @@ import Link from "next/link";
  *  ⑤ 글자 크기·고대비 접근성 도구를 헤더에 상시 배치
  *  ⑥ 학생 응시 접속을 별도 탭으로 완전히 분리
  *
- * 컨트롤 모서리는 4px, 바깥 껍데기만 8px. 공공 포털의 각진 톤이다.
+ * 톤은 시안 2「둥글둥글」로 확정했다 — 컨트롤 12px, 면 14px, 버튼은 알약,
+ * 파랑은 soft-primary(#365eef). 변형 라우트(/login1 등)에만 각진 시안 1을 남겨 둔다.
+ *
+ * 원본이 안내 상자마다 쓰던 「위쪽 굵은 파란 선」은 뺐다. 라운드와 부딪혀 모서리가
+ * 잘려 보인다. 대신 옅은 파랑 면으로 같은 무게를 낸다.
  */
 
 /* ── 면 ── */
-export const panel = "border border-acc-line bg-white";
-export const soft = "border border-acc-line bg-acc-panel";
-/** 위쪽에 굵은 선을 얹어 강조하는 상자 (원본이 안내 박스에 반복해서 쓴다) */
-export const topRule = "border border-acc-line border-t-[3px] border-t-acc-primary bg-acc-panel";
+export const panel = "rounded-[14px] border border-soft-line bg-white";
+export const soft = "rounded-[14px] border border-soft-line bg-slate-50";
+/** 강조하는 안내 상자 — 옅은 파랑 면으로 띄운다 */
+export const topRule = "rounded-[14px] border border-soft-line bg-soft-primary-soft";
 
 /* ── 버튼 ── */
 export const btnPrimary =
-  "inline-flex min-h-[3.5rem] items-center justify-center gap-2 rounded px-8 text-[17px] font-bold text-white transition-colors bg-acc-primary hover:bg-acc-primary-dark disabled:cursor-not-allowed disabled:bg-acc-field disabled:text-white";
+  "inline-flex min-h-[3.375rem] items-center justify-center gap-2 rounded-full bg-soft-primary px-8 text-[16px] font-semibold text-white transition-colors hover:bg-soft-primary-dark disabled:cursor-not-allowed disabled:bg-soft-line disabled:text-white";
 export const btnOutline =
-  "inline-flex min-h-[3.375rem] items-center justify-center gap-2 rounded border border-acc-field bg-white px-10 text-[16px] text-acc-body transition-colors hover:bg-acc-panel";
+  "inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-full border border-soft-line bg-white px-10 text-[16px] font-medium text-soft-ink transition-colors hover:bg-slate-50";
 /** 본문 안에서 쓰는 작은 외곽선 버튼 */
 export const btnSm =
-  "inline-flex min-h-[3rem] items-center justify-center gap-2 rounded border border-acc-field bg-white px-5 text-[15px] font-semibold text-acc-body transition-colors hover:bg-acc-panel";
+  "inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full border border-soft-line bg-white px-5 text-[15px] font-medium text-soft-ink transition-colors hover:bg-slate-50";
 
 /* ── 입력 ── */
 export const field =
-  "h-[3.25rem] w-full rounded border border-acc-field bg-white px-3.5 text-[15px] text-acc-ink outline-none transition-colors placeholder:text-acc-placeholder focus:border-acc-primary focus:ring-2 focus:ring-acc-primary-line";
-export const fieldError = "border-acc-required focus:border-acc-required focus:ring-red-100";
-export const labelText = "text-[14px] font-semibold text-acc-ink";
+  "h-[3.25rem] w-full rounded-[12px] border border-soft-line bg-white px-4 text-[15px] text-soft-ink outline-none transition-colors placeholder:text-slate-400 focus:border-soft-primary focus:ring-2 focus:ring-soft-primary-soft";
+export const fieldError = "border-[#e5484d] focus:border-[#e5484d] focus:ring-red-100";
+export const labelText = "text-[14px] font-semibold text-soft-ink";
 
 /** 필수 표시 별표 */
 export function Req() {
   return (
-    <span className="text-acc-required" aria-hidden>
+    <span className="text-[#e5484d]" aria-hidden>
       *
     </span>
   );
@@ -70,12 +74,12 @@ export function Field({
         {required && <span className="sr-only">필수</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-[13px] text-acc-muted">{hint}</p>}
+      {hint && !error && <p className="text-[13px] text-soft-muted">{hint}</p>}
       {error && (
-        <p role="alert" className="flex items-center gap-[7px] text-[13px] text-acc-required">
+        <p role="alert" className="flex items-center gap-[7px] text-[13px] text-[#e5484d]">
           <span
             aria-hidden
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-acc-required text-[11px] font-bold text-white"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#e5484d] text-[11px] font-bold text-white"
           >
             !
           </span>
@@ -96,7 +100,7 @@ export const signupStepLabels = [
 
 export function StepBar({ current }: { current: number }) {
   return (
-    <ol className="flex flex-col border border-acc-line bg-acc-panel sm:flex-row">
+    <ol className="flex flex-col overflow-hidden rounded-[14px] border border-soft-line bg-white sm:flex-row">
       {signupStepLabels.map((label, i) => {
         const done = i < current;
         const now = i === current;
@@ -104,18 +108,18 @@ export function StepBar({ current }: { current: number }) {
           <li
             key={label}
             aria-current={now ? "step" : undefined}
-            className={`flex flex-1 items-center gap-2.5 border-acc-line px-5 py-4 first:border-l-0 first:border-t-0 sm:border-l ${
+            className={`flex flex-1 items-center gap-2.5 border-soft-line px-5 py-4 first:border-l-0 first:border-t-0 sm:border-l ${
               i > 0 ? "border-t sm:border-t-0" : ""
-            } ${now ? "bg-acc-primary text-white" : done ? "text-acc-primary" : "text-acc-dim"}`}
+            } ${now ? "bg-soft-primary text-white" : done ? "text-soft-primary" : "text-slate-400"}`}
           >
             <span
               aria-hidden
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
                 now
-                  ? "bg-white text-acc-primary"
+                  ? "bg-white text-soft-primary"
                   : done
-                    ? "bg-acc-primary-line text-acc-primary"
-                    : "border border-acc-field"
+                    ? "bg-soft-primary-soft text-soft-primary"
+                    : "border border-soft-line"
               }`}
             >
               {done ? "✓" : i + 1}
@@ -143,11 +147,11 @@ export function SectionTitle({
 }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 className="text-[22px] font-bold text-acc-ink">
+      <h2 className="text-[22px] font-bold tracking-tight text-soft-ink">
         {title}
-        {id && <span className="ml-2.5 text-[13px] font-normal text-acc-dim">{id}</span>}
+        {id && <span className="ml-2.5 text-[13px] font-normal text-slate-400">{id}</span>}
       </h2>
-      {note && <p className="text-[13px] text-acc-muted">{note}</p>}
+      {note && <p className="text-[13px] text-soft-muted">{note}</p>}
     </div>
   );
 }
@@ -161,7 +165,7 @@ export function StepFooter({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col-reverse justify-center gap-3 border-t border-acc-divider pt-6 sm:flex-row">
+    <div className="flex flex-col-reverse justify-center gap-3 border-t border-slate-100 pt-6 sm:flex-row">
       {back && (
         <Link href={back.href} className={btnOutline}>
           {back.label ?? "이전"}
@@ -181,10 +185,10 @@ export function DefTable({ rows }: { rows: { k: string; v: React.ReactNode }[] }
     <dl className="grid grid-cols-1 text-[13.5px] sm:grid-cols-[150px_1fr]">
       {rows.map((r) => (
         <div key={r.k} className="contents">
-          <dt className="border-b border-acc-hairline bg-acc-panel px-4.5 py-3.5 font-semibold text-acc-body">
+          <dt className="border-b border-slate-100 bg-slate-50 px-4.5 py-3.5 font-semibold text-soft-muted">
             {r.k}
           </dt>
-          <dd className="border-b border-acc-hairline px-4.5 py-3.5 leading-[1.7] text-acc-ink sm:border-l">
+          <dd className="border-b border-slate-100 px-4.5 py-3.5 leading-[1.7] text-soft-ink sm:border-l">
             {r.v}
           </dd>
         </div>
@@ -196,7 +200,7 @@ export function DefTable({ rows }: { rows: { k: string; v: React.ReactNode }[] }
 /** 약관 전문 스크롤 상자 */
 export function TermsScroll({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-[7.5rem] overflow-y-auto bg-white px-4.5 py-4 text-[13px] leading-[1.85] text-acc-body">
+    <div className="h-[7.5rem] overflow-y-auto bg-white px-4.5 py-4 text-[13px] leading-[1.85] text-soft-muted">
       {children}
     </div>
   );
@@ -207,7 +211,7 @@ export function TermsScroll({ children }: { children: React.ReactNode }) {
    가입·로그인만 원본 디자인으로 갈아끼웠으므로, 나머지 화면은 구조를 그대로 두고
    새 팔레트만 받아 가도록 이름을 유지한다. (원본에 해당 화면 시안이 아직 없음)
    ───────────────────────────────────────────────────────────── */
-export const card = "border border-acc-line bg-white";
+export const card = "rounded-[14px] border border-soft-line bg-white";
 export const cardPad = "p-6 sm:p-8";
 export const btnGhost = btnSm;
 
@@ -227,16 +231,16 @@ export function AccHead({
       {back && (
         <Link
           href={back.href}
-          className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-acc-muted hover:text-acc-ink"
+          className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-soft-muted hover:text-soft-ink"
         >
           ← {back.label}
         </Link>
       )}
-      <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-acc-dim">{id}</p>
-      <h1 className="mt-2 text-[26px] font-bold leading-tight text-acc-ink sm:text-[30px]">
+      <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-soft-muted">{id}</p>
+      <h1 className="mt-2 text-[26px] font-bold leading-tight tracking-tight text-soft-ink sm:text-[30px]">
         {title}
       </h1>
-      {lead && <p className="mt-3 text-[15px] leading-relaxed text-acc-muted">{lead}</p>}
+      {lead && <p className="mt-3 text-[15px] leading-relaxed text-soft-muted">{lead}</p>}
     </header>
   );
 }
@@ -251,12 +255,12 @@ export function LegalNote({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border border-acc-line border-t-[3px] border-t-acc-primary bg-acc-primary-soft p-5">
-      <p className="text-[15px] font-bold text-acc-primary-dark">
+    <div className="rounded-[14px] border border-soft-line bg-soft-primary-soft p-5">
+      <p className="text-[15px] font-bold text-soft-primary-dark">
         {title}
-        {basis && <span className="ml-2 font-semibold text-acc-primary">({basis})</span>}
+        {basis && <span className="ml-2 font-semibold text-soft-primary">({basis})</span>}
       </p>
-      <div className="mt-2 space-y-1.5 text-[14px] leading-[1.8] text-acc-body">{children}</div>
+      <div className="mt-2 space-y-1.5 text-[14px] leading-[1.8] text-soft-ink">{children}</div>
     </div>
   );
 }
@@ -273,12 +277,12 @@ export function NoteBox({
 }) {
   return (
     <section
-      className={`border border-acc-line bg-acc-panel p-5 ${
-        tone === "primary" ? "border-t-[3px] border-t-acc-primary" : "border-t-[3px] border-t-acc-ink"
+      className={`rounded-[14px] border border-soft-line p-5 ${
+        tone === "primary" ? "bg-soft-primary-soft" : "bg-slate-50"
       }`}
     >
-      <h3 className="text-[15px] font-bold text-acc-ink">{title}</h3>
-      <div className="mt-2.5 space-y-2.5 text-[13.5px] leading-[1.8] text-acc-muted">{children}</div>
+      <h3 className="text-[15px] font-bold text-soft-ink">{title}</h3>
+      <div className="mt-2.5 space-y-2.5 text-[13.5px] leading-[1.8] text-soft-muted">{children}</div>
     </section>
   );
 }

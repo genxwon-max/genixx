@@ -13,7 +13,7 @@ import {
 import { patchChildDraft, useChildDraft } from "@/lib/childStore";
 import { useHydrated } from "@/lib/examStore";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
-import { fieldLabel, input } from "@/components/exam/ui";
+import { labelText as fieldLabel, field as input } from "@/components/account/ui";
 import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
 
 /**
@@ -34,7 +34,7 @@ export default function ChildConsent() {
   const [tried, setTried] = useState(false);
 
   if (!hydrated) {
-    return <p className="py-16 text-center text-[13px] text-exam-muted">확인 중입니다…</p>;
+    return <p className="py-16 text-center text-[13px] text-soft-muted">확인 중입니다…</p>;
   }
 
   const digits = birth.replace(/\D/g, "");
@@ -76,7 +76,7 @@ export default function ChildConsent() {
       {/* ① 생년월일 — 갈래를 정하는 최소 정보 */}
       <div className={`${card} ${cardPad}`}>
         <label htmlFor="child-birth" className={fieldLabel}>
-          아이 생년월일 <span className="font-normal text-exam-muted">(8자리)</span>
+          아이 생년월일 <span className="font-normal text-soft-muted">(8자리)</span>
         </label>
         <input
           id="child-birth"
@@ -86,7 +86,7 @@ export default function ChildConsent() {
           placeholder="20150312"
           className={`mt-2 ${input} tabular-nums`}
         />
-        <p className="mt-2 text-[13px] leading-relaxed text-exam-muted">
+        <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
           지금은 생년월일만 받습니다. 이름·학년 같은 정보는 동의를 받은 다음 화면에서 여쭤봅니다.
         </p>
 
@@ -104,13 +104,13 @@ export default function ChildConsent() {
                 : "border-emerald-300 bg-emerald-50"
             }`}
           >
-            <p className="text-[15px] font-black text-exam-text">
+            <p className="text-[15px] font-black text-soft-ink">
               만 {age}세 — {info.label}
             </p>
-            <p className="mt-1.5 text-[14px] font-bold text-exam-text">
+            <p className="mt-1.5 text-[14px] font-bold text-soft-ink">
               동의 주체: {info.who}
             </p>
-            <p className="mt-2 text-[13px] leading-relaxed text-exam-muted">{info.summary}</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{info.summary}</p>
           </div>
         )}
       </div>
@@ -131,11 +131,11 @@ export default function ChildConsent() {
       {/* ③ 만 14세 미만 — 아동 눈높이 고지문 병행 제시 */}
       {route === "guardian" && (
         <div className={`${card} mt-4 p-6`}>
-          <p className="text-[15px] font-black text-exam-text">아이에게 보여 줄 안내문</p>
-          <p className="mt-1.5 text-[13px] text-exam-muted">
+          <p className="text-[15px] font-black text-soft-ink">아이에게 보여 줄 안내문</p>
+          <p className="mt-1.5 text-[13px] text-soft-muted">
             법에 따라 아이도 이해할 수 있는 말로 함께 알려 드려야 합니다.
           </p>
-          <div className="mt-4 rounded-lg bg-exam-raised p-5 text-[14px] leading-[1.9] text-exam-text">
+          <div className="mt-4 rounded-lg bg-slate-50 p-5 text-[14px] leading-[1.9] text-soft-ink">
             <p>· 네가 푼 문제와 답을 선생님들이 보고, 네가 뭘 잘하는지 찾아볼 거야.</p>
             <p>· 점수로 등수를 매기지 않아. 잘하는 걸 찾는 게 목적이야.</p>
             <p>· 네 이름과 답은 선생님과 부모님만 볼 수 있어.</p>
@@ -148,7 +148,7 @@ export default function ChildConsent() {
               onChange={(e) => setKidsNoticeRead(e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 accent-[#1b2a6b]"
             />
-            <span className="text-[14px] leading-relaxed text-exam-text">
+            <span className="text-[14px] leading-relaxed text-soft-ink">
               위 내용을 아이에게 읽어 주었거나 보여 주었습니다.
             </span>
           </label>
@@ -158,13 +158,13 @@ export default function ChildConsent() {
       {/* ④ 만 14세 이상 — 본인 동의 예약 안내 */}
       {route === "self" && (
         <div className={`${card} mt-4 p-6`}>
-          <p className="text-[15px] font-black text-exam-text">학생 본인 동의는 응시 화면에서 받습니다</p>
-          <p className="mt-2 text-[14px] leading-relaxed text-exam-muted">
+          <p className="text-[15px] font-black text-soft-ink">학생 본인 동의는 응시 화면에서 받습니다</p>
+          <p className="mt-2 text-[14px] leading-relaxed text-soft-muted">
             만 {CONSENT_AGE}세 이상이므로 법정대리인 동의를 받지 않습니다. 대신 아이가 접속코드로
             처음 들어올 때 본인 동의 화면이 먼저 뜹니다. 아이가 동의하기 전에는 응시가 시작되지
             않습니다.
           </p>
-          <p className="mt-2 text-[13px] leading-relaxed text-exam-muted">
+          <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
             보호자는 결제와 리포트 열람 주체로 그대로 남습니다.
           </p>
         </div>
@@ -173,14 +173,14 @@ export default function ChildConsent() {
       {/* ⑤ 1차 동의 항목 */}
       {route && (
         <div className={`${card} mt-4 px-6 sm:px-8`}>
-          <p className="pt-6 text-[13px] font-bold text-exam-text">
+          <p className="pt-6 text-[13px] font-bold text-soft-ink">
             1차 동의 항목 — {route === "guardian" ? "보호자가 동의합니다" : "아이가 동의할 항목입니다"}
           </p>
           <ul className="pb-6">
             {upfront.map((s) => {
               const on = agreed.includes(s.id);
               return (
-                <li key={s.id} className="border-b border-exam-line last:border-b-0">
+                <li key={s.id} className="border-b border-soft-line last:border-b-0">
                   <label className="flex cursor-pointer gap-3.5 py-4">
                     <input
                       type="checkbox"
@@ -190,21 +190,21 @@ export default function ChildConsent() {
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-[15px] font-bold text-exam-text">{s.label}</span>
+                        <span className="text-[15px] font-bold text-soft-ink">{s.label}</span>
                         <span
                           className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${
                             s.required
                               ? "border-rose-300 bg-rose-50 text-rose-700"
-                              : "border-exam-line bg-exam-raised text-exam-muted"
+                              : "border-soft-line bg-slate-50 text-soft-muted"
                           }`}
                         >
                           {s.required ? "필수" : "선택"}
                         </span>
                       </span>
-                      <span className="mt-1.5 block text-[13px] leading-relaxed text-exam-muted">
+                      <span className="mt-1.5 block text-[13px] leading-relaxed text-soft-muted">
                         목적 {s.purpose} · 항목 {s.items}
                       </span>
-                      <span className="mt-1 block text-[13px] text-exam-muted">
+                      <span className="mt-1 block text-[13px] text-soft-muted">
                         보관 {s.keep}
                       </span>
                     </span>
@@ -217,10 +217,10 @@ export default function ChildConsent() {
       )}
 
       {route && (
-        <p className="mt-4 text-[13px] leading-relaxed text-exam-muted">
+        <p className="mt-4 text-[13px] leading-relaxed text-soft-muted">
           음성·영상·행동로그가 들어가는 2단계 심화진단과 면담 녹화는 지금 받지 않습니다. 해당 시점에
           따로 여쭤봅니다.{" "}
-          <Link href="/my/children/consent-stages" className="font-bold text-brand-700 underline">
+          <Link href="/my/children/consent-stages" className="font-bold text-soft-primary-dark underline">
             단계별 동의 관리
           </Link>
         </p>
@@ -236,7 +236,7 @@ export default function ChildConsent() {
         </p>
       )}
 
-      <button type="button" onClick={submit} className={`${btnPrimary} mt-5`}>
+      <button type="button" onClick={submit} className={`${btnPrimary} mt-5 w-full`}>
         {route === "guardian" ? "법정대리인으로 동의하고 계속" : "확인하고 계속"}
         <ArrowRight className="h-4 w-4" />
       </button>
@@ -245,7 +245,7 @@ export default function ChildConsent() {
         나중에 하기
       </Link>
 
-      <p className="mt-5 flex items-start gap-2 text-[13px] leading-relaxed text-exam-muted">
+      <p className="mt-5 flex items-start gap-2 text-[13px] leading-relaxed text-soft-muted">
         <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
         동의는 언제든 철회할 수 있습니다. 철회하시면 파기 절차가 자동으로 시작되고 처리 결과를
         알려 드립니다.

@@ -297,6 +297,13 @@ body {
   --color-acc-divider: #6b7c8c;
   --color-acc-hairline: #9aa9b7;
   --color-acc-primary: #063a70;
+
+  /* 계정 존을 둥글둥글(soft-*)로 넘긴 뒤로 고대비도 이쪽을 함께 끌어올려야 한다.
+     빠뜨리면 헤더의 글자크기·고대비 버튼만 진해지고 정작 본문은 그대로다. */
+  --color-soft-muted: #2b3947;
+  --color-soft-line: #6b7c8c;
+  --color-soft-primary: #1f3fbd;
+  --color-soft-primary-dark: #16309a;
 }
 
 @keyframes fade-up {

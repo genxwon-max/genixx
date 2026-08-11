@@ -1,7 +1,7 @@
 "use client";
 
 import type { Field as FieldDef } from "@/lib/signup";
-import { input as inputClass } from "@/components/exam/ui";
+import { field as inputClass } from "@/components/account/ui";
 
 type Props = {
   field: FieldDef;

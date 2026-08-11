@@ -23,9 +23,9 @@ export default function NotificationPage() {
         <table className="w-full text-left">
           <thead>
             <tr>
-              <th className="pb-3 text-[13px] font-bold text-exam-text">받을 소식</th>
+              <th className="pb-3 text-[13px] font-bold text-soft-ink">받을 소식</th>
               {notificationChannels.map((c) => (
-                <th key={c} className="pb-3 text-center text-[13px] font-bold text-exam-text">
+                <th key={c} className="pb-3 text-center text-[13px] font-bold text-soft-ink">
                   {c}
                 </th>
               ))}
@@ -33,9 +33,9 @@ export default function NotificationPage() {
           </thead>
           <tbody>
             {notificationKinds.map((k) => (
-              <tr key={k.id} className="border-t border-exam-line">
+              <tr key={k.id} className="border-t border-soft-line">
                 <td className="py-4 pr-4">
-                  <span className="block text-[15px] font-bold text-exam-text">
+                  <span className="block text-[15px] font-bold text-soft-ink">
                     {k.label}
                     {k.required && (
                       <span className="ml-2 rounded border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-rose-700">
@@ -43,7 +43,7 @@ export default function NotificationPage() {
                       </span>
                     )}
                   </span>
-                  <span className="mt-1 block text-[13px] leading-relaxed text-exam-muted">
+                  <span className="mt-1 block text-[13px] leading-relaxed text-soft-muted">
                     {k.desc}
                   </span>
                 </td>
@@ -64,7 +64,7 @@ export default function NotificationPage() {
         </table>
       </div>
 
-      <p className="mt-4 rounded-lg border border-exam-line bg-exam-panel px-5 py-4 text-[13px] leading-relaxed text-exam-muted">
+      <p className="mt-4 rounded-lg border border-soft-line bg-slate-50 px-5 py-4 text-[13px] leading-relaxed text-soft-muted">
         응시 안내와 리포트 발행은 최소 한 개 채널로는 반드시 받으셔야 합니다. 아이의 응시 기한을
         놓치면 회차가 마감되기 때문입니다.
       </p>

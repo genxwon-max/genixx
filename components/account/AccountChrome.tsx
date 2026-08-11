@@ -9,6 +9,10 @@ import { useState } from "react";
  * 원본(3a)이 헤더에 글자크기 －／＋ 와 고대비 토글을 상시로 두라고 정했다.
  * WCAG 2.1 AA를 목표로 하고, 학부모가 모바일에서 먼저 본다는 전제(사이트맵 12장)라
  * 유틸리티 바는 좁은 화면에서 접근성 도구만 남긴다.
+ *
+ * 톤은 시안 2「둥글둥글」. 헤더 아래 굵은 남색 선을 옅은 실선으로 낮추고 바탕을
+ * 연파랑으로 깐다. 고대비 토글은 globals.css의 .acc-high-contrast가 soft-* 변수까지
+ * 함께 올려 주므로 그대로 동작한다.
  */
 
 const zoomSteps = [1, 1.125, 1.25] as const;
@@ -19,24 +23,24 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
 
   return (
     <div
-      className={`flex min-h-full flex-col bg-acc-bg text-acc-ink ${
+      className={`flex min-h-full flex-col bg-[#eef3fe] text-soft-ink ${
         highContrast ? "acc-high-contrast" : ""
       }`}
       style={{ ["--acc-zoom" as string]: zoomSteps[zoomIdx] }}
     >
       {/* 유틸리티 바 */}
-      <div className="h-[2.375rem] border-b border-acc-divider bg-acc-bar">
-        <div className="container-x flex h-[2.375rem] items-center justify-end gap-3 text-[12px] text-acc-muted">
+      <div className="h-[2.375rem] border-b border-soft-line/60 bg-white/60">
+        <div className="container-x flex h-[2.375rem] items-center justify-end gap-3 text-[12px] text-soft-muted">
           <Link href="/support/faq" className="hidden hover:underline sm:inline">
             본인인증 안내
           </Link>
-          <span aria-hidden className="hidden text-acc-line sm:inline">
+          <span aria-hidden className="hidden text-soft-line sm:inline">
             |
           </span>
           <Link href="/support/inquiry" className="hidden hover:underline sm:inline">
             고객지원
           </Link>
-          <span aria-hidden className="hidden text-acc-line sm:inline">
+          <span aria-hidden className="hidden text-soft-line sm:inline">
             |
           </span>
 
@@ -48,7 +52,7 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
                 onClick={() => setZoomIdx((i) => Math.max(0, i - 1))}
                 disabled={zoomIdx === 0}
                 aria-label="글자 작게"
-                className="flex h-5 w-5 items-center justify-center border border-acc-field bg-white text-[11px] disabled:opacity-40"
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-soft-line bg-white text-[11px] disabled:opacity-40"
               >
                 －
               </button>
@@ -57,7 +61,7 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
                 onClick={() => setZoomIdx((i) => Math.min(zoomSteps.length - 1, i + 1))}
                 disabled={zoomIdx === zoomSteps.length - 1}
                 aria-label="글자 크게"
-                className="flex h-5 w-5 items-center justify-center border border-acc-field bg-white text-[11px] disabled:opacity-40"
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-soft-line bg-white text-[11px] disabled:opacity-40"
               >
                 ＋
               </button>
@@ -68,10 +72,10 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
             type="button"
             onClick={() => setHighContrast((v) => !v)}
             aria-pressed={highContrast}
-            className={`border px-2 py-0.5 text-[11px] ${
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] ${
               highContrast
-                ? "border-acc-ink bg-acc-ink text-white"
-                : "border-acc-field bg-white text-acc-muted"
+                ? "border-soft-ink bg-soft-ink text-white"
+                : "border-soft-line bg-white text-soft-muted"
             }`}
           >
             고대비
@@ -79,26 +83,26 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* 헤더 — 아래 굵은 파란 선이 이 존의 표식 */}
-      <header className="border-b-2 border-acc-primary bg-white">
+      {/* 헤더 */}
+      <header className="border-b border-soft-line/70 bg-white">
         <div className="container-x flex h-[4.75rem] items-center justify-between gap-4">
           <Link href="/" className="flex items-baseline gap-3">
-            <span className="text-[20px] font-extrabold tracking-[0.16em] text-acc-primary">
+            <span className="text-[20px] font-extrabold tracking-[0.16em] text-soft-primary">
               GENIXX
             </span>
-            <span className="hidden text-[13px] text-acc-dim sm:inline">재능진단 플랫폼</span>
+            <span className="hidden text-[13px] text-soft-muted sm:inline">재능진단 플랫폼</span>
           </Link>
-          <nav className="hidden gap-8 text-[15px] font-semibold text-acc-body lg:flex">
-            <Link href="/service" className="hover:text-acc-primary">
+          <nav className="hidden gap-8 text-[15px] font-semibold text-soft-ink lg:flex">
+            <Link href="/service" className="hover:text-soft-primary">
               서비스 안내
             </Link>
-            <Link href="/sample" className="hover:text-acc-primary">
+            <Link href="/sample" className="hover:text-soft-primary">
               샘플 리포트
             </Link>
-            <Link href="/about/team" className="hover:text-acc-primary">
+            <Link href="/about/team" className="hover:text-soft-primary">
               연구·자문진
             </Link>
-            <Link href="/support" className="hover:text-acc-primary">
+            <Link href="/support" className="hover:text-soft-primary">
               고객지원
             </Link>
           </nav>
@@ -107,7 +111,7 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
 
       <main className="flex-1">{children}</main>
 
-      <footer className="bg-acc-ink text-[12.5px] text-acc-placeholder">
+      <footer className="bg-soft-ink text-[12.5px] text-slate-400">
         <div className="container-x flex flex-col gap-3 py-6 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <Link href="/legal/privacy" className="font-semibold text-white hover:underline">

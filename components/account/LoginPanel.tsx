@@ -60,7 +60,7 @@ const demoAccounts: {
 */
 
 export default function LoginPanel({
-  variant = 1,
+  variant = 2,
   /** 아이디 폼을 펼친 채로 열지. 시안 검토·반출용으로 URL(?view=id)에서 지정한다. */
   initialByEmail = false,
 }: {
@@ -136,8 +136,11 @@ export default function LoginPanel({
       setPendingMfa({ role, name: local, email: `${local}@genixx.demo` });
       return;
     }
-    signIn({ role, name: local, provider: null, loginId, approved: true });
-    router.push(routeAfterLogin(role, true));
+    // 교사는 기관담당자가 초대·승인해야 활성화된다. 아이디가 teacher로 시작하면
+    // 승인 전 계정으로 들여보내 ACC-01-4 승인 대기 화면을 확인할 수 있다.
+    const approved = role !== "teacher";
+    signIn({ role, name: local, provider: null, loginId, approved });
+    router.push(routeAfterLogin(role, approved));
   };
 
   if (pendingMfa) {

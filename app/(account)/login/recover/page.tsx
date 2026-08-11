@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fieldLabel, input } from "@/components/exam/ui";
+import { labelText as fieldLabel, field as input } from "@/components/account/ui";
 import { AccHead, btnGhost, card, cardPad } from "@/components/account/ui";
 
 export const metadata: Metadata = {
@@ -40,8 +40,8 @@ export default function RecoverPage() {
       <div className="space-y-3">
         {cards.map((c) => (
           <div key={c.title} className={`${card} ${cardPad}`}>
-            <h2 className="text-[17px] font-black text-exam-text">{c.title}</h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-exam-muted">{c.desc}</p>
+            <h2 className="text-[17px] font-black text-soft-ink">{c.title}</h2>
+            <p className="mt-2 text-[14px] leading-relaxed text-soft-muted">{c.desc}</p>
             <label className={`mt-5 block ${fieldLabel}`}>
               {c.label}
               <input
@@ -57,9 +57,9 @@ export default function RecoverPage() {
         ))}
       </div>
 
-      <p className="mt-6 text-center text-[13px] text-exam-muted">
+      <p className="mt-6 text-center text-[13px] text-soft-muted">
         학생 접속코드를 잃어버리셨다면{" "}
-        <Link href="/my/children" className="font-bold text-brand-700 hover:underline">
+        <Link href="/my/children" className="font-bold text-soft-primary-dark hover:underline">
           자녀 프로필 관리
         </Link>
         에서 다시 발급하실 수 있습니다.

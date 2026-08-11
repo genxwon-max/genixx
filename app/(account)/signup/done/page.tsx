@@ -40,10 +40,10 @@ export default function SignupDonePage() {
         >
           <CheckIcon className="h-7 w-7" />
         </span>
-        <h1 className="mt-5 text-[26px] font-black tracking-tight text-exam-text">
+        <h1 className="mt-5 text-[26px] font-black tracking-tight text-soft-ink">
           가입이 끝났습니다
         </h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-exam-muted">
+        <p className="mt-3 text-[15px] leading-relaxed text-soft-muted">
           이제 자녀를 등록하면 진단을 신청할 수 있습니다. 아래 순서대로 진행하시면 됩니다.
         </p>
       </div>
@@ -55,18 +55,18 @@ export default function SignupDonePage() {
           <li key={n.step}>
             <Link
               href={n.href}
-              className="group flex items-center gap-4 rounded-xl border border-exam-line bg-exam-panel px-5 py-4 transition-colors hover:border-brand-500"
+              className="group flex items-center gap-4 rounded-xl border border-soft-line bg-slate-50 px-5 py-4 transition-colors hover:border-soft-primary"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-900 text-[14px] font-black text-white">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-soft-ink text-[14px] font-black text-white">
                 {n.step}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-black text-exam-text">{n.title}</span>
-                <span className="mt-1 block text-[13px] leading-relaxed text-exam-muted">
+                <span className="block text-[15px] font-black text-soft-ink">{n.title}</span>
+                <span className="mt-1 block text-[13px] leading-relaxed text-soft-muted">
                   {n.desc}
                 </span>
               </span>
-              <ArrowRight className="h-5 w-5 shrink-0 text-exam-muted transition-colors group-hover:text-brand-700" />
+              <ArrowRight className="h-5 w-5 shrink-0 text-soft-muted transition-colors group-hover:text-soft-primary-dark" />
             </Link>
           </li>
         ))}

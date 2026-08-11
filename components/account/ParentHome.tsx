@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
@@ -25,12 +27,25 @@ const quickLinks = [
   { href: "/mypage", t: "마이페이지", d: "회원정보·동의·수신·탈퇴" },
 ];
 
-export default function ParentHome({ variant = 1 }: { variant?: Variant }) {
+export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
   const t = themeOf(variant);
+  const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
   const all = useRoster();
   const children = all.filter((s) => s.owner === "parent");
+
+  /**
+   * 자녀가 없으면 홈에 세워 둘 게 없다. 등록 흐름의 최선행(법정대리인 동의)으로 넘긴다.
+   * 로그인 경로에도 같은 분기가 있지만(LoginPanel.routeAfterLogin), 주소를 직접 열거나
+   * 마지막 아이를 지운 뒤에는 그 분기를 지나지 않아서 여기서 한 번 더 막는다.
+   *
+   * replace로 보낸다 — push면 뒤로가기가 이 화면을 다시 열어 그대로 튕겨 나간다.
+   */
+  const needsFirstChild = hydrated && children.length === 0;
+  useEffect(() => {
+    if (needsFirstChild) router.replace("/my/children/consent");
+  }, [needsFirstChild, router]);
 
   /* 시안별 잔가지 */
   const bar = variant === 1 ? "bg-acc-primary" : "bg-soft-primary";
@@ -41,8 +56,12 @@ export default function ParentHome({ variant = 1 }: { variant?: Variant }) {
       ? "rounded bg-acc-panel text-acc-ink"
       : "rounded-full bg-soft-primary-soft text-soft-primary";
 
-  if (!hydrated) {
-    return <p className={`container-x py-20 text-center text-[14px] ${t.muted}`}>확인 중입니다…</p>;
+  if (!hydrated || needsFirstChild) {
+    return (
+      <p className={`container-x py-20 text-center text-[14px] ${t.muted}`}>
+        {needsFirstChild ? "자녀 등록 화면으로 이동합니다…" : "확인 중입니다…"}
+      </p>
+    );
   }
 
   const rows = children.map(progressOf);
@@ -75,91 +94,79 @@ export default function ParentHome({ variant = 1 }: { variant?: Variant }) {
             ))}
           </div>
 
-          {children.length === 0 ? (
-            <div className={`${t.card} mt-5 p-8 text-center`}>
-              <p className="text-[17px] font-bold">아직 등록된 자녀가 없습니다</p>
-              <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>
-                등록은 <b className="font-bold">법정대리인 동의</b>부터 시작합니다. 아이 생년월일에
-                따라 누가 동의해야 하는지 안내해 드립니다.
-              </p>
-              <Link href="/my/children/consent" className={`${t.btnPrimary} mx-auto mt-6 max-w-xs`}>
-                자녀 등록 시작하기
-              </Link>
-            </div>
-          ) : (
-            <ul className="mt-5 flex flex-col gap-3">
-              {rows.map((r) => {
-                const age = ageFromBirth(r.student.birth);
-                const route = consentRouteFor(age);
-                const info = route ? consentRouteInfo[route] : null;
-                return (
-                  <li key={r.student.id} className={`${t.card} p-5 sm:p-6`}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[19px] font-bold">{r.student.name}</p>
-                        <p className={`mt-1 text-[13px] ${t.muted}`}>
-                          {r.student.grade} · 만 {age ?? "—"}세
-                          {info && ` · ${info.label} (${info.who} 동의)`}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
-                          phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
-                        }`}
-                      >
-                        {r.phase}
-                      </span>
-                    </div>
-
-                    {/* 진행 막대 */}
-                    <div className="mt-4">
-                      <div className="flex items-baseline justify-between text-[13px]">
-                        <span className="font-semibold">과목 제출</span>
-                        <span className="font-bold tabular-nums">
-                          {r.submitted} / {r.total}
-                          {r.forfeited > 0 && (
-                            <span className={`ml-2 font-normal ${t.required}`}>
-                              포기 {r.forfeited}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${track}`}>
-                        <div
-                          className={`h-full rounded-full ${bar}`}
-                          style={{ width: `${(r.submitted / r.total) * 100}%` }}
-                          role="progressbar"
-                          aria-valuenow={r.submitted}
-                          aria-valuemin={0}
-                          aria-valuemax={r.total}
-                          aria-label={`${r.student.name} 과목 제출`}
-                        />
-                      </div>
-                      <p className={`mt-2 text-[13px] ${t.muted}`}>
-                        설문 {r.surveys} / 3 · {r.nextAction}
+          {/* 자녀 0명은 위에서 등록 화면으로 넘어가므로 여기까지 오지 않는다 */}
+          <ul className="mt-5 flex flex-col gap-3">
+            {rows.map((r) => {
+              const age = ageFromBirth(r.student.birth);
+              const route = consentRouteFor(age);
+              const info = route ? consentRouteInfo[route] : null;
+              return (
+                <li key={r.student.id} className={`${t.card} p-5 sm:p-6`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[19px] font-bold">{r.student.name}</p>
+                      <p className={`mt-1 text-[13px] ${t.muted}`}>
+                        {r.student.grade} · 만 {age ?? "—"}세
+                        {info && ` · ${info.label} (${info.who} 동의)`}
                       </p>
                     </div>
-
-                    <div
-                      className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}
+                    <span
+                      className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
+                        phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
+                      }`}
                     >
-                      <span
-                        className={`px-3 py-2 text-[15px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
-                      >
-                        {formatCode(r.student.code)}
+                      {r.phase}
+                    </span>
+                  </div>
+
+                  {/* 진행 막대 */}
+                  <div className="mt-4">
+                    <div className="flex items-baseline justify-between text-[13px]">
+                      <span className="font-semibold">과목 제출</span>
+                      <span className="font-bold tabular-nums">
+                        {r.submitted} / {r.total}
+                        {r.forfeited > 0 && (
+                          <span className={`ml-2 font-normal ${t.required}`}>
+                            포기 {r.forfeited}
+                          </span>
+                        )}
                       </span>
-                      <span className={`text-[12px] ${t.muted}`}>
-                        생년월일과 함께 입력해야 들어갑니다
-                      </span>
-                      <Link href="/my/children" className={`${t.btnQuiet} ml-auto`}>
-                        자녀 관리
-                      </Link>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                    <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${track}`}>
+                      <div
+                        className={`h-full rounded-full ${bar}`}
+                        style={{ width: `${(r.submitted / r.total) * 100}%` }}
+                        role="progressbar"
+                        aria-valuenow={r.submitted}
+                        aria-valuemin={0}
+                        aria-valuemax={r.total}
+                        aria-label={`${r.student.name} 과목 제출`}
+                      />
+                    </div>
+                    <p className={`mt-2 text-[13px] ${t.muted}`}>
+                      설문 {r.surveys} / 3 · {r.nextAction}
+                    </p>
+                  </div>
+
+                  <div
+                    className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}
+                  >
+                    <span
+                      className={`px-3 py-2 text-[15px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
+                    >
+                      {formatCode(r.student.code)}
+                    </span>
+                    <span className={`text-[12px] ${t.muted}`}>
+                      생년월일과 함께 입력해야 들어갑니다
+                    </span>
+                    <Link href="/my/children" className={`${t.btnQuiet} ml-auto`}>
+                      자녀 관리
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
 
           {/* 바로가기 */}
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
