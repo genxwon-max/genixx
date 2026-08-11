@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 /**
  * ACC-01-1 회원 유형 → 가입 수단 — 시안 2
- * ?stage=bucket|role|method 로 특정 단계를 바로 열 수 있다 (시안 검토·반출용).
+ * ?stage=bucket|method 로 특정 단계를 바로 열 수 있다 (시안 검토·반출용).
  */
 export default async function SignupVariantPage({
   searchParams,
@@ -17,7 +17,7 @@ export default async function SignupVariantPage({
   searchParams: Promise<{ stage?: string; type?: string }>;
 }) {
   const { stage, type } = await searchParams;
-  const valid: Stage[] = ["bucket", "role", "method"];
+  const valid: Stage[] = ["bucket", "method"];
   return (
     <SignupType
       variant={2}

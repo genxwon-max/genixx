@@ -23,7 +23,6 @@ const SCREENS = [
   { file: "v1-01-login", route: "/login1", title: "로그인 · 시안1" },
   { file: "v1-02-login-email", route: "/login1?view=email", title: "로그인 이메일 · 시안1" },
   { file: "v1-03-signup-type", route: "/signup1", title: "회원가입 개인·기관 · 시안1" },
-  { file: "v1-04-signup-role", route: "/signup1?stage=role", title: "회원가입 기관역할 · 시안1" },
   {
     file: "v1-05-signup-method",
     route: "/signup1?stage=method&type=parent",
@@ -33,7 +32,6 @@ const SCREENS = [
   { file: "v2-01-login", route: "/login2", title: "로그인 · 시안2" },
   { file: "v2-02-login-email", route: "/login2?view=email", title: "로그인 이메일 · 시안2" },
   { file: "v2-03-signup-type", route: "/signup2", title: "회원가입 개인·기관 · 시안2" },
-  { file: "v2-04-signup-role", route: "/signup2?stage=role", title: "회원가입 기관역할 · 시안2" },
   {
     file: "v2-05-signup-method",
     route: "/signup2?stage=method&type=parent",

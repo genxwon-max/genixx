@@ -16,12 +16,12 @@ import { ArrowBadge, OrgArt, PersonalArt } from "./AuthArt";
  * 곧바로 다음 화면으로 넘어가고, 한 화면에 선택지를 겹쳐 두지 않는다.
  *
  * 화면 순서 —
- *   ① 개인 / 기관        (좌우 카드)
- *   ② 교사 / 기관담당자   (기관을 고른 경우에만, 역시 좌우 카드)
- *   ③ 가입 수단          (카카오·네이버·구글·이메일)
+ *   ① 개인 / 기관   (좌우 카드)
+ *   ② 가입 수단     (카카오·네이버·구글·아이디)
  *
- * 사이트맵 5장의 3분기(학부모 / 교사 / 기관담당자)를 두 단으로 편 것이고,
- * 학생은 독립 가입 경로가 없어 어디에도 없다.
+ * 기관을 고르면 곧바로 기관담당자로 가입한다. 사이트맵 5장은 교사를 따로 두지만,
+ * 교사 계정은 기관담당자가 소속을 만든 뒤 초대하는 쪽이 맞아서 가입 화면에서는 묻지
+ * 않는다. 학생은 독립 가입 경로가 없어 어디에도 없다.
  */
 
 /** 「로 / 으로」를 받침에 맞춰 고른다 (ㄹ 받침은 '로') */
@@ -32,7 +32,7 @@ function ro(word: string) {
   return jong === 0 || jong === 8 ? "로" : "으로";
 }
 
-export type Stage = "bucket" | "role" | "method";
+export type Stage = "bucket" | "method";
 
 const methods: { id: string; label: string; tone: "kakao" | "naver" | "plain" }[] = [
   { id: "카카오", label: "카카오로 회원가입", tone: "kakao" },
@@ -97,7 +97,6 @@ export default function SignupType({
   const [picked, setPicked] = useState<SignupTypeId | null>(initialType ?? draft.type);
 
   const chosen = picked ? signupTypes.find((s) => s.id === picked)! : null;
-  const orgTypes = signupTypes.filter((s) => s.id !== "parent");
 
   const start = (provider: string) => {
     if (!picked) return;
@@ -127,11 +126,11 @@ export default function SignupType({
         </div>
 
         {stage === "method" ? (
-          /* ③ 가입 수단 */
+          /* ② 가입 수단 */
           <div className={`mt-9 ${t.column} flex flex-col gap-6`}>
             <button
               type="button"
-              onClick={() => setStage(picked === "parent" ? "bucket" : "role")}
+              onClick={() => setStage("bucket")}
               className={`self-start text-[13px] font-semibold ${t.muted} hover:underline`}
             >
               ← 이전으로
@@ -180,72 +179,34 @@ export default function SignupType({
             )}
           </div>
         ) : (
-          /* ① 개인 / 기관  ·  ② 교사 / 기관담당자 */
+          /* ① 개인 / 기관 */
           <div className="mx-auto mt-10 w-full max-w-[52rem]">
-            {stage === "role" && (
-              <button
-                type="button"
-                onClick={() => setStage("bucket")}
-                className={`mb-5 text-[13px] font-semibold ${t.muted} hover:underline`}
-              >
-                ← 이전으로
-              </button>
-            )}
-
-            <h1 className={`${t.heading} text-center`}>
-              {stage === "bucket" ? "어떤 회원으로 가입하시나요?" : "기관 내 역할을 선택하세요"}
-            </h1>
+            <h1 className={`${t.heading} text-center`}>어떤 회원으로 가입하시나요?</h1>
             <p className={`${t.lead} mt-2.5 text-center`}>
-              {stage === "bucket"
-                ? "고른 유형에 따라 이후 단계와 받는 권한이 달라집니다."
-                : "역할에 따라 접근할 수 있는 범위가 다릅니다."}
+              고른 유형에 따라 이후 단계와 받는 권한이 달라집니다.
             </p>
 
             <div className="mt-9 grid gap-5 sm:grid-cols-2">
-              {stage === "bucket" ? (
-                <>
-                  <PickCard
-                    variant={variant}
-                    title="개인"
-                    desc="자녀의 진단을 신청하고 결과를 봅니다"
-                    art={<PersonalArt className="h-32 w-full" accent={accent} />}
-                    onClick={() => {
-                      setPicked("parent");
-                      setStage("method");
-                    }}
-                  />
-                  <PickCard
-                    variant={variant}
-                    title="기관"
-                    desc="학교·학원·교육청 단위로 운영합니다"
-                    art={<OrgArt className="h-32 w-full" accent={accent} />}
-                    onClick={() => {
-                      setPicked(null);
-                      setStage("role");
-                    }}
-                  />
-                </>
-              ) : (
-                orgTypes.map((s) => (
-                  <PickCard
-                    key={s.id}
-                    variant={variant}
-                    title={s.label}
-                    desc={s.tagline}
-                    art={
-                      s.id === "teacher" ? (
-                        <PersonalArt className="h-32 w-full" accent={accent} />
-                      ) : (
-                        <OrgArt className="h-32 w-full" accent={accent} />
-                      )
-                    }
-                    onClick={() => {
-                      setPicked(s.id);
-                      setStage("method");
-                    }}
-                  />
-                ))
-              )}
+              <PickCard
+                variant={variant}
+                title="개인"
+                desc="자녀의 진단을 신청하고 결과를 봅니다"
+                art={<PersonalArt className="h-32 w-full" accent={accent} />}
+                onClick={() => {
+                  setPicked("parent");
+                  setStage("method");
+                }}
+              />
+              <PickCard
+                variant={variant}
+                title="기관"
+                desc="학교·학원·교육청 단위로 운영합니다"
+                art={<OrgArt className="h-32 w-full" accent={accent} />}
+                onClick={() => {
+                  setPicked("org");
+                  setStage("method");
+                }}
+              />
             </div>
 
             <div className={`${t.cardSoft} mx-auto mt-6 max-w-[52rem] p-5`}>
