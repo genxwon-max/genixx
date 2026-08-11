@@ -171,6 +171,15 @@ export function canAny(role: StaffRoleId, needs: PermissionId | PermissionId[]) 
 
 /* ───────────────────────── 메뉴 (ADM 사이트맵) ───────────────────────── */
 
+export type AdminSubItem = {
+  /** 사이트맵 화면 ID */
+  id: string;
+  label: string;
+  /** 아직 화면이 없으면 상위 화면 안에 목록으로만 적는다 */
+  href?: string;
+  desc: string;
+};
+
 export type AdminMenuItem = {
   /** 사이트맵 화면 ID */
   id: string;
@@ -181,6 +190,8 @@ export type AdminMenuItem = {
   needs: PermissionId | PermissionId[];
   /** 사이드바에 표시할 대기 건수 키 */
   badge?: keyof typeof pending;
+  /** 정의서상의 하위 화면. 메뉴에 들여쓰기로 붙는다. */
+  children?: AdminSubItem[];
 };
 
 export type AdminMenuGroup = {
@@ -242,6 +253,28 @@ export const adminMenu: AdminMenuGroup[] = [
         desc: "승인된 문항의 좌표·태그·버전과 검사지 조립",
         needs: ["item.write", "item.review"],
         badge: "items",
+        children: [
+          {
+            id: "ADM-04-1",
+            label: "문항 CRUD·버전",
+            desc: "좌표·태그·난이도·상태(초안/검수중/승인/폐기) 필터",
+          },
+          {
+            id: "ADM-04-2",
+            label: "앵커 문항",
+            desc: "미공개·장기 재사용 앵커군. 회차 간 등화(equating)의 기준",
+          },
+          {
+            id: "ADM-04-3",
+            label: "검사지 조립",
+            desc: "AI 추천 조합 + 사람 승인. forms·form_items 스키마",
+          },
+          {
+            id: "ADM-04-4",
+            label: "문항 회전·보안",
+            desc: "응시자별 동적 할당(57중 55), 캡처·드래그 차단, 노출 이력",
+          },
+        ],
       },
     ],
   },
@@ -270,6 +303,25 @@ export const adminMenu: AdminMenuGroup[] = [
         href: "/admin/psychometrics",
         desc: "IRT 문항분석·타당도·DIF·판정 컷",
         needs: "psychometrics.read",
+        children: [
+          { id: "ADM-07-1", label: "IRT 문항분석", desc: "변별도 a·난이도 b·추측도 c, Infit/Outfit" },
+          { id: "ADM-07-2", label: "타당도 검증", desc: "CFA(CFI·RMSEA), 수렴·판별, 직교성 r" },
+          { id: "ADM-07-3", label: "국소독립성·DIF", desc: "Yen's Q3, 성·지역·SES 차별기능" },
+          { id: "ADM-07-4", label: "판정 컷 관리", desc: "잠정 컷 → 분포 확인 → 확정. 영향 시뮬레이션" },
+        ],
+      },
+      {
+        id: "ADM-08",
+        label: "리포트 자산",
+        href: "/admin/report-assets",
+        desc: "해석 템플릿·활동 모듈·조립 규칙",
+        needs: "report.publish",
+        children: [
+          { id: "ADM-08-1", label: "해석 템플릿", desc: "재능 × 밴드(L1/L2/L3) 템플릿 CRUD·버전" },
+          { id: "ADM-08-2", label: "활동 모듈 DB", desc: "처방 활동. 조립 규칙(assembly_rule) 매핑" },
+          { id: "ADM-08-3", label: "추천 자원 DB", desc: "도서·체험·프로그램. 재능 × 학년군 × 난이도" },
+          { id: "ADM-08-4", label: "리포트 조립 규칙", desc: "학력 부진 × 재능 강세 교차 셀 편집" },
+        ],
       },
     ],
   },
@@ -280,7 +332,14 @@ export const adminMenu: AdminMenuGroup[] = [
         id: "ADM-05",
         label: "회차·응시 현황",
         href: "/admin/rounds",
-        desc: "과목별 진행·포기·제출과 설문 수집률",
+        desc: "26A~26D 회차 개설·응시기간·대상 학년·세션 구성",
+        needs: "round.manage",
+      },
+      {
+        id: "ADM-06",
+        label: "분기 규칙 엔진",
+        href: "/admin/rules",
+        desc: "크로스셀 조건으로 회차별 개인 맞춤 모듈을 자동 배정",
         needs: "round.manage",
       },
       {
@@ -345,10 +404,22 @@ export const adminMenu: AdminMenuGroup[] = [
     label: "보안 · 설정",
     items: [
       {
-        id: "ADM-10 · ADM-11",
-        label: "개인정보·감사 로그",
+        id: "ADM-10",
+        label: "동의·개인정보",
         href: "/admin/audit",
-        desc: "열람 사유 전건 기록과 파기 요청",
+        desc: "동의 이력·파기 스케줄러·접근 감사",
+        needs: "audit.read",
+        children: [
+          { id: "ADM-10-1", label: "동의 이력 조회", desc: "granted/withdrawn 전건 조회·증빙 출력" },
+          { id: "ADM-10-2", label: "파기 스케줄러", desc: "보관기간 도래 자동 파기, 철회 즉시 파기 큐" },
+          { id: "ADM-10-3", label: "개인정보 접근 감사", desc: "누가·언제·무엇을 열람했는지 전건" },
+        ],
+      },
+      {
+        id: "ADM-11",
+        label: "이벤트 로그",
+        href: "/admin/events",
+        desc: "응시·판정·발행 전 과정 추적 (events 스키마)",
         needs: "audit.read",
       },
       {
@@ -1174,6 +1245,40 @@ export const stubSections: Record<string, { id: string; title: string; lead: str
       "ADM-07-2 타당도 — CFA(CFI·RMSEA), 수렴·판별타당도, 학력×재능 직교성 r 모니터",
       "ADM-07-3 국소독립성·DIF — 잔차 상관(Yen's Q3), 성·지역·SES 차별기능 검출",
       "ADM-07-4 판정 컷 — 1차 잠정 컷 → 분포 확인 후 확정. 변경 이력과 영향 시뮬레이션",
+    ],
+  },
+  "report-assets": {
+    id: "ADM-08",
+    title: "리포트 자산",
+    lead: "리포트에 조립되는 문구와 활동을 관리합니다. LLM이 전면 생성하지 않고, 검수된 DB를 규칙으로 조립합니다.",
+    todo: [
+      "ADM-08-1 해석 템플릿 — 재능 × 밴드(L1/L2/L3) 문구. 버전과 사용 이력 보존",
+      "ADM-08-2 활동 모듈 DB — 처방 활동과 조립 규칙(assembly_rule) 매핑",
+      "ADM-08-3 추천 자원 DB — 도서·체험·프로그램을 재능 × 학년군 × 난이도로 색인",
+      "ADM-08-4 조립 규칙 — 「학력 부진 × 재능 강세」 같은 교차 셀에 어떤 블록이 붙는지 편집",
+      "문구를 고치면 이미 발행된 리포트는 그대로 두고 다음 발행부터 적용",
+    ],
+  },
+  rules: {
+    id: "ADM-06",
+    title: "분기 규칙 엔진",
+    lead: "크로스 판정 결과에 따라 다음 회차에 어떤 모듈을 배정할지 규칙으로 정합니다.",
+    todo: [
+      "module_id와 trigger_rule(크로스셀 조건) 정의",
+      "설문판 form assembly를 그대로 재사용 — 문항 조립과 같은 얼개",
+      "규칙이 겹칠 때의 우선순위와, 어떤 규칙도 걸리지 않았을 때의 기본 모듈",
+      "규칙을 바꾸기 전에 「지금 응시자에게 어떻게 적용되는지」 시뮬레이션",
+    ],
+  },
+  events: {
+    id: "ADM-11",
+    title: "이벤트 로그",
+    lead: "응시·판정·발행 전 과정을 한 줄기로 추적합니다. events 스키마 통합 조회입니다.",
+    todo: [
+      "학생 한 명의 흐름을 시간순으로 — 응시 시작·제출·AI 채점·판정 확정·리포트 발행",
+      "consent.granted / consent.withdrawn / interview.coded 같은 도메인 이벤트",
+      "이상 징후 — 같은 계정의 짧은 시간 다중 접속, 비정상 제출 간격",
+      "감사 로그(ADM-10-3)와 다른 자리다. 저쪽은 사람의 열람, 여기는 시스템의 사건",
     ],
   },
   settings: {

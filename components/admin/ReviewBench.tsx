@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import {
+  addComment,
   approveItem,
   rejectCodes,
   rejectItem,
@@ -11,6 +12,7 @@ import {
   reviewChecks,
   stateLabel,
   stateTone,
+  typeLabel,
   useItems,
   type ItemDraft,
   type RejectCode,
@@ -27,6 +29,10 @@ import * as a from "./ui";
  *
  * 반려에는 사유 코드를 반드시 고르게 한다. 출제자가 무엇을 고쳐야 하는지 코멘트만으로는
  * 흐릿해지기 때문이다.
+ *
+ * 반려하지 않고 코멘트만 남길 수도 있다. 「반려까지는 아닌데 짚고 넘어갈 것」을 적을
+ * 자리가 없으면 검수자가 반려를 남발하게 되고, 출제자는 사소한 지적에도 문항을 통째로
+ * 되돌려 받는다. 승인할 때도 소견을 함께 남긴다.
  *
  * 자기가 쓴 문항은 목록에 뜨지 않는다. 출제자와 검수자를 갈라 둔 이유가 여기서 실제로
  * 작동해야 한다(정의서 9장).
@@ -91,7 +97,7 @@ export default function ReviewBench() {
                           <Badge label={stateLabel[i.state]} className={stateTone[i.state]} />
                         </span>
                         <span className="mt-1 block adm-t-sm text-exam-muted">
-                          {i.subject} · {i.grade} · {i.level} · {i.authorName}
+                          {typeLabel(i.type)} · {i.subject} · {i.grade} · {i.authorName}
                         </span>
                         <span className="mt-0.5 block truncate adm-t-sm text-exam-muted">
                           {i.stem}
@@ -126,6 +132,10 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
   const [code, setCode] = useState<RejectCode | "">("");
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /** 승인 소견 — 무엇을 보고 통과시켰는지 남긴다 */
+  const [approveNote, setApproveNote] = useState("");
+  /** 반려하지 않고 남기는 코멘트 */
+  const [note, setNote] = useState("");
 
   const allChecked = reviewChecks.every((c) => checked.includes(c.id));
   const toggle = (id: ReviewCheckId) =>
@@ -144,8 +154,8 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
         <div>
           <h2 className={a.cardTitle}>{item.code}</h2>
           <p className="mt-1 adm-t-sm text-exam-muted">
-            {item.subject} · {item.grade} · {item.level} · 출제 {item.authorName} · 제출{" "}
-            {item.updatedAt}
+            {typeLabel(item.type)} · {item.subject} · {item.grade} · {item.level} · 출제{" "}
+            {item.authorName} · 제출 {item.updatedAt}
           </p>
         </div>
       </div>
@@ -157,24 +167,69 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
             {item.passage}
           </p>
         )}
+
+        {/* 붙임 파일 — 원본 시험지나 지문 그림과 대조할 수 있어야 한다 */}
+        {item.assets.length > 0 && (
+          <ul className="mb-4 flex flex-wrap gap-2">
+            {item.assets.map((f) =>
+              f.kind === "image" && f.dataUrl ? (
+                // 사람이 올린 자료라 빌드 시점에 알 수 없다
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={f.id}
+                  src={f.dataUrl}
+                  alt={f.name}
+                  className="h-28 w-auto rounded border border-exam-line bg-white"
+                />
+              ) : (
+                <span
+                  key={f.id}
+                  className="inline-flex items-center gap-2 rounded border border-exam-line bg-white px-3 py-2 adm-t-sm text-exam-text"
+                >
+                  {f.kind === "pdf" ? "PDF" : "엑셀·CSV"} · {f.name}
+                </span>
+              ),
+            )}
+          </ul>
+        )}
+
         <p className="adm-t-md font-bold text-exam-text">{item.stem}</p>
-        <ol className="mt-3 space-y-1.5">
-          {item.choices.map((c, i) => (
-            <li key={i} className="flex items-baseline gap-2 adm-t-md text-exam-text">
-              <span
-                className={`shrink-0 font-bold ${
-                  i === item.answer ? "text-emerald-700" : "text-exam-muted"
-                }`}
-              >
-                {i + 1}
-              </span>
-              <span>{c}</span>
-              {i === item.answer && (
-                <span className="adm-t-sm font-bold text-emerald-700">정답</span>
-              )}
-            </li>
-          ))}
-        </ol>
+
+        {item.type === "choice" && (
+          <ol className="mt-3 space-y-1.5">
+            {item.choices.map((c, i) => (
+              <li key={i} className="flex items-baseline gap-2 adm-t-md text-exam-text">
+                <span
+                  className={`shrink-0 font-bold ${
+                    i === item.answer ? "text-emerald-700" : "text-exam-muted"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <span>{c}</span>
+                {i === item.answer && (
+                  <span className="adm-t-sm font-bold text-emerald-700">정답</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {item.type === "short" && (
+          <p className="mt-3 adm-t-md text-exam-text">
+            <span className="font-bold">허용 답안</span> — {item.shortAnswers}
+          </p>
+        )}
+
+        {(item.type === "descriptive" || item.type === "essay") && (
+          <div className="mt-3">
+            <p className="adm-t-sm font-bold text-exam-text">채점 기준</p>
+            <p className="mt-1 whitespace-pre-line adm-t-md leading-relaxed text-exam-text">
+              {item.rubric}
+            </p>
+          </div>
+        )}
+
         <p className="mt-4 border-t border-exam-line pt-3 adm-t-sm leading-relaxed text-exam-muted">
           해설 — {item.explain}
         </p>
@@ -221,24 +276,45 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
       {/* ── 결정 ── */}
       <div className="mt-6 border-t border-exam-line pt-5">
         {mode === "none" ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              disabled={!allChecked}
-              onClick={() => approveItem(item.id, reviewer, "3단 검수를 모두 확인했습니다. 승인합니다.")}
-              className={allChecked ? a.btnPrimary : a.btnDisabled}
-            >
-              승인하기
-            </button>
-            <button type="button" onClick={() => setMode("reject")} className={a.btnDanger}>
-              반려하기
-            </button>
-            <span className={a.bodyText}>
-              {allChecked
-                ? "승인하면 문항 은행에 올라가 검사지 조립 대상이 됩니다."
-                : "3단 검수를 모두 확인해야 승인할 수 있습니다."}
-            </span>
-          </div>
+          <>
+            <label className="block">
+              <span className={a.label}>
+                승인 소견 <span className="font-normal text-exam-muted">(선택)</span>
+              </span>
+              <textarea
+                value={approveNote}
+                onChange={(e) => setApproveNote(e.target.value)}
+                rows={2}
+                placeholder="무엇을 보고 통과시켰는지 적어 두면 나중에 같은 문항을 다시 볼 때 도움이 됩니다."
+                className={`mt-2 ${a.input}`}
+              />
+            </label>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={!allChecked}
+                onClick={() =>
+                  approveItem(
+                    item.id,
+                    reviewer,
+                    approveNote.trim() || "3단 검수를 모두 확인했습니다. 승인합니다.",
+                  )
+                }
+                className={allChecked ? a.btnPrimary : a.btnDisabled}
+              >
+                승인하기
+              </button>
+              <button type="button" onClick={() => setMode("reject")} className={a.btnDanger}>
+                반려하기
+              </button>
+              <span className={a.bodyText}>
+                {allChecked
+                  ? "승인하면 문항 은행에 올라가 검사지 조립 대상이 됩니다."
+                  : "3단 검수를 모두 확인해야 승인할 수 있습니다."}
+              </span>
+            </div>
+          </>
         ) : (
           <div className="rounded-lg border border-rose-300 bg-rose-50 p-5">
             <h3 className="adm-t-lg font-black text-rose-900">반려</h3>
@@ -315,24 +391,60 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
         )}
       </div>
 
-      {item.comments.length > 0 && (
-        <div className="mt-6 border-t border-exam-line pt-5">
-          <h3 className={a.cardTitle}>지난 검수 이력</h3>
+      {/* ── 코멘트 — 반려하지 않고도 말을 남긴다 ── */}
+      <div className="mt-6 border-t border-exam-line pt-5">
+        <h3 className={a.cardTitle}>코멘트</h3>
+        <p className={`${a.bodyText} mt-1.5`}>
+          반려까지는 아니지만 짚고 넘어갈 것을 적습니다. 상태는 바뀌지 않고 출제자에게 보입니다.
+        </p>
+
+        {item.comments.length > 0 && (
           <ul className="mt-3 space-y-3">
             {item.comments.map((c, i) => (
-              <li key={i} className="rounded-md bg-exam-panel px-4 py-3.5">
+              <li
+                key={i}
+                className={`rounded-md px-4 py-3.5 ${
+                  c.kind === "reject" ? "bg-rose-50" : "bg-exam-panel"
+                }`}
+              >
                 <p className="adm-t-sm font-bold text-exam-text">
                   {c.by} · {c.at}
-                  {c.code && (
+                  {c.kind === "reject" && c.code && (
                     <span className="ml-2 text-rose-700">반려 — {rejectLabel(c.code)}</span>
                   )}
+                  {c.kind === "approve" && <span className="ml-2 text-emerald-700">승인</span>}
+                  {c.kind === "note" && <span className="ml-2 text-exam-muted">코멘트</span>}
                 </p>
                 <p className="mt-1.5 adm-t-md leading-relaxed text-exam-muted">{c.text}</p>
               </li>
             ))}
           </ul>
+        )}
+
+        <div className="mt-4">
+          <label className="block">
+            <span className="sr-only">코멘트 내용</span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              placeholder="예: 보기 3번 표현이 학년에 비해 어렵습니다. 반려까지는 아니니 다음 회차에 다듬어 주세요."
+              className={a.input}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={note.trim().length < 2}
+            onClick={() => {
+              addComment(item.id, reviewer, "reviewer", note.trim());
+              setNote("");
+            }}
+            className={`mt-3 ${note.trim().length < 2 ? a.btnDisabled : a.btnGhost}`}
+          >
+            코멘트 남기기
+          </button>
         </div>
-      )}
+      </div>
     </section>
   );
 }

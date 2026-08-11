@@ -128,19 +128,32 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <div key={group.label} className="mb-6 last:mb-2">
                 <p className="px-3 pb-2 adm-t-xs font-bold text-slate-500">{group.label}</p>
                 <ul>
-                  {group.items.map((item) => (
-                    <li key={item.href}>
-                      <MenuLink
-                        item={item}
-                        active={
-                          item.href === "/admin"
-                            ? pathname === "/admin"
-                            : pathname.startsWith(item.href)
-                        }
-                        onNavigate={() => setOpen(false)}
-                      />
-                    </li>
-                  ))}
+                  {group.items.map((item) => {
+                    const active =
+                      item.href === "/admin"
+                        ? pathname === "/admin"
+                        : pathname.startsWith(item.href);
+                    return (
+                      <li key={item.href}>
+                        <MenuLink item={item} active={active} onNavigate={() => setOpen(false)} />
+                        {/* 정의서상의 하위 화면. 지금은 상위 화면 안에서 다루므로 목록만
+                            보여 준다 — 어디까지 설계됐는지 메뉴에서 바로 보이게. */}
+                        {active && item.children && (
+                          <ul className="mb-2 ml-4 border-l border-white/10 pl-3">
+                            {item.children.map((c) => (
+                              <li
+                                key={c.id}
+                                title={`${c.id} · ${c.desc}`}
+                                className="py-1.5 adm-t-sm text-slate-400"
+                              >
+                                {c.label}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
