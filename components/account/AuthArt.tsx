@@ -103,3 +103,31 @@ export function ArrowBadge({ color = "#365eef", size = 26 }: { color?: string; s
     </span>
   );
 }
+
+/**
+ * 빈 상태 — 아직 등록된 아이가 없을 때.
+ * 사람 대신 이름표가 비어 있는 가방을 그린다. 「없다」는 사실만 담고
+ * 아이를 특정 성별·연령으로 그리지 않기 위해서다.
+ */
+export function EmptyChild({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="아직 등록된 아이가 없습니다">
+      <ellipse cx="100" cy="128" rx="52" ry="6" fill={accent} opacity="0.1" />
+
+      {/* 가방 몸통 */}
+      <rect x="62" y="48" width="76" height="76" rx="18" fill={accent} opacity="0.18" />
+      <rect x="62" y="48" width="76" height="76" rx="18" fill="none" stroke={accent} strokeWidth="2.5" />
+      {/* 앞주머니 */}
+      <rect x="76" y="86" width="48" height="30" rx="10" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      {/* 손잡이 */}
+      <path d="M82 48v-8a18 18 0 0 1 36 0v8" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
+      {/* 비어 있는 이름표 */}
+      <rect x="86" y="60" width="28" height="16" rx="5" fill="#fff" stroke={accent} strokeWidth="2" />
+      <path d="M92 68h16" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity="0.35" />
+
+      {/* 더하기 표시 */}
+      <circle cx="140" cy="104" r="15" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      <path d="M140 97v14M133 104h14" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -20,7 +20,22 @@ export const assessment = {
   ko: "텔렌트미",
   /** 현재 회차 — 응시 현황과 결과 리포트가 같은 값을 쓴다 */
   round: "2026학년도 1회차(26A)",
+  /** 이번 회차 응시 마감일 (YYYY-MM-DD) */
+  deadline: "2026-09-30",
 };
+
+/**
+ * 마감까지 남은 날.
+ *
+ * 서버와 브라우저의 날짜가 갈리면 하이드레이션이 어긋나므로, 부르는 쪽에서
+ * 하이드레이션이 끝난 뒤에만 쓴다.
+ */
+export function deadlineDays(at: Date = new Date()): number {
+  const [y, m, d] = assessment.deadline.split("-").map(Number);
+  const end = Date.UTC(y, m - 1, d);
+  const now = Date.UTC(at.getFullYear(), at.getMonth(), at.getDate());
+  return Math.round((end - now) / 86_400_000);
+}
 
 export type SubjectId = "korean" | "math" | "science";
 

@@ -16,7 +16,6 @@ import {
   type ConsentStageId,
 } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
-import { VariantSwitch } from "./AuthTabs";
 
 /**
  * ACC-05 마이페이지 — 학부모 · 기관 공용 계정 허브.
@@ -908,171 +907,164 @@ export default function MyPage({
   const initial = (session?.name ?? "회원").slice(0, 1);
 
   return (
-    <div className={`min-h-full ${t.page}`}>
-      <div className="container-x py-10 pb-16">
-        <div className="mx-auto w-full max-w-[64rem]">
-          <p className={`text-[12px] font-bold uppercase tracking-[0.14em] ${t.muted}`}>ACC-05</p>
-          <h1 className={`mt-2 ${t.heading}`}>마이페이지</h1>
+    <>
+      <h1 className={t.heading}>마이페이지</h1>
 
           {/* 프로필 카드 — 홈런·콴다 모두 마이페이지 맨 위에 이 한 장을 둔다 */}
           <section
-            className={`${t.card} mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6`}
+      className={`${t.card} mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6`}
           >
-            <div className="flex min-w-0 flex-1 items-center gap-4">
-              <span
-                aria-hidden
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[22px] font-bold ${
-                  variant === 1
-                    ? "bg-acc-primary-soft text-acc-primary"
-                    : "bg-soft-primary-soft text-soft-primary"
-                }`}
-              >
-                {hydrated ? initial : "…"}
-              </span>
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <span
+          aria-hidden
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[22px] font-bold ${
+            variant === 1
+              ? "bg-acc-primary-soft text-acc-primary"
+              : "bg-soft-primary-soft text-soft-primary"
+          }`}
+        >
+          {hydrated ? initial : "…"}
+        </span>
 
-              <div className="min-w-0">
-                <p className="text-[19px] font-bold">
-                  {session?.name ?? "김보호"}
-                  <span className={`ml-2 text-[14px] font-normal ${t.muted}`}>님</span>
-                </p>
-                <p
-                  className={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] ${t.muted}`}
-                >
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${
-                      variant === 1
-                        ? "border-acc-primary-line bg-acc-primary-soft text-acc-primary"
-                        : "border-blue-200 bg-blue-50 text-blue-700"
-                    }`}
-                  >
-                    {audience === "org" ? "기관 회원" : "학부모 회원"}
-                  </span>
-                  <span className="whitespace-nowrap">
-                    {session?.provider
-                      ? `${session.provider} 간편 로그인`
-                      : `아이디 ${session?.loginId ?? "genix_kim"}`}
-                  </span>
-                  <span aria-hidden className="hidden sm:inline">
-                    ·
-                  </span>
-                  <span className="whitespace-nowrap">휴대폰 본인확인 완료</span>
-                </p>
-              </div>
-            </div>
-
-            <Link
-              href={audience === "org" ? "/org" : "/my"}
-              className={`${t.btnQuiet} self-start sm:self-auto`}
+        <div className="min-w-0">
+          <p className="text-[19px] font-bold">
+            {session?.name ?? "김보호"}
+            <span className={`ml-2 text-[14px] font-normal ${t.muted}`}>님</span>
+          </p>
+          <p
+            className={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] ${t.muted}`}
+          >
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${
+                variant === 1
+                  ? "border-acc-primary-line bg-acc-primary-soft text-acc-primary"
+                  : "border-blue-200 bg-blue-50 text-blue-700"
+              }`}
             >
-              {audience === "org" ? "기관 대시보드" : "자녀 현황 보기"}
-            </Link>
+              {audience === "org" ? "기관 회원" : "학부모 회원"}
+            </span>
+            <span className="whitespace-nowrap">
+              {session?.provider
+                ? `${session.provider} 간편 로그인`
+                : `아이디 ${session?.loginId ?? "genix_kim"}`}
+            </span>
+            <span aria-hidden className="hidden sm:inline">
+              ·
+            </span>
+            <span className="whitespace-nowrap">휴대폰 본인확인 완료</span>
+          </p>
+        </div>
+      </div>
+
+      <Link
+        href={audience === "org" ? "/org" : "/my"}
+        className={`${t.btnQuiet} self-start sm:self-auto`}
+      >
+        {audience === "org" ? "기관 대시보드" : "자녀 현황 보기"}
+      </Link>
           </section>
 
           <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-7">
-            {/* 좌측 메뉴 — 좁은 화면에서는 가로로 눕힌다 */}
-            <nav aria-label="마이페이지 메뉴" className="lg:w-[15rem] lg:shrink-0">
-              <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-5 lg:overflow-visible lg:pb-0">
-                {groups.map((g) => (
-                  <li key={g.title} className="contents lg:block">
-                    <p
-                      className={`hidden px-1 pb-2 text-[12px] font-bold uppercase tracking-[0.12em] lg:block ${t.muted}`}
-                    >
-                      {g.title}
-                    </p>
-                    <ul className="contents lg:flex lg:flex-col lg:gap-1">
-                      {g.items.map((i) => {
-                        const on = i.id === active;
-                        return (
-                          <li key={i.id} className="shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setSection(i.id)}
-                              aria-current={on ? "page" : undefined}
-                              /* 좁은 화면에서는 가로 탭이라 밑줄, 넓은 화면에서는 세로 목록이라 왼쪽 막대 */
-                              className={`w-full whitespace-nowrap px-4 py-3 text-left text-[14.5px] font-semibold transition-colors lg:whitespace-normal ${
-                                variant === 1
-                                  ? on
-                                    ? "border-b-[3px] border-acc-primary bg-acc-primary-soft text-acc-primary lg:border-b-0 lg:border-l-[3px]"
-                                    : "border-b-[3px] border-transparent text-acc-body hover:bg-acc-panel lg:border-b-0 lg:border-l-[3px]"
-                                  : on
-                                    ? "rounded-[12px] bg-soft-primary-soft text-soft-primary"
-                                    : "rounded-[12px] text-soft-muted hover:bg-white"
-                              }`}
-                            >
-                              {i.label}
-                              <span
-                                className={`mt-0.5 hidden text-[12px] font-normal lg:block ${
-                                  on ? "opacity-80" : t.muted
-                                }`}
-                              >
-                                {i.desc}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ))}
-                <li className="shrink-0 lg:block lg:pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSection("leave")}
-                    aria-current={active === "leave" ? "page" : undefined}
-                    className={`w-full whitespace-nowrap px-4 py-3 text-left text-[13.5px] transition-colors lg:border-t lg:pt-4 ${rule} ${
-                      active === "leave" ? "font-bold underline" : `${t.muted} hover:underline`
-                    }`}
-                  >
-                    {audience === "org" ? "기관 탈퇴" : "회원 탈퇴"}
-                  </button>
-                </li>
+      {/* 좌측 메뉴 — 좁은 화면에서는 가로로 눕힌다 */}
+      <nav aria-label="마이페이지 메뉴" className="lg:w-[15rem] lg:shrink-0">
+        <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-5 lg:overflow-visible lg:pb-0">
+          {groups.map((g) => (
+            <li key={g.title} className="contents lg:block">
+              <p
+                className={`hidden px-1 pb-2 text-[12px] font-bold uppercase tracking-[0.12em] lg:block ${t.muted}`}
+              >
+                {g.title}
+              </p>
+              <ul className="contents lg:flex lg:flex-col lg:gap-1">
+                {g.items.map((i) => {
+                  const on = i.id === active;
+                  return (
+                    <li key={i.id} className="shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSection(i.id)}
+                        aria-current={on ? "page" : undefined}
+                        /* 좁은 화면에서는 가로 탭이라 밑줄, 넓은 화면에서는 세로 목록이라 왼쪽 막대 */
+                        className={`w-full whitespace-nowrap px-4 py-3 text-left text-[14.5px] font-semibold transition-colors lg:whitespace-normal ${
+                          variant === 1
+                            ? on
+                              ? "border-b-[3px] border-acc-primary bg-acc-primary-soft text-acc-primary lg:border-b-0 lg:border-l-[3px]"
+                              : "border-b-[3px] border-transparent text-acc-body hover:bg-acc-panel lg:border-b-0 lg:border-l-[3px]"
+                            : on
+                              ? "rounded-[12px] bg-soft-primary-soft text-soft-primary"
+                              : "rounded-[12px] text-soft-muted hover:bg-white"
+                        }`}
+                      >
+                        {i.label}
+                        <span
+                          className={`mt-0.5 hidden text-[12px] font-normal lg:block ${
+                            on ? "opacity-80" : t.muted
+                          }`}
+                        >
+                          {i.desc}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
-            </nav>
+            </li>
+          ))}
+          <li className="shrink-0 lg:block lg:pt-2">
+            <button
+              type="button"
+              onClick={() => setSection("leave")}
+              aria-current={active === "leave" ? "page" : undefined}
+              className={`w-full whitespace-nowrap px-4 py-3 text-left text-[13.5px] transition-colors lg:border-t lg:pt-4 ${rule} ${
+                active === "leave" ? "font-bold underline" : `${t.muted} hover:underline`
+              }`}
+            >
+              {audience === "org" ? "기관 탈퇴" : "회원 탈퇴"}
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-            {/* 우측 본문 */}
-            <div className="min-w-0 flex-1">
-              {active === "leave" ? (
-                <LeaveSection variant={variant} audience={audience} />
-              ) : active === "profile" ? (
-                <ProfileSection variant={variant} audience={audience} />
-              ) : active === "children" ? (
-                <ChildrenSection variant={variant} />
-              ) : active === "consent" ? (
-                <ConsentSection variant={variant} />
-              ) : active === "org" ? (
-                <OrgSection variant={variant} />
-              ) : active === "members" ? (
-                <MembersSection variant={variant} />
-              ) : active === "billing" ? (
-                <BillingSection variant={variant} audience={audience} />
-              ) : active === "notify" ? (
-                <NotifySection variant={variant} />
-              ) : (
-                <InquirySection variant={variant} audience={audience} />
-              )}
-            </div>
+      {/* 우측 본문 */}
+      <div className="min-w-0 flex-1">
+        {active === "leave" ? (
+          <LeaveSection variant={variant} audience={audience} />
+        ) : active === "profile" ? (
+          <ProfileSection variant={variant} audience={audience} />
+        ) : active === "children" ? (
+          <ChildrenSection variant={variant} />
+        ) : active === "consent" ? (
+          <ConsentSection variant={variant} />
+        ) : active === "org" ? (
+          <OrgSection variant={variant} />
+        ) : active === "members" ? (
+          <MembersSection variant={variant} />
+        ) : active === "billing" ? (
+          <BillingSection variant={variant} audience={audience} />
+        ) : active === "notify" ? (
+          <NotifySection variant={variant} />
+        ) : (
+          <InquirySection variant={variant} audience={audience} />
+        )}
+      </div>
           </div>
 
           {/* 검토용 — 로그인하지 않고도 두 역할을 견줘 볼 수 있게 둔다. 확정되면 지운다. */}
           <div
-            className={`mt-8 flex flex-wrap items-center justify-center gap-2 text-[13px] ${t.muted}`}
+      className={`mt-8 flex flex-wrap items-center justify-center gap-2 text-[13px] ${t.muted}`}
           >
-            <span>역할 미리보기</span>
-            {(["parent", "org"] as const).map((a) => (
-              <button
-                key={a}
-                type="button"
-                onClick={() => setOverride(a)}
-                className={`underline underline-offset-2 ${audience === a ? "font-bold" : ""}`}
-              >
-                {a === "parent" ? "학부모" : "기관"}
-              </button>
-            ))}
-          </div>
-
-          <VariantSwitch variant={variant} kind="mypage" />
-        </div>
+      <span>역할 미리보기</span>
+      {(["parent", "org"] as const).map((a) => (
+        <button
+          key={a}
+          type="button"
+          onClick={() => setOverride(a)}
+          className={`underline underline-offset-2 ${audience === a ? "font-bold" : ""}`}
+        >
+          {a === "parent" ? "학부모" : "기관"}
+        </button>
+        ))}
       </div>
-    </div>
+    </>
   );
 }

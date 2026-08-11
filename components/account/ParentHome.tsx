@@ -1,51 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
 import { progressOf, phaseTone } from "@/lib/progress";
+import { assessment } from "@/lib/exam";
 import { ageFromBirth, consentRouteFor, consentRouteInfo } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
-import { VariantSwitch } from "./AuthTabs";
+import { EmptyChild } from "./AuthArt";
 
 /**
- * ACC-03 학부모 홈 (/my).
+ * ACC-03 학부모 홈 (/my) — 로그인 후 도착하는 대시보드.
  *
- * 로그인 직후 도착하는 자리다. 자녀 목록만 나열하지 않고, 아이마다 지금 어디까지
- * 왔는지와 다음에 할 일을 한 줄로 붙인다. 진행 상황은 명부(lib/roster)와
- * 응시 기록(lib/examStore)을 짝지어 실제로 계산한다.
+ * 자녀 목록만 나열하지 않고, 아이마다 지금 어디까지 왔는지와 다음에 할 일을 한 줄로
+ * 붙인다. 진행 상황은 명부(lib/roster)와 응시 기록(lib/examStore)을 짝지어 계산한다.
  *
- * 로그인·회원가입·기관 대시보드와 같은 두 시안(전문가 / 둥글둥글)을 그대로 따른다.
+ * 자녀가 없어도 다른 화면으로 밀어내지 않는다. 대신 여기서 등록을 시작한다.
+ * 클리포(clipo.ai)의 「등록된 학생이 없어요」 빈 상태와 같은 구성이다 — 제목·설명은
+ * 왼쪽, 주 액션은 오른쪽 위, 가운데는 지금 무엇이 없고 무엇을 하면 되는지.
+ *
+ * 껍데기(좌측 레일·상단 상태바)는 app/(dash)/layout.tsx가 두르므로 여기서는 본문만 그린다.
  */
-
-const quickLinks = [
-  { href: "/my/children", t: "자녀 프로필", d: "접속코드·코드 재발급" },
-  { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
-  { href: "/mypage", t: "마이페이지", d: "회원정보·동의·수신·탈퇴" },
-];
-
 export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
   const t = themeOf(variant);
-  const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
   const all = useRoster();
   const children = all.filter((s) => s.owner === "parent");
-
-  /**
-   * 자녀가 없으면 홈에 세워 둘 게 없다. 등록 흐름의 최선행(법정대리인 동의)으로 넘긴다.
-   * 로그인 경로에도 같은 분기가 있지만(LoginPanel.routeAfterLogin), 주소를 직접 열거나
-   * 마지막 아이를 지운 뒤에는 그 분기를 지나지 않아서 여기서 한 번 더 막는다.
-   *
-   * replace로 보낸다 — push면 뒤로가기가 이 화면을 다시 열어 그대로 튕겨 나간다.
-   */
-  const needsFirstChild = hydrated && children.length === 0;
-  useEffect(() => {
-    if (needsFirstChild) router.replace("/my/children/consent");
-  }, [needsFirstChild, router]);
 
   /* 시안별 잔가지 */
   const bar = variant === 1 ? "bg-acc-primary" : "bg-soft-primary";
@@ -56,42 +38,45 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
       ? "rounded bg-acc-panel text-acc-ink"
       : "rounded-full bg-soft-primary-soft text-soft-primary";
 
-  if (!hydrated || needsFirstChild) {
-    return (
-      <p className={`container-x py-20 text-center text-[14px] ${t.muted}`}>
-        {needsFirstChild ? "자녀 등록 화면으로 이동합니다…" : "확인 중입니다…"}
-      </p>
-    );
-  }
-
-  const rows = children.map(progressOf);
+  const rows = hydrated ? children.map(progressOf) : [];
   const done = rows.filter((r) => r.phase === "검사완료").length;
   const running = rows.filter((r) => r.phase === "응시중" || r.phase === "제출완료").length;
 
   return (
-    <div className={`min-h-full ${t.page}`}>
-      <div className="container-x py-10 pb-16">
-        <div className="mx-auto w-full max-w-[60rem]">
-          {/* 등록이 이 화면의 주 액션이다. 아래 바로가기에만 두면 둘째를 등록하려고
-              페이지 끝까지 스크롤해야 한다. 제목 옆에 세워 둔다. */}
-          <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className={`text-[12px] font-bold uppercase tracking-[0.14em] ${t.muted}`}>
-                ACC-03
-              </p>
-              <h1 className={`mt-2 ${t.heading}`}>{session?.name ?? "보호자"}님, 안녕하세요</h1>
-              <p className={`mt-3 ${t.lead}`}>
-                자녀의 진단 진행 상황입니다. 아이를 눌러 접속코드를 확인하거나 다음 단계로
-                넘어가세요.
-              </p>
-            </div>
-            <Link href="/my/children/consent" className={t.btnAction}>
-              + 자녀 등록
-            </Link>
-          </header>
+    <>
+      {/* 제목은 왼쪽, 주 액션은 오른쪽 위 */}
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-[16rem] flex-1">
+          <h1 className={t.heading}>{session?.name ?? "보호자"}님, 안녕하세요</h1>
+          <p className={`mt-2.5 ${t.lead}`}>
+            {assessment.round} 진행 상황입니다. 아이를 눌러 접속코드를 확인하거나 다음 단계로
+            넘어가세요.
+          </p>
+        </div>
+        <Link href="/my/children/consent" className={t.btnAction}>
+          + 자녀 등록
+        </Link>
+      </header>
 
+      {!hydrated ? (
+        <p className={`py-20 text-center text-[14px] ${t.muted}`}>확인 중입니다…</p>
+      ) : children.length === 0 ? (
+        /* 빈 상태 — 다른 화면으로 밀어내지 않고 여기서 시작한다 */
+        <section className={`${t.card} mt-6 px-6 py-14 text-center`}>
+          <EmptyChild className="mx-auto h-32 w-auto" accent="#365eef" />
+          <p className="mt-6 text-[18px] font-bold">등록된 자녀가 없어요.</p>
+          <p className={`mx-auto mt-2.5 max-w-md text-[14px] leading-[1.7] ${t.muted}`}>
+            아이를 등록하면 접속코드가 발급됩니다. 아이는 따로 가입하지 않고, 그 코드와
+            생년월일로 응시 화면에 들어갑니다.
+          </p>
+          <Link href="/my/children/consent" className={`${t.btnAction} mt-7`}>
+            + 자녀 등록
+          </Link>
+        </section>
+      ) : (
+        <>
           {/* 요약 */}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {[
               { k: "등록한 자녀", v: `${children.length}명` },
               { k: "진행 중", v: `${running}명` },
@@ -104,7 +89,6 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
             ))}
           </div>
 
-          {/* 자녀 0명은 위에서 등록 화면으로 넘어가므로 여기까지 오지 않는다 */}
           <ul className="mt-5 flex flex-col gap-3">
             {rows.map((r) => {
               const age = ageFromBirth(r.student.birth);
@@ -158,9 +142,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
                     </p>
                   </div>
 
-                  <div
-                    className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}
-                  >
+                  <div className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}>
                     <span
                       className={`px-3 py-2 text-[15px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
                     >
@@ -177,26 +159,28 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
               );
             })}
           </ul>
+        </>
+      )}
 
-          {/* 바로가기 */}
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {quickLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`${t.card} p-5 transition-colors ${
-                  variant === 1 ? "hover:border-acc-primary" : "hover:border-soft-primary"
-                }`}
-              >
-                <p className="text-[15px] font-bold">{l.t}</p>
-                <p className={`mt-1 text-[13px] ${t.muted}`}>{l.d}</p>
-              </Link>
-            ))}
-          </div>
-
-          <VariantSwitch variant={variant} kind="my" />
-        </div>
+      {/* 바로가기 — 좌측 레일에 없는 하위 화면만 둔다 */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {[
+          { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
+          { href: "/exam/result", t: "결과 리포트", d: "발행 상태와 열람" },
+          { href: "/support/faq", t: "자주 묻는 질문", d: "응시·결과·개인정보" },
+        ].map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className={`${t.card} p-5 transition-colors ${
+              variant === 1 ? "hover:border-acc-primary" : "hover:border-soft-primary"
+            }`}
+          >
+            <p className="text-[15px] font-bold">{l.t}</p>
+            <p className={`mt-1 text-[13px] ${t.muted}`}>{l.d}</p>
+          </Link>
+        ))}
       </div>
-    </div>
+    </>
   );
 }
