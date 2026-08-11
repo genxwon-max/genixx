@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
-import { progressOf, phaseTone } from "@/lib/progress";
+import { progressOf, phaseTone, subjectTone } from "@/lib/progress";
 import { assessment } from "@/lib/exam";
-import { ageFromBirth, consentRouteFor, consentRouteInfo } from "@/lib/account";
+import { ageFromBirth } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import { EmptyChild } from "./AuthArt";
 
@@ -30,8 +30,6 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
   const children = all.filter((s) => s.owner === "parent");
 
   /* 시안별 잔가지 */
-  const bar = variant === 1 ? "bg-acc-primary" : "bg-soft-primary";
-  const track = variant === 1 ? "bg-acc-divider" : "bg-slate-200";
   const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
   const codeChip =
     variant === 1
@@ -92,16 +90,21 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           <ul className="mt-5 flex flex-col gap-3">
             {rows.map((r) => {
               const age = ageFromBirth(r.student.birth);
-              const route = consentRouteFor(age);
-              const info = route ? consentRouteInfo[route] : null;
               return (
                 <li key={r.student.id} className={`${t.card} p-5 sm:p-6`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[19px] font-bold">{r.student.name}</p>
+                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                    <div className="min-w-0">
+                      {/* 접속코드는 이름 바로 옆에 둔다. 아이를 찾는 단서이자 건네줄 값이다. */}
+                      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <span className="text-[19px] font-bold">{r.student.name}</span>
+                        <span
+                          className={`px-2.5 py-1 text-[14px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
+                        >
+                          {formatCode(r.student.code)}
+                        </span>
+                      </p>
                       <p className={`mt-1 text-[13px] ${t.muted}`}>
                         {r.student.grade} · 만 {age ?? "—"}세
-                        {info && ` · ${info.label} (${info.who} 동의)`}
                       </p>
                     </div>
                     <span
@@ -113,43 +116,24 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
                     </span>
                   </div>
 
-                  {/* 진행 막대 */}
-                  <div className="mt-4">
-                    <div className="flex items-baseline justify-between text-[13px]">
-                      <span className="font-semibold">과목 제출</span>
-                      <span className="font-bold tabular-nums">
-                        {r.submitted} / {r.total}
-                        {r.forfeited > 0 && (
-                          <span className={`ml-2 font-normal ${t.required}`}>
-                            포기 {r.forfeited}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${track}`}>
-                      <div
-                        className={`h-full rounded-full ${bar}`}
-                        style={{ width: `${(r.submitted / r.total) * 100}%` }}
-                        role="progressbar"
-                        aria-valuenow={r.submitted}
-                        aria-valuemin={0}
-                        aria-valuemax={r.total}
-                        aria-label={`${r.student.name} 과목 제출`}
-                      />
-                    </div>
-                    <p className={`mt-2 text-[13px] ${t.muted}`}>
-                      설문 {r.surveys} / 3 · {r.nextAction}
-                    </p>
-                  </div>
+                  {/* 과목은 셋뿐이라 막대 하나로 뭉치지 않고 한 칸씩 상태를 적는다 */}
+                  <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {r.subjects.map((sub) => (
+                      <li
+                        key={sub.id}
+                        className={`flex items-center justify-between rounded-[10px] border px-3.5 py-2.5 ${
+                          subjectTone[sub.state][variant === 1 ? "v1" : "v2"]
+                        }`}
+                      >
+                        <span className="text-[14px] font-semibold">{sub.short}</span>
+                        <span className="text-[12.5px] font-bold">{sub.state}</span>
+                      </li>
+                    ))}
+                  </ul>
 
                   <div className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}>
-                    <span
-                      className={`px-3 py-2 text-[15px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
-                    >
-                      {formatCode(r.student.code)}
-                    </span>
-                    <span className={`text-[12px] ${t.muted}`}>
-                      생년월일과 함께 입력해야 들어갑니다
+                    <span className={`text-[13px] ${t.muted}`}>
+                      설문 {r.surveys} / 3 · {r.nextAction}
                     </span>
                     <Link href="/my/children" className={`${t.btnQuiet} ml-auto`}>
                       자녀 관리
