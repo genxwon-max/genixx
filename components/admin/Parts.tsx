@@ -137,15 +137,15 @@ export function TableCard({
 /** 권한이 없을 때 보여 주는 안내. 빈 화면 대신 이유와 다음 행동을 적는다. */
 export function NoPermission({ need, role }: { need: string; role: string }) {
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-7">
-      <h2 className="adm-t-lg font-black text-amber-900">이 화면을 볼 권한이 없습니다</h2>
-      <p className="mt-2.5 adm-t-md text-amber-900">
+    <div className="border-y border-exam-line py-7">
+      <h2 className={a.cardTitle}>이 화면을 볼 권한이 없습니다</h2>
+      <p className="mt-2.5 adm-t-md text-exam-text">
         지금 <b>{role}</b> 역할로 보고 있습니다. 이 화면은 <b>{need}</b> 권한이 있어야 열립니다.
       </p>
-      <p className="mt-1.5 adm-t-sm text-amber-900/90">
+      <p className={`${a.bodyText} mt-1.5`}>
         권한이 필요하시면 총괄 관리자에게 요청하세요. 요청과 승인 내역은 감사 로그에 남습니다.
       </p>
-      <Link href="/admin" className={`${a.btnGhost} mt-5 border-amber-400`}>
+      <Link href="/admin" className={`${a.btnGhost} mt-5`}>
         대시보드로 돌아가기
       </Link>
     </div>

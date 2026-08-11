@@ -28,6 +28,7 @@ import {
 } from "@/lib/itemStore";
 import { useHydrated } from "@/lib/examStore";
 import { PageHead, Badge } from "./Parts";
+import CommentList from "./CommentList";
 import * as a from "./ui";
 
 /**
@@ -130,8 +131,11 @@ export default function AuthoringBench() {
                       type="button"
                       onClick={() => setOpenId(i.id)}
                       aria-current={current?.id === i.id ? "true" : undefined}
-                      className={`w-full px-4 py-3.5 text-left transition-colors ${
-                        current?.id === i.id ? "bg-brand-50" : "hover:bg-exam-raised"
+                      // 고른 문항은 왼쪽 막대로 알린다 — 면을 깔면 목록 전체가 얼룩진다
+                      className={`relative w-full px-4 py-3.5 text-left transition-colors hover:bg-exam-raised ${
+                        current?.id === i.id
+                          ? "before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-brand-900"
+                          : ""
                       }`}
                     >
                       <span className="flex flex-wrap items-center gap-2">
@@ -203,14 +207,15 @@ function Editor({ item }: { item: ItemDraft }) {
         <Badge label={stateLabel[item.state]} className={stateTone[item.state]} />
       </div>
 
-      {/* 반려 사유는 편집기 맨 위에 붙인다 — 보지 않고 고칠 수는 없다 */}
+      {/* 반려 사유는 편집기 맨 위에 붙인다 — 보지 않고 고칠 수는 없다.
+          붉은 면 대신 왼쪽 굵은 선으로 세운다. 눈에 걸리되 화면을 물들이지는 않는다. */}
       {item.state === "rejected" && lastReject && (
-        <div className="mt-5 rounded-lg border border-rose-300 bg-rose-50 p-5">
-          <p className="adm-t-md font-black text-rose-900">
+        <div className="mt-5 border-l-4 border-rose-500 pl-4">
+          <p className="adm-t-md font-black text-rose-700">
             반려 — {rejectLabel(lastReject.code!)}
           </p>
-          <p className="mt-2 adm-t-md leading-relaxed text-rose-900">{lastReject.text}</p>
-          <p className="mt-2 adm-t-sm text-rose-800">
+          <p className="mt-2 adm-t-md leading-relaxed text-exam-text">{lastReject.text}</p>
+          <p className="mt-2 adm-t-sm text-exam-muted">
             {lastReject.by} · {lastReject.at}
           </p>
         </div>
@@ -218,7 +223,7 @@ function Editor({ item }: { item: ItemDraft }) {
 
       {/* 잠긴 상태에서도 손쓸 길을 남긴다 — 회수하거나 새 버전을 뜬다 */}
       {locked && (
-        <div className="mt-5 rounded-lg border border-exam-line bg-exam-panel p-5">
+        <div className="mt-5 border-y border-exam-line py-5">
           <p className="adm-t-md font-bold text-exam-text">
             {item.state === "submitted" ? "검수 중이라 잠겨 있습니다" : "승인된 문항입니다"}
           </p>
@@ -250,8 +255,8 @@ function Editor({ item }: { item: ItemDraft }) {
                 <label
                   className={`flex h-full cursor-pointer flex-col gap-1 rounded-lg border p-3.5 transition-colors ${
                     item.type === t.id
-                      ? "border-brand-700 bg-brand-50"
-                      : "border-exam-line bg-white hover:bg-exam-raised"
+                      ? "border-brand-700"
+                      : "border-exam-line hover:bg-exam-raised"
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -392,8 +397,8 @@ function Editor({ item }: { item: ItemDraft }) {
               className={`mt-2 ${a.input}`}
             />
             <span className="mt-2 block adm-t-sm leading-relaxed text-exam-muted">
-              쉼표로 나눠 적습니다. 아이들은 같은 뜻을 여러 말로 쓰기 때문에, 맞는 표현을 미리
-              넓게 열어 두어야 사람이 하나하나 확인하는 일이 줄어듭니다.
+              쉼표로 나눠 적습니다. 아이들은 같은 뜻을 여러 말로 쓰기 때문에, 맞는 표현을 미리 넓게
+              열어 두어야 사람이 하나하나 확인하는 일이 줄어듭니다.
             </span>
           </label>
         )}
@@ -446,7 +451,7 @@ function Editor({ item }: { item: ItemDraft }) {
             />
           </label>
         </div>
-        <p className="rounded-md bg-exam-panel px-4 py-3 adm-t-sm leading-relaxed text-exam-muted">
+        <p className="adm-t-sm leading-relaxed text-exam-muted">
           두 축은 따로 붙입니다. 같은 문항이 학력에서는 「읽기 추론」이고 재능에서는 「언어
           범주화」일 수 있습니다. 검수 2차에서 이 태깅을 교차 검증합니다.
         </p>
@@ -476,26 +481,7 @@ function Editor({ item }: { item: ItemDraft }) {
         {item.comments.length === 0 ? (
           <p className={`${a.bodyText} mt-2`}>아직 오간 말이 없습니다.</p>
         ) : (
-          <ul className="mt-3 space-y-3">
-            {item.comments.map((c, i) => (
-              <li
-                key={i}
-                className={`rounded-md px-4 py-3.5 ${
-                  c.kind === "reject" ? "bg-rose-50" : "bg-exam-panel"
-                }`}
-              >
-                <p className="adm-t-sm font-bold text-exam-text">
-                  {c.by} · {c.at}
-                  {c.kind === "reject" && c.code && (
-                    <span className="ml-2 text-rose-700">반려 — {rejectLabel(c.code)}</span>
-                  )}
-                  {c.kind === "approve" && <span className="ml-2 text-emerald-700">승인</span>}
-                  {c.kind === "note" && <span className="ml-2 text-exam-muted">코멘트</span>}
-                </p>
-                <p className="mt-1.5 adm-t-md leading-relaxed text-exam-muted">{c.text}</p>
-              </li>
-            ))}
-          </ul>
+          <CommentList comments={item.comments} />
         )}
 
         {/* 반려 사유에 답을 적을 자리 — 무엇을 고쳤는지 검수자가 바로 알 수 있게 */}

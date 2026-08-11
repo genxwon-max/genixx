@@ -72,7 +72,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* ── 상단 바 ── */}
       <header className="sticky top-0 z-40 bg-slate-900 text-white">
-        <div className="flex h-[4.5rem] items-center gap-4 px-4 lg:px-6">
+        {/* 태블릿 폭에서는 오른쪽 묶음이 한 줄에 다 서지 못한다. 줄을 접게 두고 높이를
+            늘린다 — 글자 크기 단추를 숨기는 쪽이 더 나쁘다. 늘 보여야 하는 것이다. */}
+        <div className="flex min-h-[4.5rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 lg:flex-nowrap lg:py-0 lg:px-6">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

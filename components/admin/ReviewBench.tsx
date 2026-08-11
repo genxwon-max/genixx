@@ -8,7 +8,6 @@ import {
   approveItem,
   rejectCodes,
   rejectItem,
-  rejectLabel,
   reviewChecks,
   stateLabel,
   stateTone,
@@ -19,6 +18,7 @@ import {
   type ReviewCheckId,
 } from "@/lib/itemStore";
 import { PageHead, Badge } from "./Parts";
+import CommentList from "./CommentList";
 import * as a from "./ui";
 
 /**
@@ -61,7 +61,7 @@ export default function ReviewBench() {
       ) : (
         <>
           {mineSubmitted.length > 0 && (
-            <div className="mb-5 rounded-lg border border-exam-line bg-exam-panel px-5 py-4">
+            <div className="mb-5 border-y border-exam-line py-4">
               <p className="adm-t-md font-bold text-exam-text">
                 내가 쓴 문항 {mineSubmitted.length}건은 이 목록에 없습니다
               </p>
@@ -88,8 +88,10 @@ export default function ReviewBench() {
                         type="button"
                         onClick={() => setOpenId(i.id)}
                         aria-current={current?.id === i.id ? "true" : undefined}
-                        className={`w-full px-4 py-3.5 text-left transition-colors ${
-                          current?.id === i.id ? "bg-brand-50" : "hover:bg-exam-raised"
+                        className={`relative w-full px-4 py-3.5 text-left transition-colors hover:bg-exam-raised ${
+                          current?.id === i.id
+                            ? "before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-brand-900"
+                            : ""
                         }`}
                       >
                         <span className="flex flex-wrap items-center gap-2">
@@ -114,9 +116,7 @@ export default function ReviewBench() {
             ) : (
               <section className={`${a.panel} p-8 text-center`}>
                 <p className={a.cardTitle}>검수할 문항이 없습니다</p>
-                <p className={`${a.bodyText} mt-2`}>
-                  출제자가 제출하면 여기에 쌓입니다.
-                </p>
+                <p className={`${a.bodyText} mt-2`}>출제자가 제출하면 여기에 쌓입니다.</p>
               </section>
             )}
           </div>
@@ -160,8 +160,8 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
         </div>
       </div>
 
-      {/* ── 문항 본문 ── */}
-      <div className="mt-5 rounded-lg border border-exam-line bg-exam-panel p-5">
+      {/* ── 문항 본문 ── 읽는 면이라 색을 깔지 않는다. 테두리로만 묶는다. */}
+      <div className="mt-5 rounded-lg border border-exam-line p-5">
         {item.passage && (
           <p className="mb-4 whitespace-pre-line adm-t-md leading-relaxed text-exam-text">
             {item.passage}
@@ -251,7 +251,7 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
               <li key={c.id}>
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
-                    on ? "border-emerald-300 bg-emerald-50" : "border-exam-line bg-white"
+                    on ? "border-emerald-500" : "border-exam-line hover:bg-exam-raised"
                   }`}
                 >
                   <input
@@ -316,9 +316,9 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
             </div>
           </>
         ) : (
-          <div className="rounded-lg border border-rose-300 bg-rose-50 p-5">
-            <h3 className="adm-t-lg font-black text-rose-900">반려</h3>
-            <p className="mt-1.5 adm-t-sm leading-relaxed text-rose-900">
+          <div className="border-l-4 border-rose-500 pl-4">
+            <h3 className="adm-t-lg font-black text-rose-700">반려</h3>
+            <p className={`${a.bodyText} mt-1.5 leading-relaxed`}>
               사유와 코멘트가 출제자의 반려함으로 그대로 전달됩니다.
             </p>
 
@@ -328,8 +328,8 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
                 {rejectCodes.map((c) => (
                   <li key={c.id}>
                     <label
-                      className={`flex cursor-pointer items-start gap-3 rounded-md border bg-white p-3.5 transition-colors ${
-                        code === c.id ? "border-rose-500" : "border-exam-line"
+                      className={`flex cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
+                        code === c.id ? "border-rose-500" : "border-exam-line hover:bg-exam-raised"
                       }`}
                     >
                       <input
@@ -398,28 +398,7 @@ function ReviewPanel({ item, reviewer }: { item: ItemDraft; reviewer: string }) 
           반려까지는 아니지만 짚고 넘어갈 것을 적습니다. 상태는 바뀌지 않고 출제자에게 보입니다.
         </p>
 
-        {item.comments.length > 0 && (
-          <ul className="mt-3 space-y-3">
-            {item.comments.map((c, i) => (
-              <li
-                key={i}
-                className={`rounded-md px-4 py-3.5 ${
-                  c.kind === "reject" ? "bg-rose-50" : "bg-exam-panel"
-                }`}
-              >
-                <p className="adm-t-sm font-bold text-exam-text">
-                  {c.by} · {c.at}
-                  {c.kind === "reject" && c.code && (
-                    <span className="ml-2 text-rose-700">반려 — {rejectLabel(c.code)}</span>
-                  )}
-                  {c.kind === "approve" && <span className="ml-2 text-emerald-700">승인</span>}
-                  {c.kind === "note" && <span className="ml-2 text-exam-muted">코멘트</span>}
-                </p>
-                <p className="mt-1.5 adm-t-md leading-relaxed text-exam-muted">{c.text}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+        <CommentList comments={item.comments} />
 
         <div className="mt-4">
           <label className="block">
