@@ -91,7 +91,7 @@ const parentMenu: Item[] = [
     match: ["/exam/session", "/exam/prepare"],
   },
   { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
-  { href: "/my/children", label: "자녀", sid: "ACC-03", icon: <Icon>{ic.child}</Icon> },
+  { href: "/my/children", label: "학생", sid: "ACC-03", icon: <Icon>{ic.child}</Icon> },
   { href: "/survey/parent", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
@@ -99,7 +99,7 @@ const parentMenu: Item[] = [
 /** 기관담당자·교사(I·T) — 정의서 10장 + P0로 이미 있는 응시 존 화면 */
 const orgMenu: Item[] = [
   { href: "/org", label: "홈", sid: "ORG-01", icon: <Icon>{ic.home}</Icon> },
-  { href: "/exam/roster", label: "명부", sid: "ORG-02-2", icon: <Icon>{ic.roster}</Icon> },
+  { href: "/my/students", label: "명부", sid: "ORG-02-2", icon: <Icon>{ic.roster}</Icon> },
   { href: "/exam", label: "응시", sid: "ASM-01", icon: <Icon>{ic.exam}</Icon> },
   { href: "/survey/teacher", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon> },
   { href: "/exam/payment", label: "응시권", sid: "ORG-03", icon: <Icon>{ic.ticket}</Icon> },
@@ -268,7 +268,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
               {dday !== null && (
                 <Chip k="응시 마감" v={dday > 0 ? `D-${dday}` : dday === 0 ? "오늘" : "마감"} />
               )}
-              <Chip k={isOrg ? "등록 학생" : "등록 자녀"} v={`${hydrated ? mine.length : 0}명`} />
+              <Chip k={isOrg ? "등록 학생" : "등록 학생"} v={`${hydrated ? mine.length : 0}명`} />
               <UserMenu name={name} role={session?.role} />
             </div>
           </div>

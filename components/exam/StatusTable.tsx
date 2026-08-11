@@ -72,7 +72,7 @@ export default function StatusTable() {
 
   // 학생 세션이 아니면 응시 현황을 볼 대상이 없다
   if (hydrated && session && session.role !== "student") {
-    const home = session.role === "director" ? "/exam/roster" : "/my/children";
+    const home = session.role === "director" ? "/my/students" : "/my/children";
     return (
       <div className="container-x py-16">
         <div className={`mx-auto max-w-lg p-8 text-center ${panel}`}>
@@ -86,7 +86,7 @@ export default function StatusTable() {
           </p>
           <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Link href={home} className={btnPrimary}>
-              {session.role === "director" ? "학원생 명부로" : "자녀 관리로"}
+              학생 관리로
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link href="/login/student" className={btnGhost}>
@@ -119,7 +119,7 @@ export default function StatusTable() {
       {asGuardian && (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded border border-brand-300 bg-brand-50 px-5 py-4">
           <p className="text-[13px] leading-relaxed text-exam-text">
-            <b>보호자로 접속하셨습니다.</b> 자녀의 응시 답안은 열람할 수 없으며, 아래{" "}
+            <b>보호자로 접속하셨습니다.</b> 학생의 응시 답안은 열람할 수 없으며, 아래{" "}
             <b>학부모 설문</b>만 진행할 수 있습니다.
           </p>
           <button type="button" onClick={() => setGuardianPick(true)} className={btnPrimary}>

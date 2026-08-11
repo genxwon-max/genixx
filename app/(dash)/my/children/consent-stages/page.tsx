@@ -18,7 +18,7 @@ export default function ConsentStagesPage() {
         id="ACC-03-3"
         title="단계별 동의 관리"
         lead="한 번에 다 받지 않습니다. 그 데이터가 실제로 필요해지는 시점에 따로 여쭤봅니다."
-        back={{ href: "/my/children", label: "자녀 프로필로" }}
+        back={{ href: "/my/children", label: "학생 프로필로" }}
       />
 
       <ul className="space-y-3">

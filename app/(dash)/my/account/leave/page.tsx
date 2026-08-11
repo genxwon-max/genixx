@@ -4,12 +4,12 @@ import { AccHead, btnGhost, card, cardPad, LegalNote } from "@/components/accoun
 
 export const metadata: Metadata = {
   title: "회원 탈퇴",
-  description: "탈퇴 시 자녀 프로필·응답 데이터 처리 방침을 고지합니다. (ACC-04-2)",
+  description: "탈퇴 시 학생 프로필·응답 데이터 처리 방침을 고지합니다. (ACC-04-2)",
   robots: { index: false, follow: false },
 };
 
 const effects = [
-  { t: "자녀 프로필", d: "등록하신 모든 자녀 프로필이 함께 삭제됩니다. 아이별로 남길 수 없습니다." },
+  { t: "학생 프로필", d: "등록하신 모든 학생 프로필이 함께 삭제됩니다. 아이별로 남길 수 없습니다." },
   { t: "응시 기록·응답", d: "지필 답안, 설문 응답, 면담 녹취가 파기 절차에 들어갑니다." },
   { t: "결과 리포트", d: "발행된 리포트를 더 이상 열람할 수 없습니다. 필요하시면 미리 저장해 주세요." },
   { t: "접속코드", d: "발급된 코드가 즉시 무효가 되어 아이가 응시 화면에 들어갈 수 없습니다." },

@@ -65,9 +65,9 @@ const menus: Record<Audience, Group[]> = {
       ],
     },
     {
-      title: "자녀",
+      title: "학생",
       items: [
-        { id: "children", label: "자녀 관리", desc: "프로필·접속코드", path: "/mypage/children" },
+        { id: "children", label: "학생 관리", desc: "프로필·접속코드", path: "/mypage/children" },
         { id: "consent", label: "동의 관리", desc: "항목별 동의와 철회", path: "/mypage/consent" },
       ],
     },
@@ -368,7 +368,7 @@ function ChildrenSection({ variant }: { variant: Variant }) {
     <>
       <Head
         variant={variant}
-        title="자녀 관리"
+        title="학생 관리"
         lead="아이마다 접속코드가 하나씩 있습니다. 코드가 새어 나간 것 같으면 바로 다시 발급하세요."
       />
 
@@ -376,12 +376,12 @@ function ChildrenSection({ variant }: { variant: Variant }) {
         <p className={`${t.card} p-8 text-center text-[14px] ${t.muted}`}>확인 중입니다…</p>
       ) : children.length === 0 ? (
         <div className={`${t.card} p-8 text-center`}>
-          <p className="text-[17px] font-bold">아직 등록된 자녀가 없습니다</p>
+          <p className="text-[17px] font-bold">아직 등록된 학생이 없습니다</p>
           <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>
             등록은 법정대리인 동의부터 시작합니다.
           </p>
           <Link href="/my/children/consent" className={`${t.btnPrimary} mx-auto mt-6 max-w-xs`}>
-            자녀 등록 시작하기
+            학생 등록 시작하기
           </Link>
         </div>
       ) : (
@@ -830,7 +830,7 @@ function LeaveSection({ variant, audience }: { variant: Variant; audience: Audie
         lead={
           audience === "org"
             ? "탈퇴하면 소속 교사 계정이 함께 비활성화되고 학생 명부는 파기 절차로 넘어갑니다."
-            : "탈퇴하면 자녀 프로필과 응답 데이터가 파기 절차로 넘어갑니다."
+            : "탈퇴하면 학생 프로필과 응답 데이터가 파기 절차로 넘어갑니다."
         }
       />
 
@@ -898,7 +898,7 @@ export default function MyPage({
   const flat = groups.flatMap((g) => g.items);
   /**
    * 실제로 켜져 있는 항목. 탈퇴는 목록 밖에 따로 있고, 역할을 바꾸면 지금 보던 섹션이
-   * 메뉴에서 사라질 수 있다(자녀 관리 ↔ 기관 정보). 두 경우 모두 여기서 정리한다.
+   * 메뉴에서 사라질 수 있다(학생 관리 ↔ 기관 정보). 두 경우 모두 여기서 정리한다.
    */
   const active: SectionId =
     section === "leave" ? "leave" : (flat.find((i) => i.id === section)?.id ?? flat[0].id);
@@ -960,7 +960,7 @@ export default function MyPage({
         href={audience === "org" ? "/org" : "/my"}
         className={`${t.btnQuiet} self-start sm:self-auto`}
       >
-        {audience === "org" ? "기관 대시보드" : "자녀 현황 보기"}
+        {audience === "org" ? "기관 대시보드" : "학생 현황 보기"}
       </Link>
           </section>
 

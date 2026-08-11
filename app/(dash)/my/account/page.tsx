@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 };
 
 const links = [
-  { href: "/my/children", label: "자녀 프로필", desc: "아이 등록과 접속코드 관리" },
+  { href: "/my/children", label: "학생 프로필", desc: "아이 등록과 접속코드 관리" },
   { href: "/my/account/notification", label: "알림 설정", desc: "응시 안내·리포트 발행 채널" },
   { href: "/my/children/consent-stages", label: "단계별 동의 관리", desc: "무엇에 동의했는지 확인" },
-  { href: "/my/account/leave", label: "회원 탈퇴", desc: "탈퇴 시 자녀 데이터 처리 방침" },
+  { href: "/my/account/leave", label: "회원 탈퇴", desc: "탈퇴 시 학생 데이터 처리 방침" },
 ];
 
 /** ACC-04 내 정보 설정 */

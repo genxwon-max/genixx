@@ -85,7 +85,7 @@ export default function StudentRegistrar({
   const mine = roster.filter((s) => s.owner === mode);
 
   const isDirector = mode === "director";
-  const noun = isDirector ? "학생" : "자녀";
+  const noun = "학생";
 
   const addOne = () => {
     if (!form.name.trim()) return setFormError("이름을 입력해 주세요.");
@@ -118,7 +118,7 @@ export default function StudentRegistrar({
     runPreview(text);
   };
 
-  /** 학부모로 들어오면 아직 설문이 남은 자녀를 바로 안내한다 */
+  /** 학부모로 들어오면 아직 설문이 남은 학생을 바로 안내한다 */
   const pendingParent =
     !isDirector && hydrated
       ? mine.filter((s) => {
@@ -141,9 +141,9 @@ export default function StudentRegistrar({
     <div className="container-x py-8 md:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-exam-text/80 pb-5">
         <div>
-          <p className={eyebrow}>{isDirector ? "ORG-02 · 소속 관리" : "ACC-03 · 자녀 프로필 관리"}</p>
+          <p className={eyebrow}>{isDirector ? "소속 관리" : "학생 프로필 관리"}</p>
           <h1 className="mt-2.5 text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
-            {isDirector ? "학원생 명부 관리" : "자녀 등록 관리"}
+            학생 등록 관리
           </h1>
           <p className="mt-2 text-[12px] text-exam-muted">
             {ownerName} · 등록 {hydrated ? mine.length : 0}명
@@ -167,7 +167,7 @@ export default function StudentRegistrar({
           note={
             isDirector
               ? "한 명씩 추가하거나, 엑셀에서 복사해 붙여넣거나, CSV 파일을 올릴 수 있습니다."
-              : "자녀를 한 명씩 추가하거나, 여러 명을 한 번에 올릴 수 있습니다."
+              : "학생을 한 명씩 추가하거나, 여러 명을 한 번에 올릴 수 있습니다."
           }
         >
           {noun} 등록
@@ -375,7 +375,7 @@ export default function StudentRegistrar({
             ) : undefined
           }
         >
-          {isDirector ? "학원생 명부" : "자녀 목록"}
+          학생 목록
         </SectionTitle>
 
         <div className="overflow-x-auto">
@@ -509,7 +509,7 @@ export default function StudentRegistrar({
         진행할 수 있습니다.
         {isDirector
           ? " 지도교사 관찰 설문은 위 명부에서 학생별로 바로 입력할 수 있습니다."
-          : " 학부모 설문은 위 목록에서 자녀별로 어머니·아버지가 각각 입력합니다."}
+          : " 학부모 설문은 위 목록에서 학생별로 어머니·아버지가 각각 입력합니다."}
       </p>
 
       {showPrompt && (
@@ -533,7 +533,7 @@ export default function StudentRegistrar({
   );
 }
 
-/** 학부모 접속 시 자녀별 설문을 바로 안내하는 창 */
+/** 학부모 접속 시 학생별 설문을 바로 안내하는 창 */
 function ParentSurveyPrompt({
   students,
   onPick,
@@ -554,7 +554,7 @@ function ParentSurveyPrompt({
         <div className="border-b border-exam-line px-6 py-5">
           <p className={eyebrow}>ASM-05 · 학부모 설문</p>
           <h2 id="parent-survey-title" className="mt-2 text-[19px] font-black text-exam-text">
-            자녀의 특징을 알려 주세요
+            학생의 특징을 알려 주세요
           </h2>
           <p className="mt-2.5 text-[13px] leading-relaxed text-exam-muted">
             평소 어떤 것에 몰입하는지, 어떤 방식으로 문제를 푸는지 등 가정에서 관찰한 모습을

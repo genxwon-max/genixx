@@ -6,7 +6,7 @@ import { useSession, type Role } from "@/lib/authStore";
 
 const tabsByRole: Record<Role, { label: string; href: string }[]> = {
   director: [
-    { label: "학원생 명부", href: "/exam/roster" },
+    { label: "학생 명부", href: "/my/students" },
     { label: "응시 현황", href: "/exam" },
   ],
   parent: [

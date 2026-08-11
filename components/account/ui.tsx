@@ -147,19 +147,15 @@ export function StepBar({
 export function SectionTitle({
   title,
   note,
-  id,
 }: {
   title: string;
   note?: React.ReactNode;
-  /** 사이트맵 화면 ID */
+  /** 사이트맵 화면 ID. AccHead와 마찬가지로 화면에는 그리지 않는다. */
   id?: string;
 }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 className="text-[22px] font-bold tracking-tight text-soft-ink">
-        {title}
-        {id && <span className="ml-2.5 text-[13px] font-normal text-slate-400">{id}</span>}
-      </h2>
+      <h2 className="text-[22px] font-bold tracking-tight text-soft-ink">{title}</h2>
       {note && <p className="text-[13px] text-soft-muted">{note}</p>}
     </div>
   );
@@ -225,12 +221,15 @@ export const cardPad = "p-6 sm:p-8";
 export const btnGhost = btnSm;
 
 export function AccHead({
-  id,
   title,
   lead,
   back,
 }: {
-  id: string;
+  /**
+   * 사이트맵 화면 ID. 화면에는 그리지 않는다 — 실제 서비스 화면이라 사용자에게
+   * 보일 값이 아니다. 정의서와 대조할 때 코드에서 찾을 수 있도록 프롭으로만 남긴다.
+   */
+  id?: string;
   title: string;
   lead?: string;
   back?: { href: string; label: string };
@@ -245,8 +244,7 @@ export function AccHead({
           ← {back.label}
         </Link>
       )}
-      <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-soft-muted">{id}</p>
-      <h1 className="mt-2 text-[26px] font-bold leading-tight tracking-tight text-soft-ink sm:text-[30px]">
+      <h1 className="text-[26px] font-bold leading-tight tracking-tight text-soft-ink sm:text-[30px]">
         {title}
       </h1>
       {lead && <p className="mt-3 text-[15px] leading-relaxed text-soft-muted">{lead}</p>}

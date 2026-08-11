@@ -93,10 +93,10 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/exam/roster?tab=one" className={t.btnOutline}>
+          <Link href="/my/students?tab=one" className={t.btnOutline}>
             + 학생 개별 등록
           </Link>
-          <Link href="/exam/roster?tab=bulk" className={t.btnAction}>
+          <Link href="/my/students?tab=bulk" className={t.btnAction}>
             + 학생 일괄 등록
           </Link>
         </div>
@@ -126,10 +126,10 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
       있습니다. 학생은 따로 가입하지 않습니다.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-2.5">
-            <Link href="/exam/roster?tab=one" className={t.btnOutline}>
+            <Link href="/my/students?tab=one" className={t.btnOutline}>
               + 학생 개별 등록
             </Link>
-            <Link href="/exam/roster?tab=bulk" className={t.btnAction}>
+            <Link href="/my/students?tab=bulk" className={t.btnAction}>
               + 학생 일괄 등록
             </Link>
           </div>
@@ -149,7 +149,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
                 접속코드를 다시 안내하거나 응시 기간을 알려 주세요.
               </p>
             </div>
-            <Link href="/exam/roster" className={t.btnQuiet}>
+            <Link href="/my/students" className={t.btnQuiet}>
               명부 열기
             </Link>
           </div>

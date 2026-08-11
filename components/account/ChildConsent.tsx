@@ -17,14 +17,14 @@ import { labelText as fieldLabel, field as input } from "@/components/account/ui
 import { AccHead, btnGhost, btnPrimary, card, cardPad, childStepLabels, LegalNote, StepBar } from "./ui";
 
 /**
- * ACC-03-1 법정대리인 동의 (B00) — 자녀 등록 흐름의 최선행.
+ * ACC-03-1 법정대리인 동의 (B00) — 학생 등록 흐름의 최선행.
  *
  * 만 14세 기준으로 동의 주체가 갈리므로, 생년월일을 가장 먼저 받는다.
  * 이때 받는 것은 생년월일 하나뿐이다. 어떤 법적 근거로 무엇을 받아야 하는지
  * 정하기 위한 최소 정보라서, 다른 항목은 다음 화면(B01~B10)으로 미룬다.
  *
- * 화면 제목은 「자녀 등록」이다. 사용자는 아이를 등록하러 왔지, 법정대리인 동의를
- * 하러 온 것이 아니다. 법률 용어는 부제와 근거 상자에 둔다. 자녀가 없는 계정은
+ * 화면 제목은 「학생 등록」이다. 사용자는 아이를 등록하러 왔지, 법정대리인 동의를
+ * 하러 온 것이 아니다. 법률 용어는 부제와 근거 상자에 둔다. 학생이 없는 계정은
  * 로그인하면 여기로 바로 오기 때문에, 3단계 중 첫 칸이라는 것을 위에 세워 둔다.
  */
 export default function ChildConsent() {
@@ -72,7 +72,7 @@ export default function ChildConsent() {
     <>
       <AccHead
         id="ACC-03-1"
-        title="자녀 등록"
+        title="학생 등록"
         lead="먼저 동의를 받습니다. 아이의 생년월일에 따라 누가 동의해야 하는지가 달라집니다."
         back={{ href: "/my", label: "홈으로" }}
       />

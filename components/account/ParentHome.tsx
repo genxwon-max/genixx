@@ -13,10 +13,10 @@ import { EmptyChild } from "./AuthArt";
 /**
  * ACC-03 학부모 홈 (/my) — 로그인 후 도착하는 대시보드.
  *
- * 자녀 목록만 나열하지 않고, 아이마다 지금 어디까지 왔는지와 다음에 할 일을 한 줄로
+ * 학생 목록만 나열하지 않고, 아이마다 지금 어디까지 왔는지와 다음에 할 일을 한 줄로
  * 붙인다. 진행 상황은 명부(lib/roster)와 응시 기록(lib/examStore)을 짝지어 계산한다.
  *
- * 자녀가 없어도 다른 화면으로 밀어내지 않는다. 대신 여기서 등록을 시작한다.
+ * 학생이 없어도 다른 화면으로 밀어내지 않는다. 대신 여기서 등록을 시작한다.
  * 클리포(clipo.ai)의 「등록된 학생이 없어요」 빈 상태와 같은 구성이다 — 제목·설명은
  * 왼쪽, 주 액션은 오른쪽 위, 가운데는 지금 무엇이 없고 무엇을 하면 되는지.
  *
@@ -51,10 +51,10 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Link href="/my/children/consent" className={t.btnOutline}>
-            + 자녀 개별 등록
+            + 학생 개별 등록
           </Link>
-          <Link href="/my/children/import" className={t.btnAction}>
-            + 자녀 일괄 등록
+          <Link href="/my/students?tab=bulk" className={t.btnAction}>
+            + 학생 일괄 등록
           </Link>
         </div>
       </header>
@@ -65,17 +65,17 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
         /* 빈 상태 — 다른 화면으로 밀어내지 않고 여기서 시작한다 */
         <section className={`${t.card} mt-6 px-6 py-14 text-center`}>
           <EmptyChild className="mx-auto h-32 w-auto" accent="#365eef" />
-          <p className="mt-6 text-[18px] font-bold">등록된 자녀가 없어요.</p>
+          <p className="mt-6 text-[18px] font-bold">등록된 학생이 없어요.</p>
           <p className={`mx-auto mt-2.5 max-w-md text-[14px] leading-[1.7] ${t.muted}`}>
             아이를 등록하면 접속코드가 발급됩니다. 아이는 따로 가입하지 않고, 그 코드와
             생년월일로 응시 화면에 들어갑니다.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-2.5">
             <Link href="/my/children/consent" className={t.btnOutline}>
-              + 자녀 개별 등록
+              + 학생 개별 등록
             </Link>
-            <Link href="/my/children/import" className={t.btnAction}>
-              + 자녀 일괄 등록
+            <Link href="/my/students?tab=bulk" className={t.btnAction}>
+              + 학생 일괄 등록
             </Link>
           </div>
         </section>
@@ -132,7 +132,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
                         variant === 1 ? "text-acc-primary" : "text-soft-primary"
                       } hover:underline`}
                     >
-                      자녀 관리 →
+                      학생 관리 →
                     </Link>
                   </div>
                 </li>

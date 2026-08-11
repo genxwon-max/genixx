@@ -9,8 +9,8 @@ import { ArrowRight } from "@/components/Icons";
 import { AccHead, btnGhost, btnPrimary, card, cardPad } from "./ui";
 
 /**
- * ACC-03 자녀(학생) 프로필 관리.
- * 다자녀를 지원하고, 프로필 단위로 응시·리포트 이력이 귀속된다.
+ * ACC-03 학생(학생) 프로필 관리.
+ * 여러 명을 지원하고, 프로필 단위로 응시·리포트 이력이 귀속된다.
  * 아이마다 만 14세 기준이 다를 수 있으므로 목록에서 동의 주체를 함께 보여 준다.
  */
 export default function ChildList() {
@@ -29,27 +29,27 @@ export default function ChildList() {
         <div className="min-w-0 flex-1">
           <AccHead
             id="ACC-03"
-            title="자녀 프로필"
+            title="학생 프로필"
             lead="아이마다 프로필을 따로 둡니다. 응시 기록과 리포트는 프로필 단위로 쌓입니다."
             back={{ href: "/my", label: "홈으로" }}
           />
         </div>
         {children.length > 0 && (
           <Link href="/my/children/consent" className={`${btnPrimary} mt-8 shrink-0`}>
-            + 자녀 등록
+            + 학생 등록
           </Link>
         )}
       </div>
 
       {children.length === 0 ? (
         <div className={`${card} ${cardPad} text-center`}>
-          <p className="text-[16px] font-black text-soft-ink">아직 등록된 자녀가 없습니다</p>
+          <p className="text-[16px] font-black text-soft-ink">아직 등록된 학생이 없습니다</p>
           <p className="mt-2.5 text-[14px] leading-relaxed text-soft-muted">
             등록은 <b>법정대리인 동의</b>부터 시작합니다. 아이 생년월일에 따라 누가 동의해야 하는지
             안내해 드립니다.
           </p>
           <Link href="/my/children/consent" className={`${btnPrimary} mt-6`}>
-            자녀 등록 시작하기
+            학생 등록 시작하기
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

@@ -138,7 +138,7 @@ export default function StudentLogin() {
   return (
     <div className="mx-auto w-full max-w-lg">
       <div className={`p-7 text-center md:p-10 ${panel}`}>
-        <p className={eyebrow}>ACC-02-1 · 학생 응시 로그인</p>
+        <p className={eyebrow}>학생 응시 로그인</p>
         <h1 className="mt-3 text-[24px] font-black tracking-tight text-exam-text">
           접속코드를 입력해 주세요
         </h1>

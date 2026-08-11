@@ -62,7 +62,7 @@ export default function ChildNew() {
   if (!consentDone(draft)) {
     return (
       <>
-        <AccHead id="ACC-03-2" title="자녀 등록" />
+        <AccHead id="ACC-03-2" title="학생 등록" />
         <div className="mb-5">
           <StepBar current={0} labels={childStepLabels} />
         </div>
@@ -114,7 +114,7 @@ export default function ChildNew() {
     <>
       <AccHead
         id="ACC-03-2"
-        title="자녀 등록"
+        title="학생 등록"
         lead="진단 결과를 해석할 때 필요한 항목만 받습니다."
         back={{ href: "/my/children/consent", label: "동의 단계로" }}
       />
@@ -263,7 +263,7 @@ function IssuedView({
 }) {
   return (
     <>
-      <AccHead id="ACC-03-2" title="자녀 등록" lead="등록이 끝났습니다." />
+      <AccHead id="ACC-03-2" title="학생 등록" lead="등록이 끝났습니다." />
 
       <div className="mb-5">
         <StepBar current={2} labels={childStepLabels} />
@@ -300,7 +300,7 @@ function IssuedView({
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link href="/my/children/consent" className={`${btnGhost} w-full`}>
-            자녀 더 등록하기
+            학생 더 등록하기
           </Link>
         </div>
       </div>
