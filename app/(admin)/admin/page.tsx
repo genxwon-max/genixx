@@ -1,56 +1,21 @@
 import Link from "next/link";
-import { approvals, gradingQueue, inquiries, items, rounds, pending } from "@/lib/admin";
+import {
+  approvals,
+  gradingQueue,
+  hitlFlow,
+  inquiries,
+  items,
+  roleOf,
+  rounds,
+} from "@/lib/admin";
 import { PageHead, StatCard, Progress, TableCard, Badge } from "@/components/admin/Parts";
+import TodayQueue from "@/components/admin/TodayQueue";
 import { caseStates } from "@/lib/admin";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "대시보드 · GENIXX 관리자" };
 
 const round = rounds[0];
-
-/** 오늘 반드시 처리해야 하는 것만 추린다. 숫자 나열이 아니라 할 일 목록으로 만든다. */
-const todo = [
-  {
-    label: "AI 분석이 끝나 검토를 기다리는 응시",
-    count: pending.grading,
-    unit: "건",
-    href: "/admin/grading",
-    urgent: true,
-    note: "이 중 판정 컷 경계 사례는 확정하지 말고 케이스 회의로 넘깁니다.",
-  },
-  {
-    label: "케이스 회의에서 합의해야 하는 경계 사례",
-    count: pending.cases,
-    unit: "건",
-    href: "/admin/grading",
-    urgent: true,
-    note: "오늘 오후 4시 회의 안건입니다.",
-  },
-  {
-    label: "소속 확인을 기다리는 교사·기관 가입",
-    count: pending.approvals,
-    unit: "건",
-    href: "/admin/approvals",
-    urgent: false,
-    note: "승인 전에는 학생 자료를 볼 수 없습니다.",
-  },
-  {
-    label: "답변하지 않은 문의",
-    count: pending.inquiries,
-    unit: "건",
-    href: "/admin/inquiries",
-    urgent: false,
-    note: "24시간이 지난 문의가 1건 있습니다.",
-  },
-  {
-    label: "교차 검수를 기다리는 문항",
-    count: pending.items,
-    unit: "건",
-    href: "/admin/items",
-    urgent: false,
-    note: "작성자 본인은 검수할 수 없습니다.",
-  },
-];
 
 export default function AdminHome() {
   const soon = gradingQueue.filter((c) => c.state === "ai" || c.state === "conference").slice(0, 4);
@@ -61,49 +26,65 @@ export default function AdminHome() {
         id="ADM-01"
         title="오늘 할 일"
         lead={`${round.label} (${round.period}) 기준입니다. 아래 목록을 위에서부터 처리하시면 됩니다.`}
-        action={
-          <Link href="/admin/grading" className={a.btnPrimary}>
-            채점·판정 큐 열기
-          </Link>
-        }
       />
 
-      {/* ① 할 일 — 대시보드의 첫 화면은 지표가 아니라 처리할 목록이어야 한다 */}
-      <section className={`${a.panel} overflow-hidden`}>
-        <h2 className="border-b border-exam-line px-5 py-4 adm-t-lg font-black text-exam-text">
-          처리 대기 {todo.reduce((s, t) => s + t.count, 0)}건
-        </h2>
-        <ul>
-          {todo.map((t) => (
-            <li key={t.label} className="border-b border-exam-line last:border-b-0">
+      {/* ① 할 일 — 지표가 아니라 처리할 목록이 먼저다. 역할이 손댈 수 있는 것만 남는다 */}
+      <TodayQueue />
+
+      {/* ② 사람이 도는 순환 — 이 콘솔이 무엇을 위한 도구인지 한 줄로 보여 주는 자리 */}
+      <section className={`${a.panel} mt-6 p-5`}>
+        <h2 className={a.cardTitle}>문항이 도는 길</h2>
+        <p className="mt-1.5 adm-t-sm text-exam-muted">
+          AI가 초안을 내도 확정은 사람이 합니다. 출제자와 검수자는 권한이 갈려 있어, 자기가 쓴
+          문항을 자기가 승인할 수 없습니다.
+        </p>
+
+        <ol className="mt-5 grid gap-3 lg:grid-cols-4">
+          {hitlFlow.map((step, i) => (
+            <li key={step.id} className="relative">
               <Link
-                href={t.href}
-                className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 transition-colors hover:bg-exam-raised"
+                href={step.href}
+                className="flex h-full flex-col rounded-lg border border-exam-line bg-exam-panel p-4 transition-colors hover:border-brand-600 hover:bg-white"
               >
+                <span className="flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-900 adm-t-xs font-black text-white"
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="adm-t-md font-black text-exam-text">{step.title}</span>
+                </span>
+                <span className="mt-1 adm-t-xs font-bold text-brand-700">
+                  {roleOf(step.role).short}
+                </span>
+                <span className="mt-2 flex-1 adm-t-sm leading-relaxed text-exam-muted">
+                  {step.desc}
+                </span>
+                <span className="mt-3 adm-t-sm font-bold text-exam-text">
+                  대기 <span className="tabular-nums">{step.count}</span>건
+                </span>
+              </Link>
+              {/* 마지막 칸 뒤에는 화살표를 붙이지 않는다 */}
+              {i < hitlFlow.length - 1 && (
                 <span
                   aria-hidden
-                  className={`${a.dot} ${t.urgent ? "bg-rose-500" : "bg-exam-line"}`}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block adm-t-md font-bold text-exam-text">{t.label}</span>
-                  <span className="mt-0.5 block adm-t-sm text-exam-muted">{t.note}</span>
-                </span>
-                <span
-                  className={`adm-t-lg font-black tabular-nums ${
-                    t.urgent ? "text-rose-700" : "text-exam-text"
-                  }`}
+                  className="pointer-events-none absolute -right-2.5 top-1/2 hidden -translate-y-1/2 adm-t-md text-exam-muted lg:block"
                 >
-                  {t.count}
-                  <span className="ml-1 adm-t-sm font-bold text-exam-muted">{t.unit}</span>
+                  →
                 </span>
-                <span className="adm-t-sm font-bold text-brand-700">처리하기 →</span>
-              </Link>
+              )}
             </li>
           ))}
-        </ul>
+        </ol>
+
+        <p className="mt-4 rounded-md bg-exam-panel px-4 py-3 adm-t-sm text-exam-muted">
+          반려되면 2번에서 1번으로 되돌아갑니다. 사유 코드와 코멘트가 문항에 붙어 출제자에게
+          그대로 전달됩니다.
+        </p>
       </section>
 
-      {/* ② 회차 진행 */}
+      {/* ③ 회차 진행 */}
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
         <section className={`${a.panel} p-5`}>
           <h2 className={a.cardTitle}>{round.label} 진행 상황</h2>

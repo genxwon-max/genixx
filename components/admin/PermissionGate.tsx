@@ -20,6 +20,9 @@ const permissionLabel: Record<PermissionId, string> = {
   "inquiry.reply": "문의 답변",
   "audit.read": "감사 로그 열람",
   "staff.manage": "운영자 관리",
+  "report.publish": "리포트 발행 승인",
+  "psychometrics.read": "심리측정 분석",
+  "system.manage": "시스템 설정",
 };
 
 /**

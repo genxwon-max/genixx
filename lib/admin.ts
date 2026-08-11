@@ -32,13 +32,19 @@ export type PermissionId =
   | "content.publish" // 콘텐츠 발행
   | "inquiry.reply" // 문의 답변
   | "audit.read" // 감사 로그 열람
-  | "staff.manage"; // 운영자 계정·권한 관리
+  | "staff.manage" // 운영자 계정·권한 관리
+  | "report.publish" // 리포트 발행 승인 (EXP-08-3)
+  | "psychometrics.read" // 심리측정 분석 콘솔 (ADM-07)
+  | "system.manage"; // 시스템 설정 (ADM-13)
 
-export type StaffRoleId = "super" | "assess" | "item" | "org" | "cs";
+/** 정의서 9장의 HITL 4역할. 출제자와 검수자는 이해충돌을 막기 위해 권한을 맞물려 가른다. */
+export type StaffRoleId = "super" | "author" | "reviewer" | "master";
 
 export type StaffRole = {
   id: StaffRoleId;
   label: string;
+  /** 좁은 자리에 쓰는 짧은 이름 */
+  short: string;
   desc: string;
   tone: string;
   permissions: PermissionId[];
@@ -47,8 +53,9 @@ export type StaffRole = {
 export const staffRoles: StaffRole[] = [
   {
     id: "super",
-    label: "총괄 관리자",
-    desc: "전 권한. 운영자 계정과 권한을 직접 관리합니다.",
+    label: "관리자 (슈퍼 관리자)",
+    short: "관리자",
+    desc: "시스템 전반 및 통합 관리. 운영자 계정과 권한을 직접 다룹니다.",
     tone: "border-brand-300 bg-brand-50 text-brand-700",
     permissions: [
       "member.read",
@@ -66,42 +73,86 @@ export const staffRoles: StaffRole[] = [
       "inquiry.reply",
       "audit.read",
       "staff.manage",
+      "report.publish",
+      "psychometrics.read",
+      "system.manage",
     ],
   },
   {
-    id: "assess",
-    label: "평가·판정",
-    desc: "AI 제안값을 검토하고 케이스 회의에서 판정을 확정합니다.",
+    id: "author",
+    label: "출제자",
+    short: "출제자",
+    desc: "문제 출제 및 편집. 반려된 문제를 확인하고 고칩니다.",
+    tone: "border-emerald-300 bg-emerald-50 text-emerald-700",
+    // 검수 권한(item.review)이 없다. 자기가 낸 문제를 자기가 승인하지 못하게
+    // 구조적으로 갈라 두는 것이 이 콘솔의 전제다(정의서 9장).
+    permissions: ["item.write", "round.manage"],
+  },
+  {
+    id: "reviewer",
+    label: "검수자",
+    short: "검수자",
+    desc: "출제 문제 검수 및 승인 여부 결정. 코멘트로 검수 내용을 적고 반려합니다.",
     tone: "border-amber-300 bg-amber-50 text-amber-700",
+    // 작성 권한(item.write)이 없다 — 출제자와 맞물린 반대쪽 칸이다.
+    permissions: ["item.review", "round.manage"],
+  },
+  {
+    id: "master",
+    label: "마스터",
+    short: "마스터",
+    desc: "결과 해석, 진단 및 결과 승인. 발행 전 마지막 관문입니다.",
+    tone: "border-accent-300 bg-accent-100 text-accent-600",
     permissions: [
       "member.read",
       "student.pii",
       "round.manage",
       "grade.review",
       "grade.confirm",
+      "report.publish",
+      "psychometrics.read",
       "audit.read",
     ],
   },
+];
+
+/**
+ * 사람이 도는 순환 — 정의서 9장의 HITL 구조를 화면에 그대로 옮긴 것.
+ * 출제자가 내고, 검수자가 보고, 반려되면 출제자에게 되돌아온다. 승인된 뒤에야
+ * 문항 은행에 올라간다.
+ */
+export const hitlFlow = [
   {
-    id: "item",
-    label: "출제·검수",
-    desc: "문항을 만들고 교차 검수합니다. 학생 개인정보에는 접근할 수 없습니다.",
-    tone: "border-emerald-300 bg-emerald-50 text-emerald-700",
-    permissions: ["item.write", "item.review", "round.manage"],
+    id: "write",
+    role: "author" as StaffRoleId,
+    title: "문제 출제",
+    desc: "발주 사양에 맞춰 지문·발문·선택지·해설을 쓰고 이중태그를 붙입니다.",
+    href: "/admin/authoring",
+    count: 5,
   },
   {
-    id: "org",
-    label: "기관·정산",
-    desc: "기관 계약과 응시권 배정, 결제 정산을 담당합니다.",
-    tone: "border-accent-300 bg-accent-100 text-accent-600",
-    permissions: ["member.read", "member.approve", "student.code", "org.manage", "billing.read"],
+    id: "review",
+    role: "reviewer" as StaffRoleId,
+    title: "검수 · 코멘트",
+    desc: "교과 정확성·정답 유일성·학년 이독성·편향을 봅니다. 문제가 있으면 사유 코드와 코멘트를 달아 반려합니다.",
+    href: "/admin/review",
+    count: 8,
   },
   {
-    id: "cs",
-    label: "고객지원",
-    desc: "문의에 답변하고 콘텐츠를 발행합니다. 판정에는 관여하지 않습니다.",
-    tone: "border-exam-line bg-exam-raised text-exam-muted",
-    permissions: ["member.read", "content.publish", "inquiry.reply"],
+    id: "revise",
+    role: "author" as StaffRoleId,
+    title: "반려분 수정",
+    desc: "반려 사유를 확인하고 고쳐 다시 제출합니다. 다시 검수로 넘어갑니다.",
+    href: "/admin/authoring",
+    count: 3,
+  },
+  {
+    id: "approve",
+    role: "reviewer" as StaffRoleId,
+    title: "승인 · 문항 은행 등재",
+    desc: "통과한 문항만 은행에 올라가 검사지 조립 대상이 됩니다.",
+    href: "/admin/items",
+    count: 0,
   },
 ];
 
@@ -113,6 +164,11 @@ export function can(role: StaffRoleId, permission: PermissionId) {
   return roleOf(role).permissions.includes(permission);
 }
 
+/** 문항 은행처럼 출제자·검수자가 함께 보는 화면을 위해 — 하나만 있어도 통과 */
+export function canAny(role: StaffRoleId, needs: PermissionId | PermissionId[]) {
+  return Array.isArray(needs) ? needs.some((n) => can(role, n)) : can(role, needs);
+}
+
 /* ───────────────────────── 메뉴 (ADM 사이트맵) ───────────────────────── */
 
 export type AdminMenuItem = {
@@ -121,8 +177,8 @@ export type AdminMenuItem = {
   label: string;
   href: string;
   desc: string;
-  /** 이 화면을 열기 위해 필요한 권한 */
-  needs: PermissionId;
+  /** 이 화면을 열기 위해 필요한 권한. 배열이면 하나만 있어도 된다. */
+  needs: PermissionId | PermissionId[];
   /** 사이드바에 표시할 대기 건수 키 */
   badge?: keyof typeof pending;
 };
@@ -139,6 +195,12 @@ export const pending = {
   cases: 3,
   inquiries: 9,
   items: 5,
+  /** 출제자에게 돌아온 반려분 */
+  authoring: 3,
+  /** 검수자 앞에 쌓인 제출분 */
+  review: 8,
+  /** 마스터 앞에 쌓인 발행 대기 리포트 */
+  reports: 4,
 } as const;
 
 export const adminMenu: AdminMenuGroup[] = [
@@ -146,45 +208,81 @@ export const adminMenu: AdminMenuGroup[] = [
     label: "운영 현황",
     items: [
       {
-        id: "ADM-01",
+        id: "ADM-01 · EXP-01",
         label: "대시보드",
         href: "/admin",
-        desc: "회차 진행률과 오늘 처리해야 할 큐",
-        needs: "member.read",
+        desc: "내 역할의 큐와 회차 진행률",
+        needs: ["member.read", "item.write", "item.review", "grade.review"],
       },
     ],
   },
   {
-    label: "진단 운영",
+    label: "문항 (출제 · 검수)",
     items: [
       {
-        id: "ADM-06",
-        label: "채점·판정 큐",
-        href: "/admin/grading",
-        desc: "AI 1차 제안값 검토 → 전문가 확정",
-        needs: "grade.review",
-        badge: "grading",
+        id: "EXP-02",
+        label: "출제 워크벤치",
+        href: "/admin/authoring",
+        desc: "발주 사양 확인 → 초안 작성 → 이중태그 → 제출",
+        needs: "item.write",
+        badge: "authoring",
+      },
+      {
+        id: "EXP-03",
+        label: "검수 워크벤치",
+        href: "/admin/review",
+        desc: "내용·태깅·윤리 3단 검수와 사유 코드 반려",
+        needs: "item.review",
+        badge: "review",
       },
       {
         id: "ADM-04",
-        label: "회차·응시 현황",
-        href: "/admin/rounds",
-        desc: "과목별 진행·포기·제출과 설문 수집률",
-        needs: "round.manage",
-      },
-      {
-        id: "ADM-05",
         label: "문항 은행",
         href: "/admin/items",
-        desc: "작성 → 교차 검수 → 승인 워크플로",
-        needs: "item.review",
+        desc: "승인된 문항의 좌표·태그·버전과 검사지 조립",
+        needs: ["item.write", "item.review"],
         badge: "items",
       },
     ],
   },
   {
-    label: "회원·기관",
+    label: "판정 · 리포트",
     items: [
+      {
+        id: "EXP-04 · EXP-07",
+        label: "채점·판정 큐",
+        href: "/admin/grading",
+        desc: "AI 1차 제안값 검토 → 케이스 회의 → 확정",
+        needs: "grade.review",
+        badge: "grading",
+      },
+      {
+        id: "EXP-08",
+        label: "리포트 승인",
+        href: "/admin/report-approval",
+        desc: "조립된 리포트 확인·문구 수정 후 발행",
+        needs: "report.publish",
+        badge: "reports",
+      },
+      {
+        id: "ADM-07",
+        label: "심리측정 분석",
+        href: "/admin/psychometrics",
+        desc: "IRT 문항분석·타당도·DIF·판정 컷",
+        needs: "psychometrics.read",
+      },
+    ],
+  },
+  {
+    label: "회차 · 회원 · 기관",
+    items: [
+      {
+        id: "ADM-05",
+        label: "회차·응시 현황",
+        href: "/admin/rounds",
+        desc: "과목별 진행·포기·제출과 설문 수집률",
+        needs: "round.manage",
+      },
       {
         id: "ADM-02-2",
         label: "가입 승인 대기",
@@ -194,21 +292,21 @@ export const adminMenu: AdminMenuGroup[] = [
         badge: "approvals",
       },
       {
-        id: "ADM-02-1",
+        id: "ADM-02",
         label: "회원",
         href: "/admin/members",
         desc: "학부모·교사·기관·학생 본인 계정",
         needs: "member.read",
       },
       {
-        id: "ADM-03",
+        id: "ADM-02-1",
         label: "학생·접속코드",
         href: "/admin/students",
         desc: "명부 통합 조회와 코드 재발급·회수",
         needs: "student.code",
       },
       {
-        id: "ADM-07",
+        id: "ORG-02",
         label: "기관",
         href: "/admin/orgs",
         desc: "계약 상태와 응시권 배정",
@@ -217,7 +315,7 @@ export const adminMenu: AdminMenuGroup[] = [
     ],
   },
   {
-    label: "고객·콘텐츠",
+    label: "고객 · 콘텐츠",
     items: [
       {
         id: "ADM-10",
@@ -235,7 +333,7 @@ export const adminMenu: AdminMenuGroup[] = [
         needs: "content.publish",
       },
       {
-        id: "ADM-08",
+        id: "ADM-12",
         label: "결제·정산",
         href: "/admin/billing",
         desc: "응시권 결제 내역과 기관 정산",
@@ -244,21 +342,28 @@ export const adminMenu: AdminMenuGroup[] = [
     ],
   },
   {
-    label: "보안·설정",
+    label: "보안 · 설정",
     items: [
       {
-        id: "ADM-11",
+        id: "ADM-10 · ADM-11",
         label: "개인정보·감사 로그",
         href: "/admin/audit",
         desc: "열람 사유 전건 기록과 파기 요청",
         needs: "audit.read",
       },
       {
-        id: "ADM-12",
+        id: "ADM-03",
         label: "운영자·권한",
         href: "/admin/staff",
-        desc: "운영자 계정과 역할별 권한",
+        desc: "운영자 계정과 역할별 권한(RBAC)",
         needs: "staff.manage",
+      },
+      {
+        id: "ADM-13",
+        label: "시스템 설정",
+        href: "/admin/settings",
+        desc: "외부 CBT 연동 키·PG·알림 채널·AI 엔드포인트",
+        needs: "system.manage",
       },
     ],
   },
@@ -921,7 +1026,7 @@ export const auditLog: AuditRow[] = [
     id: "L-88214",
     at: "2026-08-09 09:14:02",
     actor: "이서연",
-    role: "assess",
+    role: "master",
     action: "학생 개인정보 열람",
     target: "C-2603-0421 (응시번호 0421)",
     reason: "서술형 응답 해석을 위해 학년·생년월일 확인",
@@ -931,7 +1036,7 @@ export const auditLog: AuditRow[] = [
     id: "L-88213",
     at: "2026-08-09 09:02:47",
     actor: "정태호",
-    role: "assess",
+    role: "master",
     action: "판정 확정",
     target: "C-2603-0430",
     reason: null,
@@ -941,7 +1046,7 @@ export const auditLog: AuditRow[] = [
     id: "L-88212",
     at: "2026-08-09 08:51:10",
     actor: "강수아",
-    role: "org",
+    role: "super",
     action: "접속코드 재발급",
     target: "S-30118 (서울 강서 위드학원)",
     reason: "보호자 분실 신고 접수 (IQ-26080908)",
@@ -951,7 +1056,7 @@ export const auditLog: AuditRow[] = [
     id: "L-88211",
     at: "2026-08-09 08:33:55",
     actor: "이서연",
-    role: "assess",
+    role: "master",
     action: "학생 개인정보 열람",
     target: "C-2603-0418 (응시번호 0418)",
     reason: "판정 컷 경계 사례 — 교사 설문 부재 확인",
@@ -961,7 +1066,7 @@ export const auditLog: AuditRow[] = [
     id: "L-88210",
     at: "2026-08-09 08:20:41",
     actor: "노아름",
-    role: "cs",
+    role: "super",
     action: "문의 답변 발송",
     target: "IQ-26080816",
     reason: null,
@@ -981,7 +1086,7 @@ export const auditLog: AuditRow[] = [
     id: "L-88208",
     at: "2026-08-08 17:12:36",
     actor: "정태호",
-    role: "assess",
+    role: "master",
     action: "개인정보 파기 실행",
     target: "M-100461 (동의 철회 요청)",
     reason: "정보주체 파기 요청 — 처리 결과 통지 완료",
@@ -1011,12 +1116,12 @@ export type StaffRow = {
 
 export const staff: StaffRow[] = [
   { id: "U-01", name: "박서준", role: "super", team: "운영총괄", lastSeen: "방금", mfa: true },
-  { id: "U-04", name: "정태호", role: "assess", team: "평가팀", lastSeen: "12분 전", mfa: true },
-  { id: "U-05", name: "이서연", role: "assess", team: "평가팀", lastSeen: "3분 전", mfa: true },
-  { id: "U-07", name: "한나래", role: "item", team: "출제팀", lastSeen: "1시간 전", mfa: true },
-  { id: "U-08", name: "송준영", role: "item", team: "출제팀", lastSeen: "어제", mfa: false },
-  { id: "U-11", name: "강수아", role: "org", team: "기관사업팀", lastSeen: "24분 전", mfa: true },
-  { id: "U-14", name: "노아름", role: "cs", team: "고객지원팀", lastSeen: "6분 전", mfa: true },
+  { id: "U-04", name: "정태호", role: "master", team: "평가팀", lastSeen: "12분 전", mfa: true },
+  { id: "U-05", name: "이서연", role: "master", team: "평가팀", lastSeen: "3분 전", mfa: true },
+  { id: "U-07", name: "한나래", role: "author", team: "출제팀", lastSeen: "1시간 전", mfa: true },
+  { id: "U-08", name: "송준영", role: "author", team: "출제팀", lastSeen: "어제", mfa: false },
+  { id: "U-11", name: "강수아", role: "super", team: "기관사업팀", lastSeen: "24분 전", mfa: true },
+  { id: "U-14", name: "노아름", role: "super", team: "고객지원팀", lastSeen: "6분 전", mfa: true },
 ];
 
 /** 콘텐츠·정산처럼 아직 목록 화면만 정의된 자리 */
@@ -1044,9 +1149,68 @@ export const stubSections: Record<string, { id: string; title: string; lead: str
     ],
   },
   staff: {
-    id: "ADM-12",
+    id: "ADM-03",
     title: "운영자·권한",
     lead: "운영자 계정과 역할별 권한을 관리합니다. 권한 변경은 전건 감사 로그에 남습니다.",
     todo: [],
+  },
+  authoring: {
+    id: "EXP-02",
+    title: "출제 워크벤치",
+    lead: "발주 사양을 확인하고 문항을 씁니다. 반려된 문항도 여기로 돌아옵니다.",
+    todo: [
+      "EXP-02-1 발주서 — 영역·좌표·난이도·문항 수와 집필 지침",
+      "EXP-02-2 AI 초안 생성 — 좌표·S위계·학년을 넣어 n안을 받는다. AI 단독 확정은 막고 반드시 사람 편집을 거친다",
+      "EXP-02-3 문항 편집기 — 지문·발문·선택지·정답·해설·자료, 버전 이력 보존",
+      "EXP-02-4 이중태그 — Tag A(학력 내용축) × Tag B(재능·인지과정축) + S위계",
+      "EXP-02-5 제출 후 편집 잠금. 반려됐을 때만 다시 열린다",
+      "반려함 — 사유 코드와 검수자 코멘트를 문항 옆에 붙여 보여 준다",
+    ],
+  },
+  review: {
+    id: "EXP-03",
+    title: "검수 워크벤치",
+    lead: "제출된 문항을 3단으로 검수하고, 통과 여부를 결정합니다.",
+    todo: [
+      "EXP-03-1 1차 내용 검수 — 교과 정확성·발문 명료성·정답 유일성·학년 이독성",
+      "EXP-03-2 2차 태깅 교차검증 — 독립 태깅 후 Cohen's Kappa ≥ 0.7 도달까지 조정, 실시간 일치도 표시",
+      "EXP-03-3 3차 윤리·편향 검수 — 성·지역·문화·SES 편향, 아동 정서 적합성, 특수교육 접근성",
+      "EXP-03-4 반려 — 사유 코드 + 코멘트. 출제자에게 자동 회신되고 반려함에 쌓인다",
+      "승인하면 문항 은행(ADM-04)에 등재되어 검사지 조립 대상이 된다",
+      "자기가 쓴 문항은 검수 목록에 뜨지 않는다 — 출제자와 검수자를 갈라 둔 이유",
+    ],
+  },
+  "report-approval": {
+    id: "EXP-08",
+    title: "리포트 승인",
+    lead: "조립된 리포트를 확인하고 발행을 승인합니다. 승인 전에는 학부모 화면에 결과가 보이지 않습니다.",
+    todo: [
+      "EXP-08-1 생성 리포트 검토 — 전문을 보되, 어떤 규칙으로 어떤 블록이 뽑혔는지 근거를 함께 표시",
+      "EXP-08-2 문구 수정·오버라이드 — 템플릿 문구를 개별로 고치고 수정 이력을 따로 보존",
+      "EXP-08-3 발행 승인 — HITL 게이트의 물리적 구현. 승인 전 결과 미노출",
+      "라벨링 방지 점검 — 등급 표현이 아니라 발현 단계 서술인지 확인",
+    ],
+  },
+  psychometrics: {
+    id: "ADM-07",
+    title: "심리측정 분석",
+    lead: "문항과 척도가 실제로 재고 있는지 통계로 확인합니다.",
+    todo: [
+      "ADM-07-1 IRT 문항분석 — 변별도 a·난이도 b·추측도 c, Infit/Outfit MNSQ 적합도",
+      "ADM-07-2 타당도 — CFA(CFI·RMSEA), 수렴·판별타당도, 학력×재능 직교성 r 모니터",
+      "ADM-07-3 국소독립성·DIF — 잔차 상관(Yen's Q3), 성·지역·SES 차별기능 검출",
+      "ADM-07-4 판정 컷 — 1차 잠정 컷 → 분포 확인 후 확정. 변경 이력과 영향 시뮬레이션",
+    ],
+  },
+  settings: {
+    id: "ADM-13",
+    title: "시스템 설정",
+    lead: "외부 연동 키와 운영 스위치를 모아 둡니다. 값은 마스킹하고 변경은 감사 로그에 남깁니다.",
+    todo: [
+      "외부 CBT 벤더 연동 키와 SSO 규격 (정의서 미결 A-09)",
+      "PG·간편결제 키, 알림 채널(SMS·카카오·이메일) 발신 설정",
+      "AI 모델 엔드포인트와 저신뢰 자동 라우팅 임계값(confidence < 0.75)",
+      "기능 플래그 — 회차별로 켜고 끄는 심화진단·성장추적",
+    ],
   },
 };
