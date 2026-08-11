@@ -148,7 +148,7 @@ function UserMenu({ name, role }: { name: string; role: Role | undefined }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-9 items-center gap-1.5 rounded-full pl-2 pr-2.5 text-[14px] font-semibold text-soft-ink transition-colors hover:bg-slate-100"
+        className="flex h-9 items-center gap-1.5 rounded-full pl-2 pr-2.5 text-[14px] text-soft-ink transition-colors hover:bg-slate-100"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-soft-primary-soft text-[13px] font-bold text-soft-primary">
           {name.slice(0, 1)}
@@ -201,12 +201,15 @@ function UserMenu({ name, role }: { name: string; role: Role | undefined }) {
   );
 }
 
-/** 상단 오른쪽 상태 칩 */
+/**
+ * 상단 오른쪽 상태 표시.
+ * 알약을 세 개 늘어놓으면 헤더가 시끄러워진다. 면을 걷고 가는 선으로만 나눈다.
+ */
 function Chip({ k, v }: { k: string; v: string }) {
   return (
-    <span className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[12.5px] md:inline-flex">
+    <span className="hidden items-center gap-1.5 border-l border-soft-line pl-3 text-[12.5px] first:border-l-0 first:pl-0 md:inline-flex">
       <span className="text-soft-muted">{k}</span>
-      <span className="font-bold text-soft-ink">{v}</span>
+      <span className="font-medium text-soft-ink">{v}</span>
     </span>
   );
 }
@@ -271,7 +274,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
               {isOrg ? (session?.org ?? "소속 기관") : `${name}님`}
             </span>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-3">
               <Chip k="회차" v={assessment.round} />
               {dday !== null && (
                 <Chip k="응시 마감" v={dday > 0 ? `D-${dday}` : dday === 0 ? "오늘" : "마감"} />

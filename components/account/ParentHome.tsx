@@ -31,10 +31,6 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
 
   /* 시안별 잔가지 */
   const divide = variant === 1 ? "divide-acc-hairline" : "divide-slate-100";
-  const codeChip =
-    variant === 1
-      ? "rounded bg-acc-panel text-acc-ink"
-      : "rounded-full bg-soft-primary-soft text-soft-primary";
 
   const rows = hydrated ? children.map(progressOf) : [];
 
@@ -80,60 +76,52 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           </div>
         </section>
       ) : (
-        /* 학생 한 명이 한 줄. 여러 명을 위아래로 훑을 때 눈이 같은 자리를 따라간다. */
+        /*
+         * 학생 한 명이 한 줄. 배경·테두리를 두른 칩을 늘어놓지 않는다 — 한 줄에 색
+         * 덩어리가 다섯 개 있으면 정작 읽어야 할 이름과 코드가 묻힌다. 면을 걷고
+         * 글자만 남겼고, 굵기는 이름 하나에만 준다.
+         */
         <section className={`${t.card} mt-5 overflow-hidden`}>
           <ul className={`divide-y ${divide}`}>
             {rows.map((r) => {
               const age = ageFromBirth(r.student.birth);
+              const tone = phaseTone[r.phase];
               return (
                 <li
                   key={r.student.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5"
+                  className="flex flex-wrap items-baseline gap-x-5 gap-y-2 px-4 py-3.5"
                 >
-                  {/* 이름 + 접속코드 — 아이를 찾는 단서이자 건네줄 값이라 붙여 둔다 */}
-                  <span className="flex min-w-[13rem] items-center gap-2">
-                    <span className="text-[15px] font-bold">{r.student.name}</span>
-                    <span
-                      className={`px-2 py-0.5 text-[12.5px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
-                    >
+                  <span className="min-w-[11.5rem] text-[15px]">
+                    <span className="font-semibold">{r.student.name}</span>
+                    <span className={`ml-2.5 tracking-[0.06em] tabular-nums ${t.muted}`}>
                       {formatCode(r.student.code)}
                     </span>
                   </span>
 
-                  <span className={`hidden w-32 shrink-0 text-[12.5px] xl:block ${t.muted}`}>
+                  <span className={`hidden w-28 shrink-0 text-[13px] xl:block ${t.muted}`}>
                     {r.student.grade} · 만 {age ?? "—"}세
                   </span>
 
-                  {/* 과목은 셋뿐이라 막대 하나로 뭉치지 않고 한 칸씩 상태를 적는다 */}
-                  <ul className="flex min-w-0 flex-1 gap-1.5">
+                  {/* 과목 이름은 옅게, 상태만 색으로 — 세 과목을 한눈에 훑게 */}
+                  <span className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-1 text-[13px]">
                     {r.subjects.map((sub) => (
-                      <li
-                        key={sub.id}
-                        className={`flex min-w-0 flex-1 items-center justify-between gap-1 rounded-[8px] border px-2 py-1 ${
-                          subjectTone[sub.state][variant === 1 ? "v1" : "v2"]
-                        }`}
-                      >
-                        <span className="truncate text-[12.5px] font-semibold">{sub.short}</span>
-                        <span className="shrink-0 text-[11.5px] font-bold">{sub.state}</span>
-                      </li>
+                      <span key={sub.id} className="whitespace-nowrap">
+                        <span className={t.muted}>{sub.short}</span>{" "}
+                        <span className={subjectTone[sub.state]}>{sub.state}</span>
+                      </span>
                     ))}
-                  </ul>
+                  </span>
 
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11.5px] font-bold ${
-                      phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
-                    }`}
-                  >
+                  <span className={`flex shrink-0 items-center gap-1.5 text-[13px] ${tone.text}`}>
+                    <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
                     {r.phase}
                   </span>
 
                   <Link
                     href="/my/children"
-                    className={`shrink-0 text-[12.5px] font-semibold ${
-                      variant === 1 ? "text-acc-primary" : "text-soft-primary"
-                    } hover:underline`}
+                    className={`shrink-0 text-[13px] ${t.muted} hover:underline`}
                   >
-                    관리 →
+                    관리
                   </Link>
                 </li>
               );

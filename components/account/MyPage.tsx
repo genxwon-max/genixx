@@ -359,10 +359,6 @@ function ChildrenSection({ variant }: { variant: Variant }) {
   const all = useRoster();
   const children = all.filter((s) => s.owner === "parent");
   const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
-  const codeChip =
-    variant === 1
-      ? "rounded bg-acc-panel text-acc-ink"
-      : "rounded-full bg-soft-primary-soft text-soft-primary";
 
   return (
     <>
@@ -401,17 +397,19 @@ function ChildrenSection({ variant }: { variant: Variant }) {
                     </p>
                   </div>
                   <span
-                    className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
-                      phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
+                    className={`flex shrink-0 items-center gap-1.5 text-[13px] ${
+                      phaseTone[r.phase].text
                     }`}
                   >
+                    <span
+                      aria-hidden
+                      className={`h-1.5 w-1.5 rounded-full ${phaseTone[r.phase].dot}`}
+                    />
                     {r.phase}
                   </span>
                 </div>
                 <div className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}>
-                  <span
-                    className={`px-3 py-2 text-[15px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
-                  >
+                  <span className="text-[15px] tracking-[0.06em] tabular-nums">
                     {formatCode(s.code)}
                   </span>
                   <button

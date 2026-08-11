@@ -61,10 +61,6 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
   const track = variant === 1 ? "bg-acc-divider" : "bg-slate-200";
   const divide = variant === 1 ? "divide-acc-hairline" : "divide-slate-100";
   const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
-  const codeChip =
-    variant === 1
-      ? "rounded bg-acc-panel text-acc-ink"
-      : "rounded-full bg-soft-primary-soft text-soft-primary";
 
   if (!hydrated || notApproved) {
     return (
@@ -170,9 +166,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
                     {r.student.grade}
                     {r.student.klass ? ` · ${r.student.klass}` : ""}
                   </span>
-                  <span
-                    className={`ml-auto px-2.5 py-1 text-[13px] font-bold tracking-[0.06em] tabular-nums ${codeChip}`}
-                  >
+                  <span className={`ml-auto text-[13px] tracking-[0.06em] tabular-nums ${t.muted}`}>
                     {formatCode(r.student.code)}
                   </span>
                 </li>
@@ -211,10 +205,14 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
                   {r.submitted}/{r.total}
                 </span>
                 <span
-                  className={`hidden shrink-0 rounded-full border px-2.5 py-0.5 text-[12px] font-bold sm:inline ${
-                    phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
+                  className={`hidden shrink-0 items-center gap-1.5 text-[13px] sm:flex ${
+                    phaseTone[r.phase].text
                   }`}
                 >
+                  <span
+                    aria-hidden
+                    className={`h-1.5 w-1.5 rounded-full ${phaseTone[r.phase].dot}`}
+                  />
                   {r.phase}
                 </span>
               </li>

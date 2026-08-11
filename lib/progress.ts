@@ -84,41 +84,25 @@ export function progressOf(student: Student): StudentProgress {
   return { student, submitted, total, forfeited, subjects: subjectRows, surveys, phase, nextAction };
 }
 
-/** 과목 칸 색 — 상태를 색으로도 구분해 한눈에 세 칸을 읽게 한다 */
-export const subjectTone: Record<SubjectState, { v1: string; v2: string }> = {
-  완료: {
-    v1: "border-emerald-300 bg-emerald-50 text-emerald-800",
-    v2: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-  진행중: {
-    v1: "border-amber-300 bg-amber-50 text-amber-800",
-    v2: "border-amber-200 bg-amber-50 text-amber-700",
-  },
-  포기: {
-    v1: "border-acc-line bg-acc-panel text-acc-muted",
-    v2: "border-slate-200 bg-slate-50 text-slate-400",
-  },
-  미완료: {
-    v1: "border-acc-line bg-white text-acc-muted",
-    v2: "border-slate-200 bg-white text-slate-500",
-  },
+/**
+ * 상태를 나타내는 색 — 글자색만 쓴다.
+ *
+ * 알약 배지에 배경과 테두리를 두르면 한 줄에 색 덩어리가 다섯 개 생겨서, 정작 읽어야
+ * 할 이름과 코드가 묻힌다. 면을 걷고 글자색만 남겨도 상태는 그대로 구분된다.
+ * 색만으로 나누지 않고 「완료 · 진행중 · 미완료」라는 말을 함께 두어, 색을 구분하기
+ * 어려운 사람도 읽을 수 있게 한다.
+ */
+export const subjectTone: Record<SubjectState, string> = {
+  완료: "text-emerald-600",
+  진행중: "text-soft-primary",
+  포기: "text-slate-400",
+  미완료: "text-slate-400",
 };
 
-export const phaseTone: Record<Phase, { v1: string; v2: string }> = {
-  미응시: {
-    v1: "border-acc-line bg-acc-panel text-acc-muted",
-    v2: "border-slate-200 bg-slate-50 text-slate-500",
-  },
-  응시중: {
-    v1: "border-amber-300 bg-amber-50 text-amber-700",
-    v2: "border-amber-200 bg-amber-50 text-amber-700",
-  },
-  제출완료: {
-    v1: "border-acc-primary-line bg-acc-primary-soft text-acc-primary",
-    v2: "border-blue-200 bg-blue-50 text-blue-700",
-  },
-  검사완료: {
-    v1: "border-emerald-300 bg-emerald-50 text-emerald-700",
-    v2: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
+/** 앞에 찍는 작은 점의 색. 배지 대신 이것 하나로 상태를 표시한다. */
+export const phaseTone: Record<Phase, { dot: string; text: string }> = {
+  미응시: { dot: "bg-slate-300", text: "text-slate-500" },
+  응시중: { dot: "bg-amber-500", text: "text-amber-700" },
+  제출완료: { dot: "bg-soft-primary", text: "text-soft-primary" },
+  검사완료: { dot: "bg-emerald-500", text: "text-emerald-700" },
 };
