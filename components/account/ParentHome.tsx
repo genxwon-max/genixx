@@ -125,6 +125,27 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
                       {r.phase}
                     </span>
 
+                    {/* 설문은 응시와 따로 간다 — 아이가 다 풀어도 보호자·교사 관찰이 비면
+                        해석의 축이 하나 빈다. 눌러서 설문 화면으로 바로 넘어가게 둔다. */}
+                    <Link
+                      href="/my/surveys"
+                      className={`shrink-0 text-[13px] hover:underline ${
+                        r.surveys === 0
+                          ? t.muted
+                          : r.surveys === 3
+                            ? "text-emerald-600"
+                            : variant === 1
+                              ? "text-acc-primary"
+                              : "text-soft-primary"
+                      }`}
+                    >
+                      {r.surveys === 0
+                        ? "설문 미제출"
+                        : r.surveys === 3
+                          ? "설문 완료"
+                          : `설문 ${r.surveys}/3`}
+                    </Link>
+
                     <Link
                       href="/my/children"
                       className={`shrink-0 text-[13px] ${t.muted} hover:underline`}

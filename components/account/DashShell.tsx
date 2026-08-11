@@ -7,7 +7,6 @@ import { roleLabel, signOut, useSession, type Role } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
 import { assessment, deadlineDays } from "@/lib/exam";
-import { surveyWindow } from "@/lib/popup";
 import { ChevronDown } from "@/components/Icons";
 
 /**
@@ -24,7 +23,6 @@ import { ChevronDown } from "@/components/Icons";
  *
  * 응시(ASM-01)는 여기 없다. 학생이 접속코드로 들어가 자기 화면에서 보는 것이라
  * 회원 레일에 두면 눌러 봐야 「학생 계정에서 확인하세요」만 나온다.
- * 설문은 답만 쓰는 창이 낫아서 새 창으로 연다 — 응시와 같은 이유다.
  *
  * 반응형은 정의서 12장을 따른다 — 학부모는 모바일 우선이라 좁은 화면에서 레일이
  * 하단 탭으로 내려간다.
@@ -38,8 +36,6 @@ type Item = {
   icon: React.ReactNode;
   /** 하위 경로까지 이 항목으로 친다 */
   match?: string[];
-  /** 대시보드 안에서 열지 않고 새 창으로 띄운다 */
-  popup?: boolean;
 };
 
 /* ── 아이콘 (20px 선 아이콘) ── */
@@ -67,45 +63,6 @@ const ic = {
   ),
 };
 
-/**
- * 레일 항목 하나. 새 창으로 여는 것(설문)은 링크가 아니라 버튼으로 낸다 —
- * 같은 탭에서 열릴 것처럼 보이면 안 되고, 새 탭으로 열기 같은 메뉴도 뜻이 없다.
- */
-function RailItem({
-  item,
-  on,
-  className,
-}: {
-  item: Item;
-  on: boolean;
-  className: string;
-}) {
-  if (item.popup) {
-    return (
-      <button
-        type="button"
-        onClick={() => surveyWindow(item.href)}
-        title={`${item.label} · 새 창`}
-        className={className}
-      >
-        {item.icon}
-        {item.label}
-      </button>
-    );
-  }
-  return (
-    <Link
-      href={item.href}
-      aria-current={on ? "page" : undefined}
-      title={`${item.label} · ${item.sid}`}
-      className={className}
-    >
-      {item.icon}
-      {item.label}
-    </Link>
-  );
-}
-
 function Icon({ children }: { children: React.ReactNode }) {
   return (
     <svg
@@ -128,7 +85,7 @@ const parentMenu: Item[] = [
   { href: "/my", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
   { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/my/children", label: "학생", sid: "ACC-03", icon: <Icon>{ic.child}</Icon> },
-  { href: "/survey", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon>, popup: true },
+  { href: "/my/surveys", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
 
@@ -137,7 +94,7 @@ const orgMenu: Item[] = [
   { href: "/org", label: "홈", sid: "ORG-01", icon: <Icon>{ic.home}</Icon> },
   { href: "/my/students", label: "명부", sid: "ORG-02-2", icon: <Icon>{ic.roster}</Icon> },
   { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
-  { href: "/survey", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon>, popup: true },
+  { href: "/my/surveys", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon> },
   { href: "/exam/payment", label: "응시권", sid: "ORG-03", icon: <Icon>{ic.ticket}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
@@ -289,16 +246,20 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav aria-label="주 메뉴" className="flex flex-1 flex-col gap-1 px-2 py-3">
           {menu.map((m) => (
-            <RailItem
+            <Link
               key={m.label}
-              item={m}
-              on={m.href === current}
+              href={m.href}
+              aria-current={m.href === current ? "page" : undefined}
+              title={`${m.label} · ${m.sid}`}
               className={`flex w-full flex-col items-center gap-1 rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === current
                   ? "bg-soft-primary-soft text-soft-primary"
                   : "text-soft-muted hover:bg-slate-50 hover:text-soft-ink"
               }`}
-            />
+            >
+              {m.icon}
+              {m.label}
+            </Link>
           ))}
         </nav>
       </aside>
@@ -339,14 +300,17 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
           className="fixed inset-x-0 bottom-0 z-20 flex border-t border-soft-line bg-white lg:hidden"
         >
           {menu.map((m) => (
-            <RailItem
+            <Link
               key={m.label}
-              item={m}
-              on={m.href === current}
+              href={m.href}
+              aria-current={m.href === current ? "page" : undefined}
               className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === current ? "text-soft-primary" : "text-soft-muted"
               }`}
-            />
+            >
+              {m.icon}
+              {m.label}
+            </Link>
           ))}
         </nav>
       </div>
