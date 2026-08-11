@@ -92,7 +92,7 @@ const parentMenu: Item[] = [
   },
   { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/my/children", label: "학생", sid: "ACC-03", icon: <Icon>{ic.child}</Icon> },
-  { href: "/survey/parent", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon> },
+  { href: "/my/surveys", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
 
@@ -101,7 +101,7 @@ const orgMenu: Item[] = [
   { href: "/org", label: "홈", sid: "ORG-01", icon: <Icon>{ic.home}</Icon> },
   { href: "/my/students", label: "명부", sid: "ORG-02-2", icon: <Icon>{ic.roster}</Icon> },
   { href: "/exam", label: "응시", sid: "ASM-01", icon: <Icon>{ic.exam}</Icon> },
-  { href: "/survey/teacher", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon> },
+  { href: "/my/surveys", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon> },
   { href: "/exam/payment", label: "응시권", sid: "ORG-03", icon: <Icon>{ic.ticket}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
@@ -110,13 +110,20 @@ function menuFor(role: Role | undefined) {
   return role === "director" || role === "teacher" ? orgMenu : parentMenu;
 }
 
-/** 지금 열려 있는 항목. 하위 경로도 상위 항목으로 친다. */
-function isOn(item: Item, pathname: string) {
-  if (pathname === item.href) return true;
-  if (item.match?.some((m) => pathname.startsWith(m))) return true;
-  // 홈(/my · /org)은 하위 경로를 삼키지 않는다. /my/children이 홈으로 잡히면 안 된다.
-  if (item.label === "홈") return false;
-  return pathname.startsWith(`${item.href}/`);
+/**
+ * 지금 열려 있는 항목의 href.
+ *
+ * 접두사만 보면 /exam/result에서 「응시」와 「결과」가 함께 켜지고, /my/children에서
+ * 「홈」까지 켜진다. 걸리는 것 중 가장 긴 것 하나만 고른다.
+ */
+function activeHref(menu: Item[], pathname: string) {
+  let best = "";
+  for (const m of menu) {
+    if (m.match?.some((x) => pathname === x || pathname.startsWith(`${x}/`))) return m.href;
+    const hit = pathname === m.href || pathname.startsWith(`${m.href}/`);
+    if (hit && m.href.length > best.length) best = m.href;
+  }
+  return best;
 }
 
 /* ── 상단 사용자 메뉴 ── */
@@ -211,6 +218,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
   const roster = useRoster();
 
   const menu = menuFor(session?.role);
+  const current = activeHref(menu, pathname);
   const name = session?.name ?? "회원";
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
@@ -228,7 +236,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav aria-label="주 메뉴" className="flex flex-1 flex-col gap-1 px-2 py-3">
           {menu.map((m) => {
-            const on = isOn(m, pathname);
+            const on = m.href === current;
             return (
               <Link
                 key={m.label}
@@ -285,7 +293,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
           className="fixed inset-x-0 bottom-0 z-20 flex border-t border-soft-line bg-white lg:hidden"
         >
           {menu.map((m) => {
-            const on = isOn(m, pathname);
+            const on = m.href === current;
             return (
               <Link
                 key={m.label}

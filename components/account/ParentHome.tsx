@@ -30,7 +30,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
   const children = all.filter((s) => s.owner === "parent");
 
   /* 시안별 잔가지 */
-  const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
+  const divide = variant === 1 ? "divide-acc-hairline" : "divide-slate-100";
   const codeChip =
     variant === 1
       ? "rounded bg-acc-panel text-acc-ink"
@@ -80,65 +80,66 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           </div>
         </section>
       ) : (
-        <ul className="mt-5 grid gap-3 lg:grid-cols-2">
+        /* 학생 한 명이 한 줄. 여러 명을 위아래로 훑을 때 눈이 같은 자리를 따라간다. */
+        <section className={`${t.card} mt-5 overflow-hidden`}>
+          <ul className={`divide-y ${divide}`}>
             {rows.map((r) => {
               const age = ageFromBirth(r.student.birth);
               return (
-                <li key={r.student.id} className={`${t.card} min-w-0 p-4`}>
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                    {/* 접속코드는 이름 바로 옆에 둔다. 아이를 찾는 단서이자 건네줄 값이다. */}
-                    <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-[17px] font-bold">{r.student.name}</span>
-                      <span
-                        className={`px-2 py-0.5 text-[13px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
-                      >
-                        {formatCode(r.student.code)}
-                      </span>
-                      <span className={`text-[12.5px] ${t.muted}`}>
-                        {r.student.grade} · 만 {age ?? "—"}세
-                      </span>
-                    </p>
+                <li
+                  key={r.student.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5"
+                >
+                  {/* 이름 + 접속코드 — 아이를 찾는 단서이자 건네줄 값이라 붙여 둔다 */}
+                  <span className="flex min-w-[13rem] items-center gap-2">
+                    <span className="text-[15px] font-bold">{r.student.name}</span>
                     <span
-                      className={`rounded-full border px-2.5 py-0.5 text-[11.5px] font-bold ${
-                        phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
-                      }`}
+                      className={`px-2 py-0.5 text-[12.5px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
                     >
-                      {r.phase}
+                      {formatCode(r.student.code)}
                     </span>
-                  </div>
+                  </span>
+
+                  <span className={`hidden w-32 shrink-0 text-[12.5px] xl:block ${t.muted}`}>
+                    {r.student.grade} · 만 {age ?? "—"}세
+                  </span>
 
                   {/* 과목은 셋뿐이라 막대 하나로 뭉치지 않고 한 칸씩 상태를 적는다 */}
-                  <ul className="mt-3 grid grid-cols-3 gap-1.5">
+                  <ul className="flex min-w-0 flex-1 gap-1.5">
                     {r.subjects.map((sub) => (
                       <li
                         key={sub.id}
-                        className={`flex min-w-0 items-center justify-between gap-1 rounded-[8px] border px-2.5 py-1.5 ${
+                        className={`flex min-w-0 flex-1 items-center justify-between gap-1 rounded-[8px] border px-2 py-1 ${
                           subjectTone[sub.state][variant === 1 ? "v1" : "v2"]
                         }`}
                       >
-                        <span className="truncate text-[13px] font-semibold">{sub.short}</span>
-                        <span className="shrink-0 text-[12px] font-bold">{sub.state}</span>
+                        <span className="truncate text-[12.5px] font-semibold">{sub.short}</span>
+                        <span className="shrink-0 text-[11.5px] font-bold">{sub.state}</span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className={`mt-3 flex items-center gap-3 border-t pt-2.5 ${rule}`}>
-                    <span className={`min-w-0 flex-1 truncate text-[12.5px] ${t.muted}`}>
-                      설문 {r.surveys} / 3 · {r.nextAction}
-                    </span>
-                    <Link
-                      href="/my/children"
-                      className={`shrink-0 text-[12.5px] font-semibold ${
-                        variant === 1 ? "text-acc-primary" : "text-soft-primary"
-                      } hover:underline`}
-                    >
-                      학생 관리 →
-                    </Link>
-                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11.5px] font-bold ${
+                      phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
+                    }`}
+                  >
+                    {r.phase}
+                  </span>
+
+                  <Link
+                    href="/my/children"
+                    className={`shrink-0 text-[12.5px] font-semibold ${
+                      variant === 1 ? "text-acc-primary" : "text-soft-primary"
+                    } hover:underline`}
+                  >
+                    관리 →
+                  </Link>
                 </li>
               );
             })}
-        </ul>
+          </ul>
+        </section>
       )}
 
       {/* 바로가기 — 좌측 레일에 없는 하위 화면만 둔다 */}

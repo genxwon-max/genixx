@@ -1,10 +1,14 @@
 import Logo from "@/components/Logo";
 import { assessment } from "@/lib/exam";
-import ExamTabs from "@/components/exam/ExamTabs";
 import ExamStatusBar from "@/components/exam/ExamStatusBar";
 import ExamFooterNote from "@/components/exam/ExamFooterNote";
 import SessionBar from "@/components/exam/SessionBar";
 
+/**
+ * 응시 존 레이아웃 — 이제 실제 응시 화면(/exam/session)만 남았다.
+ * 응시 현황·결과·설문은 회원 대시보드로 옮겼다. 여기는 문항에 집중하는 자리라
+ * 존 이동 메뉴를 두지 않고 남은 시간과 세션 정보만 띄운다.
+ */
 export default function ExamLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-full flex-col bg-exam-bg text-exam-text">
@@ -22,7 +26,6 @@ export default function ExamLayout({ children }: LayoutProps<"/">) {
           {/* 오른쪽 위 — 응시 중에는 남은 시간, 그 외에는 메뉴 */}
           <div className="flex items-center gap-2">
             <ExamStatusBar />
-            <ExamTabs />
             <SessionBar />
           </div>
         </div>
