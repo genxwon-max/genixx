@@ -10,14 +10,21 @@ import type { StaffRoleId } from "./admin";
  * 다른 체계(역할 기반 권한)이고, 같은 브라우저에서 학부모 계정으로 로그인한 채
  * 관리자 화면을 열어 보는 시연 상황도 있어야 하기 때문이다.
  *
- * 저장하는 것은 두 가지 —
- *  1) 지금 어떤 운영자 역할로 보고 있는지 (권한별 화면 차이를 확인하기 위한 전환)
+ * 저장하는 것은 세 가지 —
+ *  1) 지금 들어와 있는 운영자 계정(아이디·이름·역할)
  *  2) 글자 크기 배율 (50~60대 사용자가 직접 올려 쓰는 값이라 반드시 기억해야 한다)
+ *  3) 임시 비밀번호를 아직 안 바꿨는지 (안내 띠를 띄우기 위한 값)
+ *
+ * 비밀번호는 담지 않는다 — lib/staffStore.ts의 설명 참조.
  */
 
 export type AdminPrefs = {
+  /** null이면 아직 로그인하지 않았다 */
+  loginId: string | null;
   staffName: string;
   role: StaffRoleId;
+  /** 임시 비밀번호를 아직 바꾸지 않았다 — 안내 띠를 띄운다 */
+  temp: boolean;
   /** 1 = 보통, 1.15 = 크게, 1.3 = 아주 크게 */
   zoom: number;
 };
@@ -28,7 +35,13 @@ export const zoomSteps = [
   { value: 1.3, label: "아주 크게" },
 ] as const;
 
-const DEFAULT: AdminPrefs = { staffName: "박서준", role: "super", zoom: 1 };
+const DEFAULT: AdminPrefs = {
+  loginId: null,
+  staffName: "",
+  role: "super",
+  temp: false,
+  zoom: 1,
+};
 
 const KEY = "genixx.admin";
 const EVENT = "genixx:admin-change";
@@ -66,6 +79,20 @@ export function patchAdminPrefs(patch: Partial<AdminPrefs>) {
   const next = { ...read(), ...patch };
   window.localStorage.setItem(KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(EVENT));
+}
+
+/** 콘솔 로그인 — 글자 크기는 사람이 맞춰 둔 값이라 로그아웃해도 남긴다 */
+export function adminSignIn(account: {
+  loginId: string;
+  staffName: string;
+  role: StaffRoleId;
+  temp: boolean;
+}) {
+  patchAdminPrefs(account);
+}
+
+export function adminSignOut() {
+  patchAdminPrefs({ loginId: null, staffName: "", temp: false });
 }
 
 /* ───────────────────────── 열람 기록 ─────────────────────────

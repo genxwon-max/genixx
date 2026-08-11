@@ -4,8 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { adminMenu, canAny, pending, roleOf, staffRoles, type AdminMenuItem } from "@/lib/admin";
-import { patchAdminPrefs, useAdminPrefs, zoomSteps } from "@/lib/adminStore";
+import { adminSignOut, patchAdminPrefs, useAdminPrefs, zoomSteps } from "@/lib/adminStore";
+import { useHydrated } from "@/lib/examStore";
 import { MenuIcon, CloseIcon, ChevronDown } from "@/components/Icons";
+import ConsoleLogin from "./ConsoleLogin";
+import * as a from "./ui";
 
 /**
  * 관리자·전문가 콘솔 껍데기 — 어두운 왼쪽 메뉴 + 어두운 상단 바.
@@ -22,9 +25,13 @@ import { MenuIcon, CloseIcon, ChevronDown } from "@/components/Icons";
  *
  * 메뉴는 역할이 가진 권한만 남긴다. 출제자에게 검수 워크벤치를 세워 두면 이해충돌을
  * 막으려고 권한을 갈라 놓은 뜻이 흐려진다(정의서 9장).
+ *
+ * 들어오지 않은 사람에게는 아무것도 그리지 않고 로그인 화면만 낸다. 운영자 계정은
+ * 학생 개인정보에 닿기 때문에, 메뉴 구조조차 미리 보여 줄 이유가 없다.
  */
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const prefs = useAdminPrefs();
+  const hydrated = useHydrated();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const role = roleOf(prefs.role);
@@ -32,6 +39,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const groups = adminMenu
     .map((g) => ({ ...g, items: g.items.filter((i) => canAny(prefs.role, i.needs)) }))
     .filter((g) => g.items.length > 0);
+
+  // 저장된 로그인 상태는 브라우저에만 있어서, 하이드레이션 전에는 판단하지 않는다
+  if (!hydrated) {
+    return <div className="min-h-screen bg-slate-900" />;
+  }
+  if (!prefs.loginId) {
+    return <ConsoleLogin />;
+  }
 
   return (
     <div
@@ -68,9 +83,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </span>
               <span className="leading-tight">
                 <span className="block adm-t-sm font-bold text-white">{prefs.staffName}</span>
-                <span className="block adm-t-xs text-slate-400">{role.short}</span>
+                <span className="block adm-t-xs text-slate-400">
+                  {role.short} · {prefs.loginId}
+                </span>
               </span>
             </div>
+
+            <Link
+              href="/admin/account"
+              className="hidden min-h-[2.75rem] items-center rounded-md border border-white/20 px-4 adm-t-sm font-bold text-white transition-colors hover:bg-white/10 sm:inline-flex"
+            >
+              내 계정
+            </Link>
+            <button
+              type="button"
+              onClick={adminSignOut}
+              className="inline-flex min-h-[2.75rem] items-center rounded-md border border-white/20 px-4 adm-t-sm font-bold text-white transition-colors hover:bg-white/10"
+            >
+              로그아웃
+            </button>
           </div>
         </div>
       </header>
@@ -123,7 +154,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </nav>
 
-        <main className="min-w-0 flex-1 px-4 py-7 lg:px-8 lg:py-9">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-7 lg:px-8 lg:py-9">
+          {/* 임시 비밀번호를 아직 안 바꿨으면 알린다. 막지는 않는다 —
+              바꾸는 것이 낫지만 강제하면 급한 일을 못 하게 된다. */}
+          {prefs.temp && (
+            <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-amber-300 bg-amber-50 px-5 py-4">
+              <span className="adm-t-md font-bold text-amber-900">
+                임시 비밀번호를 쓰고 계십니다.
+              </span>
+              <span className="adm-t-sm text-amber-900">
+                지금 바꾸지 않아도 됩니다. 편하실 때 바꾸시면 됩니다.
+              </span>
+              <Link href="/admin/account" className={`${a.btnRowGhost} ml-auto`}>
+                비밀번호 바꾸기
+              </Link>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

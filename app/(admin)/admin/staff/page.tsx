@@ -1,6 +1,7 @@
-import { can, staff, staffRoles, type PermissionId } from "@/lib/admin";
+import { can, staffRoles, type PermissionId } from "@/lib/admin";
 import { PageHead, TableCard, Badge } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
+import StaffIssue from "@/components/admin/StaffIssue";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "운영자·권한 · GENIXX 관리자" };
@@ -14,6 +15,9 @@ const permissionRows: { id: PermissionId; label: string; note: string }[] = [
   { id: "grade.confirm", label: "판정 확정", note: "리포트가 보호자에게 나갑니다" },
   { id: "item.write", label: "문항 작성", note: "" },
   { id: "item.review", label: "문항 검수", note: "작성자 본인은 불가" },
+  { id: "report.publish", label: "리포트 발행 승인", note: "승인 전 결과 미노출" },
+  { id: "psychometrics.read", label: "심리측정 분석", note: "" },
+  { id: "system.manage", label: "시스템 설정", note: "연동 키·기능 플래그" },
   { id: "org.manage", label: "기관·응시권", note: "" },
   { id: "billing.read", label: "결제·정산 열람", note: "" },
   { id: "content.publish", label: "콘텐츠 발행", note: "" },
@@ -26,24 +30,21 @@ export default function StaffPage() {
   return (
     <>
       <PageHead
-        id="ADM-12"
+        id="ADM-03"
         title="운영자 · 권한"
-        lead="역할마다 할 수 있는 일을 나눠 둡니다. 출제위원은 학생 개인정보를 볼 수 없고, 고객지원은 판정을 확정할 수 없습니다."
-        action={
-          <button type="button" className={a.btnPrimary}>
-            운영자 추가하기
-          </button>
-        }
+        lead="아이디를 만들고 역할을 붙이면 그 역할이 곧 권한입니다. 출제자는 자기 문항을 스스로 승인할 수 없고, 검수자는 문항을 쓸 수 없습니다."
       />
 
       <PermissionGate need="staff.manage">
-        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <StaffIssue />
+
+        <div className="mt-8 mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {staffRoles.map((r) => (
             <section key={r.id} className={`${a.panel} p-5`}>
               <Badge label={r.label} className={r.tone} />
               <p className="mt-3 adm-t-md text-exam-muted">{r.desc}</p>
               <p className="mt-3 adm-t-sm font-bold text-exam-text">
-                가진 권한 {r.permissions.length}개 · 이 역할 {staff.filter((s) => s.role === r.id).length}명
+                가진 권한 {r.permissions.length}개
               </p>
             </section>
           ))}
@@ -98,54 +99,6 @@ export default function StaffPage() {
           </table>
         </TableCard>
 
-        <div className="mt-6">
-          <TableCard title={`운영자 ${staff.length}명`} caption="2단계 인증을 켜지 않은 계정은 붉게 표시됩니다.">
-            <table className={a.table}>
-              <thead>
-                <tr>
-                  <th className={a.th}>사번</th>
-                  <th className={a.th}>이름</th>
-                  <th className={a.th}>역할</th>
-                  <th className={a.th}>소속 팀</th>
-                  <th className={a.th}>2단계 인증</th>
-                  <th className={a.th}>마지막 접속</th>
-                  <th className={a.th}>할 일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((s) => (
-                  <tr key={s.id}>
-                    <td className={a.td}>{s.id}</td>
-                    <td className={a.tdStrong}>{s.name}</td>
-                    <td className={a.td}>
-                      <Badge
-                        label={staffRoles.find((r) => r.id === s.role)!.label}
-                        className={staffRoles.find((r) => r.id === s.role)!.tone}
-                      />
-                    </td>
-                    <td className={a.td}>{s.team}</td>
-                    <td className={a.td}>
-                      <Badge
-                        label={s.mfa ? "켜짐" : "꺼짐 — 확인 필요"}
-                        className={
-                          s.mfa
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                            : "border-rose-300 bg-rose-50 text-rose-700"
-                        }
-                      />
-                    </td>
-                    <td className={a.td}>{s.lastSeen}</td>
-                    <td className={a.td}>
-                      <button type="button" className={a.btnRowGhost}>
-                        권한 바꾸기
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableCard>
-        </div>
       </PermissionGate>
     </>
   );
