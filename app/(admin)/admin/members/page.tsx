@@ -6,10 +6,10 @@ import * as a from "@/components/admin/ui";
 export const metadata = { title: "회원 · GENIXX 관리자" };
 
 const typeTone: Record<string, string> = {
-  parent: "border-brand-300 bg-brand-50 text-brand-700",
-  teacher: "border-emerald-300 bg-emerald-50 text-emerald-700",
-  org: "border-accent-300 bg-accent-100 text-accent-600",
-  student: "border-amber-300 bg-amber-50 text-amber-700",
+  parent: "text-brand-700",
+  teacher: "text-emerald-700",
+  org: "text-accent-600",
+  student: "text-amber-700",
 };
 
 export default function MembersPage() {

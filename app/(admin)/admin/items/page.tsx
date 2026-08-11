@@ -1,5 +1,5 @@
 import { items, itemStates } from "@/lib/admin";
-import { PageHead, TableCard, Badge, StatCard } from "@/components/admin/Parts";
+import { PageHead, TableCard, Badge } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -13,9 +13,16 @@ const flow = [
   { step: "4", label: "출제 후 점검", desc: "정답률이 너무 높거나 낮으면 사용을 멈춥니다" },
 ];
 
-export default function ItemsPage() {
-  const waiting = items.filter((i) => i.state === "review").length;
+const countOf = (state: (typeof items)[number]["state"]) =>
+  items.filter((i) => i.state === state).length;
 
+const counts = [
+  { label: "검수를 기다리는 문항", value: countOf("review"), note: "다음 회차 배치 전까지" },
+  { label: "승인된 문항", value: countOf("approved"), note: "회차에 바로 넣을 수 있습니다" },
+  { label: "사용 중지", value: countOf("retired"), note: "정답률이 한쪽으로 치우친 문항" },
+];
+
+export default function ItemsPage() {
   return (
     <>
       <PageHead
@@ -35,40 +42,40 @@ export default function ItemsPage() {
       />
 
       <PermissionGate need="item.review">
-        <ol className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {flow.map((f) => (
-            <li key={f.step} className="rounded-lg border border-exam-line bg-white p-5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-900 adm-t-sm font-black text-white">
-                {f.step}
+        {/* 단계 설명은 처음 한 번 읽으면 되는 글이다. 매일 오는 사람에게 화면 위쪽
+            네 칸을 계속 내주지 않도록 접어 두고, 필요할 때만 펼치게 한다. */}
+        <details className="group mb-5 border-y border-exam-line">
+          <summary className="flex cursor-pointer list-none items-center gap-2 py-3 adm-t-md font-bold text-exam-text marker:content-none">
+            <span className="adm-t-sm text-exam-muted group-open:hidden">펼치기 ▾</span>
+            <span className="hidden adm-t-sm text-exam-muted group-open:inline">접기 ▴</span>
+            문항이 거치는 네 단계
+          </summary>
+          <ol className="pb-3">
+            {flow.map((f) => (
+              <li key={f.step} className="flex flex-wrap items-baseline gap-x-2.5 py-1.5">
+                <span className="adm-t-sm tabular-nums text-exam-muted">{f.step}</span>
+                <span className="adm-t-md font-bold text-exam-text">{f.label}</span>
+                <span className="adm-t-sm text-exam-muted">{f.desc}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+
+        {/* 건수는 카드로 세우지 않는다. 세 줄이면 눈이 한 번에 훑는다. */}
+        <ul className="mb-6 border-b border-exam-line">
+          {counts.map((c) => (
+            <li
+              key={c.label}
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-exam-line py-3"
+            >
+              <span className="adm-t-md font-bold text-exam-text">{c.label}</span>
+              <span className="adm-t-sm text-exam-muted">{c.note}</span>
+              <span className="ml-auto adm-t-md font-bold tabular-nums text-exam-text">
+                {c.value}건
               </span>
-              <p className="mt-3 adm-t-lg font-black text-exam-text">{f.label}</p>
-              <p className="mt-1 adm-t-sm text-exam-muted">{f.desc}</p>
             </li>
           ))}
-        </ol>
-
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <StatCard
-            label="검수를 기다리는 문항"
-            value={waiting}
-            unit="건"
-            note="다음 회차 배치 전까지 끝내야 합니다"
-            tone="warn"
-          />
-          <StatCard
-            label="승인된 문항"
-            value={items.filter((i) => i.state === "approved").length}
-            unit="건"
-            note="회차에 바로 넣을 수 있습니다"
-            tone="good"
-          />
-          <StatCard
-            label="사용 중지"
-            value={items.filter((i) => i.state === "retired").length}
-            unit="건"
-            note="정답률이 한쪽으로 치우친 문항"
-          />
-        </div>
+        </ul>
 
         <TableCard
           title={`전체 문항 ${items.length}건`}
@@ -108,7 +115,8 @@ export default function ItemsPage() {
                         "출제 전"
                       ) : (
                         <span className={odd ? "font-bold text-rose-700" : undefined}>
-                          {q.correctRate}%{odd && <span className="block adm-t-sm">다시 볼 것</span>}
+                          {q.correctRate}%
+                          {odd && <span className="block adm-t-sm">다시 볼 것</span>}
                         </span>
                       )}
                     </td>

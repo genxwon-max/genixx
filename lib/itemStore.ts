@@ -503,8 +503,8 @@ export const stateLabel: Record<ItemState, string> = {
 };
 
 export const stateTone: Record<ItemState, string> = {
-  draft: "border-exam-line bg-exam-raised text-exam-muted",
-  submitted: "border-brand-300 bg-brand-50 text-brand-700",
-  rejected: "border-rose-300 bg-rose-50 text-rose-700",
-  approved: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  draft: "text-exam-muted",
+  submitted: "text-brand-700",
+  rejected: "text-rose-700",
+  approved: "text-emerald-700",
 };

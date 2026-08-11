@@ -36,10 +36,10 @@ const rows: Row[] = [
 ];
 
 const stateTone: Record<Row["state"], string> = {
-  미응시: "border-exam-line bg-exam-raised text-exam-muted",
-  응시중: "border-amber-300 bg-amber-50 text-amber-700",
-  제출완료: "border-brand-300 bg-brand-50 text-brand-700",
-  발행완료: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  미응시: "text-exam-muted",
+  응시중: "text-amber-700",
+  제출완료: "text-brand-700",
+  발행완료: "text-emerald-700",
 };
 
 function maskName(name: string) {

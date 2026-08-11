@@ -197,8 +197,8 @@ export default function StaffIssue() {
                     label={s.temp ? "임시 — 아직 안 바꿈" : "변경됨"}
                     className={
                       s.temp
-                        ? "border-amber-300 bg-amber-50 text-amber-700"
-                        : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        ? "text-amber-700"
+                        : "text-emerald-700"
                     }
                   />
                 </td>
@@ -207,8 +207,8 @@ export default function StaffIssue() {
                     label={s.mfa ? "켜짐" : "꺼짐 — 확인 필요"}
                     className={
                       s.mfa
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-rose-300 bg-rose-50 text-rose-700"
+                        ? "text-emerald-700"
+                        : "text-rose-700"
                     }
                   />
                 </td>

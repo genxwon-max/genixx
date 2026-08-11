@@ -8,7 +8,6 @@ import { adminSignOut, patchAdminPrefs, useAdminPrefs, zoomSteps } from "@/lib/a
 import { useHydrated } from "@/lib/examStore";
 import { MenuIcon, CloseIcon, ChevronDown } from "@/components/Icons";
 import ConsoleLogin from "./ConsoleLogin";
-import * as a from "./ui";
 
 /**
  * 관리자·전문가 콘솔 껍데기 — 어두운 왼쪽 메뉴 + 어두운 상단 바.
@@ -53,6 +52,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       className="min-h-full bg-[#f4f6fb] text-soft-ink"
       style={{ ["--adm-zoom" as string]: prefs.zoom }}
     >
+      {/* 임시 비밀번호를 아직 안 바꿨으면 맨 위에 한 줄로 알린다. 막지는 않는다 —
+          바꾸는 것이 낫지만 강제하면 급한 일을 못 하게 된다. 경고색은 쓰지 않는다.
+          위험을 알리는 자리가 아니라 언젠가 하면 되는 일을 적어 두는 자리다. */}
+      {prefs.temp && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-exam-line bg-white px-4 py-2.5 lg:px-6">
+          <span className="adm-t-sm font-bold text-exam-text">임시 비밀번호를 쓰고 계십니다.</span>
+          <span className="adm-t-sm text-exam-muted">
+            지금 바꾸지 않아도 됩니다. 편하실 때 바꾸시면 됩니다.
+          </span>
+          <Link
+            href="/admin/account"
+            className="ml-auto adm-t-sm font-bold text-exam-text underline underline-offset-4"
+          >
+            비밀번호 바꾸기
+          </Link>
+        </div>
+      )}
+
       {/* ── 상단 바 ── */}
       <header className="sticky top-0 z-40 bg-slate-900 text-white">
         <div className="flex h-[4.5rem] items-center gap-4 px-4 lg:px-6">
@@ -167,24 +184,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </nav>
 
-        <main className="min-w-0 flex-1 px-4 py-7 lg:px-8 lg:py-9">
-          {/* 임시 비밀번호를 아직 안 바꿨으면 알린다. 막지는 않는다 —
-              바꾸는 것이 낫지만 강제하면 급한 일을 못 하게 된다. */}
-          {prefs.temp && (
-            <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-amber-300 bg-amber-50 px-5 py-4">
-              <span className="adm-t-md font-bold text-amber-900">
-                임시 비밀번호를 쓰고 계십니다.
-              </span>
-              <span className="adm-t-sm text-amber-900">
-                지금 바꾸지 않아도 됩니다. 편하실 때 바꾸시면 됩니다.
-              </span>
-              <Link href="/admin/account" className={`${a.btnRowGhost} ml-auto`}>
-                비밀번호 바꾸기
-              </Link>
-            </div>
-          )}
-          {children}
-        </main>
+        <main className="min-w-0 flex-1 px-4 py-7 lg:px-8 lg:py-9">{children}</main>
       </div>
     </div>
   );

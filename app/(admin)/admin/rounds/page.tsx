@@ -7,9 +7,9 @@ import * as a from "@/components/admin/ui";
 export const metadata = { title: "회차·응시 현황 · GENIXX 관리자" };
 
 const roundState = {
-  open: { label: "응시 진행중", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  grading: { label: "채점중", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  closed: { label: "마감", className: "border-exam-line bg-exam-raised text-exam-muted" },
+  open: { label: "응시 진행중", className: "text-emerald-700" },
+  grading: { label: "채점중", className: "text-amber-700" },
+  closed: { label: "마감", className: "text-exam-muted" },
 } as const;
 
 /** 이번 회차 과목별 진행 (예시 데이터) */

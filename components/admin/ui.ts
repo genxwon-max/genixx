@@ -57,9 +57,10 @@ export const tdStrong = "border-b border-exam-line px-4 py-4 align-middle font-b
 /** 숫자 칸 — 자릿수 고정 */
 export const tdNum = `${td} text-right tabular-nums`;
 
-/* ── 상태 배지 ──
-   14px 아래로 내리지 않고, 테두리를 1px 더 두껍게 해서 형태로도 구분되게 한다. */
-export const badge = "inline-flex items-center rounded-md border px-2.5 py-1 adm-t-xs font-bold";
+/* ── 상태 ──
+   면을 두지 않는다. 표 한 칸마다 색 상자가 서면 정작 읽어야 할 지문과 숫자가 뒤로
+   밀린다. 상태는 글자로 적고 색은 글자에만 얹는다 — 색을 못 보아도 라벨이 남는다. */
+export const badge = "inline-flex items-center adm-t-sm font-bold";
 
 /** 색약·저시력을 고려해 색과 함께 쓰는 상태 점 */
 export const dot = "inline-block h-2.5 w-2.5 shrink-0 rounded-full";

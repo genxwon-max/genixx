@@ -250,8 +250,8 @@ export default function GradingQueue() {
                       label={s.v ? "제출됨" : "제출 안 됨"}
                       className={
                         s.v
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                          : "border-exam-line bg-exam-raised text-exam-muted"
+                          ? "text-emerald-700"
+                          : "text-exam-muted"
                       }
                     />
                   </li>

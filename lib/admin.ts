@@ -56,7 +56,7 @@ export const staffRoles: StaffRole[] = [
     label: "관리자 (슈퍼 관리자)",
     short: "관리자",
     desc: "시스템 전반 및 통합 관리. 운영자 계정과 권한을 직접 다룹니다.",
-    tone: "border-brand-300 bg-brand-50 text-brand-700",
+    tone: "text-brand-700",
     permissions: [
       "member.read",
       "member.approve",
@@ -83,7 +83,7 @@ export const staffRoles: StaffRole[] = [
     label: "출제자",
     short: "출제자",
     desc: "문제 출제 및 편집. 반려된 문제를 확인하고 고칩니다.",
-    tone: "border-emerald-300 bg-emerald-50 text-emerald-700",
+    tone: "text-emerald-700",
     // 검수 권한(item.review)이 없다. 자기가 낸 문제를 자기가 승인하지 못하게
     // 구조적으로 갈라 두는 것이 이 콘솔의 전제다(정의서 9장).
     permissions: ["item.write", "round.manage"],
@@ -93,7 +93,7 @@ export const staffRoles: StaffRole[] = [
     label: "검수자",
     short: "검수자",
     desc: "출제 문제 검수 및 승인 여부 결정. 코멘트로 검수 내용을 적고 반려합니다.",
-    tone: "border-amber-300 bg-amber-50 text-amber-700",
+    tone: "text-amber-700",
     // 작성 권한(item.write)이 없다 — 출제자와 맞물린 반대쪽 칸이다.
     permissions: ["item.review", "round.manage"],
   },
@@ -102,7 +102,7 @@ export const staffRoles: StaffRole[] = [
     label: "마스터",
     short: "마스터",
     desc: "결과 해석, 진단 및 결과 승인. 발행 전 마지막 관문입니다.",
-    tone: "border-accent-300 bg-accent-100 text-accent-600",
+    tone: "text-accent-600",
     permissions: [
       "member.read",
       "student.pii",
@@ -506,11 +506,11 @@ export type CaseState =
   | "published"; // 리포트 발행
 
 export const caseStates: Record<CaseState, { label: string; className: string }> = {
-  ai: { label: "AI 분석 완료", className: "border-brand-300 bg-brand-50 text-brand-700" },
-  review: { label: "전문가 검토중", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  conference: { label: "케이스 회의", className: "border-rose-300 bg-rose-50 text-rose-600" },
-  confirmed: { label: "판정 확정", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  published: { label: "발행 완료", className: "border-exam-line bg-exam-raised text-exam-muted" },
+  ai: { label: "AI 분석 완료", className: "text-brand-700" },
+  review: { label: "전문가 검토중", className: "text-amber-700" },
+  conference: { label: "케이스 회의", className: "text-rose-600" },
+  confirmed: { label: "판정 확정", className: "text-emerald-700" },
+  published: { label: "발행 완료", className: "text-exam-muted" },
 };
 
 export type GradingCase = {
@@ -714,10 +714,10 @@ export const memberTypeLabel: Record<MemberRow["type"], string> = {
 };
 
 export const memberStateLabel: Record<MemberRow["state"], { label: string; className: string }> = {
-  active: { label: "활성", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  pending: { label: "승인 대기", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  dormant: { label: "휴면", className: "border-exam-line bg-exam-raised text-exam-muted" },
-  withdrawn: { label: "탈퇴", className: "border-rose-300 bg-rose-50 text-rose-600" },
+  active: { label: "활성", className: "text-emerald-700" },
+  pending: { label: "승인 대기", className: "text-amber-700" },
+  dormant: { label: "휴면", className: "text-exam-muted" },
+  withdrawn: { label: "탈퇴", className: "text-rose-600" },
 };
 
 export const members: MemberRow[] = [
@@ -888,9 +888,9 @@ export const orgs: OrgRow[] = [
 ];
 
 export const contractLabel: Record<OrgRow["contract"], { label: string; className: string }> = {
-  active: { label: "계약중", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  trial: { label: "시범 운영", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  expired: { label: "만료", className: "border-rose-300 bg-rose-50 text-rose-600" },
+  active: { label: "계약중", className: "text-emerald-700" },
+  trial: { label: "시범 운영", className: "text-amber-700" },
+  expired: { label: "만료", className: "text-rose-600" },
 };
 
 /* ───────────────────────── 문항 (ADM-05) ───────────────────────── */
@@ -910,11 +910,11 @@ export type ItemRow = {
 };
 
 export const itemStates: Record<ItemRow["state"], { label: string; className: string }> = {
-  draft: { label: "작성중", className: "border-exam-line bg-exam-raised text-exam-muted" },
-  review: { label: "검수 대기", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  revise: { label: "수정 요청", className: "border-rose-300 bg-rose-50 text-rose-600" },
-  approved: { label: "승인", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  retired: { label: "사용 중지", className: "border-exam-line bg-exam-raised text-exam-muted" },
+  draft: { label: "작성중", className: "text-exam-muted" },
+  review: { label: "검수 대기", className: "text-amber-700" },
+  revise: { label: "수정 요청", className: "text-rose-600" },
+  approved: { label: "승인", className: "text-emerald-700" },
+  retired: { label: "사용 중지", className: "text-exam-muted" },
 };
 
 export const items: ItemRow[] = [
@@ -1020,9 +1020,9 @@ export type InquiryRow = {
 };
 
 export const inquiryStates: Record<InquiryRow["state"], { label: string; className: string }> = {
-  new: { label: "미배정", className: "border-rose-300 bg-rose-50 text-rose-600" },
-  working: { label: "처리중", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  answered: { label: "답변 완료", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
+  new: { label: "미배정", className: "text-rose-600" },
+  working: { label: "처리중", className: "text-amber-700" },
+  answered: { label: "답변 완료", className: "text-emerald-700" },
 };
 
 export const inquiries: InquiryRow[] = [

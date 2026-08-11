@@ -76,21 +76,13 @@ export function StatCard({
   return <div className={`rounded-lg border p-5 ${toneClass}`}>{inner}</div>;
 }
 
-/** 상태 배지 — 색과 글자를 항상 함께 쓴다 */
+/** 상태 — 상자 없이 글자만. 색은 거들 뿐이고 라벨이 본체다. */
 export function Badge({ label, className }: { label: string; className: string }) {
   return <span className={`${a.badge} ${className}`}>{label}</span>;
 }
 
 /** 진행률 막대. 숫자를 막대 옆에 반드시 적는다. */
-export function Progress({
-  value,
-  total,
-  label,
-}: {
-  value: number;
-  total: number;
-  label: string;
-}) {
+export function Progress({ value, total, label }: { value: number; total: number; label: string }) {
   const pct = total ? Math.round((value / total) * 100) : 0;
   return (
     <div>
