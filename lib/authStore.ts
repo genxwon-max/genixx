@@ -17,9 +17,11 @@ export type Session = {
   name: string;
   /** 기관·학원명 (학원장) */
   org?: string;
-  /** 간편 로그인 제공자. 이메일 로그인이면 null, 학생 접속코드면 "접속코드" */
+  /** 간편 로그인 제공자. 아이디 로그인이면 null, 학생 접속코드면 "접속코드" */
   provider: string | null;
   email?: string;
+  /** 아이디 로그인 계정의 로그인 아이디 */
+  loginId?: string;
   /** 학생 세션일 때 명부상의 학생 ID */
   studentId?: string;
   /** 학부모가 학생 화면으로 들어온 경우 true (설문만 수행) */

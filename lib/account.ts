@@ -34,6 +34,24 @@ export function ageFromBirth(birth: string, at: Date = new Date()): number | nul
 
 export const CONSENT_AGE = 14;
 
+/**
+ * 본인확인기관(PASS 등)이 확인해 돌려주는 값.
+ *
+ * 주민등록번호는 우리 화면에서 받지 않는다. PASS 앱이 받아 본인확인기관에 넘기고,
+ * 우리는 확인이 끝난 결과만 돌려받는다. 법령에 근거가 있을 때만 처리할 수 있는
+ * 정보라서(개인정보보호법 제24조의2) 애초에 우리 쪽을 지나가지 않게 두는 것이 맞다.
+ *
+ * 실제 연동에서 이 자리에 들어오는 것은 PASS 인증 결과의 CI/DI와 확인된 신원 정보다.
+ */
+export type IdentityResult = {
+  name: string;
+  /** 확인된 생년월일 (YYYYMMDD) */
+  birth: string;
+  phone: string;
+  /** 인증에 사용한 수단 */
+  via: string;
+};
+
 export type ConsentRoute = "guardian" | "self";
 
 /**

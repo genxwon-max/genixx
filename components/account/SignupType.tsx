@@ -38,7 +38,7 @@ const methods: { id: string; label: string; tone: "kakao" | "naver" | "plain" }[
   { id: "카카오", label: "카카오로 회원가입", tone: "kakao" },
   { id: "네이버", label: "네이버로 회원가입", tone: "naver" },
   { id: "구글", label: "구글로 회원가입", tone: "plain" },
-  { id: "", label: "이메일로 회원가입", tone: "plain" },
+  { id: "", label: "아이디로 회원가입", tone: "plain" },
 ];
 
 /** 좌우로 놓이는 큰 선택 카드 (clipo의 "로그인 유형을 선택하세요" 카드 구성) */
@@ -107,6 +107,12 @@ export default function SignupType({
         ? { provider, name: "김보호", email: "genix.kim@example.com" }
         : { provider: null }),
     });
+    // 시안 2는 간편·이메일이 같은 화면으로 모인다. 간편 가입은 제공자가 계정을 이미
+    // 확인해 주므로 ① 인증 칸을 건너뛰고 ② 정보 입력부터 시작한다.
+    if (variant === 2) {
+      router.push("/signup2/join");
+      return;
+    }
     router.push("/signup/consent");
   };
 

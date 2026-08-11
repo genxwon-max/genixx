@@ -13,11 +13,18 @@ import type { SignupTypeId } from "./account";
 
 export type SignupDraft = {
   type: SignupTypeId | null;
-  /** 간편 로그인 제공자. 이메일 가입이면 null */
+  /** 간편 로그인 제공자. 아이디 가입이면 null */
   provider: string | null;
   name: string;
   phone: string;
   email: string;
+  /** 아이디 가입에서 정한 로그인 아이디 */
+  loginId: string;
+  /**
+   * 본인확인으로 확인된 생년월일(YYYYMMDD).
+   * 만 14세 이상인지 판정하는 데 쓴다. 주민등록번호는 받지도 저장하지도 않는다.
+   */
+  birth: string;
   /** 본인확인(휴대폰·간편인증) 완료 여부 — 법정대리인 신원 확인의 근거 */
   verified: boolean;
   /** 동의한 목적 id 목록 */
@@ -30,6 +37,8 @@ const EMPTY: SignupDraft = {
   name: "",
   phone: "",
   email: "",
+  loginId: "",
+  birth: "",
   verified: false,
   consents: [],
 };
