@@ -293,9 +293,10 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
         <QuestionPad
           subject={subject}
           index={index}
-          answers={rec.answers}
+          isDone={(q) => isAnswered(q, rec.answers[q.id])}
           onPick={setIndex}
-          doneCount={doneCount}
+          doneLabel="답한 문항"
+          doneVerb="응답함"
         />
       </div>
 
@@ -384,18 +385,22 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
 function QuestionPad({
   subject,
   index,
-  answers,
+  isDone,
   onPick,
-  doneCount,
+  doneLabel,
+  doneVerb,
 }: {
   subject: SubjectId;
   index: number;
-  answers: Record<string, number | string | undefined>;
+  /** 이 문항을 채웠는가 — 응시 때는 「답했는가」, 해석 때는 「해석을 적었는가」 */
+  isDone: (q: Question) => boolean;
   onPick: (i: number) => void;
-  doneCount: number;
+  doneLabel: string;
+  doneVerb: string;
 }) {
   const groups = questionsByLevel(subject);
   const list = questionsOf(subject);
+  const doneCount = list.filter(isDone).length;
 
   return (
     <aside
@@ -418,7 +423,7 @@ function QuestionPad({
             <ol className="mt-2.5 flex flex-wrap gap-1.5">
               {g.items.map((q) => {
                 const at = list.indexOf(q);
-                const ok = isAnswered(q, answers[q.id]);
+                const ok = isDone(q);
                 const current = at === index;
                 return (
                   <li key={q.id}>
@@ -426,9 +431,9 @@ function QuestionPad({
                       type="button"
                       onClick={() => onPick(at)}
                       aria-current={current ? "step" : undefined}
-                      aria-label={`${q.no}번 ${ok ? "응답함" : "아직 답하지 않음"}`}
+                      aria-label={`${q.no}번 ${ok ? doneVerb : "아직 " + doneVerb.replace("함", "하지 않음")}`}
                       title={`${q.no}번 · ${q.type === "essay" ? "서술형" : "객관식"} · ${
-                        ok ? "응답함" : "아직 답하지 않음"
+                        ok ? doneVerb : "아직 " + doneVerb.replace("함", "하지 않음")
                       }`}
                       className={`flex h-9 w-9 flex-col items-center justify-center rounded-[6px] border text-[13px] tabular-nums transition-colors ${
                         current
@@ -457,7 +462,7 @@ function QuestionPad({
 
       <dl className="mt-6 border-t border-exam-line pt-4 text-[12px]">
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-exam-muted">답한 문항</dt>
+          <dt className="text-exam-muted">{doneLabel}</dt>
           <dd className="font-semibold tabular-nums text-exam-text">
             {doneCount} / {list.length}
           </dd>
@@ -469,7 +474,8 @@ function QuestionPad({
       </dl>
 
       <p className="mt-4 text-[11px] leading-relaxed text-exam-muted">
-        번호 아래 줄이 있으면 답한 문항입니다. 순서대로 풀지 않아도 되고, 언제든 돌아올 수 있습니다.
+        번호 아래 줄이 있으면 {doneLabel}입니다. 순서대로 하지 않아도 되고, 언제든 돌아올 수
+        있습니다.
       </p>
     </aside>
   );
@@ -520,157 +526,285 @@ function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => vo
 
 /* ───────────────────────── 제출 후 해석 작성 ───────────────────────── */
 
+/**
+ * 제출 후 해석 작성.
+ *
+ * 응시 화면과 같은 틀을 쓴다 — 왼쪽에 자료, 가운데에 문항, 오른쪽에 이동판. 다른
+ * 화면으로 옮겨 가면 아이는 시험이 한 번 더 시작되는 줄 알고, 방금 무엇을 보고 답했는지
+ * 다시 찾아야 한다. 지문이 그대로 옆에 있어야 "그때 무엇을 보고 그렇게 생각했는지"를
+ * 쓸 수 있다.
+ *
+ * 답안은 이미 제출되어 고칠 수 없다. 고른 보기는 그대로 보여 주되 입력은 잠그고,
+ * 그 아래에 칸 하나가 새로 열린다 — 왜 그 답을 골랐는지.
+ *
+ * 정답은 알려 주지 않는다. 맞았는지 틀렸는지를 먼저 알려 주면 아이는 자기 생각을 적는
+ * 대신 오답 노트를 쓴다. 여기서 받고 싶은 것은 채점 결과가 아니라 그때의 생각이다.
+ */
 function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId: string }) {
   const record = useExamRecord(studentId);
   const rec = record.subjects[subject];
   const meta = subjectOf(subject)!;
   const list = questionsOf(subject);
+  const [index, setIndex] = useState(0);
   const [warn, setWarn] = useState(false);
 
-  const written = list.filter((q) => (rec.reflections[q.id] ?? "").trim().length >= 5).length;
-  const complete = written === list.length;
+  const question = list[index];
+  const written = (q: Question) => (rec.reflections[q.id] ?? "").trim().length >= 5;
+  const writtenCount = list.filter(written).length;
+  const complete = writtenCount === list.length;
+  const isLast = index === list.length - 1;
 
-  const answerText = (q: Question) => {
-    const v = rec.answers[q.id];
-    if (q.type === "choice") {
-      if (typeof v !== "number") return { label: "미응답", body: "답을 고르지 않았습니다." };
-      return { label: `${v + 1}번 선택`, body: q.choices?.[v] ?? "" };
-    }
-    const t = typeof v === "string" ? v.trim() : "";
-    return t
-      ? { label: "작성함", body: t }
-      : { label: "미응답", body: "답을 작성하지 않았습니다." };
-  };
+  const value = rec.answers[question.id];
+  const picked = question.type === "choice" && typeof value === "number" ? value : null;
+  const essayText = question.type === "essay" && typeof value === "string" ? value.trim() : "";
+  const blank = question.type === "choice" ? picked === null : essayText.length === 0;
+  const text = rec.reflections[question.id] ?? "";
 
   return (
-    <div className="container-x py-8 md:py-10">
-      <div className="border-b-2 border-exam-text/80 pb-5">
-        <p className={eyebrow}>제출 완료 · 해석 작성</p>
-        <h1 className="mt-2.5 text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
-          {meta.name} — 문항별 해석을 적어 주세요
-        </h1>
-        <p className="mt-3 max-w-3xl text-[14px] leading-relaxed text-exam-muted">
-          답안은 이미 제출되어 <b className="text-exam-text">수정할 수 없습니다.</b> 대신 각 문항에
-          대해 <b className="text-exam-text">왜 그 답을 골랐는지</b>, 또는{" "}
-          <b className="text-exam-text">왜 풀지 못했는지</b>를 적어 주세요. 이 내용은 채점 점수에
-          반영되지 않고, 전문가가 사고 과정을 읽는 자료로만 쓰입니다.
-        </p>
+    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-exam-line bg-exam-panel">
+        <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
+          <div className="flex items-baseline gap-3">
+            <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
+            <span className="text-[12px] text-exam-muted">제출 완료 · 해석 작성</span>
+          </div>
+          <p className="text-[12px] font-medium tabular-nums text-exam-muted">
+            {question.level} {levelOf(question.level).name} · {index + 1} / {list.length}
+          </p>
+        </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-3 rounded-md border border-exam-line bg-exam-panel px-5 py-3.5">
-        <p className="text-[13px] font-bold tabular-nums text-exam-text">
-          작성 {written} / {list.length}
-        </p>
-        <span className="h-1 w-40 overflow-hidden bg-exam-raised">
-          <span
-            className="block h-full bg-brand-600 transition-[width]"
-            style={{ width: `${(written / list.length) * 100}%` }}
-          />
-        </span>
-      </div>
+      <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_15.5rem] lg:overflow-hidden">
+        {/* 왼쪽 — 응시 때 보던 자료를 그대로 둔다 */}
+        <section className="order-2 border-b border-exam-line bg-exam-raised px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
+          <p className={eyebrow}>{question.brief.label}</p>
+          <h2 className="mt-3 text-[20px] font-black tracking-tight text-exam-text md:text-[22px]">
+            {question.brief.title}
+          </h2>
 
-      <ol className="mt-4 space-y-3">
-        {list.map((q) => {
-          const a = answerText(q);
-          const text = rec.reflections[q.id] ?? "";
-          return (
-            <li key={q.id} className={`p-6 ${panel}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded border border-brand-700 bg-brand-900 text-[12px] font-bold text-white">
-                  {q.no}
-                </span>
-                <p className={eyebrow}>{q.type === "essay" ? "서술형" : "객관식"}</p>
-              </div>
-
-              <p className="mt-3 whitespace-pre-line text-[15px] font-bold leading-relaxed text-exam-text">
-                {q.stem}
+          <div className="mt-5 space-y-4">
+            {question.brief.paragraphs.map((p) => (
+              <p key={p} className="text-[15px] leading-[1.95] text-exam-text/90">
+                {p}
               </p>
+            ))}
+          </div>
 
-              {/* 제출된 답 — 읽기 전용 */}
-              <div className="mt-4 rounded-md border border-exam-line bg-exam-raised px-4 py-3.5">
-                <p className="flex items-center gap-2 text-[12px] font-bold text-exam-muted">
-                  내가 제출한 답
-                  <span
-                    className={`rounded border px-2 py-0.5 text-[11px] ${
-                      a.label === "미응답"
-                        ? "border-rose-300 bg-rose-50 text-rose-600"
-                        : "border-exam-line bg-exam-panel text-exam-text"
+          {question.brief.list && (
+            <ul className="mt-5 space-y-2.5 border-t border-exam-line pt-5">
+              {question.brief.list.map((l) => (
+                <li key={l} className="text-[15px] leading-relaxed text-exam-text">
+                  {l}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {question.brief.table && (
+            <div className="mt-5 overflow-x-auto border-t border-exam-line pt-5">
+              <table className="w-full text-left text-[14px]">
+                <thead>
+                  <tr className="border-b border-exam-line">
+                    {question.brief.table.head.map((h) => (
+                      <th
+                        key={h}
+                        className="whitespace-nowrap px-4 py-3 font-black tabular-nums text-exam-text"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {question.brief.table.rows.map((row) => (
+                    <tr key={row[0]}>
+                      {row.map((cell, c) => (
+                        <td
+                          key={c}
+                          className={`whitespace-nowrap px-4 py-3 tabular-nums ${
+                            c === 0 ? "font-bold text-exam-text" : "text-exam-muted"
+                          }`}
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* 가운데 — 문항과 내가 낸 답, 그 아래 새로 열리는 칸 하나 */}
+        <section className="order-3 px-6 py-7 lg:order-2 lg:overflow-y-auto lg:px-10 lg:py-9">
+          <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
+            <p className="text-[13px] font-semibold text-exam-text">
+              <span className="tabular-nums">{question.no}</span>번
+              <span className="ml-2 font-medium text-exam-muted">
+                {question.type === "essay" ? "서술형" : "객관식"}
+              </span>
+            </p>
+            <p className="text-[12px] font-medium text-exam-muted">제출완료 · 수정 불가</p>
+          </div>
+
+          <h1 className="mt-5 whitespace-pre-line text-[19px] font-bold leading-[1.75] text-exam-text md:text-[21px]">
+            {question.stem}
+          </h1>
+
+          {/* 낸 답 — 응시 때와 같은 모양으로 두되 잠근다 */}
+          {question.type === "choice" ? (
+            <ul className="mt-7 grid gap-2">
+              {question.choices?.map((c, i) => {
+                const on = picked === i;
+                return (
+                  <li
+                    key={c}
+                    className={`flex items-start gap-4 rounded-[6px] border p-4 ${
+                      on ? "border-exam-text" : "border-exam-line opacity-60"
                     }`}
                   >
-                    {a.label}
-                  </span>
-                  <span className="text-[11px] font-medium text-exam-muted">수정 불가</span>
-                </p>
-                <p className="mt-2 whitespace-pre-line text-[14px] leading-relaxed text-exam-text">
-                  {a.body}
-                </p>
-              </div>
-
-              <label
-                htmlFor={`ref-${q.id}`}
-                className="mt-4 block text-[14px] font-bold text-exam-text"
-              >
-                {a.label === "미응답"
-                  ? "왜 풀지 못했는지 적어 주세요"
-                  : "왜 그 답을 골랐는지 적어 주세요"}
-              </label>
-              <p className="mt-1 text-[12px] text-exam-muted">
-                {a.label === "미응답"
-                  ? "어느 부분에서 막혔는지, 무엇을 몰랐는지 쓰면 됩니다."
-                  : "근거로 삼은 부분, 지운 보기와 그 이유를 쓰면 좋습니다."}
+                    <span
+                      aria-hidden
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
+                        on
+                          ? "border-exam-text bg-exam-text text-white"
+                          : "border-exam-line text-exam-muted"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <span
+                      className={`text-[15px] leading-[1.7] ${
+                        on ? "font-semibold text-exam-text" : "text-exam-muted"
+                      }`}
+                    >
+                      {c}
+                    </span>
+                    {on && (
+                      <span className="ml-auto shrink-0 self-center text-[12px] font-semibold text-exam-text">
+                        내가 고른 답
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="mt-7">
+              <p className="text-[12px] font-semibold text-exam-muted">내가 쓴 답</p>
+              <p className="mt-2 min-h-[6rem] whitespace-pre-line rounded-[6px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text">
+                {essayText || <span className="text-exam-muted">답을 작성하지 않았습니다.</span>}
               </p>
-              <textarea
-                id={`ref-${q.id}`}
-                rows={4}
-                value={text}
-                onChange={(e) => {
-                  setWarn(false);
-                  setReflection(studentId, subject, q.id, e.target.value);
+            </div>
+          )}
+
+          {blank && question.type === "choice" && (
+            <p className="mt-3 text-[13px] font-semibold text-exam-text">
+              이 문항은 답을 고르지 않으셨습니다.
+            </p>
+          )}
+
+          {/* 새로 열리는 칸 하나 */}
+          <div className="mt-8 border-t border-exam-line pt-6">
+            <label
+              htmlFor={`ref-${question.id}`}
+              className="block text-[15px] font-bold text-exam-text"
+            >
+              {blank
+                ? "왜 풀지 못했는지 적어 주세요"
+                : picked !== null
+                  ? `${picked + 1}번을 고른 까닭을 적어 주세요`
+                  : "왜 그렇게 썼는지 적어 주세요"}
+            </label>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-exam-muted">
+              {blank
+                ? "어느 부분에서 막혔는지, 무엇을 몰랐는지 쓰면 됩니다. 모르겠다고 써도 괜찮습니다."
+                : "근거로 삼은 부분과, 지운 보기가 있다면 왜 지웠는지를 쓰면 좋습니다."}
+            </p>
+            <textarea
+              id={`ref-${question.id}`}
+              rows={6}
+              value={text}
+              onChange={(e) => {
+                setWarn(false);
+                setReflection(studentId, subject, question.id, e.target.value);
+              }}
+              placeholder={
+                blank
+                  ? "예) 표에서 무엇을 빼야 하는지 몰라서 못 풀었습니다."
+                  : "예) 지문에 '씨앗이 자랐는지 보려고'라는 말이 있어서 2번을 골랐습니다."
+              }
+              className="mt-3 w-full rounded-[6px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
+            />
+            <p className="mt-2 flex items-center justify-between gap-3 text-[12px] tabular-nums text-exam-muted">
+              <span>맞고 틀리고를 보는 칸이 아닙니다. 점수에 반영되지 않습니다.</span>
+              <span>{text.trim().length}자 · 5자 이상</span>
+            </p>
+          </div>
+        </section>
+
+        <QuestionPad
+          subject={subject}
+          index={index}
+          isDone={written}
+          onPick={setIndex}
+          doneLabel="해석을 적은 문항"
+          doneVerb="작성함"
+        />
+      </div>
+
+      {/* 하단 바 */}
+      <div className="shrink-0 border-t border-exam-line bg-exam-panel">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
+          <p className="hidden text-[12px] leading-tight text-exam-muted sm:block">
+            {warn
+              ? "아직 해석을 적지 않은 문항이 있습니다. 번호판에서 줄이 없는 번호를 확인하세요."
+              : "쓰는 대로 저장됩니다. 모든 문항에 적으면 이 과목이 끝납니다."}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
+              작성 {writtenCount}/{list.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIndex((i) => Math.max(0, i - 1))}
+              disabled={index === 0}
+              className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-40`}
+            >
+              이전
+            </button>
+
+            {isLast ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!complete) {
+                    setWarn(true);
+                    return;
+                  }
+                  await leaveFullscreen();
+                  finishReflection(studentId, subject);
                 }}
-                placeholder={
-                  a.label === "미응답"
-                    ? "예) 표에서 무엇을 빼야 하는지 몰라서 못 풀었습니다."
-                    : "예) 지문에 '씨앗이 자랐는지 보려고'라는 말이 있어서 2번을 골랐습니다."
-                }
-                className="mt-2.5 w-full rounded-md border border-exam-line bg-exam-panel px-4 py-3 text-[14px] leading-relaxed text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-brand-500"
-              />
-              <p className="mt-1.5 text-right text-[11px] tabular-nums text-exam-muted">
-                {text.trim().length}자 · 5자 이상
-              </p>
-            </li>
-          );
-        })}
-      </ol>
-
-      {warn && (
-        <p
-          role="alert"
-          className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-800"
-        >
-          아직 해석을 적지 않은 문항이 있습니다. 모든 문항에 5자 이상 적어 주세요.
-        </p>
-      )}
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-exam-line pt-6">
-        <p className="text-[12px] leading-relaxed text-exam-muted">
-          작성한 내용은 자동 저장됩니다. 완료하면 이 과목의 응시가 끝납니다.
-        </p>
-        <button
-          type="button"
-          onClick={async () => {
-            if (!complete) {
-              setWarn(true);
-              return;
-            }
-            await leaveFullscreen();
-            finishReflection(studentId, subject);
-          }}
-          aria-disabled={!complete}
-          className={complete ? btnPrimary : btnDisabled}
-        >
-          해석 작성 완료
-          <ArrowRight className="h-4 w-4" />
-        </button>
+                aria-disabled={!complete}
+                className={complete ? btnPrimary : btnDisabled}
+              >
+                해석 제출하고 마치기
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIndex((i) => Math.min(list.length - 1, i + 1))}
+                className={btnPrimary}
+              >
+                다음
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -702,13 +836,16 @@ function SubmitDialog({
           {subjectName} 답안을 제출할까요?
         </h2>
 
+        {/* 색면을 깔지 않는다. 아이가 제출을 앞두고 보는 마지막 화면이라,
+            노란 상자가 서면 「잘못했다」로 읽힌다. 답을 비운 것은 잘못이 아니다. */}
         {unanswered > 0 ? (
-          <p className="mt-4 rounded border border-amber-300 bg-amber-50 px-4 py-3.5 text-[13px] leading-relaxed text-amber-800">
-            아직 <b className="text-rose-600">{unanswered}문항</b>에 답하지 않았습니다. 그대로
-            제출해도 되며, 제출 후 <b>왜 풀지 못했는지</b>를 적는 단계가 이어집니다.
+          <p className="mt-4 border-t border-exam-line pt-4 text-[13px] leading-relaxed text-exam-muted">
+            아직 <b className="text-exam-text">{unanswered}문항</b>에 답하지 않았습니다. 그대로
+            제출해도 되며, 제출 후 <b className="text-exam-text">왜 풀지 못했는지</b>를 적는 단계가
+            이어집니다.
           </p>
         ) : (
-          <p className="mt-4 rounded border border-exam-line bg-exam-raised px-4 py-3.5 text-[13px] leading-relaxed text-exam-muted">
+          <p className="mt-4 border-t border-exam-line pt-4 text-[13px] leading-relaxed text-exam-muted">
             모든 문항에 답했습니다. 제출 후에는 답안을 수정할 수 없습니다.
           </p>
         )}
@@ -787,7 +924,7 @@ function Submitted({ subject }: { subject: SubjectId }) {
   const meta = subjectOf(subject)!;
   return (
     <Result>
-      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-emerald-300 bg-emerald-50 text-emerald-600">
+      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-exam-line text-exam-text">
         <CheckIcon className="h-7 w-7" />
       </span>
       <h1 className="mt-6 text-[24px] font-black text-exam-text">{meta.name} 응시가 끝났습니다</h1>
