@@ -43,15 +43,16 @@ export default function AuditLog() {
         <div className="mb-6">
           <TableCard
             title={`이 브라우저에서 방금 남긴 기록 ${local.length}건`}
-            caption="관리자 화면에서 개인정보를 열 때마다 즉시 쌓입니다."
+            caption="개인정보를 열거나 계정을 정지·삭제할 때마다 즉시 쌓입니다."
           >
             <table className={a.table}>
               <thead>
                 <tr>
                   <th className={a.th}>기록번호</th>
                   <th className={a.th}>시각</th>
-                  <th className={a.th}>연 사람</th>
-                  <th className={a.th}>연 대상</th>
+                  <th className={a.th}>한 사람</th>
+                  <th className={a.th}>한 일</th>
+                  <th className={a.th}>대상</th>
                   <th className={a.th}>사유</th>
                 </tr>
               </thead>
@@ -63,6 +64,7 @@ export default function AuditLog() {
                       <span className="tabular-nums">{r.at}</span>
                     </td>
                     <td className={a.tdStrong}>{r.actor}</td>
+                    <td className={a.td}>{r.action ?? "개인정보 열람"}</td>
                     <td className={a.td}>{r.target}</td>
                     <td className={`${a.td} min-w-[20rem] text-left`}>{r.reason}</td>
                   </tr>

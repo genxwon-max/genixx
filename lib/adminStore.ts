@@ -106,6 +106,8 @@ export type LocalAudit = {
   target: string;
   reason: string;
   actor: string;
+  /** 무엇을 했는지. 없으면 개인정보 열람이다. */
+  action?: string;
 };
 
 /** 서버 스냅샷은 매번 같은 참조여야 한다. 새 배열을 돌려주면 React가 무한 루프로 본다. */
@@ -143,18 +145,25 @@ export function useLocalAudit(): LocalAudit[] {
   return useSyncExternalStore(subscribeLog, readLog, () => EMPTY);
 }
 
-export function recordAccess(target: string, reason: string, actor: string) {
+function push(entry: Omit<LocalAudit, "id" | "at">) {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const entry: LocalAudit = {
+  const full: LocalAudit = {
+    ...entry,
     id: `L-${now.getTime().toString(36).toUpperCase()}`,
     at: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
-    target,
-    reason,
-    actor,
   };
-  const next = [entry, ...readLog()].slice(0, 50);
+  const next = [full, ...readLog()].slice(0, 50);
   window.localStorage.setItem(LOG_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(LOG_EVENT));
-  return entry;
+  return full;
+}
+
+export function recordAccess(target: string, reason: string, actor: string) {
+  return push({ target, reason, actor, action: "개인정보 열람" });
+}
+
+/** 계정 정지·해제·삭제처럼 상태를 바꾼 조치를 남긴다 */
+export function recordAction(target: string, action: string, reason: string, actor: string) {
+  return push({ target, action, reason, actor });
 }

@@ -177,8 +177,7 @@ export type NewStaff = {
 };
 
 export type IssueResult =
-  | { ok: false; error: string }
-  | { ok: true; account: StaffAccount; tempPassword: string };
+  { ok: false; error: string } | { ok: true; account: StaffAccount; tempPassword: string };
 
 /** 계정을 만들고, 화면에 한 번만 보여 줄 임시 비밀번호를 돌려준다 */
 export function issueStaff(input: NewStaff): IssueResult {
@@ -221,11 +220,31 @@ export function patchStaff(loginId: string, patch: Partial<StaffAccount>) {
   write(read().map((s) => (s.loginId === loginId ? { ...s, ...patch } : s)));
 }
 
+/**
+ * 계정을 지운다.
+ *
+ * 마지막 슈퍼 관리자는 지우지 않는다 — 지우고 나면 아무도 계정을 만들 수 없어서
+ * 콘솔이 잠긴다. 화면에서도 그 자리의 삭제 단추를 내린다.
+ */
+export function removeStaff(loginId: string) {
+  const list = read();
+  const target = list.find((s) => s.loginId === loginId);
+  if (!target) return { ok: false as const, error: "없는 계정입니다." };
+  if (target.role === "super" && list.filter((s) => s.role === "super").length === 1)
+    return { ok: false as const, error: "마지막 슈퍼 관리자는 지울 수 없습니다." };
+  write(list.filter((s) => s.loginId !== loginId));
+  return { ok: true as const };
+}
+
+/** 지울 수 있는 계정인가 — 화면에서 단추를 내릴지 판단할 때 쓴다 */
+export function mayRemove(account: StaffAccount, all: StaffAccount[]) {
+  return !(account.role === "super" && all.filter((s) => s.role === "super").length === 1);
+}
+
 /** 비밀번호를 다시 발급한다. 받은 사람은 다시 임시 상태가 된다. */
 export function resetStaffPassword(loginId: string) {
   patchStaff(loginId, { temp: true });
   return makeTempPassword();
 }
 
-export const roleLabelOf = (id: StaffRoleId) =>
-  staffRoles.find((r) => r.id === id)?.label ?? id;
+export const roleLabelOf = (id: StaffRoleId) => staffRoles.find((r) => r.id === id)?.label ?? id;

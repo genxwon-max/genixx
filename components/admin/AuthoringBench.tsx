@@ -48,26 +48,23 @@ import * as a from "./ui";
  * 내 문항만 보인다. 남이 쓴 문항은 여기 없다.
  */
 
-const tabs: { id: ItemState | "all"; label: string }[] = [
-  { id: "rejected", label: "반려함" },
-  { id: "draft", label: "작성 중" },
-  { id: "submitted", label: "검수 대기" },
-  { id: "approved", label: "승인됨" },
-  { id: "all", label: "전체" },
-];
+/**
+ * 목록 순서. 칸을 나누는 대신 손댈 것이 위로 오게 세운다 —
+ * 반려된 것 · 쓰다 만 것 · 넘겨 둔 것 · 끝난 것.
+ */
+const order: Record<ItemState, number> = { rejected: 0, draft: 1, submitted: 2, approved: 3 };
 
 export default function AuthoringBench() {
   const prefs = useAdminPrefs();
   const hydrated = useHydrated();
   const all = useItems();
-  const [tab, setTab] = useState<ItemState | "all">("rejected");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const mine = all.filter((i) => i.author === prefs.loginId);
-  const shown = tab === "all" ? mine : mine.filter((i) => i.state === tab);
-  const current = mine.find((i) => i.id === openId) ?? shown[0] ?? null;
-
-  const countOf = (state: ItemState) => mine.filter((i) => i.state === state).length;
+  const mine = all
+    .filter((i) => i.author === prefs.loginId)
+    .slice()
+    .sort((x, y) => order[x.state] - order[y.state]);
+  const current = mine.find((i) => i.id === openId) ?? mine[0] ?? null;
 
   return (
     <>
@@ -80,7 +77,6 @@ export default function AuthoringBench() {
             type="button"
             onClick={() => {
               const item = addItem(prefs.loginId ?? "", prefs.staffName);
-              setTab("draft");
               setOpenId(item.id);
             }}
             className={a.btnPrimary}
@@ -96,36 +92,17 @@ export default function AuthoringBench() {
         <div className="grid gap-5 lg:grid-cols-[20rem_1fr]">
           {/* ── 왼쪽: 내 문항 ── */}
           <section className={`${a.panel} self-start overflow-hidden`}>
-            <div className="flex flex-wrap gap-1 border-b border-exam-line p-2">
-              {tabs.map((t) => {
-                const n = t.id === "all" ? mine.length : countOf(t.id as ItemState);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTab(t.id);
-                      setOpenId(null);
-                    }}
-                    aria-current={tab === t.id ? "true" : undefined}
-                    className={`min-h-[2.5rem] rounded-md px-3 adm-t-sm font-bold transition-colors ${
-                      tab === t.id
-                        ? "bg-brand-900 text-white"
-                        : "text-exam-text hover:bg-exam-raised"
-                    }`}
-                  >
-                    {t.label}
-                    <span className="ml-1.5 tabular-nums">{n}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <h2 className="border-b border-exam-line px-5 py-4 adm-t-lg font-black text-exam-text">
+              내 문항 {mine.length}건
+            </h2>
 
-            {shown.length === 0 ? (
-              <p className={`px-5 py-8 text-center ${a.bodyText}`}>이 칸에 있는 문항이 없습니다.</p>
+            {mine.length === 0 ? (
+              <p className={`px-5 py-8 text-center ${a.bodyText}`}>
+                아직 쓴 문항이 없습니다. 「새 문항 만들기」로 시작하세요.
+              </p>
             ) : (
               <ul>
-                {shown.map((i) => (
+                {mine.map((i) => (
                   <li key={i.id} className="border-b border-exam-line last:border-b-0">
                     <button
                       type="button"
@@ -188,6 +165,7 @@ function Editor({ item }: { item: ItemDraft }) {
   const set = (patch: Partial<ItemDraft>) => patchItem(item.id, patch);
   const lastReject = [...item.comments].reverse().find((c) => c.kind === "reject");
   const [reply, setReply] = useState("");
+  const [preview, setPreview] = useState(false);
 
   return (
     <section className={`${a.panel} p-5 sm:p-6`}>
@@ -204,8 +182,15 @@ function Editor({ item }: { item: ItemDraft }) {
             {item.revisionOf ? ` · ${item.revisionOf} 수정본` : ""}
           </p>
         </div>
-        <Badge label={stateLabel[item.state]} className={stateTone[item.state]} />
+        <span className="flex items-center gap-4">
+          <Badge label={stateLabel[item.state]} className={stateTone[item.state]} />
+          <button type="button" onClick={() => setPreview((v) => !v)} className={a.btnRowGhost}>
+            {preview ? "미리보기 닫기" : "미리보기"}
+          </button>
+        </span>
       </div>
+
+      {preview && <Preview item={item} />}
 
       {/* 반려 사유는 편집기 맨 위에 붙인다 — 보지 않고 고칠 수는 없다.
           붉은 면 대신 왼쪽 굵은 선으로 세운다. 눈에 걸리되 화면을 물들이지는 않는다. */}
@@ -508,6 +493,90 @@ function Editor({ item }: { item: ItemDraft }) {
             코멘트 남기기
           </button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 학생 화면 미리보기.
+ *
+ * 쓰는 사람은 칸을 보고 아이는 문제를 본다. 그 둘이 달라서, 편집기 안에서만 다듬으면
+ * 「지문이 없으면 답할 수 없는 발문」이나 「보기 네 개가 사실상 같은 말」 같은 것을
+ * 놓친다. 답과 해설, 태그, 채점 기준은 여기에 넣지 않는다 — 아이에게 보이지 않는
+ * 것들이라, 함께 보이면 미리보기가 아니라 그냥 요약이 된다.
+ *
+ * 실제 응시 화면과 글씨 크기·간격까지 같지는 않다. 여기서 확인할 것은 생김새가 아니라
+ * 「이것만 보고 답할 수 있는가」이다.
+ */
+function Preview({ item }: { item: ItemDraft }) {
+  return (
+    <section className="mt-5 rounded-lg border border-exam-line p-5">
+      <p className="adm-t-sm font-bold text-exam-muted">
+        학생 화면 미리보기 — 정답 · 해설 · 태그 · 채점 기준은 보이지 않습니다
+      </p>
+
+      <div className="mt-4 border-t border-exam-line pt-4">
+        {item.passage && (
+          <p className="mb-4 whitespace-pre-line adm-t-md leading-relaxed text-exam-text">
+            {item.passage}
+          </p>
+        )}
+
+        {/* 지문 그림만 보여 준다. 원본 시험지 PDF나 엑셀은 아이에게 나가지 않는다. */}
+        {item.assets.filter((f) => f.kind === "image" && f.dataUrl).length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {item.assets
+              .filter((f) => f.kind === "image" && f.dataUrl)
+              .map((f) => (
+                // 사람이 올린 자료라 빌드 시점에 알 수 없다
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={f.id}
+                  src={f.dataUrl}
+                  alt={f.name}
+                  className="h-36 w-auto rounded border border-exam-line"
+                />
+              ))}
+          </div>
+        )}
+
+        <p className="adm-t-lg font-bold leading-relaxed text-exam-text">
+          {item.stem || "발문을 아직 쓰지 않았습니다."}
+        </p>
+
+        {item.type === "choice" && (
+          <ol className="mt-4 space-y-2">
+            {item.choices.map((c, i) => (
+              <li key={i}>
+                <span className="flex items-center gap-3 rounded-md border border-exam-line px-4 py-3">
+                  <span
+                    aria-hidden
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-exam-line adm-t-sm font-bold text-exam-muted"
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="adm-t-md text-exam-text">
+                    {c || <span className="text-exam-muted">보기를 아직 쓰지 않았습니다</span>}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {item.type === "short" && (
+          <p className="mt-4 rounded-md border border-exam-line px-4 py-3 adm-t-md text-exam-muted">
+            답을 적는 한 줄 칸이 나옵니다.
+          </p>
+        )}
+
+        {(item.type === "descriptive" || item.type === "essay") && (
+          <p className="mt-4 rounded-md border border-exam-line px-4 py-8 adm-t-md text-exam-muted">
+            글을 쓰는 넓은 칸이 나옵니다.
+            {item.type === "essay" && " 논술형은 더 길게 열립니다."}
+          </p>
+        )}
       </div>
     </section>
   );

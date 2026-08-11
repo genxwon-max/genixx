@@ -1,16 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { roleOf, staffRoles, type StaffRoleId } from "@/lib/admin";
+import {
+  roleOf,
+  staffRoles,
+  userActions,
+  type StaffRoleId,
+  type UserActionKind,
+} from "@/lib/admin";
 import {
   issueStaff,
+  mayRemove,
   patchStaff,
+  removeStaff,
   resetStaffPassword,
   useStaffAccounts,
   type StaffAccount,
 } from "@/lib/staffStore";
 import { useHydrated } from "@/lib/examStore";
-import { Badge } from "./Parts";
+import ActionDialog from "./ActionDialog";
+import { Badge, Callout } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -34,6 +43,12 @@ export default function StaffIssue() {
   });
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ account: StaffAccount; password: string } | null>(null);
+  /** 지금 정지·해제·삭제를 묻고 있는 계정 */
+  const [acting, setActing] = useState<{ account: StaffAccount; kind: UserActionKind } | null>(
+    null,
+  );
+  /** 방금 한 조치를 한 줄로 알린다 */
+  const [done, setDone] = useState<{ tone: "good" | "warn"; text: string } | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +72,12 @@ export default function StaffIssue() {
           {open ? "닫기" : "운영자 추가하기"}
         </button>
       </div>
+
+      {done && (
+        <div className="mb-6">
+          <Callout tone={done.tone}>{done.text}</Callout>
+        </div>
+      )}
 
       {/* ── 발급 결과 — 한 번만 보여 준다 ── */}
       {issued && (
@@ -185,6 +206,7 @@ export default function StaffIssue() {
               <th className={a.th}>아이디</th>
               <th className={a.th}>이름</th>
               <th className={a.th}>역할</th>
+              <th className={a.th}>상태</th>
               <th className={a.th}>비밀번호</th>
               <th className={a.th}>2단계 인증</th>
               <th className={a.th}>마지막 접속</th>
@@ -199,6 +221,12 @@ export default function StaffIssue() {
                 <td className={a.td}>{s.name}</td>
                 <td className={a.td}>
                   <Badge label={roleOf(s.role).label} className={roleOf(s.role).tone} />
+                </td>
+                <td className={a.td}>
+                  <Badge
+                    label={s.active ? "활성" : "정지됨"}
+                    className={s.active ? "text-emerald-700" : "text-rose-700"}
+                  />
                 </td>
                 <td className={a.td}>
                   <Badge
@@ -226,11 +254,23 @@ export default function StaffIssue() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => patchStaff(s.loginId, { active: !s.active })}
+                      onClick={() =>
+                        setActing({ account: s, kind: s.active ? "suspend" : "restore" })
+                      }
                       className={a.btnRowGhost}
                     >
                       {s.active ? "정지" : "정지 해제"}
                     </button>
+                    {/* 마지막 슈퍼 관리자를 지우면 아무도 계정을 만들 수 없다 */}
+                    {mayRemove(s, accounts) && (
+                      <button
+                        type="button"
+                        onClick={() => setActing({ account: s, kind: "delete" })}
+                        className={a.btnRowGhost}
+                      >
+                        삭제
+                      </button>
+                    )}
                   </span>
                 </td>
               </tr>
@@ -238,6 +278,28 @@ export default function StaffIssue() {
           </tbody>
         </table>
       </div>
+
+      {acting && (
+        <ActionDialog
+          kind={acting.kind}
+          target={`운영자 ${acting.account.loginId} · ${acting.account.name}`}
+          onClose={() => setActing(null)}
+          onDone={(reason) => {
+            const { account, kind } = acting;
+            setActing(null);
+            if (kind === "delete") {
+              const result = removeStaff(account.loginId);
+              if (!result.ok) return setDone({ tone: "warn", text: result.error });
+            } else {
+              patchStaff(account.loginId, { active: kind === "restore" });
+            }
+            setDone({
+              tone: "good",
+              text: `${account.name} · ${account.loginId} 계정을 ${userActions[kind].verb}했습니다 — ${reason}`,
+            });
+          }}
+        />
+      )}
     </>
   );
 }

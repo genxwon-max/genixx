@@ -304,10 +304,18 @@ export const adminMenu: AdminMenuGroup[] = [
         desc: "IRT 문항분석·타당도·DIF·판정 컷",
         needs: "psychometrics.read",
         children: [
-          { id: "ADM-07-1", label: "IRT 문항분석", desc: "변별도 a·난이도 b·추측도 c, Infit/Outfit" },
+          {
+            id: "ADM-07-1",
+            label: "IRT 문항분석",
+            desc: "변별도 a·난이도 b·추측도 c, Infit/Outfit",
+          },
           { id: "ADM-07-2", label: "타당도 검증", desc: "CFA(CFI·RMSEA), 수렴·판별, 직교성 r" },
           { id: "ADM-07-3", label: "국소독립성·DIF", desc: "Yen's Q3, 성·지역·SES 차별기능" },
-          { id: "ADM-07-4", label: "판정 컷 관리", desc: "잠정 컷 → 분포 확인 → 확정. 영향 시뮬레이션" },
+          {
+            id: "ADM-07-4",
+            label: "판정 컷 관리",
+            desc: "잠정 컷 → 분포 확인 → 확정. 영향 시뮬레이션",
+          },
         ],
       },
       {
@@ -318,8 +326,16 @@ export const adminMenu: AdminMenuGroup[] = [
         needs: "report.publish",
         children: [
           { id: "ADM-08-1", label: "해석 템플릿", desc: "재능 × 밴드(L1/L2/L3) 템플릿 CRUD·버전" },
-          { id: "ADM-08-2", label: "활동 모듈 DB", desc: "처방 활동. 조립 규칙(assembly_rule) 매핑" },
-          { id: "ADM-08-3", label: "추천 자원 DB", desc: "도서·체험·프로그램. 재능 × 학년군 × 난이도" },
+          {
+            id: "ADM-08-2",
+            label: "활동 모듈 DB",
+            desc: "처방 활동. 조립 규칙(assembly_rule) 매핑",
+          },
+          {
+            id: "ADM-08-3",
+            label: "추천 자원 DB",
+            desc: "도서·체험·프로그램. 재능 × 학년군 × 난이도",
+          },
           { id: "ADM-08-4", label: "리포트 조립 규칙", desc: "학력 부진 × 재능 강세 교차 셀 편집" },
         ],
       },
@@ -410,8 +426,16 @@ export const adminMenu: AdminMenuGroup[] = [
         desc: "동의 이력·파기 스케줄러·접근 감사",
         needs: "audit.read",
         children: [
-          { id: "ADM-10-1", label: "동의 이력 조회", desc: "granted/withdrawn 전건 조회·증빙 출력" },
-          { id: "ADM-10-2", label: "파기 스케줄러", desc: "보관기간 도래 자동 파기, 철회 즉시 파기 큐" },
+          {
+            id: "ADM-10-1",
+            label: "동의 이력 조회",
+            desc: "granted/withdrawn 전건 조회·증빙 출력",
+          },
+          {
+            id: "ADM-10-2",
+            label: "파기 스케줄러",
+            desc: "보관기간 도래 자동 파기, 철회 즉시 파기 큐",
+          },
           { id: "ADM-10-3", label: "개인정보 접근 감사", desc: "누가·언제·무엇을 열람했는지 전건" },
         ],
       },
@@ -1174,6 +1198,59 @@ export const accessReasons = [
   "개인정보 정정·파기 요청 처리",
 ];
 
+/* ───────── 계정 정지·삭제 사유 ─────────
+   사유를 강제하지 않는다. 강제하면 사람은 아무 칸이나 눌러 넘기고, 남은 기록은
+   있으나 마나 한 글자가 된다. 대신 흔한 사유를 미리 골라 두고 첫 항목을 눌러 둔다 —
+   그대로 눌러도 되고, 다르면 고르거나 직접 적으면 된다. 어느 쪽이든 기록은 남는다. */
+
+export type UserActionKind = "suspend" | "restore" | "delete";
+
+export const userActions: Record<
+  UserActionKind,
+  {
+    /** 확인 창 제목에 쓰는 말 */
+    verb: string;
+    /** 무슨 일이 일어나는지 */
+    effects: string[];
+    /** 첫 항목이 기본값으로 눌려 있다 */
+    reasons: string[];
+    danger: boolean;
+  }
+> = {
+  suspend: {
+    verb: "정지",
+    effects: [
+      "로그인할 수 없게 됩니다. 자료는 그대로 남습니다.",
+      "언제든 정지를 풀 수 있습니다.",
+      "정지한 사람과 시각, 사유가 기록에 남습니다.",
+    ],
+    reasons: [
+      "장기 미접속",
+      "본인 요청",
+      "소속 변경·퇴직",
+      "보안 확인 중",
+      "이용약관 위반 확인 중",
+    ],
+    danger: false,
+  },
+  restore: {
+    verb: "정지 해제",
+    effects: ["다시 로그인할 수 있게 됩니다.", "해제한 사람과 시각, 사유가 기록에 남습니다."],
+    reasons: ["정지 사유가 해소됨", "본인 요청", "착오로 정지했음"],
+    danger: false,
+  },
+  delete: {
+    verb: "삭제",
+    effects: [
+      "계정과 연결된 자료가 파기 절차로 넘어갑니다.",
+      "되돌릴 수 없습니다. 잠시 막아 두려는 것이라면 정지를 쓰세요.",
+      "삭제한 사람과 시각, 사유가 기록에 남습니다.",
+    ],
+    reasons: ["본인의 파기 요청", "보관 기간 만료", "중복 계정 정리", "잘못 만든 계정"],
+    danger: true,
+  },
+};
+
 /* ───────────────────────── 운영자 (ADM-12) ───────────────────────── */
 
 export type StaffRow = {
@@ -1196,7 +1273,10 @@ export const staff: StaffRow[] = [
 ];
 
 /** 콘텐츠·정산처럼 아직 목록 화면만 정의된 자리 */
-export const stubSections: Record<string, { id: string; title: string; lead: string; todo: string[] }> = {
+export const stubSections: Record<
+  string,
+  { id: string; title: string; lead: string; todo: string[] }
+> = {
   content: {
     id: "ADM-09",
     title: "콘텐츠",
