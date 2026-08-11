@@ -22,7 +22,7 @@ import { VariantSwitch } from "./AuthTabs";
  */
 
 const quickLinks = [
-  { href: "/my/children/consent", t: "자녀 추가 등록", d: "법정대리인 동의부터" },
+  { href: "/my/children", t: "자녀 프로필", d: "접속코드·코드 재발급" },
   { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
   { href: "/mypage", t: "마이페이지", d: "회원정보·동의·수신·탈퇴" },
 ];
@@ -72,12 +72,22 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
     <div className={`min-h-full ${t.page}`}>
       <div className="container-x py-10 pb-16">
         <div className="mx-auto w-full max-w-[60rem]">
-          <header className="mb-7">
-            <p className={`text-[12px] font-bold uppercase tracking-[0.14em] ${t.muted}`}>ACC-03</p>
-            <h1 className={`mt-2 ${t.heading}`}>{session?.name ?? "보호자"}님, 안녕하세요</h1>
-            <p className={`mt-3 ${t.lead}`}>
-              자녀의 진단 진행 상황입니다. 아이를 눌러 접속코드를 확인하거나 다음 단계로 넘어가세요.
-            </p>
+          {/* 등록이 이 화면의 주 액션이다. 아래 바로가기에만 두면 둘째를 등록하려고
+              페이지 끝까지 스크롤해야 한다. 제목 옆에 세워 둔다. */}
+          <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className={`text-[12px] font-bold uppercase tracking-[0.14em] ${t.muted}`}>
+                ACC-03
+              </p>
+              <h1 className={`mt-2 ${t.heading}`}>{session?.name ?? "보호자"}님, 안녕하세요</h1>
+              <p className={`mt-3 ${t.lead}`}>
+                자녀의 진단 진행 상황입니다. 아이를 눌러 접속코드를 확인하거나 다음 단계로
+                넘어가세요.
+              </p>
+            </div>
+            <Link href="/my/children/consent" className={t.btnAction}>
+              + 자녀 등록
+            </Link>
           </header>
 
           {/* 요약 */}

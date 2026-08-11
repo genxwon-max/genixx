@@ -80,13 +80,21 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
     <div className={`min-h-full ${t.page}`}>
       <div className="container-x py-10 pb-16">
         <div className="mx-auto w-full max-w-[60rem]">
-          <header className="mb-7">
-            <p className={`text-[12px] font-bold uppercase tracking-[0.14em] ${t.muted}`}>ORG-01</p>
-            <h1 className={`mt-2 ${t.heading}`}>{session?.org ?? "소속 기관"} 대시보드</h1>
-            <p className={`mt-3 ${t.lead}`}>
-              소속 학생의 응시 현황과 진척률입니다. 개인 상세는 보호자가 동의한 범위 안에서만
-              열립니다.
-            </p>
+          {/* 학부모 홈과 같은 자리에 같은 무게로 등록 버튼을 둔다 */}
+          <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className={`text-[12px] font-bold uppercase tracking-[0.14em] ${t.muted}`}>
+                ORG-01
+              </p>
+              <h1 className={`mt-2 ${t.heading}`}>{session?.org ?? "소속 기관"} 대시보드</h1>
+              <p className={`mt-3 ${t.lead}`}>
+                소속 학생의 응시 현황과 진척률입니다. 개인 상세는 보호자가 동의한 범위 안에서만
+                열립니다.
+              </p>
+            </div>
+            <Link href="/exam/roster" className={t.btnAction}>
+              + 학생 등록
+            </Link>
           </header>
 
           {/* 요약 */}

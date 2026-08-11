@@ -9,7 +9,7 @@ import { addStudents, formatCode } from "@/lib/roster";
 import { useSession } from "@/lib/authStore";
 import { ArrowRight } from "@/components/Icons";
 import { labelText as fieldLabel, field as input } from "@/components/account/ui";
-import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
+import { AccHead, btnGhost, btnPrimary, card, cardPad, childStepLabels, LegalNote, StepBar } from "./ui";
 
 /**
  * ACC-03-2 기본정보 입력 (B01~B10).
@@ -62,7 +62,10 @@ export default function ChildNew() {
   if (!consentDone(draft)) {
     return (
       <>
-        <AccHead id="ACC-03-2" title="기본정보 입력" />
+        <AccHead id="ACC-03-2" title="자녀 등록" />
+        <div className="mb-5">
+          <StepBar current={0} labels={childStepLabels} />
+        </div>
         <div className={`${card} ${cardPad}`}>
           <p className="text-[15px] font-bold text-soft-ink">
             먼저 법정대리인 동의를 받아야 합니다.
@@ -71,7 +74,7 @@ export default function ChildNew() {
             아이 정보를 받기 전에 누가 동의해야 하는지부터 정해야 합니다. 생년월일을 입력하시면
             만 14세 기준으로 안내해 드립니다.
           </p>
-          <Link href="/my/children/consent" className={`${btnPrimary} mt-5`}>
+          <Link href="/my/children/consent" className={`${btnPrimary} mt-5 w-full`}>
             동의 단계로 가기
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -111,10 +114,14 @@ export default function ChildNew() {
     <>
       <AccHead
         id="ACC-03-2"
-        title="아이 기본정보"
+        title="자녀 등록"
         lead="진단 결과를 해석할 때 필요한 항목만 받습니다."
         back={{ href: "/my/children/consent", label: "동의 단계로" }}
       />
+
+      <div className="mb-5">
+        <StepBar current={1} labels={childStepLabels} />
+      </div>
 
       {info && age !== null && (
         <p className="mb-4 rounded-lg border border-soft-line bg-slate-50 px-5 py-4 text-[14px] text-soft-ink">
@@ -240,7 +247,7 @@ export default function ChildNew() {
         </p>
       )}
 
-      <button type="button" onClick={submit} className={`${btnPrimary} mt-5`}>
+      <button type="button" onClick={submit} className={`${btnPrimary} mt-5 w-full`}>
         등록하고 접속코드 받기
         <ArrowRight className="h-4 w-4" />
       </button>
@@ -256,7 +263,12 @@ function IssuedView({
 }) {
   return (
     <>
-      <AccHead id="ACC-03-2" title="등록이 끝났습니다" />
+      <AccHead id="ACC-03-2" title="자녀 등록" lead="등록이 끝났습니다." />
+
+      <div className="mb-5">
+        <StepBar current={2} labels={childStepLabels} />
+      </div>
+
       <div className={`${card} ${cardPad}`}>
         <p className="text-[15px] leading-relaxed text-soft-ink">
           <b>{issued.name}</b> 프로필이 만들어졌고 접속코드가 발급되었습니다.
@@ -278,9 +290,13 @@ function IssuedView({
           </p>
         )}
 
+        <CopyCode code={issued.code} className="mt-4 w-full" />
+
+        {/* 코드를 받은 다음 할 일은 「목록 보기」가 아니라 「진행 상황 보기」다.
+            홈이 아이별 다음 단계를 한 줄로 알려 주는 자리라 그쪽으로 보낸다. */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Link href="/my/children" className={btnPrimary}>
-            자녀 목록으로
+          <Link href="/my" className={`${btnPrimary} w-full`}>
+            홈에서 진행 상황 보기
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link href="/my/children/consent" className={`${btnGhost} w-full`}>
@@ -289,5 +305,47 @@ function IssuedView({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * 접속코드 복사 버튼.
+ *
+ * 코드를 받은 보호자가 바로 할 일은 아이에게 전달하는 것이다. 손으로 옮겨 적게
+ * 두면 혼동하기 쉬운 글자(0·O 같은)를 빼 둔 뜻이 없어진다.
+ */
+function CopyCode({ code, className = "" }: { code: string; className?: string }) {
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+
+  const copy = async () => {
+    const text = formatCode(code);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // 보안 컨텍스트가 아니거나 권한이 없으면 clipboard가 거절한다. 예전 방식으로 한 번 더 시도한다.
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (!ok) {
+        // 되지 않았으면 됐다고 하지 않는다. 손으로 옮겨 적어야 한다는 뜻이다.
+        setState("failed");
+        window.setTimeout(() => setState("idle"), 3000);
+        return;
+      }
+    }
+    setState("done");
+    window.setTimeout(() => setState("idle"), 2000);
+  };
+
+  return (
+    <button type="button" onClick={() => void copy()} className={`${btnGhost} ${className}`}>
+      {state === "done" ? "복사했습니다" : state === "failed" ? "직접 입력해 주세요" : "코드 복사"}
+    </button>
   );
 }

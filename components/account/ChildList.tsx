@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ageFromBirth, consentRouteFor, consentRouteInfo } from "@/lib/account";
 import { formatCode, reissueCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
@@ -23,11 +24,22 @@ export default function ChildList() {
 
   return (
     <>
-      <AccHead
-        id="ACC-03"
-        title="자녀 프로필"
-        lead="아이마다 프로필을 따로 둡니다. 응시 기록과 리포트는 프로필 단위로 쌓입니다."
-      />
+      {/* 등록 버튼은 학부모 홈과 같은 자리(제목 오른쪽)에 둔다 */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <AccHead
+            id="ACC-03"
+            title="자녀 프로필"
+            lead="아이마다 프로필을 따로 둡니다. 응시 기록과 리포트는 프로필 단위로 쌓입니다."
+            back={{ href: "/my", label: "홈으로" }}
+          />
+        </div>
+        {children.length > 0 && (
+          <Link href="/my/children/consent" className={`${btnPrimary} mt-8 shrink-0`}>
+            + 자녀 등록
+          </Link>
+        )}
+      </div>
 
       {children.length === 0 ? (
         <div className={`${card} ${cardPad} text-center`}>
@@ -80,6 +92,7 @@ export default function ChildList() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
+                  <CopyCode code={c.code} className="flex-1 text-[14px]" />
                   <button
                     type="button"
                     onClick={() => reissueCode(c.id)}
@@ -100,13 +113,6 @@ export default function ChildList() {
         </ul>
       )}
 
-      {children.length > 0 && (
-        <Link href="/my/children/consent" className={`${btnPrimary} mt-5`}>
-          자녀 더 등록하기
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      )}
-
       <div className={`${card} mt-4 p-5`}>
         <p className="text-[14px] font-black text-soft-ink">아이는 따로 가입하지 않습니다</p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
@@ -115,5 +121,47 @@ export default function ChildList() {
         </p>
       </div>
     </>
+  );
+}
+
+/**
+ * 접속코드 복사 버튼.
+ *
+ * 코드를 받은 보호자가 바로 할 일은 아이에게 전달하는 것이다. 손으로 옮겨 적게
+ * 두면 혼동하기 쉬운 글자(0·O 같은)를 빼 둔 뜻이 없어진다.
+ */
+function CopyCode({ code, className = "" }: { code: string; className?: string }) {
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+
+  const copy = async () => {
+    const text = formatCode(code);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // 보안 컨텍스트가 아니거나 권한이 없으면 clipboard가 거절한다. 예전 방식으로 한 번 더 시도한다.
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (!ok) {
+        // 되지 않았으면 됐다고 하지 않는다. 손으로 옮겨 적어야 한다는 뜻이다.
+        setState("failed");
+        window.setTimeout(() => setState("idle"), 3000);
+        return;
+      }
+    }
+    setState("done");
+    window.setTimeout(() => setState("idle"), 2000);
+  };
+
+  return (
+    <button type="button" onClick={() => void copy()} className={`${btnGhost} ${className}`}>
+      {state === "done" ? "복사했습니다" : state === "failed" ? "직접 입력해 주세요" : "코드 복사"}
+    </button>
   );
 }

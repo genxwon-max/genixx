@@ -14,7 +14,7 @@ import { patchChildDraft, useChildDraft } from "@/lib/childStore";
 import { useHydrated } from "@/lib/examStore";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { labelText as fieldLabel, field as input } from "@/components/account/ui";
-import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
+import { AccHead, btnGhost, btnPrimary, card, cardPad, childStepLabels, LegalNote, StepBar } from "./ui";
 
 /**
  * ACC-03-1 법정대리인 동의 (B00) — 자녀 등록 흐름의 최선행.
@@ -22,6 +22,10 @@ import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
  * 만 14세 기준으로 동의 주체가 갈리므로, 생년월일을 가장 먼저 받는다.
  * 이때 받는 것은 생년월일 하나뿐이다. 어떤 법적 근거로 무엇을 받아야 하는지
  * 정하기 위한 최소 정보라서, 다른 항목은 다음 화면(B01~B10)으로 미룬다.
+ *
+ * 화면 제목은 「자녀 등록」이다. 사용자는 아이를 등록하러 왔지, 법정대리인 동의를
+ * 하러 온 것이 아니다. 법률 용어는 부제와 근거 상자에 둔다. 자녀가 없는 계정은
+ * 로그인하면 여기로 바로 오기 때문에, 3단계 중 첫 칸이라는 것을 위에 세워 둔다.
  */
 export default function ChildConsent() {
   const router = useRouter();
@@ -68,10 +72,14 @@ export default function ChildConsent() {
     <>
       <AccHead
         id="ACC-03-1"
-        title="법정대리인 동의"
-        lead="자녀 등록의 가장 첫 단계입니다. 아이의 생년월일에 따라 누가 동의해야 하는지가 달라집니다."
-        back={{ href: "/my/children", label: "자녀 목록으로" }}
+        title="자녀 등록"
+        lead="먼저 동의를 받습니다. 아이의 생년월일에 따라 누가 동의해야 하는지가 달라집니다."
+        back={{ href: "/my", label: "홈으로" }}
       />
+
+      <div className="mb-5">
+        <StepBar current={0} labels={childStepLabels} />
+      </div>
 
       {/* ① 생년월일 — 갈래를 정하는 최소 정보 */}
       <div className={`${card} ${cardPad}`}>
@@ -87,7 +95,8 @@ export default function ChildConsent() {
           className={`mt-2 ${input} tabular-nums`}
         />
         <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
-          지금은 생년월일만 받습니다. 이름·학년 같은 정보는 동의를 받은 다음 화면에서 여쭤봅니다.
+          이름·학년을 먼저 묻지 않는 이유가 있습니다. 그것부터 받으면 동의 없이 아이의 개인정보를
+          갖게 됩니다. 생년월일은 누구에게 동의를 받아야 하는지 정하는 데만 씁니다.
         </p>
 
         {digits.length === 8 && age === null && (
@@ -237,7 +246,7 @@ export default function ChildConsent() {
       )}
 
       <button type="button" onClick={submit} className={`${btnPrimary} mt-5 w-full`}>
-        {route === "guardian" ? "법정대리인으로 동의하고 계속" : "확인하고 계속"}
+        동의하고 아이 정보 입력
         <ArrowRight className="h-4 w-4" />
       </button>
 
