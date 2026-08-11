@@ -10,8 +10,12 @@ export const metadata: Metadata = {
 
 export default function ExamPage() {
   return (
-    <ExamGate>
-      <StatusTable />
-    </ExamGate>
+    // 응시 화면(/exam/session)만 화면 끝까지 쓴다. 현황은 읽는 면이라 좌우를 띄우고
+    // 글줄이 지나치게 길어지지 않도록 폭을 묶는다.
+    <div className="mx-auto w-full max-w-[1120px] px-6 py-9 md:px-10 md:py-12">
+      <ExamGate>
+        <StatusTable />
+      </ExamGate>
+    </div>
   );
 }

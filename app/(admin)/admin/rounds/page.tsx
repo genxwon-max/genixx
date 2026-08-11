@@ -73,7 +73,7 @@ export default function RoundsPage() {
         </section>
 
         <div className="mt-6 grid gap-5 xl:grid-cols-2">
-          <TableCard title="과목별 응시" caption="한 과목당 4문항 · 제한 시간 40분입니다.">
+          <TableCard title="과목별 응시" caption="한 과목당 10문항 · 제한 시간 40분입니다.">
             <table className={a.table}>
               <thead>
                 <tr>

@@ -34,17 +34,13 @@ export default function ExamGate({ children }: { children: ReactNode }) {
   const session = useSession();
 
   if (!hydrated) {
-    return (
-      <div className="container-x py-24 text-center text-[13px] text-exam-muted">
-        확인 중입니다…
-      </div>
-    );
+    return <div className="py-20 text-center text-[13px] text-exam-muted">확인 중입니다…</div>;
   }
 
   if (session) return <>{children}</>;
 
   return (
-    <div className="container-x py-12 md:py-20">
+    <div>
       <div className="mx-auto max-w-2xl">
         <p className={eyebrow}>Assessment Center · 인증 필요</p>
         <h1 className="mt-3 text-[26px] font-black tracking-tight text-exam-text md:text-[32px]">
@@ -79,8 +75,10 @@ export default function ExamGate({ children }: { children: ReactNode }) {
         <div className={`mt-8 px-6 py-5 ${panel}`}>
           <p className="text-[13px] font-bold text-exam-text">응시 전에 확인해 주세요</p>
           <ul className="mt-3 space-y-1.5 text-[13px] leading-relaxed text-exam-muted">
-            <li>· 국어(언어)·수학·과학을 <b className="text-exam-text">과목별로 따로</b> 응시합니다.</li>
-            <li>· 한 과목은 4문항이며 제한 시간은 40분입니다.</li>
+            <li>
+              · 국어(언어)·수학·과학을 <b className="text-exam-text">과목별로 따로</b> 응시합니다.
+            </li>
+            <li>· 한 과목은 10문항이며 제한 시간은 40분입니다.</li>
             <li>· 한 과목을 모두 풀어야 그 과목을 제출할 수 있습니다.</li>
             <li>· 중간에 포기하면 해당 과목의 응시 기회가 사라집니다.</li>
           </ul>

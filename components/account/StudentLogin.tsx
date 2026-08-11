@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { signIn } from "@/lib/authStore";
-import { addStudents, findByCode, formatCode, useRoster, type Student } from "@/lib/roster";
+import { addStudents, findByCode, formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
 import { ArrowRight } from "@/components/Icons";
 import {
@@ -24,7 +24,6 @@ export default function StudentLogin() {
   const [digits, setDigits] = useState<string[]>(Array(8).fill(""));
   const [birth, setBirth] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [matched, setMatched] = useState<Student | null>(null);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   const code = digits.join("");
@@ -44,6 +43,14 @@ export default function StudentLogin() {
     if (only && i < 7) refs.current[i + 1]?.focus();
   };
 
+  /**
+   * 코드와 생년월일이 맞으면 곧바로 응시 화면으로 보낸다.
+   *
+   * 예전에는 여기서 「학생 본인입니까, 학부모입니까」를 한 번 더 물었다. 그 물음은
+   * 이제 뜻이 없다 — 보호자 설문은 보호자 대시보드로 옮겼고, 이 입구로 들어오는
+   * 사람은 시험을 보러 온 학생뿐이다. 코드와 생년월일이 이미 확인이고, 확인된
+   * 사람에게 한 번 더 "당신이 맞습니까"를 묻는 화면은 문턱만 높인다.
+   */
   const check = () => {
     if (!ready) {
       setError("접속코드 8자리와 생년월일 8자리를 모두 입력해 주세요.");
@@ -54,17 +61,12 @@ export default function StudentLogin() {
       setError("일치하는 접속코드가 없습니다. 코드와 생년월일을 다시 확인해 주세요.");
       return;
     }
-    setMatched(found);
-  };
-
-  const enter = (asGuardian: boolean) => {
-    if (!matched) return;
     signIn({
       role: "student",
-      name: matched.name,
+      name: found.name,
       provider: "접속코드",
-      studentId: matched.id,
-      asGuardian,
+      studentId: found.id,
+      asGuardian: false,
     });
     router.push("/exam");
   };
@@ -80,60 +82,6 @@ export default function StudentLogin() {
     setBirth(created.birth);
     setError(null);
   };
-
-  if (matched) {
-    return (
-      <div className="mx-auto w-full max-w-lg">
-        <div className={`p-7 text-center md:p-10 ${panel}`}>
-          <p className={eyebrow}>본인 확인</p>
-          <h1 className="mt-3 text-[22px] font-black tracking-tight text-exam-text">
-            {matched.name} 학생으로 확인되었습니다
-          </h1>
-          <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
-            지금 접속하신 분은 누구신가요? 선택에 따라 들어갈 수 있는 화면이 달라집니다.
-          </p>
-
-          <div className="mt-7 grid gap-2.5">
-            <button
-              type="button"
-              onClick={() => enter(false)}
-              className="flex items-center gap-4 rounded-md border border-exam-line bg-exam-panel px-5 py-4 text-left transition-colors hover:border-brand-500 hover:bg-brand-50"
-            >
-              <span className="flex-1">
-                <span className="block text-[16px] font-black text-exam-text">학생 본인입니다</span>
-                <span className="mt-1 block text-[12px] text-exam-muted">
-                  국어·수학·과학 평가에 응시합니다.
-                </span>
-              </span>
-              <ArrowRight className="h-5 w-5 shrink-0 text-exam-muted" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => enter(true)}
-              className="flex items-center gap-4 rounded-md border border-exam-line bg-exam-panel px-5 py-4 text-left transition-colors hover:border-brand-500 hover:bg-brand-50"
-            >
-              <span className="flex-1">
-                <span className="block text-[16px] font-black text-exam-text">학부모입니다</span>
-                <span className="mt-1 block text-[12px] text-exam-muted">
-                  자녀의 답안은 볼 수 없고, 학부모 설문만 진행합니다.
-                </span>
-              </span>
-              <ArrowRight className="h-5 w-5 shrink-0 text-exam-muted" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setMatched(null)}
-            className="mt-5 text-[13px] text-exam-muted hover:text-exam-text"
-          >
-            다른 코드로 다시 입력
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto w-full max-w-lg">

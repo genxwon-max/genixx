@@ -17,7 +17,10 @@ export default function SectionTitle({
     <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
       <div>
         <h2 className="flex items-center gap-2.5 text-[16px] font-bold tracking-tight text-soft-ink md:text-[17px]">
-          <span aria-hidden className="inline-block h-[16px] w-[3px] rounded-full bg-soft-primary" />
+          <span
+            aria-hidden
+            className="inline-block h-[16px] w-[3px] rounded-full bg-soft-primary"
+          />
           {children}
         </h2>
         {note && <p className="mt-1.5 pl-[13px] text-[13px] text-soft-muted">{note}</p>}

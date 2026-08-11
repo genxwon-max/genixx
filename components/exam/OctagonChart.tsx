@@ -39,7 +39,8 @@ export default function OctagonChart({
   const valuePath =
     scores
       .map((s, i) => {
-        const ratio = s.measured && s.score !== null ? Math.max(0, Math.min(100, s.score)) / 100 : 0.08;
+        const ratio =
+          s.measured && s.score !== null ? Math.max(0, Math.min(100, s.score)) / 100 : 0.08;
         const [x, y] = polar(cx, cy, radius * ratio, start + step * i);
         return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
       })

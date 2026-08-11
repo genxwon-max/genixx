@@ -29,7 +29,7 @@ const ladder = [
   {
     step: "무료",
     title: "학력진단",
-    desc: "국어(언어)·수학·과학 3과목을 각 4문항씩. 지금 어디까지 이해하고 있는지 확인합니다.",
+    desc: "국어(언어)·수학·과학 3과목을 각 10문항씩. 지금 어디까지 이해하고 있는지 확인합니다.",
     href: "/service/academic",
     tone: "bg-surface-blue text-brand-700",
     meta: ["초3 ~ 고1", "3과목 · 12문항", "과목당 40분", "파일럿 무료"],
@@ -93,7 +93,7 @@ const sources = [
     n: "01",
     kind: "지필 평가",
     who: "학생",
-    what: "국어(언어)·수학·과학 각 4문항, 객관식과 서술형",
+    what: "국어(언어)·수학·과학 각 10문항, 객관식과 서술형",
     use: "학력 축 · 언어 / 수리·논리 / 자연·탐구 3개 재능 축",
   },
   {
@@ -235,7 +235,7 @@ export default function HomePage() {
             </div>
 
             <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2">
-              {["회원가입 즉시 이용", "3과목 × 4문항", "파일럿 회차 전면 무료"].map((t) => (
+              {["회원가입 즉시 이용", "3과목 × 10문항", "파일럿 회차 전면 무료"].map((t) => (
                 <li key={t} className="type-meta flex items-center gap-1.5 text-slate-600">
                   <CheckIcon className="h-4 w-4 shrink-0 text-emerald-500" />
                   {t}
@@ -375,7 +375,7 @@ export default function HomePage() {
                   <p className="type-h3 mt-3 font-black text-brand-950">{a.label}</p>
                   <p className="type-body mt-1.5 flex-1 text-slate-600">{a.desc}</p>
                   <p className="type-meta mt-4 border-t border-brand-100 pt-3 text-slate-500">
-                    {subject ? `${subject.name} 4문항 · ${subject.limitMin}분` : "심화진단 수행과제"}
+                    {subject ? `${subject.name} 10문항 · ${subject.limitMin}분` : "심화진단 수행과제"}
                   </p>
                 </li>
               );
@@ -672,7 +672,7 @@ export default function HomePage() {
           <SectionHead
             align="center"
             title="12문항이면 시작할 수 있습니다"
-            lead="국어·수학·과학 각 4문항. 세 과목을 모두 마치면 제출되고, 전문가 검토를 거쳐 결과가 발행됩니다."
+            lead="국어·수학·과학 각 10문항. 세 과목을 모두 마치면 제출되고, 전문가 검토를 거쳐 결과가 발행됩니다."
           />
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/exam" className={btnFilled}>

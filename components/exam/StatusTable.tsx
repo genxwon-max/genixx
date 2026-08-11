@@ -74,7 +74,7 @@ export default function StatusTable() {
   if (hydrated && session && session.role !== "student") {
     const home = session.role === "director" ? "/my/students" : "/my/children";
     return (
-      <div className="container-x py-16">
+      <div className="py-10">
         <div className={`mx-auto max-w-lg p-8 text-center ${panel}`}>
           <p className={eyebrow}>학생 화면</p>
           <h1 className="mt-3 text-[20px] font-bold text-soft-ink">
@@ -145,7 +145,7 @@ export default function StatusTable() {
 
       {/* 표 1 — 과목별 평가 */}
       <section className="mt-9">
-        <SectionTitle note="과목마다 따로 응시하며, 한 과목당 4문항 40분입니다. 응시 버튼을 누르면 별도 창이 열립니다.">
+        <SectionTitle note="과목마다 따로 응시하며, 한 과목당 10문항 40분입니다. 응시 버튼을 누르면 별도 창이 열립니다.">
           평가 응시 현황
         </SectionTitle>
 
@@ -191,12 +191,9 @@ export default function StatusTable() {
                         필수 평가
                       </td>
                     )}
-                    <td className={`${tdStrong} text-left`}>
-                      <span className="flex items-center gap-2">
-                        <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} aria-hidden />
-                        {s.name}
-                      </span>
-                    </td>
+                    {/* 과목 앞의 색점은 두지 않는다. 이름이 곧 구분이고,
+                        색점은 뜻 없이 눈만 잡아끈다. */}
+                    <td className={`${tdStrong} text-left`}>{s.name}</td>
                     <td className={`${td} tabular-nums`}>
                       {answered}/{QUESTIONS_PER_SUBJECT}
                     </td>
@@ -427,10 +424,10 @@ function FinalDialog({
                 ))}
               </ul>
               <p className="mt-4 rounded border border-rose-300 bg-rose-50 px-4 py-3.5 text-[13px] leading-relaxed text-rose-700">
-                <b>설문이 빠진 상태로도 결과는 발행됩니다.</b> 다만 보호자·교사 관찰은 학생 응답만으로
-                확인하기 어려운 <b>발현 조건</b>을 보는 자료이므로, 빠지면 해당 해석 항목이 제외되고
-                리포트의 신뢰도 표기가 &lsquo;참고&rsquo; 수준으로 내려갑니다. 가능하면 설문을 마친 뒤
-                제출하시길 권합니다.
+                <b>설문이 빠진 상태로도 결과는 발행됩니다.</b> 다만 보호자·교사 관찰은 학생
+                응답만으로 확인하기 어려운 <b>발현 조건</b>을 보는 자료이므로, 빠지면 해당 해석
+                항목이 제외되고 리포트의 신뢰도 표기가 &lsquo;참고&rsquo; 수준으로 내려갑니다.
+                가능하면 설문을 마친 뒤 제출하시길 권합니다.
               </p>
             </>
           ) : (

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  levelOf,
   QUESTIONS_PER_SUBJECT,
+  questionsByLevel,
   questionsOf,
   subjectOf,
   type Question,
@@ -106,48 +108,25 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
-      {/* 문항 스텝 */}
+      {/* 문항 머리 — 과목과 지금 문항의 위계를 적는다. 점(●)은 두지 않는다:
+          과목은 이름으로 충분하고, 시험지에 색점이 박혀 있을 이유가 없다. */}
       <div className="shrink-0 border-b border-exam-line bg-exam-panel">
-        <div className="container-x flex h-14 items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className={`h-2 w-2 rounded-full ${meta.dot}`} aria-hidden />
-            <p className="text-[14px] font-black text-exam-text">{meta.name}</p>
+        <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
+          <div className="flex items-baseline gap-3">
+            <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
             <span className="hidden text-[12px] text-exam-muted sm:block">
               총 {QUESTIONS_PER_SUBJECT}문항 · 제한 {meta.limitMin}분
             </span>
           </div>
-
-          <ol className="flex items-center gap-1.5">
-            {list.map((q, i) => {
-              const ok = isAnswered(q, rec.answers[q.id]);
-              const current = i === index;
-              return (
-                <li key={q.id}>
-                  <button
-                    type="button"
-                    onClick={() => setIndex(i)}
-                    aria-current={current ? "step" : undefined}
-                    title={`${q.no}번 ${ok ? "응답함" : "미응답"}`}
-                    className={`flex h-8 w-8 items-center justify-center rounded border text-[12px] font-bold tabular-nums transition-colors ${
-                      current
-                        ? "border-brand-700 bg-brand-900 text-white"
-                        : ok
-                          ? "border-brand-300 bg-brand-50 text-brand-800"
-                          : "border-exam-line bg-exam-panel text-exam-muted"
-                    }`}
-                  >
-                    {q.no}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+          <p className="text-[12px] font-medium tabular-nums text-exam-muted">
+            {question.level} {levelOf(question.level).name} · {index + 1} / {list.length}
+          </p>
         </div>
       </div>
 
-      {/* 본문 — 좌: 기본 설명 / 우: 문제 */}
-      <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">
-        <section className="border-b border-exam-line bg-exam-raised px-6 py-7 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
+      {/* 본문 — 좌: 자료 / 가운데: 문제 / 우: 문항 이동판 */}
+      <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_15.5rem] lg:overflow-hidden">
+        <section className="order-2 border-b border-exam-line bg-exam-raised px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
           <p className={eyebrow}>{question.brief.label}</p>
           <h2 className="mt-3 text-[20px] font-black tracking-tight text-exam-text md:text-[22px]">
             {question.brief.title}
@@ -213,17 +192,20 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
           )}
         </section>
 
-        <section className="px-6 py-7 lg:overflow-y-auto lg:px-10 lg:py-9">
-          <div className="flex items-center justify-between gap-3">
-            <p className={eyebrow}>
-              {question.no}번 · {question.type === "essay" ? "서술형" : "객관식"}
+        <section className="order-3 px-6 py-7 lg:order-2 lg:overflow-y-auto lg:px-10 lg:py-9">
+          <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
+            <p className="text-[13px] font-semibold text-exam-text">
+              <span className="tabular-nums">{question.no}</span>번
+              <span className="ml-2 font-medium text-exam-muted">
+                {question.type === "essay" ? "서술형" : "객관식"}
+              </span>
             </p>
-            <p className="text-[12px] font-bold tabular-nums text-exam-muted">
-              {index + 1} / {list.length}
+            <p className="text-[12px] font-medium tabular-nums text-exam-muted">
+              {question.level} {levelOf(question.level).name}
             </p>
           </div>
 
-          <h1 className="mt-4 whitespace-pre-line text-[19px] font-bold leading-[1.75] text-exam-text md:text-[21px]">
+          <h1 className="mt-5 whitespace-pre-line text-[19px] font-bold leading-[1.75] text-exam-text md:text-[21px]">
             {question.stem}
           </h1>
 
@@ -235,11 +217,13 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
                   const on = value === i;
                   return (
                     <li key={c}>
+                      {/* 고른 보기는 면을 물들이지 않고 테두리와 글자 굵기로 세운다.
+                          답안지에 형광펜을 칠하지는 않는다. */}
                       <label
-                        className={`flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors ${
+                        className={`flex cursor-pointer items-start gap-4 rounded-[6px] border p-4 transition-colors ${
                           on
-                            ? "border-brand-700 bg-brand-50"
-                            : "border-exam-line bg-exam-panel hover:border-brand-400"
+                            ? "border-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
+                            : "border-exam-line hover:border-exam-muted"
                         }`}
                       >
                         <input
@@ -252,15 +236,21 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
                         />
                         <span
                           aria-hidden
-                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded border text-[13px] font-bold tabular-nums ${
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
                             on
-                              ? "border-brand-700 bg-brand-900 text-white"
+                              ? "border-exam-text bg-exam-text text-white"
                               : "border-exam-line text-exam-muted"
                           }`}
                         >
                           {i + 1}
                         </span>
-                        <span className="text-[15px] leading-[1.7] text-exam-text">{c}</span>
+                        <span
+                          className={`text-[15px] leading-[1.7] ${
+                            on ? "font-semibold text-exam-text" : "text-exam-text"
+                          }`}
+                        >
+                          {c}
+                        </span>
                       </label>
                     </li>
                   );
@@ -299,11 +289,19 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
             답했는지(또는 왜 풀지 못했는지) 적는 단계가 이어집니다.
           </p>
         </section>
+
+        <QuestionPad
+          subject={subject}
+          index={index}
+          answers={rec.answers}
+          onPick={setIndex}
+          doneCount={doneCount}
+        />
       </div>
 
       {/* 하단 바 */}
       <div className="shrink-0 border-t border-exam-line bg-exam-panel">
-        <div className="container-x flex h-[72px] items-center justify-between gap-4">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => setAskForfeit(true)} className={btnDanger}>
               포기하기
@@ -371,6 +369,112 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   );
 }
 
+/* ───────────────────────── 문항 이동판 ───────────────────────── */
+
+/**
+ * 오른쪽에 붙는 문항 이동판.
+ *
+ * 문항이 열 개가 되면 「이전·다음」만으로는 6번에서 2번으로 돌아갈 수가 없다. 번호를
+ * 늘어놓아 아무 데나 바로 갈 수 있게 하고, S위계 단위로 묶어 지금 어느 층을 풀고
+ * 있는지 함께 보이게 했다.
+ *
+ * 응답 여부를 색으로만 알리지 않는다. 채운 문항은 번호가 진해지고 밑에 짧은 줄이
+ * 그어진다. 색을 못 보는 아이도 같은 정보를 얻어야 한다.
+ */
+function QuestionPad({
+  subject,
+  index,
+  answers,
+  onPick,
+  doneCount,
+}: {
+  subject: SubjectId;
+  index: number;
+  answers: Record<string, number | string | undefined>;
+  onPick: (i: number) => void;
+  doneCount: number;
+}) {
+  const groups = questionsByLevel(subject);
+  const list = questionsOf(subject);
+
+  return (
+    <aside
+      aria-label="문항 이동"
+      className="order-1 border-b border-exam-line bg-exam-panel px-6 py-5 lg:order-3 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:px-5 lg:py-7"
+    >
+      <p className="text-[12px] font-semibold tracking-[0.06em] text-exam-muted">문항 이동</p>
+
+      <div className="mt-4 space-y-5">
+        {groups.map((g) => (
+          <div key={g.level.id}>
+            <p className="flex items-baseline justify-between gap-2">
+              <span className="text-[12px] font-semibold text-exam-text">
+                {g.level.id} {g.level.name}
+              </span>
+              <span className="text-[11px] tabular-nums text-exam-muted">{g.items.length}문항</span>
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-exam-muted">{g.level.desc}</p>
+
+            <ol className="mt-2.5 flex flex-wrap gap-1.5">
+              {g.items.map((q) => {
+                const at = list.indexOf(q);
+                const ok = isAnswered(q, answers[q.id]);
+                const current = at === index;
+                return (
+                  <li key={q.id}>
+                    <button
+                      type="button"
+                      onClick={() => onPick(at)}
+                      aria-current={current ? "step" : undefined}
+                      aria-label={`${q.no}번 ${ok ? "응답함" : "아직 답하지 않음"}`}
+                      title={`${q.no}번 · ${q.type === "essay" ? "서술형" : "객관식"} · ${
+                        ok ? "응답함" : "아직 답하지 않음"
+                      }`}
+                      className={`flex h-9 w-9 flex-col items-center justify-center rounded-[6px] border text-[13px] tabular-nums transition-colors ${
+                        current
+                          ? "border-exam-text bg-exam-text font-bold text-white"
+                          : ok
+                            ? "border-exam-muted font-bold text-exam-text hover:bg-exam-raised"
+                            : "border-exam-line font-medium text-exam-muted hover:bg-exam-raised"
+                      }`}
+                    >
+                      {q.no}
+                      {/* 응답 표시 — 색이 아니라 형태로도 남긴다 */}
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 h-px w-3.5 ${
+                          ok ? (current ? "bg-white" : "bg-exam-text") : "bg-transparent"
+                        }`}
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ))}
+      </div>
+
+      <dl className="mt-6 border-t border-exam-line pt-4 text-[12px]">
+        <div className="flex items-baseline justify-between gap-2">
+          <dt className="text-exam-muted">답한 문항</dt>
+          <dd className="font-semibold tabular-nums text-exam-text">
+            {doneCount} / {list.length}
+          </dd>
+        </div>
+        <div className="mt-1.5 flex items-baseline justify-between gap-2">
+          <dt className="text-exam-muted">남은 문항</dt>
+          <dd className="font-semibold tabular-nums text-exam-text">{list.length - doneCount}</dd>
+        </div>
+      </dl>
+
+      <p className="mt-4 text-[11px] leading-relaxed text-exam-muted">
+        번호 아래 줄이 있으면 답한 문항입니다. 순서대로 풀지 않아도 되고, 언제든 돌아올 수 있습니다.
+      </p>
+    </aside>
+  );
+}
+
 /* ───────────────────────── 응시 전 안내 ───────────────────────── */
 
 function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => void }) {
@@ -398,7 +502,11 @@ function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => vo
           <li>· 보호자는 문제 풀이에 개입할 수 없습니다.</li>
         </ul>
 
-        <button type="button" onClick={onStart} className={`mt-8 w-full py-4 text-[16px] ${btnPrimary}`}>
+        <button
+          type="button"
+          onClick={onStart}
+          className={`mt-8 w-full py-4 text-[16px] ${btnPrimary}`}
+        >
           전체화면으로 평가 시작
           <ArrowRight className="h-5 w-5" />
         </button>
@@ -429,7 +537,9 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
       return { label: `${v + 1}번 선택`, body: q.choices?.[v] ?? "" };
     }
     const t = typeof v === "string" ? v.trim() : "";
-    return t ? { label: "작성함", body: t } : { label: "미응답", body: "답을 작성하지 않았습니다." };
+    return t
+      ? { label: "작성함", body: t }
+      : { label: "미응답", body: "답을 작성하지 않았습니다." };
   };
 
   return (
@@ -680,12 +790,9 @@ function Submitted({ subject }: { subject: SubjectId }) {
       <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-emerald-300 bg-emerald-50 text-emerald-600">
         <CheckIcon className="h-7 w-7" />
       </span>
-      <h1 className="mt-6 text-[24px] font-black text-exam-text">
-        {meta.name} 응시가 끝났습니다
-      </h1>
+      <h1 className="mt-6 text-[24px] font-black text-exam-text">{meta.name} 응시가 끝났습니다</h1>
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
-        답안과 해석이 모두 저장되었습니다. 이 창을 닫으면 진단 현황 화면에서 제출 상태가
-        갱신됩니다.
+        답안과 해석이 모두 저장되었습니다. 이 창을 닫으면 진단 현황 화면에서 제출 상태가 갱신됩니다.
       </p>
       <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
         <button
@@ -719,14 +826,20 @@ function Forfeited({
   return (
     <Result>
       <p className={eyebrow}>응시 중단</p>
-      <h1 className="mt-3 text-[24px] font-black text-exam-text">{meta.name} 응시를 포기했습니다</h1>
+      <h1 className="mt-3 text-[24px] font-black text-exam-text">
+        {meta.name} 응시를 포기했습니다
+      </h1>
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
         이 과목의 응시 기회가 소모되었습니다. 남은 기회는{" "}
         <b className="tabular-nums text-rose-600">{attemptsLeft}회</b>입니다.
       </p>
       <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
         {attemptsLeft > 0 && (
-          <button type="button" onClick={() => restartSubject(studentId, subject)} className={btnPrimary}>
+          <button
+            type="button"
+            onClick={() => restartSubject(studentId, subject)}
+            className={btnPrimary}
+          >
             남은 기회로 다시 응시
           </button>
         )}

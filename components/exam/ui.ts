@@ -43,7 +43,8 @@ export const govTable = "w-full border-collapse text-[13px]";
 export const th =
   "border-b border-soft-line bg-slate-50 px-3 py-3 text-center font-semibold text-soft-muted whitespace-nowrap";
 export const td = "border-b border-slate-100 px-3 py-3.5 text-center text-soft-muted";
-export const tdStrong = "border-b border-slate-100 px-3 py-3.5 text-center font-semibold text-soft-ink";
+export const tdStrong =
+  "border-b border-slate-100 px-3 py-3.5 text-center font-semibold text-soft-ink";
 
 /** 표 안의 작은 버튼 */
 export const btnSm =

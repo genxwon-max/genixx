@@ -278,9 +278,7 @@ export default function ResultView() {
               : doneSurveys.map((k) => surveyMeta[k].who).join(" · ")}
             {" · "}측정 축 {measured.length} / {scores.length}
           </p>
-          <span className="text-[12px] font-bold text-soft-ink">
-            판정 확정 · GENIXX 평가운영팀
-          </span>
+          <span className="text-[12px] font-bold text-soft-ink">판정 확정 · GENIXX 평가운영팀</span>
         </div>
       </section>
 

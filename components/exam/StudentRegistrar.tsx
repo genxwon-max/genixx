@@ -303,8 +303,8 @@ export default function StudentRegistrar({
                 엑셀에서 복사한 내용을 그대로 붙여넣어도 됩니다
               </label>
               <p className="mt-1.5 text-[12px] text-soft-muted">
-                열 순서: 이름, 생년월일(8자리), 학년, {isDirector ? "반" : "보호자 연락처"} · 쉼표
-                / 탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다.
+                열 순서: 이름, 생년월일(8자리), 학년, {isDirector ? "반" : "보호자 연락처"} · 쉼표 /
+                탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다.
               </p>
               <textarea
                 id="bulk"
@@ -321,9 +321,7 @@ export default function StudentRegistrar({
                     <p className="text-[13px] font-bold text-soft-ink">
                       인식된 {noun} <span className="tabular-nums">{preview.rows.length}</span>명
                       {preview.errors.length > 0 && (
-                        <span className="ml-2 text-rose-600">
-                          오류 {preview.errors.length}줄
-                        </span>
+                        <span className="ml-2 text-rose-600">오류 {preview.errors.length}줄</span>
                       )}
                     </p>
                     <button
@@ -340,7 +338,8 @@ export default function StudentRegistrar({
                     <ul className="mt-3 space-y-1 rounded border border-rose-300 bg-rose-50 px-4 py-3">
                       {preview.errors.slice(0, 5).map((e) => (
                         <li key={e.line} className="text-[12px] text-rose-700">
-                          {e.line}번째 줄 — {e.reason} <span className="opacity-70">({e.text})</span>
+                          {e.line}번째 줄 — {e.reason}{" "}
+                          <span className="opacity-70">({e.text})</span>
                         </li>
                       ))}
                       {preview.errors.length > 5 && (
@@ -416,7 +415,9 @@ export default function StudentRegistrar({
                         {formatCode(s.code)}
                       </td>
                       <td className={`${td} tabular-nums`}>
-                        <span className={done === subjects.length ? "font-bold text-emerald-700" : ""}>
+                        <span
+                          className={done === subjects.length ? "font-bold text-emerald-700" : ""}
+                        >
                           {done} / {subjects.length}
                         </span>
                       </td>
