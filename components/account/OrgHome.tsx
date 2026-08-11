@@ -93,10 +93,10 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/exam/roster" className={t.btnQuiet}>
+          <Link href="/exam/roster?tab=one" className={t.btnOutline}>
             + 학생 개별 등록
           </Link>
-          <Link href="/exam/roster" className={t.btnAction}>
+          <Link href="/exam/roster?tab=bulk" className={t.btnAction}>
             + 학생 일괄 등록
           </Link>
         </div>
@@ -125,9 +125,14 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
       명부에 학생을 올리면 접속코드가 발급됩니다. 한 명씩 추가하거나 CSV로 한 번에 올릴 수
       있습니다. 학생은 따로 가입하지 않습니다.
           </p>
-          <Link href="/exam/roster" className={`${t.btnAction} mt-7`}>
-      + 학생 등록하기
-          </Link>
+          <div className="mt-7 flex flex-wrap justify-center gap-2.5">
+            <Link href="/exam/roster?tab=one" className={t.btnOutline}>
+              + 학생 개별 등록
+            </Link>
+            <Link href="/exam/roster?tab=bulk" className={t.btnAction}>
+              + 학생 일괄 등록
+            </Link>
+          </div>
         </section>
       ) : (
       <>

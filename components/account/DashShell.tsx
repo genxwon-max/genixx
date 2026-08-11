@@ -276,7 +276,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
 
         {/* 본문 폭·여백은 여기서 한 번만 정한다. 하위 화면(/my/children 등)이 저마다
             컨테이너를 두지 않아도 레일에 딱 붙지 않는다. */}
-        <main className="mx-auto w-full max-w-[64rem] flex-1 px-4 pb-[5.5rem] pt-8 sm:px-6 sm:pt-10 lg:pb-12">
+        <main className="mx-auto w-full max-w-[64rem] flex-1 px-4 pb-[5.25rem] pt-5 sm:px-6 sm:pt-6 lg:pb-8">
           {children}
         </main>
 

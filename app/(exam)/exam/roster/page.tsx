@@ -8,10 +8,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RosterPage() {
+/**
+ * ORG-02 학생 명부.
+ * 기관 대시보드의 「개별 등록」·「일괄 등록」 버튼이 ?tab= 으로 갈라 보낸다.
+ */
+export default async function RosterPage({ searchParams }: PageProps<"/exam/roster">) {
+  const { tab } = await searchParams;
   return (
     <ExamGate>
-      <StudentRegistrar mode="director" />
+      <StudentRegistrar mode="director" initialTab={tab === "bulk" ? "bulk" : "one"} />
     </ExamGate>
   );
 }

@@ -49,14 +49,27 @@ const SAMPLE = `이름,생년월일,학년,반
 박서준,20160925,초등 4학년,A반
 이지우,20170104,초등 3학년,B반`;
 
-export default function StudentRegistrar({ mode }: { mode: Mode }) {
+export default function StudentRegistrar({
+  mode,
+  /** 어느 탭으로 열지. 대시보드의 「개별 등록」·「일괄 등록」 버튼이 갈라 보낸다. */
+  initialTab = "one",
+  /**
+   * 학부모 설문 안내 팝업을 띄울지. 등록하러 들어온 화면에서 설문 창이 먼저 덮으면
+   * 하려던 일이 가려지므로, 일괄 등록 화면에서는 끈다.
+   */
+  surveyPrompt = true,
+}: {
+  mode: Mode;
+  initialTab?: "one" | "bulk";
+  surveyPrompt?: boolean;
+}) {
   const hydrated = useHydrated();
   const session = useSession();
   const roster = useRoster();
   const records = useExamStore();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [tab, setTab] = useState<"one" | "bulk">("one");
+  const [tab, setTab] = useState<"one" | "bulk">(initialTab);
   const [form, setForm] = useState<NewStudent>(emptyForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState("");
@@ -113,7 +126,7 @@ export default function StudentRegistrar({ mode }: { mode: Mode }) {
           return rec?.surveys?.mother !== "done" || rec?.surveys?.father !== "done";
         })
       : [];
-  const showPrompt = !promptDismissed && pendingParent.length > 0;
+  const showPrompt = surveyPrompt && !promptDismissed && pendingParent.length > 0;
 
   const downloadCsv = () => {
     const blob = new Blob([`﻿${toCsv(mine)}`], { type: "text/csv;charset=utf-8" });

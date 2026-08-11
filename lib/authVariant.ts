@@ -44,6 +44,8 @@ export type AuthTheme = {
   btnQuiet: string;
   /** 제목 옆에 세우는 주 액션 버튼. btnPrimary와 달리 폭을 채우지 않는다 */
   btnAction: string;
+  /** btnAction과 나란히 놓는 보조 액션. 같은 무게로 읽히되 채우지 않는다 */
+  btnOutline: string;
 
   /** 선택 카드 */
   pick: string;
@@ -90,6 +92,8 @@ const v1: AuthTheme = {
     "inline-flex h-[3rem] shrink-0 items-center justify-center rounded border border-acc-field bg-white px-5 text-[15px] font-semibold text-acc-body transition-colors hover:bg-acc-panel",
   btnAction:
     "inline-flex h-[3rem] shrink-0 items-center justify-center gap-1.5 rounded bg-acc-primary px-5 text-[15px] font-bold text-white transition-colors hover:bg-acc-primary-dark",
+  btnOutline:
+    "inline-flex h-[3rem] shrink-0 items-center justify-center gap-1.5 rounded border border-acc-primary bg-white px-5 text-[15px] font-bold text-acc-primary transition-colors hover:bg-acc-primary-soft",
 
   pick: "flex w-full flex-col gap-2 p-4 text-left transition-colors",
   pickOn: "border-2 border-acc-primary bg-acc-primary-soft",
@@ -135,6 +139,8 @@ const v2: AuthTheme = {
     "inline-flex h-[3rem] shrink-0 items-center justify-center rounded-full border border-soft-line bg-white px-5 text-[15px] font-medium text-soft-ink transition-colors hover:bg-slate-50",
   btnAction:
     "inline-flex h-[3rem] shrink-0 items-center justify-center gap-1.5 rounded-full bg-soft-primary px-6 text-[15px] font-semibold text-white transition-colors hover:bg-soft-primary-dark",
+  btnOutline:
+    "inline-flex h-[3rem] shrink-0 items-center justify-center gap-1.5 rounded-full border border-soft-primary bg-white px-6 text-[15px] font-semibold text-soft-primary transition-colors hover:bg-soft-primary-soft",
 
   pick: "flex w-full flex-col gap-2 rounded-[14px] p-5 text-left transition-all",
   pickOn: "border-2 border-soft-primary bg-soft-primary-soft shadow-[0_2px_10px_rgba(54,94,239,0.14)]",

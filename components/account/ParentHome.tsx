@@ -37,8 +37,6 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
       : "rounded-full bg-soft-primary-soft text-soft-primary";
 
   const rows = hydrated ? children.map(progressOf) : [];
-  const done = rows.filter((r) => r.phase === "검사완료").length;
-  const running = rows.filter((r) => r.phase === "응시중" || r.phase === "제출완료").length;
 
   return (
     <>
@@ -51,9 +49,14 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
             넘어가세요.
           </p>
         </div>
-        <Link href="/my/children/consent" className={t.btnAction}>
-          + 자녀 등록
-        </Link>
+        <div className="flex flex-wrap gap-2.5">
+          <Link href="/my/children/consent" className={t.btnOutline}>
+            + 자녀 개별 등록
+          </Link>
+          <Link href="/my/children/import" className={t.btnAction}>
+            + 자녀 일괄 등록
+          </Link>
+        </div>
       </header>
 
       {!hydrated ? (
@@ -67,48 +70,36 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
             아이를 등록하면 접속코드가 발급됩니다. 아이는 따로 가입하지 않고, 그 코드와
             생년월일로 응시 화면에 들어갑니다.
           </p>
-          <Link href="/my/children/consent" className={`${t.btnAction} mt-7`}>
-            + 자녀 등록
-          </Link>
+          <div className="mt-7 flex flex-wrap justify-center gap-2.5">
+            <Link href="/my/children/consent" className={t.btnOutline}>
+              + 자녀 개별 등록
+            </Link>
+            <Link href="/my/children/import" className={t.btnAction}>
+              + 자녀 일괄 등록
+            </Link>
+          </div>
         </section>
       ) : (
-        <>
-          {/* 요약 */}
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {[
-              { k: "등록한 자녀", v: `${children.length}명` },
-              { k: "진행 중", v: `${running}명` },
-              { k: "검사 완료", v: `${done}명` },
-            ].map((s) => (
-              <div key={s.k} className={`${t.card} p-5`}>
-                <p className={`text-[13px] font-semibold ${t.muted}`}>{s.k}</p>
-                <p className="mt-1.5 text-[26px] font-bold tabular-nums">{s.v}</p>
-              </div>
-            ))}
-          </div>
-
-          <ul className="mt-5 flex flex-col gap-3">
+        <ul className="mt-5 grid gap-3 lg:grid-cols-2">
             {rows.map((r) => {
               const age = ageFromBirth(r.student.birth);
               return (
-                <li key={r.student.id} className={`${t.card} p-5 sm:p-6`}>
-                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                    <div className="min-w-0">
-                      {/* 접속코드는 이름 바로 옆에 둔다. 아이를 찾는 단서이자 건네줄 값이다. */}
-                      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <span className="text-[19px] font-bold">{r.student.name}</span>
-                        <span
-                          className={`px-2.5 py-1 text-[14px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
-                        >
-                          {formatCode(r.student.code)}
-                        </span>
-                      </p>
-                      <p className={`mt-1 text-[13px] ${t.muted}`}>
+                <li key={r.student.id} className={`${t.card} min-w-0 p-4`}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                    {/* 접속코드는 이름 바로 옆에 둔다. 아이를 찾는 단서이자 건네줄 값이다. */}
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-[17px] font-bold">{r.student.name}</span>
+                      <span
+                        className={`px-2 py-0.5 text-[13px] font-bold tracking-[0.08em] tabular-nums ${codeChip}`}
+                      >
+                        {formatCode(r.student.code)}
+                      </span>
+                      <span className={`text-[12.5px] ${t.muted}`}>
                         {r.student.grade} · 만 {age ?? "—"}세
-                      </p>
-                    </div>
+                      </span>
+                    </p>
                     <span
-                      className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
+                      className={`rounded-full border px-2.5 py-0.5 text-[11.5px] font-bold ${
                         phaseTone[r.phase][variant === 1 ? "v1" : "v2"]
                       }`}
                     >
@@ -117,33 +108,37 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
                   </div>
 
                   {/* 과목은 셋뿐이라 막대 하나로 뭉치지 않고 한 칸씩 상태를 적는다 */}
-                  <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <ul className="mt-3 grid grid-cols-3 gap-1.5">
                     {r.subjects.map((sub) => (
                       <li
                         key={sub.id}
-                        className={`flex items-center justify-between rounded-[10px] border px-3.5 py-2.5 ${
+                        className={`flex min-w-0 items-center justify-between gap-1 rounded-[8px] border px-2.5 py-1.5 ${
                           subjectTone[sub.state][variant === 1 ? "v1" : "v2"]
                         }`}
                       >
-                        <span className="text-[14px] font-semibold">{sub.short}</span>
-                        <span className="text-[12.5px] font-bold">{sub.state}</span>
+                        <span className="truncate text-[13px] font-semibold">{sub.short}</span>
+                        <span className="shrink-0 text-[12px] font-bold">{sub.state}</span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className={`mt-4 flex flex-wrap items-center gap-3 border-t pt-4 ${rule}`}>
-                    <span className={`text-[13px] ${t.muted}`}>
+                  <div className={`mt-3 flex items-center gap-3 border-t pt-2.5 ${rule}`}>
+                    <span className={`min-w-0 flex-1 truncate text-[12.5px] ${t.muted}`}>
                       설문 {r.surveys} / 3 · {r.nextAction}
                     </span>
-                    <Link href="/my/children" className={`${t.btnQuiet} ml-auto`}>
-                      자녀 관리
+                    <Link
+                      href="/my/children"
+                      className={`shrink-0 text-[12.5px] font-semibold ${
+                        variant === 1 ? "text-acc-primary" : "text-soft-primary"
+                      } hover:underline`}
+                    >
+                      자녀 관리 →
                     </Link>
                   </div>
                 </li>
               );
             })}
-          </ul>
-        </>
+        </ul>
       )}
 
       {/* 바로가기 — 좌측 레일에 없는 하위 화면만 둔다 */}
