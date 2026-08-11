@@ -47,7 +47,7 @@ const stateText: Record<string, { label: string; className: string }> = {
   submitted: { label: "제출완료", className: "font-bold text-emerald-700" },
   reflecting: { label: "해석 작성중", className: "font-bold text-amber-700" },
   "in-progress": { label: "진행중", className: "font-bold text-amber-700" },
-  ready: { label: "미시작", className: "text-exam-muted" },
+  ready: { label: "미시작", className: "text-soft-muted" },
   forfeited: { label: "응시포기", className: "font-bold text-rose-600" },
   done: { label: "제출완료", className: "font-bold text-emerald-700" },
   none: { label: "미제출", className: "font-bold text-rose-600" },
@@ -77,10 +77,10 @@ export default function StatusTable() {
       <div className="container-x py-16">
         <div className={`mx-auto max-w-lg p-8 text-center ${panel}`}>
           <p className={eyebrow}>학생 화면</p>
-          <h1 className="mt-3 text-[20px] font-black text-exam-text">
+          <h1 className="mt-3 text-[20px] font-bold text-soft-ink">
             응시 현황은 학생 계정에서 확인합니다
           </h1>
-          <p className="mt-3 text-[13px] leading-relaxed text-exam-muted">
+          <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
             학생에게 발급한 접속코드로 들어가면 이 화면이 열립니다. 보호자도 같은 코드로 들어와
             설문만 진행할 수 있습니다.
           </p>
@@ -102,23 +102,23 @@ export default function StatusTable() {
   const openSurvey = (key: SurveyKey) => surveyWindow(`/survey/${key}?student=${studentId}`);
 
   return (
-    <div className="container-x py-8 md:py-10">
+    <div>
       {/* 응시자 정보 */}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-exam-text/80 pb-5">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div>
           <p className={eyebrow}>ASM-01 · 응시 현황</p>
-          <h1 className="mt-2.5 text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
+          <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
             {assessment.name} {assessment.round} 진단 현황
           </h1>
         </div>
-        <p className="text-[12px] text-exam-muted">
+        <p className="text-[12px] text-soft-muted">
           응시 기간 2026-08-10 ~ 2026-08-24 · 조회 기준 {fmt(new Date().toISOString())}
         </p>
       </div>
 
       {asGuardian && (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded border border-brand-300 bg-brand-50 px-5 py-4">
-          <p className="text-[13px] leading-relaxed text-exam-text">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded border border-brand-300 bg-soft-primary-soft px-5 py-4">
+          <p className="text-[13px] leading-relaxed text-soft-ink">
             <b>보호자로 접속하셨습니다.</b> 학생의 응시 답안은 열람할 수 없으며, 아래{" "}
             <b>학부모 설문</b>만 진행할 수 있습니다.
           </p>
@@ -129,7 +129,7 @@ export default function StatusTable() {
         </div>
       )}
 
-      <dl className={`mt-5 grid grid-cols-2 divide-x divide-exam-line sm:grid-cols-4 ${panel}`}>
+      <dl className={`mt-5 grid grid-cols-2 divide-x divide-slate-100 sm:grid-cols-4 ${panel}`}>
         {[
           { t: "성명", v: student?.name ?? session?.name ?? "-" },
           { t: "학년", v: student?.grade ?? "초등 4학년" },
@@ -137,8 +137,8 @@ export default function StatusTable() {
           { t: "제출 과목", v: `${hydrated ? submittedCount(record) : 0} / ${subjects.length}` },
         ].map((i) => (
           <div key={i.t} className="px-5 py-4">
-            <dt className="text-[11px] font-bold text-exam-muted">{i.t}</dt>
-            <dd className="mt-1 text-[15px] font-black tabular-nums text-exam-text">{i.v}</dd>
+            <dt className="text-[11px] font-bold text-soft-muted">{i.t}</dt>
+            <dd className="mt-1 text-[15px] font-bold tabular-nums text-soft-ink">{i.v}</dd>
           </div>
         ))}
       </dl>
@@ -187,7 +187,7 @@ export default function StatusTable() {
                 return (
                   <tr key={s.id}>
                     {i === 0 && (
-                      <td className={`${td} bg-exam-raised/60 font-bold text-exam-text`} rowSpan={3}>
+                      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`} rowSpan={3}>
                         필수 평가
                       </td>
                     )}
@@ -265,7 +265,7 @@ export default function StatusTable() {
                 return (
                   <tr key={key}>
                     {i === 0 && (
-                      <td className={`${td} bg-exam-raised/60 font-bold text-exam-text`} rowSpan={3}>
+                      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`} rowSpan={3}>
                         선택 설문
                       </td>
                     )}
@@ -291,23 +291,23 @@ export default function StatusTable() {
           </table>
         </div>
 
-        <p className="mt-3 text-[12px] leading-relaxed text-exam-muted">
+        <p className="mt-3 text-[12px] leading-relaxed text-soft-muted">
           설문은 필수가 아닙니다. 다만 제출된 설문이 많을수록 결과 해석의 근거가 넓어지며, 리포트의
           &lsquo;발견의 순간&rsquo;과 발현 조건 항목은 보호자 설문이 있어야 제공됩니다.
         </p>
       </section>
 
       {/* 최종 제출 */}
-      <div className="mt-9 flex flex-wrap items-center justify-between gap-4 border-t-2 border-exam-text/80 pt-6">
+      <div className="mt-9 flex flex-wrap items-center justify-between gap-4 border-t border-soft-line pt-6">
         <div>
-          <p className="text-[13px] font-bold text-exam-text">
+          <p className="text-[13px] font-bold text-soft-ink">
             {record.finalized
               ? "최종 제출이 완료되었습니다."
               : examDone
                 ? "세 과목의 답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작됩니다."
                 : "세 과목을 모두 제출하고 문항별 해석까지 작성해야 최종 제출할 수 있습니다."}
           </p>
-          <p className="mt-1 text-[12px] text-exam-muted">
+          <p className="mt-1 text-[12px] text-soft-muted">
             최종 제출 후에는 답안을 수정할 수 없습니다.
           </p>
         </div>
@@ -316,7 +316,7 @@ export default function StatusTable() {
           <button
             type="button"
             onClick={() => resetStudent(studentId)}
-            className="rounded border border-exam-line bg-exam-panel px-4 py-2 text-[12px] font-bold text-exam-muted transition-colors hover:bg-exam-raised"
+            className="rounded border border-soft-line bg-white px-4 py-2 text-[12px] font-bold text-soft-muted transition-colors hover:bg-slate-50"
           >
             시연용 초기화
           </button>
@@ -333,7 +333,7 @@ export default function StatusTable() {
               className={
                 examDone
                   ? btnPrimary
-                  : "inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-exam-line bg-exam-raised px-6 py-3 text-sm font-bold text-exam-muted"
+                  : "inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-soft-line bg-slate-50 px-6 py-3 text-sm font-bold text-soft-muted"
               }
             >
               제출 완료
@@ -400,12 +400,12 @@ function FinalDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="final-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-exam-text/40 p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
     >
-      <div className="w-full max-w-lg rounded-md border border-exam-line bg-exam-panel">
-        <div className="border-b border-exam-line px-7 py-5">
+      <div className="w-full max-w-lg rounded-md border border-soft-line bg-white">
+        <div className="border-b border-soft-line px-7 py-5">
           <p className={eyebrow}>최종 제출 확인</p>
-          <h2 id="final-title" className="mt-2 text-[19px] font-black text-exam-text">
+          <h2 id="final-title" className="mt-2 text-[19px] font-bold text-soft-ink">
             지금 제출하고 결과를 받을까요?
           </h2>
         </div>
@@ -417,7 +417,7 @@ function FinalDialog({
               <ul className="mt-3 space-y-1.5">
                 {missing.map((k) => (
                   <li key={k} className="flex items-center justify-between gap-3">
-                    <span className="text-[13px] text-exam-text">
+                    <span className="text-[13px] text-soft-ink">
                       · {surveyMeta[k].label} <span className="text-rose-600">미제출</span>
                     </span>
                     <button type="button" onClick={() => onSurvey(k)} className={btnSmGhost}>
@@ -440,7 +440,7 @@ function FinalDialog({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-exam-line px-7 py-5">
+        <div className="flex justify-end gap-2 border-t border-soft-line px-7 py-5">
           <button type="button" onClick={onCancel} className={btnGhost}>
             취소
           </button>
@@ -466,14 +466,14 @@ function GuardianDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="guardian-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-exam-text/40 p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
     >
-      <div className="w-full max-w-sm rounded-md border border-exam-line bg-exam-panel p-7 text-center">
+      <div className="w-full max-w-sm rounded-md border border-soft-line bg-white p-7 text-center">
         <p className={eyebrow}>보호자 확인</p>
-        <h2 id="guardian-title" className="mt-3 text-[19px] font-black text-exam-text">
+        <h2 id="guardian-title" className="mt-3 text-[19px] font-bold text-soft-ink">
           어느 보호자이신가요?
         </h2>
-        <p className="mt-2.5 text-[13px] leading-relaxed text-exam-muted">
+        <p className="mt-2.5 text-[13px] leading-relaxed text-soft-muted">
           선택하신 분의 설문 창이 열립니다. 두 분 모두 각각 제출하실 수 있습니다.
         </p>
         <div className="mt-6 grid grid-cols-2 gap-2">
@@ -487,7 +487,7 @@ function GuardianDialog({
         <button
           type="button"
           onClick={onCancel}
-          className="mt-3 text-[13px] text-exam-muted hover:text-exam-text"
+          className="mt-3 text-[13px] text-soft-muted hover:text-soft-ink"
         >
           닫기
         </button>

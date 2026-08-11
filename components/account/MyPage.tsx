@@ -16,6 +16,7 @@ import {
   type ConsentStageId,
 } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import { eyebrow } from "@/components/exam/ui";
 
 /**
  * ACC-05 마이페이지 — 학부모 · 기관 공용 계정 허브.
@@ -60,7 +61,12 @@ const menus: Record<Audience, Group[]> = {
     {
       title: "내 계정",
       items: [
-        { id: "profile", label: "회원정보", desc: "이름·연락처·비밀번호·연결된 계정", path: "/mypage/profile" },
+        {
+          id: "profile",
+          label: "회원정보",
+          desc: "이름·연락처·비밀번호·연결된 계정",
+          path: "/mypage/profile",
+        },
         { id: "notify", label: "알림 설정", desc: "무엇을 어디로 받을지", path: "/mypage/notify" },
       ],
     },
@@ -74,7 +80,12 @@ const menus: Record<Audience, Group[]> = {
     {
       title: "이용",
       items: [
-        { id: "billing", label: "이용권·결제", desc: "보유 응시권과 결제 내역", path: "/mypage/billing" },
+        {
+          id: "billing",
+          label: "이용권·결제",
+          desc: "보유 응시권과 결제 내역",
+          path: "/mypage/billing",
+        },
         { id: "inquiry", label: "문의 내역", desc: "보낸 문의와 답변", path: "/mypage/inquiry" },
       ],
     },
@@ -83,7 +94,12 @@ const menus: Record<Audience, Group[]> = {
     {
       title: "내 계정",
       items: [
-        { id: "profile", label: "회원정보", desc: "이름·연락처·비밀번호·연결된 계정", path: "/mypage/profile" },
+        {
+          id: "profile",
+          label: "회원정보",
+          desc: "이름·연락처·비밀번호·연결된 계정",
+          path: "/mypage/profile",
+        },
         { id: "notify", label: "알림 설정", desc: "무엇을 어디로 받을지", path: "/mypage/notify" },
       ],
     },
@@ -97,7 +113,12 @@ const menus: Record<Audience, Group[]> = {
     {
       title: "이용",
       items: [
-        { id: "billing", label: "이용권·결제", desc: "보유 응시권과 결제 내역", path: "/mypage/billing" },
+        {
+          id: "billing",
+          label: "이용권·결제",
+          desc: "보유 응시권과 결제 내역",
+          path: "/mypage/billing",
+        },
         { id: "inquiry", label: "문의 내역", desc: "보낸 문의와 답변", path: "/mypage/inquiry" },
       ],
     },
@@ -110,22 +131,30 @@ const menus: Record<Audience, Group[]> = {
 const demoMembers = [
   { name: "박정후", email: "park@example.ac.kr", role: "교사", state: "활성", at: "2026-03-02" },
   { name: "윤세라", email: "yoon@example.ac.kr", role: "교사", state: "활성", at: "2026-03-11" },
-  { name: "정하람", email: "jung@example.ac.kr", role: "교사", state: "승인 대기", at: "2026-08-04" },
+  {
+    name: "정하람",
+    email: "jung@example.ac.kr",
+    role: "교사",
+    state: "승인 대기",
+    at: "2026-08-04",
+  },
 ];
 
 /** 학부모는 아이 수만큼 낱장으로, 기관은 묶음으로 산다 — 결제 수단도 그래서 갈린다 */
-const demoPayments: Record<Audience, { at: string; item: string; method: string; state: string }[]> =
-  {
-    parent: [
-      { at: "2026-07-14", item: "재능진단 응시권 1매", method: "카카오페이", state: "결제 완료" },
-      { at: "2026-03-02", item: "학력진단 (무료 회차)", method: "—", state: "—" },
-    ],
-    org: [
-      { at: "2026-07-14", item: "재능진단 응시권 20매", method: "세금계산서", state: "결제 완료" },
-      { at: "2026-03-02", item: "재능진단 응시권 20매", method: "세금계산서", state: "결제 완료" },
-      { at: "2026-03-02", item: "학력진단 (무료 회차)", method: "—", state: "—" },
-    ],
-  };
+const demoPayments: Record<
+  Audience,
+  { at: string; item: string; method: string; state: string }[]
+> = {
+  parent: [
+    { at: "2026-07-14", item: "재능진단 응시권 1매", method: "카카오페이", state: "결제 완료" },
+    { at: "2026-03-02", item: "학력진단 (무료 회차)", method: "—", state: "—" },
+  ],
+  org: [
+    { at: "2026-07-14", item: "재능진단 응시권 20매", method: "세금계산서", state: "결제 완료" },
+    { at: "2026-03-02", item: "재능진단 응시권 20매", method: "세금계산서", state: "결제 완료" },
+    { at: "2026-03-02", item: "학력진단 (무료 회차)", method: "—", state: "—" },
+  ],
+};
 
 const demoInquiries: Record<Audience, { at: string; title: string; state: string }[]> = {
   parent: [
@@ -216,11 +245,15 @@ function Row({
   const t = themeOf(variant);
   const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
   return (
-    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b py-4 last:border-b-0 ${rule}`}>
+    <div
+      className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b py-4 last:border-b-0 ${rule}`}
+    >
       <span className={`w-28 shrink-0 text-[13.5px] font-semibold ${t.muted}`}>{label}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-semibold">{value}</span>
-        {note && <span className={`mt-1 block text-[12.5px] leading-[1.6] ${t.muted}`}>{note}</span>}
+        {note && (
+          <span className={`mt-1 block text-[12.5px] leading-[1.6] ${t.muted}`}>{note}</span>
+        )}
       </span>
       {action}
     </div>
@@ -301,7 +334,12 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
           }
         />
         {audience === "org" && (
-          <Row variant={variant} label="소속" value={session?.org ?? "제닉스 영재교육원"} note="기관 정보에서 바꿉니다." />
+          <Row
+            variant={variant}
+            label="소속"
+            value={session?.org ?? "제닉스 영재교육원"}
+            note="기관 정보에서 바꿉니다."
+          />
         )}
       </section>
 
@@ -318,7 +356,10 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
             const on = linked.includes(p.id);
             const blocked = on && !canUnlink(p.id);
             return (
-              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6">
+              <li
+                key={p.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6"
+              >
                 <span
                   aria-hidden
                   className="h-7 w-7 shrink-0 rounded-full border border-black/10"
@@ -412,11 +453,7 @@ function ChildrenSection({ variant }: { variant: Variant }) {
                   <span className="text-[15px] tracking-[0.06em] tabular-nums">
                     {formatCode(s.code)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => reissueCode(s.id)}
-                    className={t.btnQuiet}
-                  >
+                  <button type="button" onClick={() => reissueCode(s.id)} className={t.btnQuiet}>
                     코드 재발급
                   </button>
                   <Link href="/my/children" className={`${t.btnQuiet} sm:ml-auto`}>
@@ -458,7 +495,10 @@ function ConsentSection({ variant }: { variant: Variant }) {
           {consentStages.map((c) => {
             const on = c.required || !off.includes(c.id);
             return (
-              <li key={c.id} className="flex flex-wrap items-start gap-x-4 gap-y-3 px-5 py-4 sm:px-6">
+              <li
+                key={c.id}
+                className="flex flex-wrap items-start gap-x-4 gap-y-3 px-5 py-4 sm:px-6"
+              >
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-[15px] font-bold">{c.label}</span>
@@ -479,7 +519,9 @@ function ConsentSection({ variant }: { variant: Variant }) {
                   <span className={`mt-1.5 block text-[13px] leading-[1.7] ${t.muted}`}>
                     {c.purpose} · {c.items}
                   </span>
-                  <span className={`mt-1 block text-[12.5px] ${t.muted}`}>보유 기간 — {c.keep}</span>
+                  <span className={`mt-1 block text-[12.5px] ${t.muted}`}>
+                    보유 기간 — {c.keep}
+                  </span>
                 </span>
                 <Toggle
                   variant={variant}
@@ -487,7 +529,9 @@ function ConsentSection({ variant }: { variant: Variant }) {
                   disabled={c.required}
                   label={`${c.label} 동의`}
                   onChange={() =>
-                    setOff((prev) => (prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]))
+                    setOff((prev) =>
+                      prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id],
+                    )
                   }
                 />
               </li>
@@ -496,8 +540,8 @@ function ConsentSection({ variant }: { variant: Variant }) {
         </ul>
         <div className={`border-t px-5 py-4 sm:px-6 ${rule}`}>
           <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-            필수 항목은 여기서 끌 수 없습니다. 끄시려면 탈퇴하셔야 하고, 그 경로는 아래
-            「회원 탈퇴」에 있습니다.
+            필수 항목은 여기서 끌 수 없습니다. 끄시려면 탈퇴하셔야 하고, 그 경로는 아래 「회원
+            탈퇴」에 있습니다.
           </p>
         </div>
       </section>
@@ -587,7 +631,9 @@ function MembersSection({ variant }: { variant: Variant }) {
       />
 
       <section className={`${t.card} overflow-hidden`}>
-        <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${rule}`}>
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${rule}`}
+        >
           <div>
             <h3 className="text-[16px] font-bold">구성원 {demoMembers.length}명</h3>
             <p className={`mt-1 text-[13px] ${t.muted}`}>
@@ -603,13 +649,18 @@ function MembersSection({ variant }: { variant: Variant }) {
           {demoMembers.map((m) => {
             const waiting = m.state === "승인 대기";
             return (
-              <li key={m.email} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6">
+              <li
+                key={m.email}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6"
+              >
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-bold">
                     {m.name}
                     <span className={`ml-2 text-[13px] font-normal ${t.muted}`}>{m.role}</span>
                   </span>
-                  <span className={`mt-0.5 block truncate text-[12.5px] ${t.muted}`}>{m.email}</span>
+                  <span className={`mt-0.5 block truncate text-[12.5px] ${t.muted}`}>
+                    {m.email}
+                  </span>
                 </span>
                 <span
                   className={`rounded-full border px-2.5 py-0.5 text-[12px] font-bold ${
@@ -697,7 +748,9 @@ function InquirySection({ variant, audience }: { variant: Variant; audience: Aud
       <Head variant={variant} title="문의 내역" lead="보내신 문의와 답변입니다." />
 
       <section className={`${t.card} overflow-hidden`}>
-        <div className={`flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${rule}`}>
+        <div
+          className={`flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${rule}`}
+        >
           <h3 className="text-[16px] font-bold">문의 {rows.length}건</h3>
           <Link href="/support/inquiry" className={t.btnQuiet}>
             새 문의
@@ -834,7 +887,9 @@ function LeaveSection({ variant, audience }: { variant: Variant; audience: Audie
 
       <section className={`${t.card} p-5 sm:p-6`}>
         <h3 className="text-[16px] font-bold">탈퇴하면 이렇게 됩니다</h3>
-        <ul className={`mt-3 flex list-disc flex-col gap-2 pl-5 text-[14px] leading-[1.7] ${t.muted}`}>
+        <ul
+          className={`mt-3 flex list-disc flex-col gap-2 pl-5 text-[14px] leading-[1.7] ${t.muted}`}
+        >
           <li>발급된 접속코드가 즉시 막혀 응시 중인 검사는 이어서 볼 수 없습니다.</li>
           <li>이미 발행된 리포트는 열람할 수 없게 됩니다. 필요하시면 탈퇴 전에 내려받으세요.</li>
           <li>
@@ -857,7 +912,10 @@ function LeaveSection({ variant, audience }: { variant: Variant; audience: Audie
         </label>
 
         <div className="mt-5 flex flex-wrap gap-2.5">
-          <Link href="/my/account/leave" className={`${t.btnQuiet} ${agreed ? "" : "pointer-events-none opacity-45"}`}>
+          <Link
+            href="/my/account/leave"
+            className={`${t.btnQuiet} ${agreed ? "" : "pointer-events-none opacity-45"}`}
+          >
             탈퇴 절차 계속하기
           </Link>
           <Link href="/support/inquiry" className={t.btnQuiet}>
@@ -906,161 +964,169 @@ export default function MyPage({
 
   return (
     <>
-      <h1 className={t.heading}>마이페이지</h1>
+      <header className="border-b border-soft-line pb-5">
+        <p className={eyebrow}>내 계정</p>
+        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+          마이페이지
+        </h1>
+        <p className={`mt-2 text-[13px] ${t.muted}`}>
+          회원정보·동의·수신 설정과 결제 내역을 여기서 관리합니다.
+        </p>
+      </header>
 
-          {/* 프로필 카드 — 홈런·콴다 모두 마이페이지 맨 위에 이 한 장을 둔다 */}
-          <section
-      className={`${t.card} mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6`}
+      {/* 프로필 카드 — 홈런·콴다 모두 마이페이지 맨 위에 이 한 장을 둔다 */}
+      <section
+        className={`${t.card} mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6`}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <span
+            aria-hidden
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[22px] font-bold ${
+              variant === 1
+                ? "bg-acc-primary-soft text-acc-primary"
+                : "bg-soft-primary-soft text-soft-primary"
+            }`}
           >
-      <div className="flex min-w-0 flex-1 items-center gap-4">
-        <span
-          aria-hidden
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[22px] font-bold ${
-            variant === 1
-              ? "bg-acc-primary-soft text-acc-primary"
-              : "bg-soft-primary-soft text-soft-primary"
-          }`}
-        >
-          {hydrated ? initial : "…"}
-        </span>
+            {hydrated ? initial : "…"}
+          </span>
 
-        <div className="min-w-0">
-          <p className="text-[19px] font-bold">
-            {session?.name ?? "김보호"}
-            <span className={`ml-2 text-[14px] font-normal ${t.muted}`}>님</span>
-          </p>
-          <p
-            className={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] ${t.muted}`}
-          >
-            <span
-              className={`rounded-full border px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${
-                variant === 1
-                  ? "border-acc-primary-line bg-acc-primary-soft text-acc-primary"
-                  : "border-blue-200 bg-blue-50 text-blue-700"
-              }`}
+          <div className="min-w-0">
+            <p className="text-[19px] font-bold">
+              {session?.name ?? "김보호"}
+              <span className={`ml-2 text-[14px] font-normal ${t.muted}`}>님</span>
+            </p>
+            <p
+              className={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] ${t.muted}`}
             >
-              {audience === "org" ? "기관 회원" : "학부모 회원"}
-            </span>
-            <span className="whitespace-nowrap">
-              {session?.provider
-                ? `${session.provider} 간편 로그인`
-                : `아이디 ${session?.loginId ?? "genix_kim"}`}
-            </span>
-            <span aria-hidden className="hidden sm:inline">
-              ·
-            </span>
-            <span className="whitespace-nowrap">휴대폰 본인확인 완료</span>
-          </p>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${
+                  variant === 1
+                    ? "border-acc-primary-line bg-acc-primary-soft text-acc-primary"
+                    : "border-blue-200 bg-blue-50 text-blue-700"
+                }`}
+              >
+                {audience === "org" ? "기관 회원" : "학부모 회원"}
+              </span>
+              <span className="whitespace-nowrap">
+                {session?.provider
+                  ? `${session.provider} 간편 로그인`
+                  : `아이디 ${session?.loginId ?? "genix_kim"}`}
+              </span>
+              <span aria-hidden className="hidden sm:inline">
+                ·
+              </span>
+              <span className="whitespace-nowrap">휴대폰 본인확인 완료</span>
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href={audience === "org" ? "/org" : "/my"}
+          className={`${t.btnQuiet} self-start sm:self-auto`}
+        >
+          {audience === "org" ? "기관 대시보드" : "학생 현황 보기"}
+        </Link>
+      </section>
+
+      <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-7">
+        {/* 좌측 메뉴 — 좁은 화면에서는 가로로 눕힌다 */}
+        <nav aria-label="마이페이지 메뉴" className="lg:w-[15rem] lg:shrink-0">
+          <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-5 lg:overflow-visible lg:pb-0">
+            {groups.map((g) => (
+              <li key={g.title} className="contents lg:block">
+                <p
+                  className={`hidden px-1 pb-2 text-[12px] font-bold uppercase tracking-[0.12em] lg:block ${t.muted}`}
+                >
+                  {g.title}
+                </p>
+                <ul className="contents lg:flex lg:flex-col lg:gap-1">
+                  {g.items.map((i) => {
+                    const on = i.id === active;
+                    return (
+                      <li key={i.id} className="shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setSection(i.id)}
+                          aria-current={on ? "page" : undefined}
+                          /* 좁은 화면에서는 가로 탭이라 밑줄, 넓은 화면에서는 세로 목록이라 왼쪽 막대 */
+                          className={`w-full whitespace-nowrap px-4 py-3 text-left text-[14.5px] font-semibold transition-colors lg:whitespace-normal ${
+                            variant === 1
+                              ? on
+                                ? "border-b-[3px] border-acc-primary bg-acc-primary-soft text-acc-primary lg:border-b-0 lg:border-l-[3px]"
+                                : "border-b-[3px] border-transparent text-acc-body hover:bg-acc-panel lg:border-b-0 lg:border-l-[3px]"
+                              : on
+                                ? "rounded-[12px] bg-soft-primary-soft text-soft-primary"
+                                : "rounded-[12px] text-soft-muted hover:bg-white"
+                          }`}
+                        >
+                          {i.label}
+                          <span
+                            className={`mt-0.5 hidden text-[12px] font-normal lg:block ${
+                              on ? "opacity-80" : t.muted
+                            }`}
+                          >
+                            {i.desc}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
+            <li className="shrink-0 lg:block lg:pt-2">
+              <button
+                type="button"
+                onClick={() => setSection("leave")}
+                aria-current={active === "leave" ? "page" : undefined}
+                className={`w-full whitespace-nowrap px-4 py-3 text-left text-[13.5px] transition-colors lg:border-t lg:pt-4 ${rule} ${
+                  active === "leave" ? "font-bold underline" : `${t.muted} hover:underline`
+                }`}
+              >
+                {audience === "org" ? "기관 탈퇴" : "회원 탈퇴"}
+              </button>
+            </li>
+          </ul>
+        </nav>
+
+        {/* 우측 본문 */}
+        <div className="min-w-0 flex-1">
+          {active === "leave" ? (
+            <LeaveSection variant={variant} audience={audience} />
+          ) : active === "profile" ? (
+            <ProfileSection variant={variant} audience={audience} />
+          ) : active === "children" ? (
+            <ChildrenSection variant={variant} />
+          ) : active === "consent" ? (
+            <ConsentSection variant={variant} />
+          ) : active === "org" ? (
+            <OrgSection variant={variant} />
+          ) : active === "members" ? (
+            <MembersSection variant={variant} />
+          ) : active === "billing" ? (
+            <BillingSection variant={variant} audience={audience} />
+          ) : active === "notify" ? (
+            <NotifySection variant={variant} />
+          ) : (
+            <InquirySection variant={variant} audience={audience} />
+          )}
         </div>
       </div>
 
-      <Link
-        href={audience === "org" ? "/org" : "/my"}
-        className={`${t.btnQuiet} self-start sm:self-auto`}
+      {/* 검토용 — 로그인하지 않고도 두 역할을 견줘 볼 수 있게 둔다. 확정되면 지운다. */}
+      <div
+        className={`mt-8 flex flex-wrap items-center justify-center gap-2 text-[13px] ${t.muted}`}
       >
-        {audience === "org" ? "기관 대시보드" : "학생 현황 보기"}
-      </Link>
-          </section>
-
-          <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-7">
-      {/* 좌측 메뉴 — 좁은 화면에서는 가로로 눕힌다 */}
-      <nav aria-label="마이페이지 메뉴" className="lg:w-[15rem] lg:shrink-0">
-        <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-5 lg:overflow-visible lg:pb-0">
-          {groups.map((g) => (
-            <li key={g.title} className="contents lg:block">
-              <p
-                className={`hidden px-1 pb-2 text-[12px] font-bold uppercase tracking-[0.12em] lg:block ${t.muted}`}
-              >
-                {g.title}
-              </p>
-              <ul className="contents lg:flex lg:flex-col lg:gap-1">
-                {g.items.map((i) => {
-                  const on = i.id === active;
-                  return (
-                    <li key={i.id} className="shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setSection(i.id)}
-                        aria-current={on ? "page" : undefined}
-                        /* 좁은 화면에서는 가로 탭이라 밑줄, 넓은 화면에서는 세로 목록이라 왼쪽 막대 */
-                        className={`w-full whitespace-nowrap px-4 py-3 text-left text-[14.5px] font-semibold transition-colors lg:whitespace-normal ${
-                          variant === 1
-                            ? on
-                              ? "border-b-[3px] border-acc-primary bg-acc-primary-soft text-acc-primary lg:border-b-0 lg:border-l-[3px]"
-                              : "border-b-[3px] border-transparent text-acc-body hover:bg-acc-panel lg:border-b-0 lg:border-l-[3px]"
-                            : on
-                              ? "rounded-[12px] bg-soft-primary-soft text-soft-primary"
-                              : "rounded-[12px] text-soft-muted hover:bg-white"
-                        }`}
-                      >
-                        {i.label}
-                        <span
-                          className={`mt-0.5 hidden text-[12px] font-normal lg:block ${
-                            on ? "opacity-80" : t.muted
-                          }`}
-                        >
-                          {i.desc}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </li>
-          ))}
-          <li className="shrink-0 lg:block lg:pt-2">
-            <button
-              type="button"
-              onClick={() => setSection("leave")}
-              aria-current={active === "leave" ? "page" : undefined}
-              className={`w-full whitespace-nowrap px-4 py-3 text-left text-[13.5px] transition-colors lg:border-t lg:pt-4 ${rule} ${
-                active === "leave" ? "font-bold underline" : `${t.muted} hover:underline`
-              }`}
-            >
-              {audience === "org" ? "기관 탈퇴" : "회원 탈퇴"}
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      {/* 우측 본문 */}
-      <div className="min-w-0 flex-1">
-        {active === "leave" ? (
-          <LeaveSection variant={variant} audience={audience} />
-        ) : active === "profile" ? (
-          <ProfileSection variant={variant} audience={audience} />
-        ) : active === "children" ? (
-          <ChildrenSection variant={variant} />
-        ) : active === "consent" ? (
-          <ConsentSection variant={variant} />
-        ) : active === "org" ? (
-          <OrgSection variant={variant} />
-        ) : active === "members" ? (
-          <MembersSection variant={variant} />
-        ) : active === "billing" ? (
-          <BillingSection variant={variant} audience={audience} />
-        ) : active === "notify" ? (
-          <NotifySection variant={variant} />
-        ) : (
-          <InquirySection variant={variant} audience={audience} />
-        )}
-      </div>
-          </div>
-
-          {/* 검토용 — 로그인하지 않고도 두 역할을 견줘 볼 수 있게 둔다. 확정되면 지운다. */}
-          <div
-      className={`mt-8 flex flex-wrap items-center justify-center gap-2 text-[13px] ${t.muted}`}
+        <span>역할 미리보기</span>
+        {(["parent", "org"] as const).map((a) => (
+          <button
+            key={a}
+            type="button"
+            onClick={() => setOverride(a)}
+            className={`underline underline-offset-2 ${audience === a ? "font-bold" : ""}`}
           >
-      <span>역할 미리보기</span>
-      {(["parent", "org"] as const).map((a) => (
-        <button
-          key={a}
-          type="button"
-          onClick={() => setOverride(a)}
-          className={`underline underline-offset-2 ${audience === a ? "font-bold" : ""}`}
-        >
-          {a === "parent" ? "학부모" : "기관"}
-        </button>
+            {a === "parent" ? "학부모" : "기관"}
+          </button>
         ))}
       </div>
     </>

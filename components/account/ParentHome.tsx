@@ -8,6 +8,8 @@ import { progressOf, phaseTone, subjectTone } from "@/lib/progress";
 import { assessment } from "@/lib/exam";
 import { ageFromBirth } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import SectionTitle from "@/components/exam/SectionTitle";
+import { eyebrow } from "@/components/exam/ui";
 import { EmptyChild } from "./AuthArt";
 
 /**
@@ -36,13 +38,15 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
 
   return (
     <>
-      {/* 제목은 왼쪽, 주 액션은 오른쪽 위 */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      {/* 머리 구성은 학생 명부와 같다 — 분류 · 제목 · 한 줄 · 아래 구분선 */}
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div className="min-w-[16rem] flex-1">
-          <h1 className={t.heading}>{session?.name ?? "보호자"}님, 안녕하세요</h1>
-          <p className={`mt-2.5 ${t.lead}`}>
-            {assessment.round} 진행 상황입니다. 아이를 눌러 접속코드를 확인하거나 다음 단계로
-            넘어가세요.
+          <p className={eyebrow}>학생 현황</p>
+          <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+            {session?.name ?? "보호자"}님, 안녕하세요
+          </h1>
+          <p className={`mt-2 text-[13px] ${t.muted}`}>
+            {assessment.round} · 등록 {hydrated ? children.length : 0}명
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
@@ -63,8 +67,8 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           <EmptyChild className="mx-auto h-32 w-auto" accent="#365eef" />
           <p className="mt-6 text-[18px] font-bold">등록된 학생이 없어요.</p>
           <p className={`mx-auto mt-2.5 max-w-md text-[14px] leading-[1.7] ${t.muted}`}>
-            아이를 등록하면 접속코드가 발급됩니다. 아이는 따로 가입하지 않고, 그 코드와
-            생년월일로 응시 화면에 들어갑니다.
+            아이를 등록하면 접속코드가 발급됩니다. 아이는 따로 가입하지 않고, 그 코드와 생년월일로
+            응시 화면에 들어갑니다.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-2.5">
             <Link href="/my/children/consent" className={t.btnOutline}>
@@ -81,74 +85,82 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
          * 덩어리가 다섯 개 있으면 정작 읽어야 할 이름과 코드가 묻힌다. 면을 걷고
          * 글자만 남겼고, 굵기는 이름 하나에만 준다.
          */
-        <section className={`${t.card} mt-5 overflow-hidden`}>
-          <ul className={`divide-y ${divide}`}>
-            {rows.map((r) => {
-              const age = ageFromBirth(r.student.birth);
-              const tone = phaseTone[r.phase];
-              return (
-                <li
-                  key={r.student.id}
-                  className="flex flex-wrap items-baseline gap-x-5 gap-y-2 px-4 py-3.5"
-                >
-                  <span className="min-w-[11.5rem] text-[15px]">
-                    <span className="font-semibold">{r.student.name}</span>
-                    <span className={`ml-2.5 tracking-[0.06em] tabular-nums ${t.muted}`}>
-                      {formatCode(r.student.code)}
-                    </span>
-                  </span>
-
-                  <span className={`hidden w-28 shrink-0 text-[13px] xl:block ${t.muted}`}>
-                    {r.student.grade} · 만 {age ?? "—"}세
-                  </span>
-
-                  {/* 과목 이름은 옅게, 상태만 색으로 — 세 과목을 한눈에 훑게 */}
-                  <span className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-1 text-[13px]">
-                    {r.subjects.map((sub) => (
-                      <span key={sub.id} className="whitespace-nowrap">
-                        <span className={t.muted}>{sub.short}</span>{" "}
-                        <span className={subjectTone[sub.state]}>{sub.state}</span>
-                      </span>
-                    ))}
-                  </span>
-
-                  <span className={`flex shrink-0 items-center gap-1.5 text-[13px] ${tone.text}`}>
-                    <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-                    {r.phase}
-                  </span>
-
-                  <Link
-                    href="/my/children"
-                    className={`shrink-0 text-[13px] ${t.muted} hover:underline`}
+        <section className="mt-7">
+          <SectionTitle note="이름 옆 접속코드와 생년월일로 학생이 응시 화면에 들어갑니다.">
+            등록 학생 {children.length}명
+          </SectionTitle>
+          <div className={`${t.card} overflow-hidden`}>
+            <ul className={`divide-y ${divide}`}>
+              {rows.map((r) => {
+                const age = ageFromBirth(r.student.birth);
+                const tone = phaseTone[r.phase];
+                return (
+                  <li
+                    key={r.student.id}
+                    className="flex flex-wrap items-baseline gap-x-5 gap-y-2 px-4 py-3.5"
                   >
-                    관리
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                    <span className="min-w-[11.5rem] text-[15px]">
+                      <span className="font-semibold">{r.student.name}</span>
+                      <span className={`ml-2.5 tracking-[0.06em] tabular-nums ${t.muted}`}>
+                        {formatCode(r.student.code)}
+                      </span>
+                    </span>
+
+                    <span className={`hidden w-28 shrink-0 text-[13px] xl:block ${t.muted}`}>
+                      {r.student.grade} · 만 {age ?? "—"}세
+                    </span>
+
+                    {/* 과목 이름은 옅게, 상태만 색으로 — 세 과목을 한눈에 훑게 */}
+                    <span className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-1 text-[13px]">
+                      {r.subjects.map((sub) => (
+                        <span key={sub.id} className="whitespace-nowrap">
+                          <span className={t.muted}>{sub.short}</span>{" "}
+                          <span className={subjectTone[sub.state]}>{sub.state}</span>
+                        </span>
+                      ))}
+                    </span>
+
+                    <span className={`flex shrink-0 items-center gap-1.5 text-[13px] ${tone.text}`}>
+                      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+                      {r.phase}
+                    </span>
+
+                    <Link
+                      href="/my/children"
+                      className={`shrink-0 text-[13px] ${t.muted} hover:underline`}
+                    >
+                      관리
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </section>
       )}
 
       {/* 바로가기 — 좌측 레일에 없는 하위 화면만 둔다 */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        {[
-          { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
-          { href: "/exam/result", t: "결과 리포트", d: "발행 상태와 열람" },
-          { href: "/support/faq", t: "자주 묻는 질문", d: "응시·결과·개인정보" },
-        ].map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className={`${t.card} p-5 transition-colors ${
-              variant === 1 ? "hover:border-acc-primary" : "hover:border-soft-primary"
-            }`}
-          >
-            <p className="text-[15px] font-bold">{l.t}</p>
-            <p className={`mt-1 text-[13px] ${t.muted}`}>{l.d}</p>
-          </Link>
-        ))}
-      </div>
+      <section className="mt-8">
+        <SectionTitle>바로가기</SectionTitle>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
+            { href: "/exam/result", t: "결과 리포트", d: "발행 상태와 열람" },
+            { href: "/support/faq", t: "자주 묻는 질문", d: "응시·결과·개인정보" },
+          ].map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`${t.card} p-5 transition-colors ${
+                variant === 1 ? "hover:border-acc-primary" : "hover:border-soft-primary"
+              }`}
+            >
+              <p className="text-[15px] font-bold">{l.t}</p>
+              <p className={`mt-1 text-[13px] ${t.muted}`}>{l.d}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </>
   );
 }

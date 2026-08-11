@@ -138,14 +138,14 @@ export default function StudentRegistrar({
   };
 
   return (
-    <div className="container-x py-8 md:py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-exam-text/80 pb-5">
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div>
           <p className={eyebrow}>{isDirector ? "소속 관리" : "학생 프로필 관리"}</p>
-          <h1 className="mt-2.5 text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
+          <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
             학생 등록 관리
           </h1>
-          <p className="mt-2 text-[12px] text-exam-muted">
+          <p className="mt-2 text-[13px] text-soft-muted">
             {ownerName} · 등록 {hydrated ? mine.length : 0}명
           </p>
         </div>
@@ -174,7 +174,7 @@ export default function StudentRegistrar({
         </SectionTitle>
 
         <div className={panel}>
-          <div className="flex border-b border-exam-line">
+          <div className="flex border-b border-soft-line">
             {[
               { id: "one" as const, label: `${noun} 한 명씩 추가` },
               { id: "bulk" as const, label: "여러 명 한 번에 (엑셀·CSV)" },
@@ -186,8 +186,8 @@ export default function StudentRegistrar({
                 aria-current={tab === t.id ? "true" : undefined}
                 className={`px-5 py-3.5 text-[13px] font-bold transition-colors ${
                   tab === t.id
-                    ? "border-b-2 border-brand-800 text-exam-text"
-                    : "text-exam-muted hover:text-exam-text"
+                    ? "border-b-2 border-soft-primary text-soft-ink"
+                    : "text-soft-muted hover:text-soft-ink"
                 }`}
               >
                 {t.label}
@@ -268,7 +268,7 @@ export default function StudentRegistrar({
                 <button type="button" onClick={addOne} className={btnPrimary}>
                   + {noun} 추가하고 코드 발급
                 </button>
-                <p className="text-[12px] text-exam-muted">
+                <p className="text-[12px] text-soft-muted">
                   추가할 때마다 중복되지 않는 접속코드가 자동으로 발급됩니다.
                 </p>
               </div>
@@ -302,7 +302,7 @@ export default function StudentRegistrar({
               <label htmlFor="bulk" className={`mt-5 block ${fieldLabel}`}>
                 엑셀에서 복사한 내용을 그대로 붙여넣어도 됩니다
               </label>
-              <p className="mt-1.5 text-[12px] text-exam-muted">
+              <p className="mt-1.5 text-[12px] text-soft-muted">
                 열 순서: 이름, 생년월일(8자리), 학년, {isDirector ? "반" : "보호자 연락처"} · 쉼표
                 / 탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다.
               </p>
@@ -318,7 +318,7 @@ export default function StudentRegistrar({
               {preview && (
                 <div className="mt-5">
                   <div className="flex flex-wrap items-center gap-3">
-                    <p className="text-[13px] font-bold text-exam-text">
+                    <p className="text-[13px] font-bold text-soft-ink">
                       인식된 {noun} <span className="tabular-nums">{preview.rows.length}</span>명
                       {preview.errors.length > 0 && (
                         <span className="ml-2 text-rose-600">
@@ -368,7 +368,7 @@ export default function StudentRegistrar({
                 onClick={() => {
                   if (confirm("등록된 명부를 모두 지웁니다. 계속할까요?")) clearRoster();
                 }}
-                className="rounded border border-exam-line bg-exam-panel px-3.5 py-1.5 text-[12px] font-bold text-exam-muted transition-colors hover:bg-exam-raised"
+                className="rounded border border-soft-line bg-white px-3.5 py-1.5 text-[12px] font-bold text-soft-muted transition-colors hover:bg-slate-50"
               >
                 전체 삭제 (시연용)
               </button>
@@ -427,7 +427,7 @@ export default function StudentRegistrar({
                             return (
                               <span key={k} className="flex items-center gap-2">
                                 {!isDirector && (
-                                  <span className="w-9 text-right text-[12px] text-exam-muted">
+                                  <span className="w-9 text-right text-[12px] text-soft-muted">
                                     {surveyMeta[k].who}
                                   </span>
                                 )}
@@ -462,7 +462,7 @@ export default function StudentRegistrar({
                           <button
                             type="button"
                             onClick={() => removeStudent(s.id)}
-                            className="inline-flex items-center rounded border border-rose-300 bg-exam-panel px-3 py-1.5 text-[12px] font-bold text-rose-600 transition-colors hover:bg-rose-50"
+                            className="inline-flex items-center rounded border border-rose-300 bg-white px-3 py-1.5 text-[12px] font-bold text-rose-600 transition-colors hover:bg-rose-50"
                           >
                             삭제
                           </button>
@@ -496,15 +496,15 @@ export default function StudentRegistrar({
             },
           ].map((c) => (
             <div key={c.t}>
-              <p className="text-[14px] font-black text-exam-text">{c.t}</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-exam-muted">{c.d}</p>
+              <p className="text-[14px] font-bold text-soft-ink">{c.t}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{c.d}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <p className="mt-6 text-[12px] leading-relaxed text-exam-muted">
-        학생에게는 <b className="text-exam-text">접속코드와 생년월일</b>만 전달하면 됩니다. 학생은
+      <p className="mt-6 text-[12px] leading-relaxed text-soft-muted">
+        학생에게는 <b className="text-soft-ink">접속코드와 생년월일</b>만 전달하면 됩니다. 학생은
         학생 로그인 화면에서 코드를 입력해 바로 응시할 수 있고, 보호자도 같은 코드로 들어와 설문만
         진행할 수 있습니다.
         {isDirector
@@ -548,24 +548,24 @@ function ParentSurveyPrompt({
       role="dialog"
       aria-modal="true"
       aria-labelledby="parent-survey-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-exam-text/40 p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
     >
-      <div className="w-full max-w-md rounded-md border border-exam-line bg-exam-panel">
-        <div className="border-b border-exam-line px-6 py-5">
+      <div className="w-full max-w-md rounded-md border border-soft-line bg-white">
+        <div className="border-b border-soft-line px-6 py-5">
           <p className={eyebrow}>ASM-05 · 학부모 설문</p>
-          <h2 id="parent-survey-title" className="mt-2 text-[19px] font-black text-exam-text">
+          <h2 id="parent-survey-title" className="mt-2 text-[19px] font-bold text-soft-ink">
             학생의 특징을 알려 주세요
           </h2>
-          <p className="mt-2.5 text-[13px] leading-relaxed text-exam-muted">
+          <p className="mt-2.5 text-[13px] leading-relaxed text-soft-muted">
             평소 어떤 것에 몰입하는지, 어떤 방식으로 문제를 푸는지 등 가정에서 관찰한 모습을
-            여쭙습니다. 어머니·아버지가 <b className="text-exam-text">각각</b> 제출하실 수 있습니다.
+            여쭙습니다. 어머니·아버지가 <b className="text-soft-ink">각각</b> 제출하실 수 있습니다.
           </p>
         </div>
 
-        <ul className="divide-y divide-exam-line">
+        <ul className="divide-y divide-slate-100">
           {students.map((s) => (
             <li key={s.id} className="px-6 py-4">
-              <p className="text-[14px] font-black text-exam-text">{s.name}</p>
+              <p className="text-[14px] font-bold text-soft-ink">{s.name}</p>
               <div className="mt-2.5 grid grid-cols-2 gap-2">
                 {(
                   [
@@ -587,11 +587,11 @@ function ParentSurveyPrompt({
           ))}
         </ul>
 
-        <div className="border-t border-exam-line px-6 py-4 text-center">
+        <div className="border-t border-soft-line px-6 py-4 text-center">
           <button
             type="button"
             onClick={onClose}
-            className="text-[13px] text-exam-muted hover:text-exam-text"
+            className="text-[13px] text-soft-muted hover:text-soft-ink"
           >
             나중에 하기
           </button>

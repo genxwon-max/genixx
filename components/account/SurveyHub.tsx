@@ -7,6 +7,8 @@ import { useRoster } from "@/lib/roster";
 import { surveys } from "@/lib/survey";
 import { surveyWindow } from "@/lib/popup";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import SectionTitle from "@/components/exam/SectionTitle";
+import { eyebrow } from "@/components/exam/ui";
 
 /**
  * 설문 현황 — 대시보드 안에서 누가 무엇을 냈는지 보고, 거기서 바로 연다.
@@ -38,9 +40,12 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
 
   return (
     <>
-      <header className="mb-5">
-        <h1 className={t.heading}>설문</h1>
-        <p className={`mt-2.5 ${t.lead}`}>
+      <header className="mb-6 border-b border-soft-line pb-5">
+        <p className={eyebrow}>{isOrg ? "관찰 설문" : "보호자 설문"}</p>
+        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+          설문
+        </h1>
+        <p className={`mt-2 text-[13px] ${t.muted}`}>
           {isOrg
             ? "담당 학생의 관찰 설문입니다. 학생 응답·보호자 응답과 함께 해석에 씁니다."
             : "가정에서 본 아이의 모습을 알려 주세요. 어머니·아버지가 각각 내실 수 있습니다."}
@@ -60,49 +65,54 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
           </Link>
         </section>
       ) : (
-        <section className={`${t.card} overflow-hidden`}>
-          <ul className={`divide-y ${divide}`}>
-            {mine.map((student) => (
-              <li
-                key={student.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5"
-              >
-                <span className="flex min-w-[10rem] items-center gap-2">
-                  <span className="text-[15px] font-bold">{student.name}</span>
-                  <span className={`text-[12.5px] ${t.muted}`}>{student.grade}</span>
-                </span>
+        <section>
+          <SectionTitle note="설문은 새 창에서 열립니다. 정답이 있는 검사가 아닙니다.">
+            학생별 제출 현황
+          </SectionTitle>
+          <div className={`${t.card} overflow-hidden`}>
+            <ul className={`divide-y ${divide}`}>
+              {mine.map((student) => (
+                <li
+                  key={student.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5"
+                >
+                  <span className="flex min-w-[10rem] items-center gap-2">
+                    <span className="text-[15px] font-bold">{student.name}</span>
+                    <span className={`text-[12.5px] ${t.muted}`}>{student.grade}</span>
+                  </span>
 
-                <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                  {keys.map((key) => {
-                    const done = records[student.id]?.surveys?.[key] === "done";
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => surveyWindow(`/survey/${key}?student=${student.id}`)}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                          done
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                            : variant === 1
-                              ? "border-acc-primary bg-white text-acc-primary hover:bg-acc-primary-soft"
-                              : "border-soft-primary bg-white text-soft-primary hover:bg-soft-primary-soft"
-                        }`}
-                      >
-                        {surveys[key].who}
-                        <span className="font-bold">{done ? "제출됨" : "작성하기"}</span>
-                      </button>
-                    );
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
+                  <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                    {keys.map((key) => {
+                      const done = records[student.id]?.surveys?.[key] === "done";
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => surveyWindow(`/survey/${key}?student=${student.id}`)}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                            done
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              : variant === 1
+                                ? "border-acc-primary bg-white text-acc-primary hover:bg-acc-primary-soft"
+                                : "border-soft-primary bg-white text-soft-primary hover:bg-soft-primary-soft"
+                          }`}
+                        >
+                          {surveys[key].who}
+                          <span className="font-bold">{done ? "제출됨" : "작성하기"}</span>
+                        </button>
+                      );
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
 
-          <div className={`border-t px-4 py-3.5 ${rule}`}>
-            <p className={`text-[12.5px] leading-[1.7] ${t.muted}`}>
-              설문은 새 창에서 열립니다. 정답이 있는 검사가 아니니 평소 모습 그대로 답해 주시면
-              됩니다. 보호자의 양육 태도를 평가하거나 리포트에 출력하지 않습니다.
-            </p>
+            <div className={`border-t px-4 py-3.5 ${rule}`}>
+              <p className={`text-[12.5px] leading-[1.7] ${t.muted}`}>
+                평소 모습 그대로 답해 주시면 됩니다. 보호자의 양육 태도를 평가하거나 리포트에
+                출력하지 않습니다.
+              </p>
+            </div>
           </div>
         </section>
       )}
