@@ -7,6 +7,7 @@ import { roleLabel, signOut, useSession, type Role } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
 import { assessment, deadlineDays } from "@/lib/exam";
+import { surveyWindow } from "@/lib/popup";
 import { ChevronDown } from "@/components/Icons";
 
 /**
@@ -21,6 +22,10 @@ import { ChevronDown } from "@/components/Icons";
  * 화면이 없는 것(ORG-02-1 학급 구성 · ORG-05 집단 리포트 · PAY 존 전체)은 넣지 않았다.
  * 눌러서 아무 데도 가지 않는 메뉴를 세우는 것보다 없는 편이 낫다.
  *
+ * 응시(ASM-01)는 여기 없다. 학생이 접속코드로 들어가 자기 화면에서 보는 것이라
+ * 회원 레일에 두면 눌러 봐야 「학생 계정에서 확인하세요」만 나온다.
+ * 설문은 답만 쓰는 창이 낫아서 새 창으로 연다 — 응시와 같은 이유다.
+ *
  * 반응형은 정의서 12장을 따른다 — 학부모는 모바일 우선이라 좁은 화면에서 레일이
  * 하단 탭으로 내려간다.
  */
@@ -33,15 +38,14 @@ type Item = {
   icon: React.ReactNode;
   /** 하위 경로까지 이 항목으로 친다 */
   match?: string[];
+  /** 대시보드 안에서 열지 않고 새 창으로 띄운다 */
+  popup?: boolean;
 };
 
 /* ── 아이콘 (20px 선 아이콘) ── */
 const ic = {
   home: (
     <path d="M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5M9.5 20v-6h5v6" />
-  ),
-  exam: (
-    <path d="M5 3.5h11l3 3V20.5H5zM15.5 3.5v3.5H19M8.5 12h7M8.5 16h4.5" />
   ),
   report: (
     <path d="M4 20h16M7.5 20v-7M12 20V6.5M16.5 20v-4.5" />
@@ -63,6 +67,45 @@ const ic = {
   ),
 };
 
+/**
+ * 레일 항목 하나. 새 창으로 여는 것(설문)은 링크가 아니라 버튼으로 낸다 —
+ * 같은 탭에서 열릴 것처럼 보이면 안 되고, 새 탭으로 열기 같은 메뉴도 뜻이 없다.
+ */
+function RailItem({
+  item,
+  on,
+  className,
+}: {
+  item: Item;
+  on: boolean;
+  className: string;
+}) {
+  if (item.popup) {
+    return (
+      <button
+        type="button"
+        onClick={() => surveyWindow(item.href)}
+        title={`${item.label} · 새 창`}
+        className={className}
+      >
+        {item.icon}
+        {item.label}
+      </button>
+    );
+  }
+  return (
+    <Link
+      href={item.href}
+      aria-current={on ? "page" : undefined}
+      title={`${item.label} · ${item.sid}`}
+      className={className}
+    >
+      {item.icon}
+      {item.label}
+    </Link>
+  );
+}
+
 function Icon({ children }: { children: React.ReactNode }) {
   return (
     <svg
@@ -83,16 +126,9 @@ function Icon({ children }: { children: React.ReactNode }) {
 /** 학부모(P) — 정의서 5·6·7장에서 P 권한 P0 화면 */
 const parentMenu: Item[] = [
   { href: "/my", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
-  {
-    href: "/exam",
-    label: "응시",
-    sid: "ASM-01",
-    icon: <Icon>{ic.exam}</Icon>,
-    match: ["/exam/session", "/exam/prepare"],
-  },
   { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/my/children", label: "학생", sid: "ACC-03", icon: <Icon>{ic.child}</Icon> },
-  { href: "/my/surveys", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon> },
+  { href: "/survey", label: "설문", sid: "ASM-05", icon: <Icon>{ic.survey}</Icon>, popup: true },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
 
@@ -100,8 +136,8 @@ const parentMenu: Item[] = [
 const orgMenu: Item[] = [
   { href: "/org", label: "홈", sid: "ORG-01", icon: <Icon>{ic.home}</Icon> },
   { href: "/my/students", label: "명부", sid: "ORG-02-2", icon: <Icon>{ic.roster}</Icon> },
-  { href: "/exam", label: "응시", sid: "ASM-01", icon: <Icon>{ic.exam}</Icon> },
-  { href: "/my/surveys", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon> },
+  { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
+  { href: "/survey", label: "설문", sid: "ORG-06", icon: <Icon>{ic.survey}</Icon>, popup: true },
   { href: "/exam/payment", label: "응시권", sid: "ORG-03", icon: <Icon>{ic.ticket}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
@@ -238,25 +274,18 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
           GX
         </Link>
         <nav aria-label="주 메뉴" className="flex flex-1 flex-col gap-1 px-2 py-3">
-          {menu.map((m) => {
-            const on = m.href === current;
-            return (
-              <Link
-                key={m.label}
-                href={m.href}
-                aria-current={on ? "page" : undefined}
-                title={`${m.label} · ${m.sid}`}
-                className={`flex flex-col items-center gap-1 rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
-                  on
-                    ? "bg-soft-primary-soft text-soft-primary"
-                    : "text-soft-muted hover:bg-slate-50 hover:text-soft-ink"
-                }`}
-              >
-                {m.icon}
-                {m.label}
-              </Link>
-            );
-          })}
+          {menu.map((m) => (
+            <RailItem
+              key={m.label}
+              item={m}
+              on={m.href === current}
+              className={`flex w-full flex-col items-center gap-1 rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
+                m.href === current
+                  ? "bg-soft-primary-soft text-soft-primary"
+                  : "text-soft-muted hover:bg-slate-50 hover:text-soft-ink"
+              }`}
+            />
+          ))}
         </nav>
       </aside>
 
@@ -295,22 +324,16 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
           aria-label="주 메뉴"
           className="fixed inset-x-0 bottom-0 z-20 flex border-t border-soft-line bg-white lg:hidden"
         >
-          {menu.map((m) => {
-            const on = m.href === current;
-            return (
-              <Link
-                key={m.label}
-                href={m.href}
-                aria-current={on ? "page" : undefined}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ${
-                  on ? "text-soft-primary" : "text-soft-muted"
-                }`}
-              >
-                {m.icon}
-                {m.label}
-              </Link>
-            );
-          })}
+          {menu.map((m) => (
+            <RailItem
+              key={m.label}
+              item={m}
+              on={m.href === current}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ${
+                m.href === current ? "text-soft-primary" : "text-soft-muted"
+              }`}
+            />
+          ))}
         </nav>
       </div>
     </div>

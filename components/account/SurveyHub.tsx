@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { useExamStore, useHydrated, surveyKeys, type SurveyKey } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
@@ -11,11 +10,11 @@ import SectionTitle from "@/components/exam/SectionTitle";
 import { eyebrow } from "@/components/exam/ui";
 
 /**
- * 설문 현황 — 대시보드 안에서 누가 무엇을 냈는지 보고, 거기서 바로 연다.
+ * 설문 고르는 자리 — 팝업 창(/survey)의 첫 화면.
  *
- * 설문 자체는 팝업 창(/survey/[role])에서 채운다. 문항에만 집중하도록 헤더·푸터 없는
- * 화면을 따로 쓰기 때문이다. 이 화면은 그 앞에 서서 「누가 아직 안 냈는가」를 보여
- * 주는 자리다. 예전에는 응시 화면 안에만 있어서 대시보드에서 찾을 수 없었다.
+ * 대시보드 레일의 「설문」이 이 주소를 새 창으로 연다. 응시가 학생 화면에서 따로 열리듯
+ * 설문도 답만 쓰는 창에서 하는 편이 낫다. 여기서 학생과 응답자를 고르면 같은 창이
+ * 문항 화면(/survey/[role])으로 넘어간다.
  *
  * 학생 응답(ASM-04)은 학생이 접속코드로 들어가 직접 하는 것이라 여기 없다.
  */
@@ -58,15 +57,12 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
         <section className={`${t.card} px-6 py-12 text-center`}>
           <p className="text-[17px] font-bold">등록된 학생이 없어요.</p>
           <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>
-            학생을 먼저 등록하시면 설문을 낼 수 있습니다.
+            대시보드에서 학생을 먼저 등록하시면 설문을 낼 수 있습니다. 이 창은 닫으셔도 됩니다.
           </p>
-          <Link href="/my/students?tab=one" className={`${t.btnAction} mt-6`}>
-            + 학생 등록
-          </Link>
         </section>
       ) : (
         <section>
-          <SectionTitle note="설문은 새 창에서 열립니다. 정답이 있는 검사가 아닙니다.">
+          <SectionTitle note="응답자를 고르면 문항 화면으로 넘어갑니다. 정답이 있는 검사가 아닙니다.">
             학생별 제출 현황
           </SectionTitle>
           <div className={`${t.card} overflow-hidden`}>
