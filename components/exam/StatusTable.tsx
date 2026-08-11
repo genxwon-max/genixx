@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { QUESTIONS_PER_SUBJECT, questionsOf, subjects } from "@/lib/exam";
+import { assessment, QUESTIONS_PER_SUBJECT, questionsOf, subjects } from "@/lib/exam";
 import {
   allSubmitted,
   finalize,
@@ -108,7 +108,7 @@ export default function StatusTable() {
         <div>
           <p className={eyebrow}>ASM-01 · 응시 현황</p>
           <h1 className="mt-2.5 text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
-            2026학년도 1회차(26A) 진단 현황
+            {assessment.name} {assessment.round} 진단 현황
           </h1>
         </div>
         <p className="text-[12px] text-exam-muted">

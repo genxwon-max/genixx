@@ -7,6 +7,21 @@
  * 각 문항은 좌측(기본 설명·자료)과 우측(발문·보기)으로 나뉜다.
  */
 
+/**
+ * 이 검사의 이름.
+ *
+ * 평가(검사) 이름은 **TalentMe(텔렌트미)** 다 — Talent(재능) + Me(나)를 붙인 합성어이고,
+ * "재능은 남이 찾아주는 것이 아니라 아이 자신이 발견하는 것"이라는 관점을 담았다.
+ * **GENIXX는 회사·플랫폼 이름**이므로 둘을 바꿔 쓰지 않는다.
+ * 홍보 존(PUB)의 브랜드 표기는 GENIXX 그대로 두고, 검사를 가리키는 자리에서만 이 이름을 쓴다.
+ */
+export const assessment = {
+  name: "TalentMe",
+  ko: "텔렌트미",
+  /** 현재 회차 — 응시 현황과 결과 리포트가 같은 값을 쓴다 */
+  round: "2026학년도 1회차(26A)",
+};
+
 export type SubjectId = "korean" | "math" | "science";
 
 export type Subject = {

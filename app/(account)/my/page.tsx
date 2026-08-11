@@ -1,6 +1,13 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import ParentHome from "@/components/account/ParentHome";
 
-/** /my 는 자녀 프로필을 기본 화면으로 삼는다 (사이트맵 12장 URL 규칙: 회원=/my) */
+export const metadata: Metadata = {
+  title: "내 페이지",
+  description: "자녀의 진단 진행 상황과 다음 할 일. (ACC-03)",
+  robots: { index: false, follow: false },
+};
+
+/** 학부모 홈 — 로그인 후 도착하는 자리 */
 export default function MyPage() {
-  redirect("/my/children");
+  return <ParentHome />;
 }

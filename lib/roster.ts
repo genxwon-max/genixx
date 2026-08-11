@@ -98,8 +98,11 @@ function subscribe(onChange: () => void) {
   };
 }
 
+/** 서버 스냅샷은 매번 같은 참조를 돌려줘야 한다 (새 배열이면 무한 루프 경고) */
+const EMPTY: Student[] = [];
+
 export function useRoster(): Student[] {
-  return useSyncExternalStore(subscribe, read, () => []);
+  return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
 
 export function getRoster() {

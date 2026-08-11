@@ -93,10 +93,11 @@ export const roleLabel: Record<Role, string> = {
 
 /** 역할별 기본 진입 경로 (사이트맵 12장 URL 규칙) */
 export const roleHome: Record<Role, string> = {
-  director: "/exam/roster",
-  parent: "/my/children",
+  director: "/org",
+  parent: "/my",
   student: "/exam",
-  teacher: "/survey/teacher",
+  // 교사도 기관 대시보드로 보낸다. 관찰 설문은 팝업 전용 화면이라 착지점이 될 수 없다.
+  teacher: "/org",
   expert: "/expert",
   admin: "/admin",
 };

@@ -36,6 +36,37 @@
   --color-exam-text: #1a2242;
   --color-exam-muted: #5e6a88;
 
+  /* 계정 존(ACC) — 공공·영재교육 플랫폼 관행을 따른 별도 팔레트.
+     디자인 원본: claude.ai/design "회원가입 및 로그인 디자인" v2.
+     홍보 존의 남색(brand-900 #1b2a6b)이 아니라 공공 포털 계열의 파랑을 쓴다. */
+  --color-acc-primary: #0b4d8f;
+  --color-acc-primary-dark: #083a6c;
+  --color-acc-primary-soft: #f2f7fc;
+  --color-acc-primary-line: #cfe0ee;
+  --color-acc-ink: #1b2733;
+  --color-acc-body: #41525f;
+  --color-acc-muted: #5f7183;
+  --color-acc-dim: #7a8b9c;
+  --color-acc-faint: #8b9aa9;
+  --color-acc-placeholder: #a8b4c0;
+  --color-acc-line: #d5dfe9;
+  --color-acc-field: #c8d4de;
+  --color-acc-divider: #e3eaf1;
+  --color-acc-hairline: #eef3f8;
+  --color-acc-bg: #e9eef4;
+  --color-acc-panel: #f8fafc;
+  --color-acc-bar: #f4f7fa;
+  /* 필수 표시(*)와 오류 문구 */
+  --color-acc-required: #c8382c;
+
+  /* 계정 존 버전 2 — 둥글둥글한 톤. clipo.ai 계열의 밝은 파랑과 알약 버튼. */
+  --color-soft-primary: #365eef;
+  --color-soft-primary-dark: #2a4bc4;
+  --color-soft-primary-soft: #eaf3ff;
+  --color-soft-line: #d9d9d9;
+  --color-soft-ink: #18181b;
+  --color-soft-muted: #6b7280;
+
   --font-sans: var(--font-noto-kr), system-ui, sans-serif;
 
   --shadow-card: 0 1px 2px rgb(27 42 107 / 0.04), 0 8px 24px rgb(27 42 107 / 0.06);
@@ -242,6 +273,30 @@ body {
   line-height: 1.2;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   계정 존(ACC) 접근성 도구.
+   원본 디자인이 헤더에 글자크기 －／＋ 와 고대비를 상시로 두라고 정했다.
+   본문 글자만 배율을 태우고, 컨트롤 높이는 그대로 둬서 레이아웃이 무너지지 않게 한다.
+   ───────────────────────────────────────────────────────────── */
+/* 글자크기 — 본문 영역을 통째로 확대한다. 공공 포털의 글자크기 버튼과 같은 동작이다. */
+[style*="--acc-zoom"] > main {
+  zoom: var(--acc-zoom, 1);
+}
+
+/* 고대비 — 옅은 회색 계열을 전부 진하게 끌어올린다 */
+.acc-high-contrast {
+  --color-acc-muted: #2b3947;
+  --color-acc-dim: #2b3947;
+  --color-acc-faint: #2b3947;
+  --color-acc-body: #101920;
+  --color-acc-placeholder: #55636f;
+  --color-acc-line: #6b7c8c;
+  --color-acc-field: #46586a;
+  --color-acc-divider: #6b7c8c;
+  --color-acc-hairline: #9aa9b7;
+  --color-acc-primary: #063a70;
 }
 
 @keyframes fade-up {

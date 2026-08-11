@@ -77,12 +77,23 @@ export function clearSignupDraft() {
   window.dispatchEvent(new Event(EVENT));
 }
 
-/** 각 단계에 들어가기 전에 앞 단계가 끝났는지 확인한다 */
-export function stepGuard(draft: SignupDraft, step: "verify" | "consent" | "done") {
+/**
+ * 각 단계에 들어가기 전에 앞 단계가 끝났는지 확인한다.
+ *
+ * 순서는 디자인 원본을 따른다 —
+ *   STEP 1 회원 유형 → STEP 2 약관 동의 → STEP 3 본인확인·법정대리인 동의 → STEP 4 완료.
+ * 약관을 본인확인보다 앞에 두는 이유는, 동의하지 않을 사람에게서 휴대폰 번호를
+ * 먼저 받지 않기 위해서다.
+ */
+export function stepGuard(draft: SignupDraft, step: "consent" | "verify" | "done") {
   if (!draft.type) return { ok: false, back: "/signup/type", why: "회원 유형을 먼저 골라 주세요." };
+  if (step === "consent") return { ok: true, back: "", why: "" };
+
+  if (draft.consents.length === 0)
+    return { ok: false, back: "/signup/consent", why: "약관 동의를 먼저 마쳐 주세요." };
   if (step === "verify") return { ok: true, back: "", why: "" };
+
   if (!draft.verified)
     return { ok: false, back: "/signup/verify", why: "본인확인을 먼저 마쳐 주세요." };
-  if (step === "consent") return { ok: true, back: "", why: "" };
   return { ok: true, back: "", why: "" };
 }

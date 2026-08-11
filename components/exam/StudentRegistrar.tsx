@@ -119,7 +119,7 @@ export default function StudentRegistrar({ mode }: { mode: Mode }) {
     const blob = new Blob([`﻿${toCsv(mine)}`], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `GENIXX_접속코드_${ownerName}.csv`;
+    a.download = `TalentMe_접속코드_${ownerName}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };

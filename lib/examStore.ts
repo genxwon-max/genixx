@@ -150,9 +150,12 @@ export function useExamRecord(studentId: string): ExamRecord {
   );
 }
 
+/** 서버 스냅샷은 매번 같은 참조를 돌려줘야 한다 (새 객체면 무한 루프 경고) */
+const EMPTY_STORE: Store = {};
+
 /** 전체 학생의 기록 (학원장 현황 표) */
 export function useExamStore(): Store {
-  return useSyncExternalStore(subscribe, readStore, () => ({}));
+  return useSyncExternalStore(subscribe, readStore, () => EMPTY_STORE);
 }
 
 export function getRecord(studentId: string) {

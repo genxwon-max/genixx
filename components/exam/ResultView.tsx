@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { subjects } from "@/lib/exam";
+import { assessment, subjects } from "@/lib/exam";
 import { surveyKeys, surveyMeta, useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { findById, formatCode } from "@/lib/roster";
@@ -38,7 +38,7 @@ function downloadPng(studentName: string) {
       if (!out) return;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(out);
-      a.download = `GENIXX_결과_${studentName}.png`;
+      a.download = `TalentMe_결과_${studentName}.png`;
       a.click();
       URL.revokeObjectURL(a.href);
     }, "image/png");
@@ -97,7 +97,8 @@ export default function ResultView() {
             {name} 학생 진단 결과
           </h1>
           <p className="mt-2 text-[12px] text-exam-muted">
-            2026학년도 1회차(26A) · 접속코드 {student ? formatCode(student.code) : "-"} · 발행{" "}
+            {assessment.name} {assessment.round} · 접속코드{" "}
+            {student ? formatCode(student.code) : "-"} · 발행{" "}
             {record.finalizedAt ? new Date(record.finalizedAt).toLocaleDateString("ko-KR") : "-"}
           </p>
         </div>

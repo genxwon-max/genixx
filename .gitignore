@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 디자인 반출물 (scripts/export-design.mjs 생성물)
+/design-export/

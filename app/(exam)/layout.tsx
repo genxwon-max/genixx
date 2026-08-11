@@ -1,4 +1,5 @@
 import Logo from "@/components/Logo";
+import { assessment } from "@/lib/exam";
 import ExamTabs from "@/components/exam/ExamTabs";
 import ExamStatusBar from "@/components/exam/ExamStatusBar";
 import ExamFooterNote from "@/components/exam/ExamFooterNote";
@@ -10,7 +11,14 @@ export default function ExamLayout({ children }: LayoutProps<"/">) {
       {/* 구분선은 inset shadow로 그린다 — border를 쓰면 헤더가 65px이 되어 응시 화면에 1px 스크롤이 생긴다 */}
       <header className="sticky top-0 z-40 h-16 shrink-0 bg-exam-panel shadow-[inset_0_-1px_0_var(--color-exam-line)]">
         <div className="container-x flex h-16 items-center justify-between gap-4">
-          <Logo />
+          {/* 왼쪽 — 플랫폼(GENIXX) 옆에 지금 보는 검사 이름(TalentMe)을 붙인다 */}
+          <div className="flex items-center gap-3">
+            <Logo />
+            <span aria-hidden className="hidden h-5 w-px bg-exam-line sm:block" />
+            <span className="hidden text-[13px] font-bold text-exam-muted sm:inline">
+              {assessment.name} 재능진단
+            </span>
+          </div>
           {/* 오른쪽 위 — 응시 중에는 남은 시간, 그 외에는 메뉴 */}
           <div className="flex items-center gap-2">
             <ExamStatusBar />
