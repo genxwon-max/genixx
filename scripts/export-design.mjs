@@ -37,6 +37,10 @@ const SCREENS = [
     route: "/signup2?stage=method&type=parent",
     title: "회원가입 수단 · 시안2",
   },
+  /* 마이페이지 — 첫 화면(회원정보)만 뽑힌다. 나머지 섹션은 눌러야 나오므로
+     플러그인 URL 모드로 직접 가져오는 편이 낫다. */
+  { file: "v1-06-mypage", route: "/mypage1", title: "마이페이지 · 시안1" },
+  { file: "v2-06-mypage", route: "/mypage2", title: "마이페이지 · 시안2" },
 ];
 
 async function get(url) {

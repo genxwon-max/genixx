@@ -22,7 +22,7 @@ import { VariantSwitch } from "./AuthTabs";
 const quickLinks = [
   { href: "/my/children/consent", t: "자녀 추가 등록", d: "법정대리인 동의부터" },
   { href: "/my/children/consent-stages", t: "동의 관리", d: "무엇에 동의했는지" },
-  { href: "/my/account", t: "내 정보 설정", d: "연락처·알림·탈퇴" },
+  { href: "/mypage", t: "마이페이지", d: "회원정보·동의·수신·탈퇴" },
 ];
 
 export default function ParentHome({ variant = 1 }: { variant?: Variant }) {

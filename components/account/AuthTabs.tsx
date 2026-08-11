@@ -13,7 +13,8 @@ import { themeOf, type Variant } from "@/lib/authVariant";
  */
 function useHrefs() {
   const pathname = usePathname();
-  const m = /^\/(login|signup|org|my)([12])$/.exec(pathname);
+  // mypage를 my보다 먼저 둔다 — 순서가 바뀌면 /mypage1이 /my 짝으로 잡힌다
+  const m = /^\/(login|signup|mypage|org|my)([12])$/.exec(pathname);
   const suffix = m ? m[2] : "";
   return {
     onSignup: pathname.startsWith("/signup"),
@@ -56,7 +57,7 @@ export function VariantSwitch({
   kind,
 }: {
   variant: Variant;
-  kind: "login" | "signup" | "org" | "my";
+  kind: "login" | "signup" | "org" | "my" | "mypage";
 }) {
   const t = themeOf(variant);
   const { isVariantRoute } = useHrefs();

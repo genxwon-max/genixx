@@ -2,11 +2,8 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { company } from "@/lib/site";
 import { legalLinks, menu } from "@/lib/nav";
-import { stockSources } from "@/lib/stock";
 
 export default function Footer() {
-  const sources = stockSources();
-
   return (
     <footer className="mt-auto border-t border-brand-100 bg-brand-50/60">
       <div className="container-x grid gap-10 py-12 lg:grid-cols-[300px_1fr] lg:gap-14 lg:py-16">
@@ -111,27 +108,7 @@ export default function Footer() {
           <p>
             {company.name} · 대표 {company.ceo} · 사업자등록번호 {company.bizNo} · {company.address}
           </p>
-          <div className="flex flex-col gap-1 md:items-end">
-            <p>© {new Date().getFullYear()} GENIXX. All rights reserved.</p>
-            {sources.length > 0 && (
-              <p>
-                사진 제공:{" "}
-                {sources.map((s, i) => (
-                  <span key={s.name}>
-                    {i > 0 && ", "}
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline transition-colors hover:text-brand-700"
-                    >
-                      {s.name}
-                    </a>
-                  </span>
-                ))}
-              </p>
-            )}
-          </div>
+          <p>© {new Date().getFullYear()} GENIXX. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -26,7 +26,7 @@ const MIN_GROUP = 5;
 const quickLinks = [
   { href: "/exam/roster", t: "학생 명부", d: "등록·접속코드 발급" },
   { href: "/survey/teacher", t: "교사 관찰 설문", d: "12문 모듈 입력" },
-  { href: "/support/inquiry", t: "문의하기", d: "도입·운영 문의" },
+  { href: "/mypage", t: "마이페이지", d: "기관 정보·구성원·결제" },
 ];
 
 export default function OrgHome({ variant = 1 }: { variant?: Variant }) {
