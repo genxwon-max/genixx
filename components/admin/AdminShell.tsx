@@ -137,11 +137,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         >
           <div className="px-3 py-5">
             {/* 지금 어떤 역할로 보고 있는지 메뉴 맨 위에 적는다 —
-                메뉴가 역할마다 달라지므로 "왜 그 항목이 없는지"의 답이 여기 있다 */}
-            <div className="mb-5 rounded-lg bg-white/5 px-4 py-3.5">
-              <p className="adm-t-sm font-bold text-white">{role.label}</p>
-              <p className="mt-1 adm-t-xs leading-relaxed text-slate-400">{role.desc}</p>
-            </div>
+                메뉴가 역할마다 달라지므로 "왜 그 항목이 없는지"의 답이 여기 있다.
+                무슨 일을 하는 역할인지는 적지 않는다. 매일 들어오는 사람에게
+                자기 직무 설명이 늘 붙어 있을 이유가 없다. */}
+            <p className="mb-5 px-3 adm-t-sm font-bold text-white">{role.label}</p>
 
             {groups.map((group) => (
               <div key={group.label} className="mb-6 last:mb-2">
