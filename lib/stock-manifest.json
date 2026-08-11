@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-08-06T09:11:54.129Z",
+  "images": {
+    "school-teacher": {
+      "file": "/images/school-teacher.jpg",
+      "width": 1880,
+      "height": 1300,
+      "alt": "교실에서 수업하는 교사",
+      "credit": {
+        "name": "Max Fischer",
+        "url": "https://www.pexels.com/photo/teacher-teaching-his-students-5212342/",
+        "source": "Pexels",
+        "sourceUrl": "https://www.pexels.com"
+      }
+    }
+  }
+}

@@ -1,26 +1,281 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Brand navy — logo / primary buttons */
+  --color-brand-50: #f0f3fd;
+  --color-brand-100: #e2e8fb;
+  --color-brand-200: #c7d2f6;
+  --color-brand-300: #a1b2ee;
+  --color-brand-400: #7488e0;
+  --color-brand-500: #5164cf;
+  --color-brand-600: #3c4ab8;
+  --color-brand-700: #313c96;
+  --color-brand-800: #26307a;
+  --color-brand-900: #1b2a6b;
+  --color-brand-950: #131c47;
+
+  /* Accent violet — charts, highlights */
+  --color-accent-100: #ece9fe;
+  --color-accent-300: #b7aaf7;
+  --color-accent-500: #7c65e8;
+  --color-accent-600: #6a4fd8;
+
+  /* Soft pastel surfaces */
+  --color-surface-blue: #eaf1fd;
+  --color-surface-violet: #f1ecfd;
+  --color-surface-sky: #e6f0fe;
+  --color-surface-amber: #fdf2e2;
+  --color-surface-mint: #e8f6ee;
+  --color-surface-rose: #f9edf6;
+
+  /* 응시 존 — 순백 대신 눈이 편한 오프화이트. 각진 면과 얇은 선으로 시험지 톤 유지 */
+  --color-exam-bg: #e9edf4;
+  --color-exam-panel: #f7f9fc;
+  --color-exam-raised: #eef2f8;
+  --color-exam-line: #ccd5e4;
+  --color-exam-text: #1a2242;
+  --color-exam-muted: #5e6a88;
+
+  --font-sans: var(--font-noto-kr), system-ui, sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(27 42 107 / 0.04), 0 8px 24px rgb(27 42 107 / 0.06);
+  --shadow-float: 0 4px 12px rgb(27 42 107 / 0.08), 0 20px 48px rgb(27 42 107 / 0.12);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #1f2340;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+}
+
+/* Reusable page-level helpers */
+@utility container-x {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 3.4vw, 2rem);
+}
+
+/* ─────────────────────────────────────────────────────────
+   홍보 페이지 리듬
+   섹션 여백·타이포·버튼 크기를 여기 한 곳에서 정의한다.
+   페이지마다 py-16 md:py-24 / text-[28px] md:text-[34px] 같은 값을
+   손으로 반복하면 화면마다 조금씩 어긋나기 때문에 clamp로 고정한다.
+   ───────────────────────────────────────────────────────── */
+
+/* 히어로 전용 — 오른쪽 사진을 화면 끝까지 넓히면서 왼쪽 텍스트는 컨테이너 격자에 맞춘다.
+   100vw는 스크롤바까지 세기 때문에 부모 기준 100%로 계산해야 아래 섹션들과 왼쪽이 정확히 맞는다. */
+@utility hero-bleed {
+  max-width: none;
+  padding-left: max(2rem, calc((100% - 1240px) / 2 + 2rem));
+}
+
+/* 섹션 세로 리듬 — 모바일 56px → 데스크톱 104px */
+@utility section-y {
+  padding-block: clamp(3.5rem, 6vw, 6.5rem);
+}
+@utility section-pt {
+  padding-top: clamp(3.5rem, 6vw, 6.5rem);
+}
+@utility section-pb {
+  padding-bottom: clamp(3.5rem, 6vw, 6.5rem);
+}
+/* 얇은 띠 섹션 (지표 바 등) */
+@utility section-y-sm {
+  padding-block: clamp(2rem, 2.6vw, 2.75rem);
+}
+
+/* ── 타이포 스케일 ─────────────────────────────────────────
+   크기는 "역할"로만 고른다. 화면마다 text-[15px] 같은 값을 직접 쓰면
+   같은 성격의 글자가 페이지마다 달라지므로 여기 12개 안에서만 쓴다.
+
+     display  31→48  히어로 h1
+     h1       28→42  서브페이지 h1
+     h2       24→34  섹션 제목
+     h3       18→21  카드·블록 제목
+     h4       15→16  작은 카드 제목, 푸터 컬럼 제목
+     stat     24→30  지표 숫자
+     lead     15→17  섹션 리드문
+     body     14→15  본문, 카드 설명
+     meta     13     보조 설명, 인라인 링크
+     caption  12     각주, 필드 라벨
+     tag      11     뱃지·칩
+     eyebrow  12     섹션 머리 라벨 (bold)
+   ───────────────────────────────────────────────────────── */
+@utility type-display {
+  /* 한글은 글자당 폭이 1em에 가까워 라틴 문자보다 빨리 줄이 넘친다.
+     히어로 문구가 의도한 세 줄을 유지하도록 상한을 48px로 잡았다. */
+  font-size: clamp(1.9375rem, 1.15rem + 3vw, 3rem);
+  line-height: 1.26;
+  letter-spacing: -0.028em;
+}
+@utility type-h1 {
+  font-size: clamp(1.75rem, 1.2rem + 2.3vw, 2.625rem);
+  line-height: 1.28;
+  letter-spacing: -0.025em;
+}
+@utility type-h2 {
+  font-size: clamp(1.5rem, 1.15rem + 1.5vw, 2.125rem);
+  line-height: 1.32;
+  letter-spacing: -0.022em;
+}
+@utility type-h3 {
+  font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.3125rem);
+  line-height: 1.42;
+  letter-spacing: -0.014em;
+}
+@utility type-h4 {
+  font-size: clamp(0.9375rem, 0.91rem + 0.13vw, 1rem);
+  line-height: 1.5;
+  letter-spacing: -0.008em;
+}
+/* 브랜드 워드마크를 글자 단위로 크게 보여줄 때만 쓴다 */
+@utility type-wordmark {
+  font-size: clamp(2.125rem, 1.6rem + 1.6vw, 2.625rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+@utility type-stat {
+  font-size: clamp(1.5rem, 1.25rem + 1vw, 1.875rem);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+@utility type-lead {
+  font-size: clamp(0.9375rem, 0.89rem + 0.2vw, 1.0625rem);
+  line-height: 1.78;
+}
+@utility type-body {
+  font-size: clamp(0.875rem, 0.85rem + 0.12vw, 0.9375rem);
+  line-height: 1.72;
+}
+@utility type-meta {
+  font-size: 0.8125rem;
+  line-height: 1.62;
+}
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+@utility type-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+@utility type-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* 버튼 — 모양·크기만 통일하고 색은 유틸리티 클래스로 얹는다 */
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  /* 투명 테두리를 기본으로 깔아 두면 외곽선 버튼과 채움 버튼의 높이가 같아진다 */
+  border: 1px solid transparent;
+  font-weight: 700;
+  white-space: nowrap;
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: 160ms;
+}
+@utility btn-lg {
+  padding: 0.9375rem 1.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.2;
+}
+@utility btn-md {
+  padding: 0.75rem 1.375rem;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+@utility btn-sm {
+  padding: 0.5625rem 1.0625rem;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   관리자 존(ADM) 글자 크기.
+
+   주 사용자가 50~60대 운영자·평가위원이라, 일반적인 관리자 콘솔의
+   12~13px 표 글씨로는 하루 종일 쓸 수 없다. 기본을 16px로 올리고,
+   상단 바의 '글자 크게' 버튼이 --adm-zoom 만 바꾸면 콘솔 전체가
+   같은 비율로 커지도록 모든 크기를 이 변수에 곱해 둔다.
+   ───────────────────────────────────────────────────────────── */
+@utility adm-t-xl {
+  font-size: calc(1.375rem * var(--adm-zoom, 1));
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+@utility adm-t-lg {
+  font-size: calc(1.125rem * var(--adm-zoom, 1));
+  line-height: 1.5;
+  letter-spacing: -0.012em;
+}
+/* 본문·표 셀 기본 */
+@utility adm-t-md {
+  font-size: calc(1rem * var(--adm-zoom, 1));
+  line-height: 1.6;
+}
+/* 표 머리글·보조 설명 — 이보다 작게는 쓰지 않는다 */
+@utility adm-t-sm {
+  font-size: calc(0.9375rem * var(--adm-zoom, 1));
+  line-height: 1.55;
+}
+/* 배지·라벨 최소 크기 */
+@utility adm-t-xs {
+  font-size: calc(0.875rem * var(--adm-zoom, 1));
+  line-height: 1.45;
+}
+@utility adm-num {
+  font-size: calc(1.75rem * var(--adm-zoom, 1));
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 결과지 인쇄(PDF 저장) */
+@media print {
+  .no-print,
+  header,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-fade-up {
+    animation: none;
+  }
 }

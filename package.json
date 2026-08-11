@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "images": "node --env-file=.env.local scripts/fetch-images.mjs"
   },
   "dependencies": {
     "next": "16.3.0",

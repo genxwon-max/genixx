@@ -1,36 +1,268 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GeniXX — 재능 진단 플랫폼
 
-## Getting Started
+Next.js 16 (App Router) + Tailwind CSS v4로 만든 GeniXX 웹사이트입니다.
+`GeniXX 플랫폼 사이트맵·메뉴 정의서` / `GeniXX 회원 가입·계정 구조 정의서`(2026-08-05)를 기준으로 구성했습니다.
 
-First, run the development server:
+
+## 실행
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 에서 확인합니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build   # 프로덕션 빌드
+npm run start   # 빌드 결과 실행
+npm run lint    # ESLint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 페이지 구성
 
-## Learn More
+사이트맵·메뉴 정의서(2026-08-05)의 화면 ID를 그대로 승계합니다.
 
-To learn more about Next.js, take a look at the following resources:
+### 공개 존 (PUB) — 홍보 페이지
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| 경로 | 화면 ID | 설명 |
+| --- | --- | --- |
+| `/` | PUB-01 | 랜딩 — 히어로, 신뢰 신호, **브랜드 이름 풀이**, 학력×재능 직교, HITL, 서비스 사다리, 대상별, **참여진**, 진행 절차 |
+| `/about` + 5 | PUB-02 | 우리가 보는 재능 / 진단 원리(HITL) / 이론적 근거 / 진단 윤리 헌장 / 참여진 소개 |
+| `/about/team/[id]` | PUB-02-5 | 참여자 개인 프로필 — 이력·담당 업무·만든 것 |
+| `/service` + 5 | PUB-03 | 학력진단(무료) / 재능진단 1단계 / 심화진단 2단계 / 성장추적 3단계 / 요금 안내 |
+| `/sample` + 2 | PUB-04 | 샘플 PDF 뷰어 / 대시보드 데모 |
+| `/insight` + 4 | PUB-05 | 재능 이야기 / 양육 가이드 / 연구노트·백서 / 공지·보도자료 |
+| `/support` + 3 | PUB-06 | FAQ(5개 카테고리) / 1:1 문의 / 학부모 설명회 영상 |
+| `/partner` + 2 | PUB-07 | 기관 도입 문의 / 인증 해석 전문가 과정 |
+| `/legal` + 5 | PUB-08 | 이용약관 / 개인정보처리방침 / 아동용 눈높이 고지 / AI 이용 고지 / 환불 규정 |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 계정·동의 존 (ACC)
 
-## Deploy on Vercel
+사이트맵 12장 **URL 규칙**을 그대로 따릅니다 — 공개 `/` · 회원 `/my` · 응시 `/exam` ·
+결과 `/report` · 전문가 `/expert` · 기관 `/org` · 관리 `/admin`.
+사이트맵이 각 단계를 별도 화면 ID로 정의하므로 위저드 한 장이 아니라 **실제 라우트로 분리**했습니다.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| 경로 | 화면 ID | 설명 |
+| --- | --- | --- |
+| `/signup` | ACC-01 | 가입 방식 선택 (간편 / 이메일) |
+| `/signup/type` | ACC-01-1 | **학부모 / 교사 / 기관담당자 3분기** — 학생 항목 없음 |
+| `/signup/verify` | ACC-01-2 | 휴대폰·간편인증 — 법정대리인 신원 확인 근거 |
+| `/signup/consent` | ACC-01-3 | 목적별 분리 동의 (학력진단 / 재능진단 / 심화연계 / 마케팅) |
+| `/signup/pending` | ACC-01-4 | 교사·기관 소속 승인 대기 |
+| `/login` | ACC-02 | 이메일·간편 로그인 + **전문가·관리자 2FA** |
+| `/login/student` | ACC-02-1 | 학생 응시 로그인 (8자리 접속코드 + 생년월일, `noindex`) |
+| `/login/recover` | ACC-02-2 | ID·비밀번호 찾기 |
+| `/my/children` | ACC-03 | 자녀 프로필 — 다자녀, 아이별 동의 주체 표시 |
+| `/my/children/consent` | ACC-03-1 | **법정대리인 동의 (B00)** — 등록 흐름 최선행 |
+| `/my/children/new` | ACC-03-2 | 기본정보 (B01~B10, **B10 가정 내 주사용 언어**) |
+| `/my/children/consent-stages` | ACC-03-3 | 단계별 동의 관리 |
+| `/my/children/withdraw` | ACC-03-4 | 동의 철회·데이터 파기 요청 |
+| `/my/account` + 2 | ACC-04 | 내 정보 / 알림 설정 / 회원 탈퇴 |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**학생은 독립 가입 경로가 없습니다.** 보호자 계정 하위 프로필로 등록되고, 응시는 접속코드로 합니다.
+
+#### 화면 디자인의 출처
+
+로그인·회원가입은 새로 디자인하지 않고 **국내 검사·진단 포털의 관례를 그대로 따랐습니다.**
+학부모가 이미 다른 검사 사이트에서 같은 순서를 겪어 봤기 때문입니다
+([components/account/ui.tsx](components/account/ui.tsx)에 근거를 주석으로 남겨 두었습니다).
+
+| 가져온 것 | 출처 | 반영 |
+| --- | --- | --- |
+| 좁은 중앙 로그인 상자 | 인싸이트 400px | **416px** |
+| 입력칸 | 340×44 · 라운드 8 · 16px | **350×46 · 라운드 8 · 16px** |
+| 제출 버튼 | 340×50 남색 풀폭 | **350×50 남색 풀폭** |
+| 아이디·비밀번호 찾기 | 가운데 구분점으로 나눈 작은 링크 | 동일 |
+| "아직 회원이 아니신가요? 회원가입" | 상자 맨 아래 | 동일 |
+| **STEP 1~4 번호 인디케이터** | GED 회원가입 | 동일 (원형 44px + STEP n + 라벨) |
+| **약관 전문 스크롤 상자** | GED 282px · 13px · 얇은 회색 테두리 | **208px · 13px** (실제로 스크롤됨) |
+| 폼 아래 「•」 주의사항 | GED 로그인 | 동일 |
+| 유형 선택 + 절차 안내 점 목록 | 인싸이트 회원가입 | 동일 |
+| 하단 중앙 [이전][다음] 버튼 쌍 | GED·커리어넷 공통 | 동일 |
+
+관례와 어긋나게 둔 것이 하나 있습니다. **전체 동의를 기본값으로 켜 두지 않았습니다.**
+사이트맵 ACC-01-3이 "미동의 시에도 최소 응시 경로 제공(동의 강제 금지)"을 정하고 있어,
+선택 항목을 끄면 무엇이 달라지는지 그 자리에 적는 쪽을 택했습니다.
+
+#### 만 14세 분기 (개인정보보호법 제22조의2)
+
+동의 주체가 갈리는 지점이라 [lib/account.ts](lib/account.ts)에 규칙을 모아 두었습니다.
+`/my/children/consent`는 **생년월일만 먼저** 받아 갈래를 정한 뒤 맞는 동의문을 보여 줍니다.
+
+| | 만 14세 미만 | 만 14세 이상 |
+| --- | --- | --- |
+| 동의 주체 | 법정대리인(보호자) | 학생 본인 |
+| 보호자 본인확인 | 법정대리인 신원 확인 근거로 사용 | 결제·리포트 열람 주체로만 |
+| 아동 눈높이 고지문 | 병행 제시 + 확인 체크 필수 | 해당 없음 |
+| 본인 동의 시점 | — | 접속코드로 첫 응시 진입 시 |
+| 계정 구조 | 보호자 계정 하위 프로필 | **동일** (독립 계정 아님) |
+
+만 나이는 생일 경과 여부까지 계산합니다 (`ageFromBirth`). 동의를 마치기 전에는
+`/my/children/new`가 열리지 않습니다 — 동의 없이 아이 정보가 먼저 쌓이지 않도록 막습니다.
+
+#### 로그인 버튼을 누르면
+
+1. **전문가·관리자** → 2FA 화면. 통과 전에는 세션을 만들지 않습니다 (12장 보안 정책)
+2. **교사·기관, 승인 전** → `/signup/pending`. 학생 데이터 접근 차단
+3. **학부모, 자녀 없음** → `/my/children/consent` (등록 흐름 최선행)
+4. 그 외 → 역할별 기본 화면 (`roleHome`)
+
+### 응시 존 (ASM)
+
+| 경로 | 화면 ID | 설명 |
+| --- | --- | --- |
+| `/exam` | ASM-01 | 응시 현황 — 정부 포털식 표 2개(과목별 평가 / 설문 제출) + 최종 제출 |
+| `/exam/session/[subject]` | ASM-03 | 본검사 — `korean` `math` `science` 각각 별도 응시 (별도 창) |
+| `/exam/result` | RPT-01 | 결과 리포트 — 8재능 팔각형, 유형, 성장 방향, 전문가 평가, PDF·이미지 저장 |
+| `/exam/roster` | ORG-02 | 학원장 — 학생 등록·접속코드 발급·CSV 일괄 등록 |
+| `/exam/payment` | PAY-03 | 응시권 결제 (학생 직접 신청 경로) |
+| `/survey/[role]` | ASM-05·06 | `mother` `father` `teacher` 설문 — 고정 크기 팝업 창 전용 |
+| `/api/inquiry` | — | 문의 접수 API (서버 측 유효성 검사 후 접수번호 반환) |
+
+### 관리자 존 (ADM) — 내부 운영 콘솔
+
+`/admin/*`. 왼쪽 메뉴 + 흰 작업면의 별도 레이아웃이며, 검색엔진에 노출되지 않습니다(`robots: noindex`).
+
+| 경로 | 화면 ID | 설명 |
+| --- | --- | --- |
+| `/admin` | ADM-01 | 대시보드 — 지표가 아니라 **오늘 처리할 큐**부터 보여 줍니다 |
+| `/admin/grading` | ADM-06 | **채점·판정 큐** — AI 1차 제안값 검토 → 전문가 확정 (이 존의 중심) |
+| `/admin/rounds` | ADM-04 | 회차 진행률 · 과목별 응시/포기 · 설문 수집률 |
+| `/admin/items` | ADM-05 | 문항 은행 — 작성 → 교차 검수 → 승인 → 출제 후 점검 |
+| `/admin/approvals` | ADM-02-2 | 교사·기관 가입 승인 (ACC-01-4의 반대편) |
+| `/admin/members` | ADM-02-1 | 회원 — 연락처는 가려서 표시 |
+| `/admin/students` | ADM-03 | 학생 명부·접속코드 — 이름/생년월일 **기본 가림** |
+| `/admin/orgs` | ADM-07 | 기관 계약·응시권 배정 |
+| `/admin/inquiries` | ADM-10 | 1:1 문의 · 기관 도입 문의 (24시간 목표) |
+| `/admin/audit` | ADM-11 | 개인정보 열람 감사 로그 |
+| `/admin/staff` | ADM-12 | 운영자 계정 + **역할별 권한 표** |
+| `/admin/content` `/admin/billing` | ADM-09 · ADM-08 | 담을 내용만 정의된 자리 |
+
+**설계 기준 세 가지**
+
+1. **판정 큐가 중심** — HITL(PUB-02-2)이 제품의 약속이므로, CRUD가 아니라 확정 대기 큐가 첫 화면 다음에 옵니다.
+   검토 의견을 10자 이상 적어야 판정을 확정할 수 있고, 컷 경계 사례는 회의로 넘기도록 안내합니다.
+2. **개인정보는 사유 없이 열리지 않음** — 목록에서 이름·생년월일을 가려 두고, `가림 해제` 시
+   사유 선택 + 10자 이상 설명을 받은 뒤에야 그 행만 엽니다. 연 기록은 즉시 감사 로그에 쌓입니다
+   ([components/admin/ReasonDialog.tsx](components/admin/ReasonDialog.tsx)).
+3. **역할로 권한을 쪼갬** — 출제위원은 학생 개인정보를 못 보고, 고객지원은 판정을 확정할 수 없습니다.
+   권한 없는 화면은 메뉴에서 감추지 않고 **이유를 적어 보여 줍니다**(문의가 줄어듭니다).
+   상단 바의 역할 선택으로 권한별 화면 차이를 바로 확인할 수 있습니다.
+
+**50~60대 운영자 기준으로 잡은 규칙** ([components/admin/ui.ts](components/admin/ui.ts))
+
+- 표 셀까지 **16px**이 기본. 12~13px은 쓰지 않고, 배지·라벨도 14px 아래로 내리지 않습니다.
+- 상단 바에 **글자 크기(보통·크게·아주 크게)** 를 상시로 둡니다. `--adm-zoom` 하나만 바꾸면
+  콘솔 전체가 같은 비율로 커지고(16 → 20.8px), 선택은 브라우저에 기억됩니다.
+- 버튼 최소 높이 44px, 표 안 버튼도 36px. **아이콘만 있는 버튼을 만들지 않습니다.**
+- hover에서만 나타나는 동작이 없습니다. 메뉴는 접히지 않고 항상 글자로 보입니다.
+- 현재 위치는 색 하나가 아니라 **왼쪽 막대 + 배경 + 굵은 글씨** 를 겹쳐서 알립니다.
+- 상태는 색만으로 구분하지 않고 **항상 글자 라벨**을 함께 붙입니다(확신도 63점 → "낮음 · 사람이 꼭 확인").
+- 되돌리기 어려운 동작(승인·반려·확정)은 무슨 일이 일어나는지 문장으로 적고 한 번 더 묻습니다.
+
+## 동작하는 기능
+
+- **본검사**: 국어(언어)·수학·과학을 **과목별로 따로** 응시. 한 과목 4문항, 제한 시간 40분
+  - 화면을 좌우로 나눠 **왼쪽에 지문·자료 등 기본 설명**, **오른쪽에 발문과 보기**를 둠 (각 칸이 독립 스크롤)
+  - **페이지 스크롤 없음** — 헤더 64px + 본문 + 하단 바가 뷰포트 안에 고정
+  - **답을 고른 뒤 '다음'을 눌러야** 넘어감 (자동 이동 없음). 마지막 문항에서만 '제출하기'가 나타남
+  - **서술형 지원** — 작성 가이드 + 최소 글자 수를 채워야 다음/제출 활성화
+  - 로고 오른쪽에 **응답 수 · 남은 시간** 상시 표시
+- **포기하기**: 하단 왼쪽에 배치하고 사유를 함께 안내. 확인 모달에서 남은 시간을 보여주며, 확정 시 해당 과목의 응시 기회 1회 소모 + 답안 폐기
+- **응시 기록**: 학생 제출 후 학부모 설문 완료/미완료, **'학부모 설문 없이 검사 진행' 체크**, 교사 설문 입력 여부를 표시하고 모두 정리되면 '검사 완료' 배지 노출
+- **회원가입**: 학부모/교사/기관 3분기, 간편 로그인 시 이름·이메일을 자동으로 채우고 나머지만 입력(비밀번호 없음), 이메일 가입은 선택 항목 외 전부 필수. 목적별 분리 동의(필수/선택)
+- **역할별 로그인**: 학부모·기관·교사(승인 전)·관리자 시연 계정. 로그인 뒤 분기가 역할마다 다름. 학생은 접속코드+생년월일로 들어오고, 진입 시 **"학생 본인 / 학부모"** 를 골라 보호자는 설문만 수행
+- **접속코드**: 혼동 문자를 뺀 30종 알파벳 8자리(약 6,561억 조합) + 발급 시 중복 검사. 코드 단독으로는 로그인 불가, **생년월일과 2요소로 대조**
+- **명부 등록**: 한 명씩 추가 / 엑셀 복사 붙여넣기 / CSV 업로드 3가지. 미리보기에서 오류 줄을 알려주고, 발급된 코드는 CSV로 배부 가능
+- **최종 제출**: 설문이 빠져 있으면 빠진 항목을 빨간 글씨로 열거하고 결과 반영 영향을 안내한 뒤에도 제출 가능 (필수 아님)
+- **결과**: 8재능 팔각형(현재 3축 측정 / 5축 미측정 표기), MBTI식 유형 코드+유형명, 성장 방향, 전문가 평가, PDF 인쇄 및 차트 PNG 저장
+- **인증 게이트**: 로그인하지 않고 응시 존에 들어가면 로그인·회원가입·학생 접속코드 입구가 대신 표시됨
+- **상태 저장**: `localStorage`(`genixx.exam.record`, `genixx.session`) + `useSyncExternalStore`로 화면 간 실시간 반영
+- **문의 폼**: `/api/inquiry`에서 서버 검증 (422 시 필드별 에러 표시)
+
+## 두 가지 톤
+
+| | 홍보 페이지 `(site)` | 응시 존 `(exam)` | 관리자 존 `(admin)` |
+| --- | --- | --- | --- |
+| 배경 | 흰색 · 파스텔 | 오프화이트 `#e9edf4` (순백 아님) | 흰 작업면 + 회색 바탕 |
+| 모서리 | `rounded-2xl~3xl` (부드럽게) | `rounded-md` (각지게) | `rounded-md~lg` |
+| 강조 | 그림자 · 컬러 배지 | 얇은 구분선 · 대문자 라벨 | 굵은 구분선 · 글자 라벨 |
+| 본문 크기 | 14~15px | 13~15px | **16px 고정 + 사용자 확대** |
+| 숫자 | 일반 | `tabular-nums` (자리 고정) | `tabular-nums` + 천 단위 구분 |
+| 목적 | 설득 | 집중 · 오조작 방지 | 큐 처리 · 오조작 방지 |
+
+응시 존 색상은 `app/globals.css`의 `--color-exam-*` 토큰,
+공통 클래스는 [components/exam/ui.ts](components/exam/ui.ts)에 모아 두었습니다.
+
+## 디렉터리
+
+```
+app/(site)/   공개 존 (Header/Footer 포함, 밝은 톤)
+app/(exam)/   응시 존 (별도 레이아웃, 어두운 톤)
+app/(account)/ 계정·동의 존 — /signup · /login · /my
+app/(admin)/  관리자 존 (왼쪽 메뉴 콘솔, noindex)
+components/exam/     응시·설문 화면 + ui.ts(공통 스타일)
+components/account/  가입·로그인 화면
+components/site/     허브·하위 페이지·브랜드·참여진 렌더러
+components/admin/    관리자 콘솔 + ui.ts(큰 글자·큰 버튼 규칙)
+lib/nav.ts           헤더·푸터 메뉴 정의 (화면 ID 포함)
+lib/admin.ts         관리자 메뉴·권한(RBAC)·예시 데이터
+lib/adminStore.ts    운영자 역할 전환 · 글자 크기 · 열람 기록
+lib/brand.ts         GENIXX 여섯 글자 의미
+lib/people.ts        참여진 프로필 (⚠ 예시 데이터)
+lib/pageContent.ts   공개 존 하위 페이지 본문
+lib/exam.ts          문항 정의 / lib/examStore.ts 응시 상태
+lib/authStore.ts     로그인 세션 (localStorage)
+lib/account.ts       만 14세 분기·동의 단계·가입 유형 (ACC 정본)
+lib/signupStore.ts   가입 진행 상태 / lib/childStore.ts 자녀 등록 진행 상태
+```
+
+> 하위 페이지는 `[section]` 동적 세그먼트 하나로 처리합니다.
+> 특정 페이지의 상세 디자인이 확정되면 그 경로만 개별 `page.tsx`로 분리하면 됩니다
+> (예: `/support/faq`, `/support/inquiry`, `/partner/contact`는 이미 분리되어 있습니다).
+
+## 히어로 이미지 교체
+
+히어로 비주얼은 SVG 일러스트로 그려져 있고, `public/`에 이미지 파일을 넣으면 **자동으로 그 이미지가 사용**됩니다
+([components/HeroVisual.tsx](components/HeroVisual.tsx) · [lib/assets.ts](lib/assets.ts)).
+
+| 파일명 | 동작 |
+| --- | --- |
+| `public/hero-visual.png` | 카드까지 포함된 완성 이미지 → 히어로 전체를 이 이미지로 교체 |
+| `public/hero-student.png` | 배경을 지운 학생 사진만 → 분석 카드·플로팅 카드와 자동 합성 |
+| (없음) | `components/art/StudentFigure.tsx` SVG 일러스트 사용 |
+
+확장자는 `png` `webp` `jpg` `jpeg` `avif` 를 지원하며, 파일을 넣은 뒤 개발 서버를 재시작하면 반영됩니다.
+이미지의 실제 크기는 [lib/assets.ts](lib/assets.ts)가 파일 헤더에서 직접 읽어 `next/image`에 넘깁니다.
+
+## 사진(Pixabay / Pexels)
+
+콘텐츠 사진은 스크립트로 한 번 내려받아 `public/images/`에 **정적 파일로 보관**합니다.
+런타임에 외부 API를 호출하지 않으므로 빌드·배포 후에도 네트워크 의존이 없고, API 키는 클라이언트 번들에 포함되지 않습니다.
+
+```bash
+npm run images                                # 없는 것만 받고, 안 쓰는 파일은 정리
+npm run images -- --force                     # 전부 다시 받음
+npm run images -- --only school-teacher       # 특정 자리만 교체
+```
+
+- 키는 `.env.local` 의 `PIXABAY_API_KEY` / `PEXELS_API_KEY` (`.env*`는 gitignore 대상)
+- 사진이 필요한 자리와 검색어는 [scripts/fetch-images.mjs](scripts/fetch-images.mjs)의 `SLOTS` 에 정의
+- 결과는 [lib/stock-manifest.json](lib/stock-manifest.json)에 저장 — 파일 경로, 크기, 촬영자, 출처 링크
+- 화면에서는 [components/StockPhoto.tsx](components/StockPhoto.tsx)로 렌더하고, 이미지가 없으면 배경색으로 대체
+- 촬영자는 이미지 `title` 속성에, 출처는 푸터의 "사진 제공" 링크에 표기
+
+**자리를 추가할 때** `SLOTS` 에 `{ id, source, query, alt }` 를 넣고 `npm run images` 실행 → 화면에서 `<StockPhoto id="..." />`.
+**사진이 마음에 안 들 때** `query`(또는 `source`)를 바꾸고 `--only <id>` 로 그 자리만 다시 받으면 됩니다.
+`SLOTS` 에서 뺀 자리는 다음 실행 때 파일과 매니페스트에서 함께 정리됩니다.
+
+현재 자리는 `school-teacher`(홈 기관 배너) 한 곳입니다.
+
+## 디자인 토큰
+
+`app/globals.css`의 `@theme`에 정의되어 있습니다.
+
+- `brand-*` 네이비 계열 (로고/버튼: `brand-900` `#1b2a6b`)
+- `accent-*` 바이올렛 계열 (차트/하이라이트)
+- `surface-blue / violet / sky / amber / mint / rose` 파스텔 카드 배경
+- 폰트: Noto Sans KR (`next/font/google`)

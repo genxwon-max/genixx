@@ -1,0 +1,77 @@
+import type { SurveyKey } from "./examStore";
+
+export type SurveyConfig = {
+  key: SurveyKey;
+  code: string;
+  title: string;
+  who: string;
+  desc: string;
+  note: string;
+  items: string[];
+  openLabel: string;
+  openHint: string;
+  placeholder: string;
+};
+
+const guardianItems = [
+  "아이는 관심 있는 주제를 만나면 시키지 않아도 오래 파고듭니다.",
+  "새로운 방법을 스스로 떠올려 문제를 풀어 보려고 합니다.",
+  "자기 생각이나 느낌을 말이나 글로 잘 설명합니다.",
+  "규칙이나 수를 다루는 놀이·과제를 좋아합니다.",
+  "주변에서 일어나는 일의 원인을 자주 궁금해합니다.",
+  "친구나 동생의 감정을 잘 알아차리고 배려합니다.",
+  "실패했을 때 다시 시도하는 편입니다.",
+  "집에서 책·도구·디지털 기기를 자유롭게 사용할 수 있는 환경입니다.",
+];
+
+export const surveys: Record<SurveyKey, SurveyConfig> = {
+  mother: {
+    key: "mother",
+    code: "ASM-05",
+    title: "학부모 설문 (어머니)",
+    who: "어머니",
+    desc: "가정에서 관찰한 아이의 모습을 알려 주세요. 정답이 있는 검사가 아니니 평소 모습 그대로 답해 주시면 됩니다.",
+    note: "이 응답은 아이의 재능 해석에만 사용되며, 보호자의 양육 태도를 평가하거나 리포트에 출력하지 않습니다.",
+    items: guardianItems,
+    openLabel: "아이가 특별하다고 느낀 순간이 있다면 적어 주세요",
+    openHint: "리포트의 '발견의 순간' 절에 표현 그대로 인용됩니다. 짧아도 괜찮습니다.",
+    placeholder: "언제 / 무엇을 / 어떤 상황에서 / 얼마나 자주 / 그때 어떻게 반응했는지 순서로 적어 주세요.",
+  },
+  father: {
+    key: "father",
+    code: "ASM-05",
+    title: "학부모 설문 (아버지)",
+    who: "아버지",
+    desc: "가정에서 관찰한 아이의 모습을 알려 주세요. 어머니 응답과 따로 저장되며, 두 응답의 차이도 해석에 참고합니다.",
+    note: "이 응답은 아이의 재능 해석에만 사용되며, 보호자의 양육 태도를 평가하거나 리포트에 출력하지 않습니다.",
+    items: guardianItems,
+    openLabel: "아이가 특별하다고 느낀 순간이 있다면 적어 주세요",
+    openHint: "리포트의 '발견의 순간' 절에 표현 그대로 인용됩니다. 짧아도 괜찮습니다.",
+    placeholder: "언제 / 무엇을 / 어떤 상황에서 / 얼마나 자주 / 그때 어떻게 반응했는지 순서로 적어 주세요.",
+  },
+  teacher: {
+    key: "teacher",
+    code: "ASM-06",
+    title: "지도교사 관찰 설문",
+    who: "담당 교사·교수",
+    desc: "학교·학원에서 관찰한 학생의 모습을 입력해 주세요. 학생 응답·보호자 응답과 함께 4원 검증 축을 이룹니다.",
+    note: "입력한 내용은 해당 학생의 리포트 해석에만 사용되며, 학생 개인 결과는 보호자 동의 범위 안에서만 열람할 수 있습니다.",
+    items: [
+      "수업 중 자기 생각을 근거와 함께 말합니다.",
+      "글이나 발표에서 어휘를 상황에 맞게 사용합니다.",
+      "수·규칙 문제에서 다른 학생과 다른 접근을 시도합니다.",
+      "관찰·실험 활동에서 원인을 스스로 추론하려 합니다.",
+      "모둠 활동에서 역할을 조정하고 갈등을 중재합니다.",
+      "과제를 끝까지 마무리하는 지구력이 있습니다.",
+      "틀렸을 때 이유를 확인하고 고치려 합니다.",
+      "관심 분야에서 또래보다 앞선 결과물을 보여준 적이 있습니다.",
+    ],
+    openLabel: "기억에 남는 관찰 사례가 있다면 적어 주세요",
+    openHint: "언제·무엇을·어떤 상황·반복성·주변 반응 5요소로 서술하면 해석에 큰 도움이 됩니다.",
+    placeholder: "예) 지난 학기 모둠 발표에서 …",
+  },
+};
+
+export function isSurveyKey(v: string): v is SurveyKey {
+  return v === "mother" || v === "father" || v === "teacher";
+}
