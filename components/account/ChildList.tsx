@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ageFromBirth, consentRouteFor, consentRouteInfo } from "@/lib/account";
+import { ageFromBirth } from "@/lib/account";
 import { formatCode, reissueCode, useRoster, type Student } from "@/lib/roster";
 import { subjects } from "@/lib/exam";
 import {
@@ -128,8 +128,6 @@ function ChildRow({ student }: { student: Student }) {
   const [ask, setAsk] = useState<"reissue" | "final" | null>(null);
 
   const age = ageFromBirth(student.birth);
-  const route = consentRouteFor(age);
-  const info = route ? consentRouteInfo[route] : null;
 
   // 세 과목 모두 제출 + 문항별 해석까지 끝나야 최종 제출할 수 있다 (응시 현황 화면과 같은 기준)
   const examDone =
@@ -139,60 +137,52 @@ function ChildRow({ student }: { student: Student }) {
   const missing = missingSurveys(record);
 
   return (
-    <li className="border-t border-slate-100 px-5 py-4 first:border-t-0 sm:px-6">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <p className="text-[16px] font-black text-soft-ink">{student.name}</p>
-          <p className="mt-0.5 text-[13px] text-soft-muted">
-            {student.grade} · 만 {age ?? "—"}세{info && ` · ${info.label} ${info.who} 동의`}
-          </p>
-        </div>
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 px-5 py-2.5 first:border-t-0 sm:px-6">
+      <p className="text-[15px] font-black text-soft-ink">{student.name}</p>
+      <p className="text-[13px] text-soft-muted">
+        {student.grade} · 만 {age ?? "—"}세
+      </p>
 
-        {/* 코드는 받아서 아이에게 넘기는 것이 전부다. 그래서 복사와 재발급을 맨 앞에 둔다. */}
-        <div className="flex flex-wrap gap-2">
-          <CopyCode code={student.code} />
-          <button type="button" onClick={() => setAsk("reissue")} className={rowBtn}>
-            코드 재발급
+      {/* 코드와 복사 버튼은 붙여 둔다. 코드를 보는 이유가 곧 아이에게 넘기는 것이다. */}
+      <span className="rounded-md bg-slate-50 px-2.5 py-1 text-[14px] font-black tracking-[0.08em] tabular-nums text-soft-ink">
+        {formatCode(student.code)}
+      </span>
+      <CopyCode code={student.code} />
+
+      <span
+        className={`text-[13px] font-semibold ${examDone ? "text-emerald-600" : "text-soft-muted"}`}
+      >
+        시험 {submitted}/{subjects.length}
+        {examDone ? " 완료" : ""}
+      </span>
+      <span
+        className={`text-[13px] font-semibold ${
+          surveysDone === surveyKeys.length ? "text-emerald-600" : "text-soft-muted"
+        }`}
+      >
+        설문 {surveysDone}/{surveyKeys.length}
+        {surveysDone === surveyKeys.length ? " 완료" : ""}
+      </span>
+
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setAsk("reissue")} className={rowBtn}>
+          코드 재발급
+        </button>
+        {record.finalized ? (
+          <Link href={`/exam/result?student=${student.id}`} className={rowBtnPrimary}>
+            결과 보기
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        ) : examDone ? (
+          <button type="button" onClick={() => setAsk("final")} className={rowBtnPrimary}>
+            제출 완료
+            <ArrowRight className="h-3.5 w-3.5" />
           </button>
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2.5">
-        <span className="rounded-md bg-slate-50 px-2.5 py-1 text-[14px] font-black tracking-[0.08em] tabular-nums text-soft-ink">
-          {formatCode(student.code)}
-        </span>
-        <span
-          className={`text-[13px] font-semibold ${examDone ? "text-emerald-600" : "text-soft-muted"}`}
-        >
-          시험 {submitted}/{subjects.length}
-          {examDone ? " 완료" : ""}
-        </span>
-        <span
-          className={`text-[13px] font-semibold ${
-            surveysDone === surveyKeys.length ? "text-emerald-600" : "text-soft-muted"
-          }`}
-        >
-          설문 {surveysDone}/{surveyKeys.length}
-          {surveysDone === surveyKeys.length ? " 완료" : ""}
-        </span>
-
-        <div className="ml-auto">
-          {record.finalized ? (
-            <Link href={`/exam/result?student=${student.id}`} className={rowBtnPrimary}>
-              결과 보기
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          ) : examDone ? (
-            <button type="button" onClick={() => setAsk("final")} className={rowBtnPrimary}>
-              제출 완료하기
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
-          ) : (
-            <span className={rowBtnMuted} title="세 과목의 답안과 해석을 모두 제출해야 열립니다">
-              제출 완료하기
-            </span>
-          )}
-        </div>
+        ) : (
+          <span className={rowBtnMuted} title="세 과목의 답안과 해석을 모두 제출해야 열립니다">
+            제출 완료
+          </span>
+        )}
       </div>
 
       {ask === "reissue" && (
