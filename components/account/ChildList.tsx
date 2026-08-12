@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { ageFromBirth } from "@/lib/account";
 import { formatCode, reissueCode, useRoster, type Student } from "@/lib/roster";
 import { subjects } from "@/lib/exam";
@@ -13,14 +14,41 @@ import {
   surveyKeys,
   surveyMeta,
   useExamRecord,
+  useExamStore,
   useHydrated,
 } from "@/lib/examStore";
+import { progressOf, type Phase } from "@/lib/progress";
 import { ArrowRight } from "@/components/Icons";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ConfirmDialog from "./ConfirmDialog";
 import { AccHead, btnPrimary, card, cardPad } from "./ui";
 
 /** 한 쪽에 담는 학생 수. 25명을 넘으면 쪽을 나눈다. */
 const PER_PAGE = 25;
+
+/** 상태로 걸러내기. 값은 lib/progress.ts의 Phase를 그대로 쓴다. */
+const phaseOptions: { value: "all" | Phase; label: string }[] = [
+  { value: "all", label: "상태 전체" },
+  { value: "미응시", label: "미응시" },
+  { value: "응시중", label: "응시중" },
+  { value: "제출완료", label: "제출완료" },
+  { value: "검사완료", label: "검사완료" },
+];
+
+type SortKey = "recent" | "name" | "grade";
+
+const sortOptions: { value: SortKey; label: string }[] = [
+  { value: "recent", label: "최근 등록순" },
+  { value: "name", label: "이름순" },
+  { value: "grade", label: "학년순" },
+];
 
 /* 목록 줄 안에서 쓰는 작은 알약 버튼. 손가락으로 누를 수 있도록 44px 이상은 지킨다. */
 const rowBtn =
@@ -40,19 +68,66 @@ const rowBtnMuted =
 export default function ChildList() {
   const hydrated = useHydrated();
   const all = useRoster();
-  const children = all.filter((s) => s.owner === "parent");
+  // 상태로 거르려면 응시 기록이 바뀔 때도 다시 그려야 한다. 값 자체는 progressOf가 읽는다.
+  const store = useExamStore();
 
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
+  const [phase, setPhase] = useState<"all" | Phase>("all");
+  const [sort, setSort] = useState<SortKey>("recent");
+
+  const children = useMemo(() => all.filter((s) => s.owner === "parent"), [all]);
+
+  /**
+   * 아이별 진행 단계.
+   *
+   * progressOf는 응시 기록을 스토어에서 직접 읽는다(React 밖). 그래서 store 자체는
+   * 여기서 쓰이지 않지만, 기록이 바뀌었을 때 다시 계산하게 하려면 의존성에 있어야
+   * 한다. 빼면 설문을 내고 돌아와도 「응시중」에 그대로 남는다.
+   */
+  const phaseById = useMemo(
+    () => new Map(children.map((c) => [c.id, progressOf(c).phase])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [children, store],
+  );
+
+  const rows = useMemo(() => {
+    // 접속코드는 화면에 1234-ABCD로 보이지만 저장은 붙여서 한다. 어느 쪽으로 쳐도 찾히게 한다.
+    const needle = query.trim().toLowerCase().replace(/-/g, "");
+    let list = children;
+
+    if (needle) {
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(needle) ||
+          c.code.toLowerCase().includes(needle) ||
+          c.grade.toLowerCase().includes(needle),
+      );
+    }
+    if (phase !== "all") {
+      list = list.filter((c) => phaseById.get(c.id) === phase);
+    }
+
+    const sorted = [...list];
+    if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    else if (sort === "grade")
+      sorted.sort(
+        (a, b) => a.grade.localeCompare(b.grade, "ko") || a.name.localeCompare(b.name, "ko"),
+      );
+    else sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return sorted;
+  }, [children, query, phase, sort, phaseById]);
 
   if (!hydrated) {
     return <p className="py-16 text-center text-[13px] text-soft-muted">확인 중입니다…</p>;
   }
 
-  // 아이를 지우면 마지막 쪽이 사라질 수 있다. 상태를 고치지 않고 그릴 때 눌러 둔다.
-  const pages = Math.max(1, Math.ceil(children.length / PER_PAGE));
+  // 아이를 지우거나 검색으로 줄어들면 마지막 쪽이 사라진다. 상태를 고치지 않고 그릴 때 눌러 둔다.
+  const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const current = Math.min(page, pages);
   const start = (current - 1) * PER_PAGE;
-  const shown = children.slice(start, start + PER_PAGE);
+  const shown = rows.slice(start, start + PER_PAGE);
+  const filtering = query.trim() !== "" || phase !== "all";
 
   return (
     <>
@@ -87,16 +162,97 @@ export default function ChildList() {
         </div>
       ) : (
         <>
+          {/* 찾기와 분류. 어느 것을 바꾸든 1쪽으로 돌아간다 — 3쪽을 보던 중에
+              검색하면 결과가 있는데도 빈 쪽이 나오기 때문이다. */}
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-soft-muted"
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="이름 · 접속코드 · 학년으로 찾기"
+                aria-label="학생 찾기"
+                className="rounded-full pl-10 text-[14px]"
+              />
+            </div>
+
+            {/* 좁은 화면에서 둘이 각자 한 줄을 먹지 않도록 묶어 둔다 */}
+            <div className="flex gap-2">
+              <Select
+                items={phaseOptions}
+                value={phase}
+                onValueChange={(v) => {
+                  setPhase(v as "all" | Phase);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger
+                  aria-label="진행 상태로 거르기"
+                  className="flex-1 rounded-full sm:w-40 sm:flex-none"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {phaseOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                items={sortOptions}
+                value={sort}
+                onValueChange={(v) => {
+                  setSort(v as SortKey);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger
+                  aria-label="정렬"
+                  className="flex-1 rounded-full sm:w-36 sm:flex-none"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <p className="mb-2.5 text-[13px] text-soft-muted">
-            총 {children.length}명
+            {filtering ? `${children.length}명 중 ${rows.length}명` : `총 ${rows.length}명`}
             {pages > 1 && ` · ${start + 1}–${start + shown.length}번째`}
           </p>
 
-          <ul className={card}>
-            {shown.map((c) => (
-              <ChildRow key={c.id} student={c} />
-            ))}
-          </ul>
+          {shown.length === 0 ? (
+            <div className={`${card} p-10 text-center`}>
+              <p className="text-[14px] font-bold text-soft-ink">찾는 학생이 없습니다</p>
+              <p className="mt-1.5 text-[13px] text-soft-muted">
+                검색어나 상태를 바꿔 보세요. 등록된 학생은 {children.length}
+                명입니다.
+              </p>
+            </div>
+          ) : (
+            <ul className={card}>
+              {shown.map((c) => (
+                <ChildRow key={c.id} student={c} />
+              ))}
+            </ul>
+          )}
 
           {pages > 1 && <Pager page={current} pages={pages} onGo={setPage} />}
         </>
@@ -192,8 +348,9 @@ function ChildRow({ student }: { student: Student }) {
           body={
             <>
               <b className="text-soft-ink">{student.name}</b>의 지금 코드{" "}
-              <b className="tabular-nums text-soft-ink">{formatCode(student.code)}</b>는 바로
-              쓸 수 없게 됩니다. 아이에게 이미 알려 주셨다면 새 코드를 다시 전해 주셔야 합니다.
+              <b className="tabular-nums text-soft-ink">{formatCode(student.code)}</b>
+              는 바로 쓸 수 없게 됩니다. 아이에게 이미 알려 주셨다면 새 코드를 다시 전해 주셔야
+              합니다.
               <br />
               지금까지의 응시 기록과 결과는 그대로 남습니다.
             </>
@@ -240,15 +397,7 @@ function ChildRow({ student }: { student: Student }) {
 
 /* ───────────────────────── 쪽 넘김 ───────────────────────── */
 
-function Pager({
-  page,
-  pages,
-  onGo,
-}: {
-  page: number;
-  pages: number;
-  onGo: (p: number) => void;
-}) {
+function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (p: number) => void }) {
   // 쪽이 많아도 번호를 다 늘어놓지 않는다. 지금 쪽 둘레로 최대 다섯 개만 보인다.
   const from = Math.max(1, Math.min(page - 2, pages - 4));
   const to = Math.min(pages, from + 4);
