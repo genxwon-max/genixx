@@ -68,6 +68,8 @@
   --color-soft-muted: #6b7280;
 
   --font-sans: var(--font-noto-kr), system-ui, sans-serif;
+  /* 로고 워드마크 — 각진 그로테스크. font-brand로만 쓴다. */
+  --font-brand: var(--font-saira), var(--font-noto-kr), system-ui, sans-serif;
 
   --shadow-card: 0 1px 2px rgb(27 42 107 / 0.04), 0 8px 24px rgb(27 42 107 / 0.06);
   --shadow-float: 0 4px 12px rgb(27 42 107 / 0.08), 0 20px 48px rgb(27 42 107 / 0.12);

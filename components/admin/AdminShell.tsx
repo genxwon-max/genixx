@@ -7,6 +7,7 @@ import { adminMenu, canAny, pending, roleOf, staffRoles, type AdminMenuItem } fr
 import { adminSignOut, patchAdminPrefs, useAdminPrefs, zoomSteps } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { MenuIcon, CloseIcon, ChevronDown } from "@/components/Icons";
+import { LogoLockup } from "@/components/Logo";
 import ConsoleLogin from "./ConsoleLogin";
 
 /**
@@ -85,8 +86,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             메뉴
           </button>
 
-          <Link href="/admin" className="flex items-baseline gap-2.5">
-            <span className="text-2xl font-black tracking-tight text-white">GENIXX</span>
+          <Link href="/admin" className="flex items-center gap-2.5">
+            <LogoLockup tone="white" className="text-[1.375rem]" />
             <span className="adm-t-sm font-bold text-slate-400">관리자 콘솔</span>
           </Link>
 

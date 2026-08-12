@@ -4,6 +4,7 @@ import { useState } from "react";
 import { roleOf } from "@/lib/admin";
 import { adminSignIn } from "@/lib/adminStore";
 import { findStaff, useStaffAccounts } from "@/lib/staffStore";
+import { LogoLockup } from "@/components/Logo";
 import * as a from "./ui";
 
 /**
@@ -40,7 +41,9 @@ export default function ConsoleLogin() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-5 py-12">
       <div className="w-full max-w-[26rem]">
-        <p className="text-center text-2xl font-black tracking-tight text-white">GENIXX</p>
+        <p className="text-center">
+          <LogoLockup tone="white" className="text-[1.625rem]" />
+        </p>
         <p className="mt-1.5 text-center adm-t-sm font-bold text-slate-400">관리자 콘솔</p>
 
         <form onSubmit={submit} noValidate className="mt-7 rounded-lg bg-white p-6 sm:p-7">

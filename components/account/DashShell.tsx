@@ -8,6 +8,7 @@ import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
 import { assessment, deadlineDays } from "@/lib/exam";
 import { ChevronDown } from "@/components/Icons";
+import { LogoLockup } from "@/components/Logo";
 
 /**
  * 로그인 후 회원 존의 껍데기 — 좌측 아이콘 레일 + 상단 상태바.
@@ -268,11 +269,8 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
         {/* 상단 상태바 */}
         <header className="sticky top-0 z-20 border-b border-soft-line bg-white">
           <div className="flex h-[4rem] items-center gap-3 px-4 sm:px-6">
-            <Link
-              href="/"
-              className="text-[18px] font-extrabold tracking-[0.14em] text-soft-primary lg:hidden"
-            >
-              GENIXX
+            <Link href="/" className="lg:hidden" aria-label="GENIXX 홈">
+              <LogoLockup tone="soft" className="text-[1.125rem]" />
             </Link>
             <span className="hidden text-[15px] font-bold lg:inline">
               {isOrg ? (session?.org ?? "소속 기관") : `${name}님`}

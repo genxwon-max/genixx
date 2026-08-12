@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { LogoLockup } from "@/components/Logo";
 
 /**
  * 계정 존 껍데기 — 상단 유틸리티 바 + 헤더 + 푸터.
@@ -86,10 +87,8 @@ export default function AccountChrome({ children }: { children: React.ReactNode 
       {/* 헤더 */}
       <header className="border-b border-soft-line/70 bg-white">
         <div className="container-x flex h-[4.75rem] items-center justify-between gap-4">
-          <Link href="/" className="flex items-baseline gap-3">
-            <span className="text-[20px] font-extrabold tracking-[0.16em] text-soft-primary">
-              GENIXX
-            </span>
+          <Link href="/" className="flex items-center gap-3">
+            <LogoLockup tone="soft" className="text-[1.25rem]" />
             <span className="hidden text-[13px] text-soft-muted sm:inline">재능진단 플랫폼</span>
           </Link>
           <nav className="hidden gap-8 text-[15px] font-semibold text-soft-ink lg:flex">
