@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { assessment, subjects } from "@/lib/exam";
 import { surveyKeys, surveyMeta, useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
-import { findById, formatCode } from "@/lib/roster";
+import { findById, formatCode, useRoster } from "@/lib/roster";
 import { confidenceOf, decideType, expertNotes, scoreAxes, scoreSubject } from "@/lib/result";
 import OctagonChart from "./OctagonChart";
 import SectionTitle from "./SectionTitle";
@@ -49,7 +50,20 @@ function downloadPng(studentName: string) {
 export default function ResultView() {
   const hydrated = useHydrated();
   const session = useSession();
-  const studentId = session?.studentId ?? "demo";
+  const params = useSearchParams();
+  const roster = useRoster();
+
+  /**
+   * 볼 대상을 정한다.
+   *
+   * 학생 세션이면 자기 것이다. 학부모·기관은 아이가 여럿이라 세션만으로는 누구의
+   * 결과인지 알 수 없어서 ?student= 로 지정받는다. 다만 넘어온 값을 그대로 믿지
+   * 않고 내 명부에 있는 아이인지 확인한 뒤에 연다 — 주소창의 id를 고쳐 아무 결과나
+   * 열 수 있으면 안 된다. (실제 서비스에서는 이 확인이 서버에서 한 번 더 이뤄져야 한다.)
+   */
+  const asked = params.get("student");
+  const mine = asked ? roster.find((s) => s.id === asked) : null;
+  const studentId = mine?.id ?? session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
   const student = hydrated ? findById(studentId) : null;
   const name = student?.name ?? session?.name ?? "응시자";

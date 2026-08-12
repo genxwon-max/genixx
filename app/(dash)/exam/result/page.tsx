@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import ExamGate from "@/components/exam/ExamGate";
 import ResultView from "@/components/exam/ResultView";
 
@@ -11,7 +12,16 @@ export const metadata: Metadata = {
 export default function ResultPage() {
   return (
     <ExamGate>
-      <ResultView />
+      {/* 누구의 결과인지 ?student= 로 받는다 — useSearchParams는 경계가 있어야 한다 */}
+      <Suspense
+        fallback={
+          <div className="container-x py-20 text-center text-[13px] text-soft-muted">
+            결과를 불러오는 중입니다…
+          </div>
+        }
+      >
+        <ResultView />
+      </Suspense>
     </ExamGate>
   );
 }
