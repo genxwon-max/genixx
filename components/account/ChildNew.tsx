@@ -33,6 +33,7 @@ export default function ChildNew() {
 
   const [form, setForm] = useState({
     name: "",
+    school: "",
     grade: "",
     region: "",
     schoolType: "",
@@ -85,7 +86,12 @@ export default function ChildNew() {
 
   const age = ageFromBirth(draft.birth);
   const info = draft.route ? consentRouteInfo[draft.route] : null;
-  const ready = form.name.trim().length >= 2 && form.grade && form.region && form.schoolType;
+  const ready =
+    form.name.trim().length >= 2 &&
+    form.school.trim().length >= 2 &&
+    form.grade &&
+    form.region &&
+    form.schoolType;
 
   const submit = () => {
     setTried(true);
@@ -95,6 +101,7 @@ export default function ChildNew() {
         {
           name: form.name.trim(),
           birth: draft.birth,
+          school: form.school.trim(),
           grade: form.grade,
           guardianPhone: form.guardianPhone || undefined,
         },
@@ -144,6 +151,20 @@ export default function ChildNew() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="c-school-name" className={fieldLabel}>
+              학교 <span className="text-rose-600">*</span>
+            </label>
+            <input
+              id="c-school-name"
+              value={form.school}
+              onChange={(e) => set("school", e.target.value)}
+              placeholder="예) 목동초등학교"
+              className={`mt-2 ${input}`}
+            />
+            <p className="mt-1.5 text-[12px] text-soft-muted">다니는 학교 이름을 적어 주세요.</p>
+          </div>
+
           <div>
             <label htmlFor="c-grade" className={fieldLabel}>
               학년 <span className="text-rose-600">*</span>
@@ -195,7 +216,9 @@ export default function ChildNew() {
               <option key={s}>{s}</option>
             ))}
           </select>
-          <p className="mt-1.5 text-[12px] text-soft-muted">학교 이름은 받지 않습니다.</p>
+          <p className="mt-1.5 text-[12px] text-soft-muted">
+            학교 이름과 별개로, 공립·사립 구분은 결과 해석의 기준 집단을 고를 때 씁니다.
+          </p>
         </div>
 
         {/* B10 — 다문화 가정 지필 해석 보정 변수 */}
@@ -236,7 +259,7 @@ export default function ChildNew() {
 
       <div className="mt-4">
         <LegalNote title="여기서 받지 않는 것">
-          <p>상세 주소, 학교 이름, 주민등록번호는 받지 않습니다.</p>
+          <p>상세 주소와 주민등록번호는 받지 않습니다.</p>
           <p>음성·영상·행동로그는 2단계 심화진단을 신청하실 때 따로 여쭤봅니다.</p>
         </LegalNote>
       </div>

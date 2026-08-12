@@ -3,7 +3,7 @@ import ChildNew from "@/components/account/ChildNew";
 
 export const metadata: Metadata = {
   title: "학생 등록 · 아이 정보",
-  description: "학년·지역·학교유형 + 가정 내 주사용 언어. (ACC-03-2 · B01~B10)",
+  description: "학교·학년·지역·학교유형 + 가정 내 주사용 언어. (ACC-03-2 · B01~B10)",
   robots: { index: false, follow: false },
 };
 

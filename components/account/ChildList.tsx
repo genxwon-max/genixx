@@ -19,6 +19,7 @@ import {
 } from "@/lib/examStore";
 import { progressOf, type Phase } from "@/lib/progress";
 import { ArrowRight } from "@/components/Icons";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -50,13 +51,14 @@ const sortOptions: { value: SortKey; label: string }[] = [
   { value: "grade", label: "학년순" },
 ];
 
-/* 목록 줄 안에서 쓰는 작은 알약 버튼. 손가락으로 누를 수 있도록 44px 이상은 지킨다. */
-const rowBtn =
-  "inline-flex min-h-[2.75rem] items-center justify-center rounded-full border border-soft-line bg-white px-4 text-[13px] font-semibold text-soft-ink transition-colors hover:bg-slate-50";
-const rowBtnPrimary =
-  "inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-full bg-soft-primary px-5 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
-const rowBtnMuted =
-  "inline-flex min-h-[2.75rem] cursor-not-allowed items-center justify-center rounded-full border border-soft-line bg-slate-50 px-5 text-[13px] font-semibold text-slate-400";
+/**
+ * 목록 줄 안의 버튼 모양.
+ *
+ * 색·높이·상태는 shadcn Button이 토큰에서 가져온다. 여기서는 계정 존의 알약
+ * 모양과 줄에 맞는 글자 크기만 얹는다 — 관리자·응시 존은 각진 모서리를 쓰므로
+ * rounded-full은 부품 기본값이 아니라 이 화면의 선택이다.
+ */
+const rowShape = "rounded-full text-[13px] font-semibold";
 
 /**
  * ACC-03 학생(자녀) 프로필 관리.
@@ -296,6 +298,8 @@ function ChildRow({ student }: { student: Student }) {
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 px-5 py-2.5 first:border-t-0 sm:px-6">
       <p className="text-[15px] font-black text-soft-ink">{student.name}</p>
       <p className="text-[13px] text-soft-muted">
+        {/* 학교는 필수가 되기 전에 등록된 아이에게는 없다 */}
+        {student.school ? `${student.school} · ` : ""}
         {student.grade} · 만 {age ?? "—"}세
       </p>
 
@@ -321,23 +325,28 @@ function ChildRow({ student }: { student: Student }) {
       </span>
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => setAsk("reissue")} className={rowBtn}>
+        <Button variant="outline" onClick={() => setAsk("reissue")} className={rowShape}>
           코드 재발급
-        </button>
+        </Button>
         {record.finalized ? (
-          <Link href={`/exam/result?student=${student.id}`} className={rowBtnPrimary}>
+          <Button render={<Link href={`/exam/result?student=${student.id}`} />} className={rowShape}>
             결과 보기
             <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        ) : examDone ? (
-          <button type="button" onClick={() => setAsk("final")} className={rowBtnPrimary}>
+          </Button>
+        ) : (
+          /* 세 과목의 답안과 해석이 모두 끝나야 열린다. 왜 안 열리는지는 같은 줄의
+             「시험 0/3」이 이미 말해 주므로 따로 덧붙이지 않는다.
+             못 누르는 동안은 채움을 걷는다 — 파란 면을 반투명으로만 낮추면
+             「지금 누를 수 있는데 흐린 것」으로 읽힌다. */
+          <Button
+            variant={examDone ? "default" : "outline"}
+            onClick={() => setAsk("final")}
+            disabled={!examDone}
+            className={rowShape}
+          >
             제출 완료
             <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-        ) : (
-          <span className={rowBtnMuted} title="세 과목의 답안과 해석을 모두 제출해야 열립니다">
-            제출 완료
-          </span>
+          </Button>
         )}
       </div>
 
@@ -404,37 +413,38 @@ function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (p: n
   const nums = [];
   for (let i = from; i <= to; i += 1) nums.push(i);
 
-  const step =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-soft-line bg-white px-3 text-[13px] font-semibold text-soft-ink transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white";
+  // 지금 쪽은 채운 버튼, 나머지는 외곽선. 색만으로 나누지 않도록 aria-current도 함께 둔다.
+  const step = `${rowShape} min-w-11`;
 
   return (
     <nav aria-label="쪽 넘김" className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-      <button type="button" onClick={() => onGo(page - 1)} disabled={page === 1} className={step}>
+      <Button
+        variant="outline"
+        onClick={() => onGo(page - 1)}
+        disabled={page === 1}
+        className={step}
+      >
         이전
-      </button>
+      </Button>
       {nums.map((n) => (
-        <button
+        <Button
           key={n}
-          type="button"
+          variant={n === page ? "default" : "outline"}
           onClick={() => onGo(n)}
           aria-current={n === page ? "page" : undefined}
-          className={
-            n === page
-              ? "inline-flex h-10 min-w-10 items-center justify-center rounded-full bg-soft-primary px-3 text-[13px] font-bold text-white"
-              : step
-          }
+          className={step}
         >
           {n}
-        </button>
+        </Button>
       ))}
-      <button
-        type="button"
+      <Button
+        variant="outline"
         onClick={() => onGo(page + 1)}
         disabled={page === pages}
         className={step}
       >
         다음
-      </button>
+      </Button>
     </nav>
   );
 }
@@ -477,8 +487,8 @@ function CopyCode({ code }: { code: string }) {
   };
 
   return (
-    <button type="button" onClick={() => void copy()} className={rowBtn}>
+    <Button variant="outline" onClick={() => void copy()} className={rowShape}>
       {state === "done" ? "복사했습니다" : state === "failed" ? "직접 입력해 주세요" : "코드 복사"}
-    </button>
+    </Button>
   );
 }

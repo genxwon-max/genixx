@@ -42,12 +42,19 @@ import {
 
 type Mode = Owner;
 
-const emptyForm: NewStudent = { name: "", birth: "", grade: "", klass: "", guardianPhone: "" };
+const emptyForm: NewStudent = {
+  name: "",
+  birth: "",
+  school: "",
+  grade: "",
+  klass: "",
+  guardianPhone: "",
+};
 
-const SAMPLE = `이름,생년월일,학년,반
-김하늘,20160312,초등 4학년,A반
-박서준,20160925,초등 4학년,A반
-이지우,20170104,초등 3학년,B반`;
+const SAMPLE = `이름,생년월일,학교,학년,반
+김하늘,20160312,목동초등학교,초등 4학년,A반
+박서준,20160925,목동초등학교,초등 4학년,A반
+이지우,20170104,신정초등학교,초등 3학년,B반`;
 
 export default function StudentRegistrar({
   mode,
@@ -91,6 +98,7 @@ export default function StudentRegistrar({
     if (!form.name.trim()) return setFormError("이름을 입력해 주세요.");
     if (form.birth.replace(/\D/g, "").length !== 8)
       return setFormError("생년월일을 8자리(YYYYMMDD)로 입력해 주세요.");
+    if (!form.school.trim()) return setFormError("학교를 입력해 주세요.");
     if (!form.grade.trim()) return setFormError("학년을 입력해 주세요.");
 
     const [created] = addStudents([form], mode, ownerName);
@@ -227,6 +235,18 @@ export default function StudentRegistrar({
                   />
                 </div>
                 <div>
+                  <label htmlFor="r-school" className={fieldLabel}>
+                    학교 <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    id="r-school"
+                    value={form.school}
+                    onChange={(e) => setForm((f) => ({ ...f, school: e.target.value }))}
+                    placeholder="목동초등학교"
+                    className={`mt-2 ${input}`}
+                  />
+                </div>
+                <div>
                   <label htmlFor="r-grade" className={fieldLabel}>
                     학년 <span className="text-rose-600">*</span>
                   </label>
@@ -303,7 +323,8 @@ export default function StudentRegistrar({
                 엑셀에서 복사한 내용을 그대로 붙여넣어도 됩니다
               </label>
               <p className="mt-1.5 text-[12px] text-soft-muted">
-                열 순서: 이름, 생년월일(8자리), 학년, {isDirector ? "반" : "보호자 연락처"} · 쉼표 /
+                열 순서: 이름, 생년월일(8자리), 학교, 학년,{" "}
+                {isDirector ? "반" : "보호자 연락처"} · 쉼표 /
                 탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다.
               </p>
               <textarea
@@ -384,6 +405,7 @@ export default function StudentRegistrar({
                 <th className={th}>번호</th>
                 <th className={th}>이름</th>
                 <th className={th}>생년월일</th>
+                <th className={th}>학교</th>
                 <th className={th}>학년</th>
                 <th className={th}>{isDirector ? "반" : "보호자 연락처"}</th>
                 <th className={th}>접속코드</th>
@@ -396,7 +418,7 @@ export default function StudentRegistrar({
               {!hydrated || mine.length === 0 ? (
                 <tr>
                   <td className={`${td} py-10`} colSpan={9}>
-                    등록된 {noun}가 없습니다. 위에서 추가해 주세요.
+                    등록된 {noun}이 없습니다. 위에서 추가해 주세요.
                   </td>
                 </tr>
               ) : (
@@ -409,6 +431,7 @@ export default function StudentRegistrar({
                       <td className={`${td} tabular-nums`}>{i + 1}</td>
                       <td className={tdStrong}>{s.name}</td>
                       <td className={`${td} tabular-nums`}>{s.birth}</td>
+                      <td className={td}>{s.school}</td>
                       <td className={td}>{s.grade}</td>
                       <td className={td}>{(isDirector ? s.klass : s.guardianPhone) || "-"}</td>
                       <td className={`${tdStrong} tabular-nums tracking-wide`}>

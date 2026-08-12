@@ -269,7 +269,7 @@ export default function SignupVerify() {
                   rows={[
                     {
                       k: "수집 항목",
-                      v: "자녀 이름 또는 별명, 생년월일, 학교급, 학년, 진단 응답 데이터",
+                      v: "자녀 이름 또는 별명, 생년월일, 학교, 학년, 진단 응답 데이터",
                     },
                     { k: "이용 목적", v: "진단 수행, 결과 해석 및 성장 가이드 제공" },
                     { k: "보유 기간", v: "5년 후 자동 파기. 철회 요청 시 즉시 파기 큐에 등록" },
@@ -343,7 +343,7 @@ export default function SignupVerify() {
               <h3 className="text-[15px] font-bold text-acc-ink">가입 후 진행 순서</h3>
               <ol className="mt-3 flex flex-col gap-2.5">
                 {[
-                  "자녀 프로필 등록 (이름·생년월일·학교급·학년)",
+                  "자녀 프로필 등록 (이름·생년월일·학교·학년)",
                   "무료 학력진단 응시",
                   "재능진단 신청 및 세션 배정",
                 ].map((t, i) => (

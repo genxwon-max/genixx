@@ -18,6 +18,8 @@ export type Student = {
   name: string;
   /** YYYYMMDD */
   birth: string;
+  /** 다니는 학교 이름 */
+  school: string;
   grade: string;
   /** 반·학급 (학원장 등록 시) */
   klass?: string;
@@ -112,6 +114,7 @@ export function getRoster() {
 export type NewStudent = {
   name: string;
   birth: string;
+  school: string;
   grade: string;
   klass?: string;
   guardianPhone?: string;
@@ -131,6 +134,7 @@ export function addStudents(rows: NewStudent[], owner: Owner, ownerName: string)
       code,
       name: row.name.trim(),
       birth: row.birth.replace(/\D/g, "").slice(0, 8),
+      school: row.school.trim(),
       grade: row.grade.trim(),
       klass: row.klass?.trim() || undefined,
       guardianPhone: row.guardianPhone?.trim() || undefined,
@@ -179,7 +183,7 @@ export type ParseResult = {
 
 /**
  * CSV·TSV·엑셀 복사 붙여넣기를 모두 받는다.
- * 열 순서: 이름, 생년월일(8자리), 학년, 반(선택), 보호자연락처(선택)
+ * 열 순서: 이름, 생년월일(8자리), 학교, 학년, 반(선택), 보호자연락처(선택)
  */
 export function parseRoster(text: string): ParseResult {
   const rows: NewStudent[] = [];
@@ -195,7 +199,7 @@ export function parseRoster(text: string): ParseResult {
     // 머리글 행은 건너뛴다
     if (i === 0 && /이름|성명|name/i.test(cells[0] ?? "")) return;
 
-    const [name, birthRaw, grade, klass, phone] = cells;
+    const [name, birthRaw, school, grade, klass, phone] = cells;
     if (!name) {
       errors.push({ line: i + 1, text: line, reason: "이름이 비어 있습니다." });
       return;
@@ -205,11 +209,15 @@ export function parseRoster(text: string): ParseResult {
       errors.push({ line: i + 1, text: line, reason: "생년월일은 8자리(YYYYMMDD)여야 합니다." });
       return;
     }
+    if (!school) {
+      errors.push({ line: i + 1, text: line, reason: "학교가 비어 있습니다." });
+      return;
+    }
     if (!grade) {
       errors.push({ line: i + 1, text: line, reason: "학년이 비어 있습니다." });
       return;
     }
-    rows.push({ name, birth, grade, klass, guardianPhone: phone });
+    rows.push({ name, birth, school, grade, klass, guardianPhone: phone });
   });
 
   return { rows, errors };
@@ -217,9 +225,9 @@ export function parseRoster(text: string): ParseResult {
 
 /** 등록 결과를 CSV로 내려받기 위한 문자열 */
 export function toCsv(students: Student[]) {
-  const head = "이름,생년월일,학년,반,접속코드";
+  const head = "이름,생년월일,학교,학년,반,접속코드";
   const body = students
-    .map((s) => [s.name, s.birth, s.grade, s.klass ?? "", formatCode(s.code)].join(","))
+    .map((s) => [s.name, s.birth, s.school, s.grade, s.klass ?? "", formatCode(s.code)].join(","))
     .join("\n");
   return `${head}\n${body}`;
 }

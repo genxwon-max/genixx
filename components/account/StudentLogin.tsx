@@ -74,7 +74,15 @@ export default function StudentLogin() {
   /** 명부가 비어 있을 때 시연용 학생 한 명을 즉시 만든다 */
   const makeDemo = () => {
     const [created] = addStudents(
-      [{ name: "김하늘", birth: "20160312", grade: "초등 4학년", klass: "A반" }],
+      [
+        {
+          name: "김하늘",
+          birth: "20160312",
+          school: "목동초등학교",
+          grade: "초등 4학년",
+          klass: "A반",
+        },
+      ],
       "director",
       "제닉스 영재교육원",
     );
