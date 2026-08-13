@@ -74,7 +74,9 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
                   <li key={student.id} className="px-4 py-4">
                     <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                       <span className="text-[15px] font-semibold">{student.name}</span>
-                      <span className={`text-[12.5px] ${t.muted}`}>{student.grade}</span>
+                      {student.grade && (
+                        <span className={`text-[12.5px] ${t.muted}`}>{student.grade}</span>
+                      )}
                       <span
                         className={`text-[12.5px] ${
                           done === surveyKeys.length ? "text-emerald-600" : t.muted

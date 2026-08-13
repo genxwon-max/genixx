@@ -81,7 +81,10 @@ export default function StudentsScreen({ tab = "one" }: { tab?: "one" | "bulk" }
       <div className={`${card} ${cardPad} mt-4`}>
         <p className="text-[15px] font-bold text-soft-ink">올리실 학생에 대해 확인해 주세요</p>
         <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-[14px] leading-[1.7] text-soft-muted">
-          <li>이름·생년월일·학교·학년을 받습니다. 주민등록번호는 받지 않습니다.</li>
+          <li>
+            이름과 생년월일은 반드시 받고, 학교·학년은 아시는 만큼만 받습니다. 주민등록번호는 받지
+            않습니다.
+          </li>
           <li>수집한 정보는 학력·재능 진단과 결과 리포트 작성에만 씁니다.</li>
           <li>보관 기간은 수집일로부터 5년이며, 철회 시 지체 없이 파기합니다.</li>
         </ul>
@@ -102,7 +105,7 @@ export default function StudentsScreen({ tab = "one" }: { tab?: "one" | "bulk" }
           <button type="button" disabled className={`${btnPrimary} disabled:opacity-45`}>
             체크하시면 다음으로 넘어갑니다
           </button>
-          <Link href="/my/children/consent" className={btnGhost}>
+          <Link href="/my/children/new" className={btnGhost}>
             한 명씩 등록할게요
           </Link>
         </div>

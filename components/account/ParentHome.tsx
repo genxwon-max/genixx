@@ -50,7 +50,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/my/children/consent" className={t.btnOutline}>
+          <Link href="/my/children/new" className={t.btnOutline}>
             + 학생 개별 등록
           </Link>
           <Link href="/my/students?tab=bulk" className={t.btnAction}>
@@ -71,7 +71,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
             응시 화면에 들어갑니다.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-2.5">
-            <Link href="/my/children/consent" className={t.btnOutline}>
+            <Link href="/my/children/new" className={t.btnOutline}>
               + 학생 개별 등록
             </Link>
             <Link href="/my/students?tab=bulk" className={t.btnAction}>
@@ -107,7 +107,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
                     </span>
 
                     <span className={`hidden w-28 shrink-0 text-[13px] xl:block ${t.muted}`}>
-                      {r.student.grade} · 만 {age ?? "—"}세
+                      {r.student.grade ? `${r.student.grade} · ` : ""}만 {age ?? "—"}세
                     </span>
 
                     {/* 과목 이름은 옅게, 상태만 색으로 — 세 과목을 한눈에 훑게 */}

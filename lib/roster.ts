@@ -18,9 +18,10 @@ export type Student = {
   name: string;
   /** YYYYMMDD */
   birth: string;
-  /** 다니는 학교 이름 */
-  school: string;
-  grade: string;
+  /** 다니는 학교 이름 (선택) */
+  school?: string;
+  /** 학년 (선택) */
+  grade?: string;
   /** 반·학급 (학원장 등록 시) */
   klass?: string;
   /** 보호자 연락처 */
@@ -114,8 +115,8 @@ export function getRoster() {
 export type NewStudent = {
   name: string;
   birth: string;
-  school: string;
-  grade: string;
+  school?: string;
+  grade?: string;
   klass?: string;
   guardianPhone?: string;
 };
@@ -134,8 +135,8 @@ export function addStudents(rows: NewStudent[], owner: Owner, ownerName: string)
       code,
       name: row.name.trim(),
       birth: row.birth.replace(/\D/g, "").slice(0, 8),
-      school: row.school.trim(),
-      grade: row.grade.trim(),
+      school: row.school?.trim() || undefined,
+      grade: row.grade?.trim() || undefined,
       klass: row.klass?.trim() || undefined,
       guardianPhone: row.guardianPhone?.trim() || undefined,
       owner,
@@ -183,7 +184,10 @@ export type ParseResult = {
 
 /**
  * CSV·TSV·엑셀 복사 붙여넣기를 모두 받는다.
- * 열 순서: 이름, 생년월일(8자리), 학교, 학년, 반(선택), 보호자연락처(선택)
+ * 열 순서: 이름, 생년월일(8자리), 학교(선택), 학년(선택), 반(선택), 보호자연락처(선택)
+ *
+ * 반드시 있어야 하는 것은 이름과 생년월일뿐이다. 학원이 명부를 뽑을 때 학교·학년이
+ * 비어 있는 줄이 섞이는 일이 흔한데, 그 줄 때문에 전체를 못 올리게 하지 않는다.
  */
 export function parseRoster(text: string): ParseResult {
   const rows: NewStudent[] = [];
@@ -209,14 +213,6 @@ export function parseRoster(text: string): ParseResult {
       errors.push({ line: i + 1, text: line, reason: "생년월일은 8자리(YYYYMMDD)여야 합니다." });
       return;
     }
-    if (!school) {
-      errors.push({ line: i + 1, text: line, reason: "학교가 비어 있습니다." });
-      return;
-    }
-    if (!grade) {
-      errors.push({ line: i + 1, text: line, reason: "학년이 비어 있습니다." });
-      return;
-    }
     rows.push({ name, birth, school, grade, klass, guardianPhone: phone });
   });
 
@@ -227,7 +223,9 @@ export function parseRoster(text: string): ParseResult {
 export function toCsv(students: Student[]) {
   const head = "이름,생년월일,학교,학년,반,접속코드";
   const body = students
-    .map((s) => [s.name, s.birth, s.school, s.grade, s.klass ?? "", formatCode(s.code)].join(","))
+    .map((s) =>
+      [s.name, s.birth, s.school ?? "", s.grade ?? "", s.klass ?? "", formatCode(s.code)].join(","),
+    )
     .join("\n");
   return `${head}\n${body}`;
 }

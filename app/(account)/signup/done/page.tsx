@@ -11,18 +11,12 @@ export const metadata: Metadata = {
 const next = [
   {
     step: "1",
-    title: "법정대리인 동의",
-    desc: "자녀 등록의 가장 첫 단계입니다. 만 14세 미만이면 반드시 먼저 받습니다.",
-    href: "/my/children/consent",
-  },
-  {
-    step: "2",
-    title: "자녀 기본정보 입력",
-    desc: "학교·학년·지역·학교유형과 가정 내 주사용 언어를 받습니다.",
+    title: "자녀 등록",
+    desc: "이름과 생년월일을 넣고 동의하시면 됩니다. 학교·학년은 나중에 채우셔도 됩니다.",
     href: "/my/children/new",
   },
   {
-    step: "3",
+    step: "2",
     title: "접속코드 발급 후 응시",
     desc: "발급된 8자리 코드와 생년월일로 아이가 응시 화면에 들어갑니다.",
     href: "/exam",
@@ -82,7 +76,7 @@ export default function SignupDonePage() {
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <Link href="/my/children/consent" className={btnPrimary}>
+        <Link href="/my/children/new" className={btnPrimary}>
           자녀 등록 시작하기
           <ArrowRight className="h-4 w-4" />
         </Link>

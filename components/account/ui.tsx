@@ -98,9 +98,6 @@ export const signupStepLabels = [
   "가입 완료",
 ];
 
-/** 자녀 등록 흐름 — 동의 → 기본정보 → 접속코드 세 화면 */
-export const childStepLabels = ["동의", "아이 정보", "접속코드 발급"];
-
 export function StepBar({
   current,
   labels = signupStepLabels,

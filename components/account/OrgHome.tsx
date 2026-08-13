@@ -163,8 +163,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
                     >
                       <span className="text-[15px] font-bold">{r.student.name}</span>
                       <span className={`text-[13px] ${t.muted}`}>
-                        {r.student.grade}
-                        {r.student.klass ? ` · ${r.student.klass}` : ""}
+                        {[r.student.grade, r.student.klass].filter(Boolean).join(" · ")}
                       </span>
                       <span
                         className={`ml-auto text-[13px] tracking-[0.06em] tabular-nums ${t.muted}`}
@@ -188,7 +187,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
                 <li key={r.student.id} className="flex items-center gap-4 px-5 py-3.5">
                   <span className="w-24 shrink-0 text-[15px] font-bold">{r.student.name}</span>
                   <span className={`hidden w-20 shrink-0 text-[13px] sm:block ${t.muted}`}>
-                    {r.student.grade}
+                    {r.student.grade ?? "—"}
                   </span>
                   <span className={`h-2 flex-1 overflow-hidden rounded-full ${track}`}>
                     <span

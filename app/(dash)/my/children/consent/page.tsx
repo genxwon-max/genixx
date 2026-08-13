@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
-import ChildConsent from "@/components/account/ChildConsent";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "학생 등록 · 동의",
-  description:
-    "학생 등록 흐름의 최선행. 만 14세 기준으로 동의 주체가 갈립니다. (ACC-03-1 · B00)",
-  robots: { index: false, follow: false },
-};
-
-/** ACC-03-1 법정대리인 동의 (B00) */
+/**
+ * ACC-03-1이었던 별도 동의 화면.
+ *
+ * 동의는 이제 등록 폼 안에 있다. 이 주소를 눌러 둔 자리(북마크·예전 안내 메일)가
+ * 있을 수 있으므로 없애지 않고 등록 폼으로 넘긴다.
+ */
 export default function ChildConsentPage() {
-  return <ChildConsent />;
+  redirect("/my/children/new");
 }

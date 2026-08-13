@@ -103,7 +103,8 @@ export default function ChildList() {
         (c) =>
           c.name.toLowerCase().includes(needle) ||
           c.code.toLowerCase().includes(needle) ||
-          c.grade.toLowerCase().includes(needle),
+          (c.school ?? "").toLowerCase().includes(needle) ||
+          (c.grade ?? "").toLowerCase().includes(needle),
       );
     }
     if (phase !== "all") {
@@ -113,8 +114,13 @@ export default function ChildList() {
     const sorted = [...list];
     if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name, "ko"));
     else if (sort === "grade")
+      // 학년은 선택 항목이다. 비어 있는 아이는 뒤로 보낸다 — 맨 앞에 몰리면
+      // 학년순으로 세운 뜻이 없어진다.
       sorted.sort(
-        (a, b) => a.grade.localeCompare(b.grade, "ko") || a.name.localeCompare(b.name, "ko"),
+        (a, b) =>
+          (a.grade ? 0 : 1) - (b.grade ? 0 : 1) ||
+          (a.grade ?? "").localeCompare(b.grade ?? "", "ko") ||
+          a.name.localeCompare(b.name, "ko"),
       );
     else sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return sorted;
@@ -144,7 +150,7 @@ export default function ChildList() {
           />
         </div>
         {children.length > 0 && (
-          <Link href="/my/children/consent" className={`${btnPrimary} mt-8 shrink-0`}>
+          <Link href="/my/children/new" className={`${btnPrimary} mt-8 shrink-0`}>
             + 학생 등록
           </Link>
         )}
@@ -154,10 +160,10 @@ export default function ChildList() {
         <div className={`${card} ${cardPad} text-center`}>
           <p className="text-[16px] font-black text-soft-ink">아직 등록된 학생이 없습니다</p>
           <p className="mt-2.5 text-[14px] leading-relaxed text-soft-muted">
-            등록은 <b>법정대리인 동의</b>부터 시작합니다. 아이 생년월일에 따라 누가 동의해야 하는지
-            안내해 드립니다.
+            이름과 생년월일만 있으면 등록됩니다. 생년월일에 따라 누가 동의해야 하는지 폼에서
+            바로 안내해 드립니다.
           </p>
-          <Link href="/my/children/consent" className={`${btnPrimary} mt-6`}>
+          <Link href="/my/children/new" className={`${btnPrimary} mt-6`}>
             학생 등록 시작하기
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -179,7 +185,7 @@ export default function ChildList() {
                   setQuery(e.target.value);
                   setPage(1);
                 }}
-                placeholder="이름 · 접속코드 · 학년으로 찾기"
+                placeholder="이름 · 접속코드 · 학교 · 학년으로 찾기"
                 aria-label="학생 찾기"
                 className="rounded-full pl-10 text-[14px]"
               />
@@ -300,7 +306,7 @@ function ChildRow({ student }: { student: Student }) {
       <p className="text-[13px] text-soft-muted">
         {/* 학교는 필수가 되기 전에 등록된 아이에게는 없다 */}
         {student.school ? `${student.school} · ` : ""}
-        {student.grade} · 만 {age ?? "—"}세
+        {student.grade ? `${student.grade} · ` : ""}만 {age ?? "—"}세
       </p>
 
       {/* 코드와 복사 버튼은 붙여 둔다. 코드를 보는 이유가 곧 아이에게 넘기는 것이다. */}

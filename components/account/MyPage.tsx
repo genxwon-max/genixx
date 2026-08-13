@@ -415,9 +415,9 @@ function ChildrenSection({ variant }: { variant: Variant }) {
         <div className={`${t.card} p-8 text-center`}>
           <p className="text-[17px] font-bold">아직 등록된 학생이 없습니다</p>
           <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>
-            등록은 법정대리인 동의부터 시작합니다.
+            이름과 생년월일만 있으면 등록됩니다. 동의는 같은 폼 안에서 받습니다.
           </p>
-          <Link href="/my/children/consent" className={`${t.btnPrimary} mx-auto mt-6 max-w-xs`}>
+          <Link href="/my/children/new" className={`${t.btnPrimary} mx-auto mt-6 max-w-xs`}>
             학생 등록 시작하기
           </Link>
         </div>
@@ -434,7 +434,8 @@ function ChildrenSection({ variant }: { variant: Variant }) {
                   <div>
                     <p className="text-[17px] font-bold">{s.name}</p>
                     <p className={`mt-1 text-[13px] ${t.muted}`}>
-                      {s.grade} · 만 {age ?? "—"}세{info && ` · ${info.who} 동의`}
+                      {s.grade ? `${s.grade} · ` : ""}만 {age ?? "—"}세
+                      {info && ` · ${info.who} 동의`}
                     </p>
                   </div>
                   <span

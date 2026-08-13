@@ -98,8 +98,6 @@ export default function StudentRegistrar({
     if (!form.name.trim()) return setFormError("이름을 입력해 주세요.");
     if (form.birth.replace(/\D/g, "").length !== 8)
       return setFormError("생년월일을 8자리(YYYYMMDD)로 입력해 주세요.");
-    if (!form.school.trim()) return setFormError("학교를 입력해 주세요.");
-    if (!form.grade.trim()) return setFormError("학년을 입력해 주세요.");
 
     const [created] = addStudents([form], mode, ownerName);
     setForm(emptyForm);
@@ -236,11 +234,11 @@ export default function StudentRegistrar({
                 </div>
                 <div>
                   <label htmlFor="r-school" className={fieldLabel}>
-                    학교 <span className="text-rose-600">*</span>
+                    학교 <span className="font-normal text-soft-muted">(선택)</span>
                   </label>
                   <input
                     id="r-school"
-                    value={form.school}
+                    value={form.school ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, school: e.target.value }))}
                     placeholder="목동초등학교"
                     className={`mt-2 ${input}`}
@@ -248,11 +246,11 @@ export default function StudentRegistrar({
                 </div>
                 <div>
                   <label htmlFor="r-grade" className={fieldLabel}>
-                    학년 <span className="text-rose-600">*</span>
+                    학년 <span className="font-normal text-soft-muted">(선택)</span>
                   </label>
                   <input
                     id="r-grade"
-                    value={form.grade}
+                    value={form.grade ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
                     placeholder="초등 4학년"
                     className={`mt-2 ${input}`}
@@ -324,8 +322,9 @@ export default function StudentRegistrar({
               </label>
               <p className="mt-1.5 text-[12px] text-soft-muted">
                 열 순서: 이름, 생년월일(8자리), 학교, 학년,{" "}
-                {isDirector ? "반" : "보호자 연락처"} · 쉼표 /
-                탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다.
+                {isDirector ? "반" : "보호자 연락처"} · 쉼표 / 탭 / 세미콜론 모두 인식하며 머리글
+                행은 자동으로 건너뜁니다. 반드시 있어야 하는 것은 이름과 생년월일뿐이라, 학교·학년
+                칸은 비워 두셔도 됩니다.
               </p>
               <textarea
                 id="bulk"
@@ -431,8 +430,8 @@ export default function StudentRegistrar({
                       <td className={`${td} tabular-nums`}>{i + 1}</td>
                       <td className={tdStrong}>{s.name}</td>
                       <td className={`${td} tabular-nums`}>{s.birth}</td>
-                      <td className={td}>{s.school}</td>
-                      <td className={td}>{s.grade}</td>
+                      <td className={td}>{s.school || "-"}</td>
+                      <td className={td}>{s.grade || "-"}</td>
                       <td className={td}>{(isDirector ? s.klass : s.guardianPhone) || "-"}</td>
                       <td className={`${tdStrong} tabular-nums tracking-wide`}>
                         {formatCode(s.code)}

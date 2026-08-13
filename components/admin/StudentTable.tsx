@@ -163,7 +163,7 @@ export default function StudentTable() {
                     </span>
                   </td>
                   <td className={a.td}>
-                    {s.grade} · {s.klass}
+                    {[s.grade, s.klass].filter(Boolean).join(" · ") || "—"}
                   </td>
                   <td className={a.td}>{s.org}</td>
                   <td className={a.td}>
