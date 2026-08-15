@@ -4,7 +4,7 @@ import TalentMap from "@/components/promo/TalentMap";
 import TypeTicker from "@/components/promo/TypeTicker";
 import SectionHead from "@/components/site/SectionHead";
 import TeamPreview from "@/components/site/TeamPreview";
-import { ArrowRight, CheckIcon } from "@/components/Icons";
+import { ArrowRight, CheckIcon, ChevronDown } from "@/components/Icons";
 import { axes } from "@/lib/result";
 import { subjectOf } from "@/lib/exam";
 import { company } from "@/lib/site";
@@ -32,6 +32,65 @@ const quickFacts = [
   "국어·수학·과학 각 10문항",
   "교육전문가 협진으로 확정",
   "2026 파일럿 전면 무료",
+];
+
+/**
+ * 「무슨 서비스인가」 세 칸.
+ *
+ * 히어로 바로 다음에 놓는다. 여기까지 읽고도 무엇을 재고 무엇을 받는지 모르면
+ * 아래 칸들은 아무리 잘 써도 읽히지 않는다. 그래서 기능 소개가 아니라 학부모가
+ * 실제로 던지는 세 질문(무엇을·어떻게·무엇을 받나)의 순서로 세웠다.
+ */
+const whatWeDo = [
+  {
+    q: "무엇을 재나",
+    t: "학력 축과 재능 축을 따로 잽니다",
+    d: "성적이 좋아서 재능이 있는 것도, 성적이 낮아서 재능이 없는 것도 아닙니다. 두 축을 따로 재서 교차하면 성적표에 가려져 있던 자리가 보입니다. 재능은 여덟 갈래로 나눠 봅니다.",
+    cta: "여덟 갈래 보기",
+    href: "/about/talent",
+  },
+  {
+    q: "어떻게 재나",
+    t: "시험지 한 장으로 정하지 않습니다",
+    d: "아이가 쓴 글, 말한 답, 만든 것, 집과 교실에서 보인 행동을 함께 읽습니다. AI가 1차로 분석하고, 교육전문가가 케이스 회의에서 확정합니다. 승인 전에는 결과가 열리지 않습니다.",
+    cta: "진단 원리 보기",
+    href: "/about/hitl",
+  },
+  {
+    q: "무엇을 받나",
+    t: "등급표가 아니라 다음 할 일을 받습니다",
+    d: "지금 어느 축이 드러나 있는지, 어떤 조건에서 그렇게 나타났는지, 그래서 내일 무엇을 바꿔 볼지가 문장으로 적혀 있습니다. 가입 전에 전 페이지를 열어 보실 수 있습니다.",
+    cta: "샘플 리포트 보기",
+    href: "/sample/report",
+  },
+];
+
+/**
+ * 「어떤 도움이 되는가」 — 기능이 아니라 학부모가 실제로 하는 말에서 시작한다.
+ * 문항은 기존 홍보 첫 화면(app/(site)/page.tsx)과 같은 넷을 쓴다. 두 시안이
+ * 같은 약속을 하고 있어야 어느 쪽을 골라도 말이 바뀌지 않는다.
+ */
+const situations = [
+  {
+    q: "성적은 나쁘지 않은데 무엇을 좋아하는지 모르겠어요",
+    a: "학력 축과 재능 축을 따로 재서, 성적에 가려진 강점 영역을 좌표로 보여드립니다.",
+    href: "/about/talent",
+  },
+  {
+    q: "학원을 여러 개 다니는데 방향이 맞는지 모르겠어요",
+    a: "지금 어느 축이 강하고 어느 축이 아직 관찰되지 않았는지 확인한 뒤 우선순위를 정합니다.",
+    href: "/sample/report",
+  },
+  {
+    q: "성적표로는 설명되지 않는 면이 있어요",
+    a: "학부모·교사 관찰 설문을 함께 넣어, 검사 상황에서 드러나지 않는 모습을 보완합니다.",
+    href: "/service/talent-base",
+  },
+  {
+    q: "영재원·특목고 준비 전에 객관적인 기준이 필요해요",
+    a: "여덟 개 영역 좌표와 전문가 소견을 리포트로 받아 근거 자료로 활용하실 수 있습니다.",
+    href: "/service/talent-advanced",
+  },
 ];
 
 /** 3초 요약 — 기존 진단과 무엇이 다른가 */
@@ -204,7 +263,10 @@ export default function PromoHome() {
       {/* ───── ① 히어로 ─────
           원안의 배치를 그대로 따른다 — 위 1/3은 카피, 가운데는 재능 지도,
           아래는 버튼과 유형 예시. 기존 홍보 히어로가 좌우 2단인 것과 달리
-          가운데로 모아 세워, 두 시안을 나란히 놓았을 때 성격이 바로 갈린다. */}
+          가운데로 모아 세워, 두 시안을 나란히 놓았을 때 성격이 바로 갈린다.
+
+          맨 아래에 다음 구간으로 내려가는 문을 하나 달아 둔다. 첫 화면이 아무리
+          좋아도 여기서 멈추면 서비스 설명을 한 줄도 못 읽고 나가기 때문이다. */}
       <section className="relative overflow-hidden bg-gradient-to-b from-brand-50 via-[#f4f7ff] to-white">
         <div
           aria-hidden
@@ -233,13 +295,13 @@ export default function PromoHome() {
             </p>
           </div>
 
-          {/* 가운데 — 재능 지도 */}
-          <div className="mt-10 md:mt-12">
-            <TalentMap />
-          </div>
-
-          {/* 아래 — 버튼과 유형 예시 */}
-          <div className="mx-auto mt-8 max-w-3xl md:mt-10">
+          {/* 버튼은 그림 위에 둔다.
+              원안은 「카피 → 그림 → 버튼」 순서였는데, 리포트 카드가 들어오면서
+              세로가 길어져 1440×900 화면에서 버튼이 접히는 선 아래로 내려갔다.
+              첫 화면에서 누를 것이 안 보이면 배치가 아무리 맞아도 소용이 없어
+              버튼을 위로 올렸다. 대신 카드는 일부러 접히는 선에 걸치게 두어,
+              반쯤 보이는 카드가 그 자체로 스크롤을 부른다. */}
+          <div className="mx-auto mt-8 max-w-3xl">
             <div className="flex flex-wrap justify-center gap-3">
               <Link href="/exam" className={btnFilled}>
                 AI 무료 재능 진단 체험하기
@@ -250,7 +312,7 @@ export default function PromoHome() {
               </Link>
             </div>
 
-            <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2">
+            <ul className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2">
               {quickFacts.map((t) => (
                 <li key={t} className="type-meta flex items-center gap-1.5 text-slate-600">
                   <CheckIcon className="h-4 w-4 shrink-0 text-emerald-500" />
@@ -258,16 +320,66 @@ export default function PromoHome() {
                 </li>
               ))}
             </ul>
+          </div>
 
-            <div className="mt-7">
-              <TypeTicker />
-            </div>
+          {/* 받게 될 리포트의 첫 장 */}
+          <div className="mt-9 md:mt-11">
+            <TalentMap />
+          </div>
+
+          <div className="mx-auto mt-7 max-w-3xl">
+            <TypeTicker />
           </div>
         </div>
 
-        {/* 첫인상 한 줄 — 「평가받는 자리」라는 부담을 여기서 한 번 끊는다 */}
-        <div className="container-x section-pb mt-10">
-          <p className="type-body mx-auto max-w-2xl rounded-3xl border border-brand-100 bg-white/70 px-6 py-5 text-center text-slate-600">
+        {/* 다음 구간으로 내려가는 문 */}
+        <div className="container-x pb-12 text-center md:pb-14">
+          <a
+            href="#what"
+            className="type-meta inline-flex flex-col items-center gap-1.5 rounded-2xl px-4 py-2 font-bold text-brand-700 transition-colors hover:bg-white/70"
+          >
+            그래서 무엇을 해 주는 서비스인가요
+            <ChevronDown aria-hidden className="h-5 w-5 animate-bounce" />
+          </a>
+        </div>
+      </section>
+
+      {/* ───── ② 한눈에 — 무슨 서비스인가 ─────
+          첫 화면에서 스크롤을 내린 사람이 가장 먼저 만나는 칸이다. 여기서
+          「무엇을 재고, 어떻게 재고, 무엇을 받는가」가 끝나야 아래를 더 읽는다. */}
+      <section id="what" className="section-y scroll-mt-24">
+        <div className="container-x">
+          <SectionHead
+            align="center"
+            eyebrow="한눈에"
+            title="GENIXX는 이런 서비스입니다"
+            lead="아이가 남긴 글·말·행동을 AI가 읽고 교육전문가가 확정해서, 여덟 갈래 재능 좌표와 다음에 할 일을 리포트로 드립니다. 초등 3학년부터 고등 1학년까지, 2026 파일럿 회차는 전면 무료입니다."
+          />
+
+          <ol className="mt-10 grid gap-4 md:gap-5 lg:grid-cols-3">
+            {whatWeDo.map((w) => (
+              <li
+                key={w.q}
+                className="flex flex-col rounded-3xl border border-brand-100 bg-white p-7 shadow-card md:p-8"
+              >
+                <span className="type-tag w-fit rounded-full bg-surface-blue px-3 py-1 text-brand-700">
+                  {w.q}
+                </span>
+                <p className="type-h3 mt-4 font-black text-brand-950">{w.t}</p>
+                <p className="type-body mt-2.5 flex-1 text-slate-600">{w.d}</p>
+                <Link
+                  href={w.href}
+                  className="type-meta mt-5 inline-flex items-center gap-1.5 font-bold text-brand-700 hover:underline"
+                >
+                  {w.cta}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </li>
+            ))}
+          </ol>
+
+          {/* 첫인상 한 줄 — 「평가받는 자리」라는 부담을 여기서 한 번 끊는다 */}
+          <p className="type-body mx-auto mt-6 max-w-3xl rounded-3xl bg-brand-50/70 px-6 py-5 text-center text-slate-600">
             아이를 시험대에 세우는 시간이 아닙니다.{" "}
             <b className="font-bold text-brand-800">아이의 가능성을 함께 찾아보는 탐험</b>에
             가깝습니다. 낮게 나온 축은 &lsquo;없는 재능&rsquo;이 아니라 &lsquo;아직 보여줄 기회가
@@ -276,8 +388,45 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ② 3초 요약 — 무엇이 다른가 ───── */}
+      {/* ───── ③ 어떤 도움이 되는가 ─────
+          「무엇을 하는가」 다음은 「나한테 무슨 소용인가」다. 기능이 아니라
+          학부모가 실제로 하는 말에서 시작해서, 그 말에 무엇으로 답하는지 적는다. */}
       <section className="section-y bg-brand-50/50">
+        <div className="container-x">
+          <SectionHead
+            align="center"
+            eyebrow="이런 경우"
+            title="이런 고민에서 시작하셨다면"
+            lead="진단이 필요해지는 순간은 대체로 비슷합니다. 상황별로 어떤 답을 드릴 수 있는지 먼저 확인해 보세요."
+          />
+
+          <ul className="mt-10 grid gap-4 md:gap-5 lg:grid-cols-2">
+            {situations.map((s) => (
+              <li key={s.q}>
+                <Link
+                  href={s.href}
+                  className="group flex h-full flex-col rounded-3xl border border-brand-100 bg-white p-6 shadow-card transition-shadow hover:shadow-float md:p-7"
+                >
+                  <p className="type-h3 font-black text-brand-950">
+                    <span aria-hidden className="mr-2 text-brand-400">
+                      Q.
+                    </span>
+                    {s.q}
+                  </p>
+                  <p className="type-body mt-3 flex-1 text-slate-600">{s.a}</p>
+                  <span className="type-meta mt-4 inline-flex items-center gap-1.5 font-bold text-brand-700">
+                    관련 내용 보기
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ───── ④ 3초 요약 — 무엇이 다른가 ───── */}
+      <section className="section-y">
         <div className="container-x">
           <SectionHead
             align="center"
@@ -327,8 +476,8 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ③ 네 가지 흔적 ───── */}
-      <section className="section-y">
+      {/* ───── ⑤ 네 가지 흔적 ───── */}
+      <section className="section-y bg-brand-50/50">
         <div className="container-x">
           <SectionHead
             eyebrow="멀티모달 진단"
@@ -386,8 +535,8 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ④ 여덟 갈래 ───── */}
-      <section className="section-y bg-brand-50/50">
+      {/* ───── ⑥ 여덟 갈래 ───── */}
+      <section className="section-y">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <SectionHead
@@ -449,8 +598,8 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ⑤ 재능 발현 ───── */}
-      <section className="section-y">
+      {/* ───── ⑦ 재능 발현 ───── */}
+      <section className="section-y bg-brand-50/50">
         <div className="container-x">
           <SectionHead
             align="center"
@@ -535,7 +684,7 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ⑥ 결과물 미리보기 ───── */}
+      {/* ───── ⑧ 결과물 미리보기 ───── */}
       <section className="section-y">
         <div className="container-x grid items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
           <div>
@@ -581,7 +730,7 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ⑦ 전문가 상담 ───── */}
+      {/* ───── ⑨ 전문가 상담 ───── */}
       <section className="section-y bg-brand-50/50">
         <div className="container-x">
           <SectionHead
@@ -652,7 +801,7 @@ export default function PromoHome() {
       {/* 누가 확정하고 누가 상담하는지 — 이름과 이력을 그대로 공개한다 */}
       <TeamPreview />
 
-      {/* ───── ⑧ 가벼운 첫걸음 ───── */}
+      {/* ───── ⑩ 가벼운 첫걸음 ───── */}
       <section className="section-y bg-brand-950 text-white">
         <div className="container-x">
           <SectionHead
