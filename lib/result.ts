@@ -128,6 +128,13 @@ const primary: Record<AxisId, { code: string; name: string; tagline: string; sum
   self: { code: "E", name: "자기 조절가", tagline: "자기 상태를 스스로 읽는 아이", summary: "" },
 };
 
+/**
+ * 유형 이름표만 따로 꺼내 둔다.
+ * 홍보 화면에서 「이런 유형이 나옵니다」를 보여줄 때 이름을 다시 적지 않기 위한 것으로,
+ * 여기와 결과지가 어긋나면 광고와 실물이 달라진다.
+ */
+export const primaryTypes = primary;
+
 const directionMap: Record<AxisId, { t: string; d: string }[]> = {
   language: [
     { t: "읽은 뒤 한 문장으로 옮기기", d: "책이나 기사를 읽고 '한 줄 요약 → 내 생각 한 줄' 형식으로 적어 보게 하세요. 분량보다 매일 하는 것이 중요합니다." },

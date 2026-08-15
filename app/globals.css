@@ -327,6 +327,42 @@ body {
   animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ── 새 홍보 히어로(/home2)의 재능 지도 ──────────────────────────
+   측정이 끝난 재능 노드가 천천히 숨을 쉰다. 노드마다 animation-delay만
+   달리 주면 하나씩 켜지는 것처럼 보인다. */
+@keyframes node-glow {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.16);
+  }
+}
+.animate-node-glow {
+  /* SVG 도형은 기본 원점이 뷰박스 좌상단이라 그대로 키우면 제자리에서 커지지 않는다 */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: node-glow 3.4s ease-in-out infinite;
+}
+
+/* 아이가 말한 답 — 음성 파형 막대 */
+@keyframes wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.animate-wave-bar {
+  transform-origin: center;
+  animation: wave-bar 1.15s ease-in-out infinite;
+}
+
 /* 결과지 인쇄(PDF 저장) */
 @media print {
   .no-print,
@@ -343,7 +379,9 @@ body {
   html {
     scroll-behavior: auto;
   }
-  .animate-fade-up {
+  .animate-fade-up,
+  .animate-node-glow,
+  .animate-wave-bar {
     animation: none;
   }
 }

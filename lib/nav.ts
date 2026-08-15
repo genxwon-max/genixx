@@ -216,6 +216,31 @@ export const legalLinks: SubMenu[] = [
 ];
 
 /**
+ * 정책·법적 고지(PUB-08)를 다른 갈래와 같은 모양으로 묶은 것.
+ * 사이트맵 8장은 원래 푸터 전용이지만, 새 홍보 헤더는 공개 존 일곱 갈래를
+ * 모두 헤더에서 찾을 수 있게 하기로 해서 여기서 MenuGroup으로 승격한다.
+ */
+export const legalGroup: MenuGroup = {
+  id: "PUB-08",
+  label: "정책·법적 고지",
+  href: "/legal",
+  summary: "약관·개인정보·AI 이용 고지를 한자리에서",
+  children: legalLinks,
+};
+
+/** 공개 존(PUB) 일곱 갈래 전체 — 새 홍보 헤더가 쓴다 */
+export const publicMenu: MenuGroup[] = [...menu, legalGroup];
+
+/**
+ * 헤더 상단 유틸 바로 내리는 갈래.
+ *
+ * 일곱을 한 줄에 늘어놓으면 1240px 컨테이너에서 로고·CTA와 부딪친다. 학부모가
+ * 처음 찾는 넷(소개·서비스·샘플·콘텐츠)만 주 메뉴에 두고, 필요할 때 찾아가는
+ * 셋은 위 얇은 줄로 올린다. 감추는 게 아니라 층을 나누는 것이다.
+ */
+export const utilMenuIds: string[] = ["PUB-06", "PUB-07", "PUB-08"];
+
+/**
  * 회원 유형.
  * ⚠ 가입 화면(ACC-01-1)이 쓰는 정본은 `lib/account.ts`의 `signupTypes`다.
  *   사이트맵 5장이 "학부모 / 교사 / 기관담당자 3분기, 학생은 독립 가입 경로 없음"으로
