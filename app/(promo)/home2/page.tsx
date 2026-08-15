@@ -3,6 +3,7 @@ import Link from "next/link";
 import TalentMap from "@/components/promo/TalentMap";
 import TypeTicker from "@/components/promo/TypeTicker";
 import SectionHead from "@/components/site/SectionHead";
+import TeamPreview from "@/components/site/TeamPreview";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { axes } from "@/lib/result";
 import { subjectOf } from "@/lib/exam";
@@ -26,7 +27,12 @@ export const metadata: Metadata = {
    ───────────────────────────────────────────────────────────── */
 
 /** 가입 전에 확인하고 싶은 것들 — 히어로 버튼 아래 한 줄 */
-const quickFacts = ["회원가입 즉시 이용", "국어·수학·과학 각 10문항", "2026 파일럿 전면 무료"];
+const quickFacts = [
+  "회원가입 즉시 이용",
+  "국어·수학·과학 각 10문항",
+  "교육전문가 협진으로 확정",
+  "2026 파일럿 전면 무료",
+];
 
 /** 3초 요약 — 기존 진단과 무엇이 다른가 */
 const contrast = {
@@ -86,6 +92,75 @@ const traces = [
     when: "2026 측정",
     tone: "bg-surface-amber text-amber-700",
     live: true,
+  },
+];
+
+/**
+ * 발현 조건 4요소.
+ *
+ * ⚠ 「영재성」이라고 쓰지 않는다. Gagné DMGT에서 gift(소질)와 talent(재능)는 다른
+ *   말이고, 국내에서 「영재」는 영재교육진흥법상 판별·선발 용어다. 홍보 문구에
+ *   영재성을 걸면 영재 판별 기관으로 읽히고, 무엇보다 진단 윤리 헌장 Article 7
+ *   (라벨링 방지 — 명사형 라벨 대신 관찰된 행동을 서술한다)과 정면으로 부딪친다.
+ *   같은 뜻을 이 서비스의 말로 쓰면 「재능」과 「발현」이다.
+ *
+ * 출처는 /insight/parenting(PUB-05-2)의 발현 조건 4요소. 홍보 문구와 본문이
+ * 어긋나지 않도록 같은 넷을 같은 순서로 쓴다.
+ */
+const catalysts = [
+  {
+    t: "노출",
+    q: "만날 기회가 있는가",
+    d: "한 번도 해 본 적 없는 일에서 재능이 드러날 수는 없습니다. 아이가 그 영역을 얼마나 자주 만나는지가 출발점입니다.",
+  },
+  {
+    t: "허용",
+    q: "몰입할 여유가 있는가",
+    d: "빠져들 시간과 실패해도 되는 여유가 함께 있어야 합니다. 시간표가 빽빽하면 깊이 들어갈 자리가 없습니다.",
+  },
+  {
+    t: "반응",
+    q: "시도했을 때 어떤 말이 돌아오는가",
+    d: "결과가 아니라 시도에 반응이 돌아올 때 아이는 한 번 더 합니다. 이 항목이 가장 크게 갈립니다.",
+  },
+  {
+    t: "도구",
+    q: "필요한 것에 닿을 수 있는가",
+    d: "재료·기기·공간처럼 손에 닿아야 하는 것들입니다. 없다고 재능이 없는 게 아니라, 아직 보일 자리가 없는 것입니다.",
+  },
+];
+
+/**
+ * 전문가가 개입하는 세 자리.
+ *
+ * `when`은 지금 되는 것과 정식 서비스에서 열리는 것을 가른다. 요금 안내
+ * (PUB-03-5)가 해석 상담을 「패키지 · 정식 서비스 예정」으로 적어 두었으므로,
+ * 홍보 화면에서 지금 되는 것처럼 쓰면 안 된다.
+ */
+const expertTiers = [
+  {
+    n: "01",
+    t: "판정을 사람이 확정합니다",
+    d: "AI가 낸 제안값을 교육과정 전문가와 계량심리 실무자가 케이스 회의에서 승인하거나 조정합니다. 승인 전에는 학부모 화면에 어떤 결과도 열리지 않습니다.",
+    when: "2026 파일럿 포함",
+    live: true,
+    href: "/about/hitl",
+  },
+  {
+    n: "02",
+    t: "경계선은 면담으로 다시 봅니다",
+    d: "판정 컷 경계에 걸린 아이는 억지로 확정하지 않습니다. 면담으로 근거를 확인하거나, 다음 회차 재관찰로 넘깁니다. 애매한 채로 이름표를 붙이지 않기 위해서입니다.",
+    when: "2026 파일럿 포함",
+    live: true,
+    href: "/about/charter",
+  },
+  {
+    n: "03",
+    t: "인증 해석 전문가와 1:1 상담",
+    d: "인증 과정을 수료한 전문가가 리포트를 함께 읽고, 이 아이에게 지금 무엇을 바꿔 볼지 정리합니다. 수료증이 곧 해석·상담 권한이라 아무나 상담하지 않습니다.",
+    when: "정식 서비스 예정",
+    live: false,
+    href: "/partner/certification",
   },
 ];
 
@@ -374,7 +449,93 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ⑤ 결과물 미리보기 ───── */}
+      {/* ───── ⑤ 재능 발현 ───── */}
+      <section className="section-y">
+        <div className="container-x">
+          <SectionHead
+            align="center"
+            eyebrow="재능 발현"
+            title="재능은 조건이 맞아야 드러납니다"
+            lead="타고난 소질이 저절로 재능이 되지는 않습니다. 그 사이에 발현 조건이 있습니다. 어떤 아이는 조건이 이미 맞아 일찍 드러나고, 어떤 아이는 조건이 어긋나 있어 아직 보이지 않을 뿐입니다."
+          />
+
+          {/* 소질 → 조건 → 재능. Gagné DMGT가 소질과 재능을 갈라 둔 자리를
+              그림으로 옮긴 것이다. 가운데 칸이 이 서비스가 실제로 하는 일이다. */}
+          <ol className="mt-10 grid items-stretch gap-3 md:grid-cols-[1fr_auto_1.2fr_auto_1fr] md:gap-2">
+            <li className="rounded-3xl border border-brand-100 bg-white p-6 text-center">
+              <p className="type-tag text-slate-400">타고난 것</p>
+              <p className="type-h3 mt-2 font-black text-brand-950">소질</p>
+              <p className="type-body mt-2 text-slate-600">
+                아직 계발되지 않은 잠재력. 눈으로 볼 수 없어 그대로는 잴 수 없습니다.
+              </p>
+            </li>
+            <li aria-hidden className="flex items-center justify-center text-brand-300 md:px-1">
+              <span className="hidden md:inline">→</span>
+              <span className="md:hidden">↓</span>
+            </li>
+            <li className="rounded-3xl bg-brand-900 p-6 text-center text-white shadow-float">
+              <p className="type-tag text-brand-300">사이에 있는 것</p>
+              <p className="type-h3 mt-2 font-black">발현 조건</p>
+              <p className="type-body mt-2 text-brand-100">
+                노출·허용·반응·도구 네 가지. 이 조건이 맞아떨어질 때 소질이 비로소 행동으로
+                나타납니다.
+              </p>
+            </li>
+            <li aria-hidden className="flex items-center justify-center text-brand-300 md:px-1">
+              <span className="hidden md:inline">→</span>
+              <span className="md:hidden">↓</span>
+            </li>
+            <li className="rounded-3xl border border-brand-100 bg-white p-6 text-center">
+              <p className="type-tag text-slate-400">드러난 것</p>
+              <p className="type-h3 mt-2 font-black text-brand-950">재능</p>
+              <p className="type-body mt-2 text-slate-600">
+                실제 수행으로 나타난 힘. 진단이 잴 수 있는 것은 여기까지입니다.
+              </p>
+            </li>
+          </ol>
+
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-4">
+            {catalysts.map((c) => (
+              <li
+                key={c.t}
+                className="rounded-3xl border border-brand-100 bg-white p-6 shadow-card md:p-7"
+              >
+                <h3 className="type-h3 font-black text-brand-950">{c.t}</h3>
+                <p className="type-meta mt-1 font-bold text-brand-600">{c.q}</p>
+                <p className="type-body mt-3 text-slate-600">{c.d}</p>
+              </li>
+            ))}
+          </ul>
+
+          {/* 과장 방지 — 우리가 하지 못하는 일을 먼저 적는다 */}
+          <div className="mt-8 rounded-3xl bg-brand-50/70 px-6 py-6 md:px-8">
+            <p className="type-lead mx-auto max-w-3xl text-center text-slate-600">
+              <b className="font-bold text-brand-900">
+                GENIXX가 아이의 재능을 만들어 드리지는 못합니다.
+              </b>{" "}
+              재능을 키우는 일은 집과 교실에서 매일 일어납니다. 우리가 하는 일은 그 앞에 지도를 놓아
+              드리는 것입니다 — 지금 어느 축이 드러나 있고, 어느 축이 어떤 조건을 기다리고 있는지.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/insight/parenting"
+                className="btn btn-md border border-brand-200 bg-white text-brand-800 hover:border-brand-400"
+              >
+                집에서 만드는 발현 조건 보기
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/about/theory"
+                className="btn btn-md border border-brand-200 bg-white text-brand-800 hover:border-brand-400"
+              >
+                이론적 근거 보기
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ───── ⑥ 결과물 미리보기 ───── */}
       <section className="section-y">
         <div className="container-x grid items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
           <div>
@@ -420,7 +581,78 @@ export default function PromoHome() {
         </div>
       </section>
 
-      {/* ───── ⑥ 가벼운 첫걸음 ───── */}
+      {/* ───── ⑦ 전문가 상담 ───── */}
+      <section className="section-y bg-brand-50/50">
+        <div className="container-x">
+          <SectionHead
+            align="center"
+            eyebrow="전문가 협진"
+            title="리포트를 혼자 읽게 두지 않습니다"
+            lead="결과지를 받고 '그래서 무엇을 해야 하나요'에서 멈추면 진단은 아무 일도 하지 않은 셈입니다. 사람이 붙는 자리를 세 군데 두었습니다."
+          />
+
+          <ol className="mt-10 grid gap-4 md:gap-5 lg:grid-cols-3">
+            {expertTiers.map((e) => (
+              <li key={e.n}>
+                <Link
+                  href={e.href}
+                  className={`group flex h-full flex-col rounded-3xl border bg-white p-6 transition-shadow hover:shadow-float md:p-7 ${
+                    e.live ? "border-brand-200 shadow-card" : "border-dashed border-brand-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="type-meta font-black tabular-nums text-brand-300">{e.n}</span>
+                    <span
+                      className={`type-tag rounded-full px-2.5 py-0.5 ${
+                        e.live ? "bg-surface-blue text-brand-700" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {e.when}
+                    </span>
+                  </div>
+                  <h3 className="type-h3 mt-3 font-black text-brand-950">{e.t}</h3>
+                  <p className="type-body mt-2 flex-1 text-slate-600">{e.d}</p>
+                  <span className="type-meta mt-5 inline-flex items-center gap-1.5 font-bold text-brand-700">
+                    자세히 보기
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+
+          {/* 정식 서비스를 기다리지 않아도 지금 물어볼 수 있는 창구 */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-3xl border border-brand-100 bg-white px-6 py-6 md:px-8">
+            <div className="min-w-0">
+              <p className="type-h3 font-black text-brand-950">지금 바로 물어보셔도 됩니다</p>
+              <p className="type-body mt-1.5 text-slate-600">
+                진단을 신청하기 전에 궁금한 것은 설명회 영상과 1:1 문의로 먼저 확인하실 수 있습니다.
+                전화 상담은 {company.hours}에 받습니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/support/orientation"
+                className="btn btn-md bg-brand-900 text-white hover:bg-brand-800"
+              >
+                학부모 설명회 영상
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/support/inquiry"
+                className="btn btn-md border border-brand-200 bg-white text-brand-800 hover:border-brand-400"
+              >
+                1:1 문의 남기기
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 누가 확정하고 누가 상담하는지 — 이름과 이력을 그대로 공개한다 */}
+      <TeamPreview />
+
+      {/* ───── ⑧ 가벼운 첫걸음 ───── */}
       <section className="section-y bg-brand-950 text-white">
         <div className="container-x">
           <SectionHead
