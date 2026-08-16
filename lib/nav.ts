@@ -114,6 +114,12 @@ export const menu: MenuGroup[] = [
         href: "/sample/demo",
         desc: "GeniusMap · 직교 매트릭스 조작 체험",
       },
+      {
+        id: "PUB-04-3",
+        label: "문항 미리보기",
+        href: "/sample/questions",
+        desc: "과목별 예시 문항 · 응시 화면 구성 공개",
+      },
     ],
   },
   {
