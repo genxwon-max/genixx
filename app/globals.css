@@ -274,6 +274,19 @@ body {
   font-size: calc(0.875rem * var(--adm-zoom, 1));
   line-height: 1.45;
 }
+/**
+ * 관리자 콘솔 안에 놓는 shadcn 입력·선택 상자의 글자 크기.
+ *
+ * shadcn의 Input·SelectTrigger는 `md:text-sm`을 달고 나온다. 미디어 쿼리 안에 있는
+ * 규칙이라 adm-t-sm을 나란히 붙여도 768px 위에서는 저쪽이 이기고, 글자 크기를 키워도
+ * 조회 조건 줄만 14px에 멈춘다. 콘솔 전체가 같은 비율로 커져야 하는 화면이라
+ * 여기서만 우선순위를 못 박는다.
+ */
+@utility adm-field {
+  font-size: calc(0.9375rem * var(--adm-zoom, 1)) !important;
+  line-height: 1.55;
+}
+
 @utility adm-num {
   font-size: calc(1.75rem * var(--adm-zoom, 1));
   line-height: 1.2;

@@ -25,15 +25,32 @@ export type AdminPrefs = {
   role: StaffRoleId;
   /** 임시 비밀번호를 아직 바꾸지 않았다 — 안내 띠를 띄운다 */
   temp: boolean;
-  /** 1 = 보통, 1.15 = 크게, 1.3 = 아주 크게 */
+  /** 글자 크기 배율. 1이 기본이고 ZOOM_LEVELS 안의 값만 들어간다 */
   zoom: number;
 };
 
-export const zoomSteps = [
-  { value: 1, label: "보통" },
-  { value: 1.15, label: "크게" },
-  { value: 1.3, label: "아주 크게" },
-] as const;
+/**
+ * 글자 크기 눈금.
+ *
+ * 처음에는 「보통 / 크게 / 아주 크게」 세 버튼을 헤더에 세워 두었는데, 상시로 자리를
+ * 크게 차지하면서 정작 그 셋 사이를 못 맞추겠다는 말이 나왔다. 눈금을 여섯으로 늘리고
+ * 컨트롤은 － ＋ 두 개로 줄인다. 지금 몇 %인지는 두 버튼 사이에 적어 둔다 — 배율을
+ * 숨기면 「원래대로」로 돌아오는 길이 사라진다.
+ */
+export const ZOOM_LEVELS = [0.9, 1, 1.1, 1.25, 1.4, 1.6] as const;
+
+export const ZOOM_MIN = ZOOM_LEVELS[0];
+export const ZOOM_MAX = ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+
+/** 지금 배율에서 한 칸 옮긴 값. 눈금 밖이면 가장 가까운 눈금부터 센다. */
+export function stepZoom(current: number, dir: 1 | -1) {
+  const at = ZOOM_LEVELS.reduce(
+    (best, v, i) => (Math.abs(v - current) < Math.abs(ZOOM_LEVELS[best] - current) ? i : best),
+    0,
+  );
+  const next = Math.min(ZOOM_LEVELS.length - 1, Math.max(0, at + dir));
+  return ZOOM_LEVELS[next];
+}
 
 const DEFAULT: AdminPrefs = {
   loginId: null,
@@ -89,6 +106,17 @@ export function adminSignIn(account: {
   temp: boolean;
 }) {
   patchAdminPrefs(account);
+}
+
+/**
+ * 글자 크기를 한 칸 옮긴다.
+ *
+ * 컴포넌트가 들고 있는 값이 아니라 저장된 값을 그때그때 읽는다. 렌더 사이의 값을
+ * 그대로 쓰면 － 나 ＋ 를 빠르게 두 번 눌렀을 때 두 번째가 첫 번째와 같은 값에서
+ * 출발해 한 칸만 움직인다.
+ */
+export function bumpZoom(dir: 1 | -1) {
+  patchAdminPrefs({ zoom: stepZoom(read().zoom, dir) });
 }
 
 export function adminSignOut() {

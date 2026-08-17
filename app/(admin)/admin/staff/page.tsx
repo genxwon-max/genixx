@@ -2,6 +2,7 @@ import { can, staffRoles, type PermissionId } from "@/lib/admin";
 import { PageHead, TableCard, Badge } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import StaffIssue from "@/components/admin/StaffIssue";
+import StaffDirectory from "@/components/admin/StaffDirectory";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "운영자·권한 · GENIXX 관리자" };
@@ -38,7 +39,14 @@ export default function StaffPage() {
       <PermissionGate need="staff.manage">
         <StaffIssue />
 
-        <div className="mt-8 mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {/* 계정 목록이 먼저다. 역할 설명과 권한 표는 "왜 이 사람이 저걸 못 하나"를
+            되짚을 때 보는 것이라, 매일 쓰는 목록 아래로 내렸다. */}
+        <div className="mt-8">
+          <h2 className={`${a.cardTitle} mb-4`}>운영자 계정</h2>
+          <StaffDirectory />
+        </div>
+
+        <div className="mt-10 mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {staffRoles.map((r) => (
             <section key={r.id} className={`${a.panel} p-5`}>
               <Badge label={r.label} className={r.tone} />

@@ -4,7 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { adminMenu, canAny, pending, roleOf, staffRoles, type AdminMenuItem } from "@/lib/admin";
-import { adminSignOut, patchAdminPrefs, useAdminPrefs, zoomSteps } from "@/lib/adminStore";
+import {
+  adminSignOut,
+  bumpZoom,
+  patchAdminPrefs,
+  useAdminPrefs,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { MenuIcon, CloseIcon, ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
@@ -21,7 +28,7 @@ import ConsoleLogin from "./ConsoleLogin";
  * 50~60대 사용자를 기준으로 잡은 규칙은 그대로 지킨다:
  *  - 메뉴는 접히지 않는다. 아이콘만 남는 축소 모드를 두지 않는다.
  *  - 현재 위치는 색 하나로만 알리지 않는다. 왼쪽 굵은 막대 + 배경 + 굵은 글씨를 겹친다.
- *  - 상단에 '글자 크기' 버튼을 상시로 둔다.
+ *  - 상단 얇은 띠에 '글자 크기' － ＋ 를 상시로 둔다.
  *
  * 메뉴는 역할이 가진 권한만 남긴다. 출제자에게 검수 워크벤치를 세워 두면 이해충돌을
  * 막으려고 권한을 갈라 놓은 뜻이 흐려진다(정의서 9장).
@@ -73,8 +80,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* ── 상단 바 ── */}
       <header className="sticky top-0 z-40 bg-slate-900 text-white">
-        {/* 태블릿 폭에서는 오른쪽 묶음이 한 줄에 다 서지 못한다. 줄을 접게 두고 높이를
-            늘린다 — 글자 크기 단추를 숨기는 쪽이 더 나쁘다. 늘 보여야 하는 것이다. */}
+        {/* 맨 윗줄은 글자 크기만 두는 얇은 띠다. 배율은 하루에 한두 번 만지고 마는
+            설정이라, 헤더 한복판에서 늘 자리를 차지할 이유가 없다. */}
+        <div className="flex h-8 items-center justify-end gap-2 bg-slate-950 px-4 lg:px-6">
+          <ZoomControl value={prefs.zoom} />
+        </div>
+
+        {/* 태블릿 폭에서는 오른쪽 묶음이 한 줄에 다 서지 못한다. 줄을 접게 두고 높이를 늘린다. */}
         <div className="flex min-h-[4.5rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 lg:flex-nowrap lg:py-0 lg:px-6">
           <button
             type="button"
@@ -92,7 +104,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </Link>
 
           <div className="ml-auto flex items-center gap-3">
-            <ZoomControl value={prefs.zoom} />
             <RoleSwitch value={prefs.role} />
             <div className="hidden items-center gap-2.5 border-l border-white/15 pl-4 sm:flex">
               <span
@@ -134,7 +145,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           aria-label="관리자 메뉴"
           className={`${
             open ? "block" : "hidden"
-          } w-full shrink-0 bg-slate-900 text-slate-300 lg:sticky lg:top-[4.5rem] lg:block lg:h-[calc(100vh-4.5rem)] lg:w-[17.5rem] lg:overflow-y-auto`}
+          } w-full shrink-0 bg-slate-900 text-slate-300 lg:sticky lg:top-[6.5rem] lg:block lg:h-[calc(100vh-6.5rem)] lg:w-[17.5rem] lg:overflow-y-auto`}
         >
           <div className="px-3 py-5">
             {/* 지금 어떤 역할로 보고 있는지 메뉴 맨 위에 적는다 —
@@ -224,24 +235,62 @@ function MenuLink({
   );
 }
 
-/** 글자 크기 — 세 단계. 지금 단계를 글자로도 보여 준다. */
+/**
+ * 글자 크기 — 얇은 띠에 － ＋ 두 개만.
+ *
+ * 보이는 크기는 작게 두되 누를 수 있는 넓이는 줄이지 않는다. 24px짜리 단추를 그대로
+ * 두면 손이 정확하지 않은 사람이 못 누르므로, `after`로 위아래를 넓혀 실제 판정
+ * 범위를 44px로 되돌려 놓았다. 눈에 작고 손에 크다.
+ *
+ * 글자 크기는 --adm-zoom 하나만 바꾸며, 콘솔의 모든 크기가 이 변수에 곱해져 있어
+ * 화면 전체가 같은 비율로 커진다(app/globals.css의 adm-t-* 참조).
+ */
 function ZoomControl({ value }: { value: number }) {
+  const hit =
+    "relative inline-flex h-6 w-7 items-center justify-center rounded text-[15px] font-black leading-none transition-colors after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']";
+
   return (
-    <div className="hidden items-center gap-1 rounded-md border border-white/20 p-1 md:flex">
-      <span className="px-2 adm-t-xs font-bold text-slate-400">글자 크기</span>
-      {zoomSteps.map((step) => (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[11px] font-bold text-slate-400">글자 크기</span>
+      <button
+        type="button"
+        onClick={() => bumpZoom(-1)}
+        disabled={value <= ZOOM_MIN}
+        aria-label="글자 크기 줄이기"
+        className={`${hit} ${
+          value <= ZOOM_MIN
+            ? "cursor-not-allowed text-slate-600"
+            : "text-slate-200 hover:bg-white/15"
+        }`}
+      >
+        －
+      </button>
+      {/* 지금 배율을 적어 두어야 「원래대로」로 돌아올 수 있다 */}
+      <span className="min-w-[2.75rem] text-center text-[11px] font-bold tabular-nums text-slate-300">
+        {Math.round(value * 100)}%
+      </span>
+      <button
+        type="button"
+        onClick={() => bumpZoom(1)}
+        disabled={value >= ZOOM_MAX}
+        aria-label="글자 크기 키우기"
+        className={`${hit} ${
+          value >= ZOOM_MAX
+            ? "cursor-not-allowed text-slate-600"
+            : "text-slate-200 hover:bg-white/15"
+        }`}
+      >
+        ＋
+      </button>
+      {value !== 1 && (
         <button
-          key={step.value}
           type="button"
-          onClick={() => patchAdminPrefs({ zoom: step.value })}
-          aria-pressed={value === step.value}
-          className={`min-h-[2.5rem] rounded px-3.5 adm-t-sm font-bold transition-colors ${
-            value === step.value ? "bg-white text-slate-900" : "text-slate-300 hover:bg-white/10"
-          }`}
+          onClick={() => patchAdminPrefs({ zoom: 1 })}
+          className="relative ml-0.5 rounded px-1.5 text-[11px] font-bold text-slate-400 underline underline-offset-2 transition-colors hover:text-white after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
         >
-          {step.label}
+          원래대로
         </button>
-      ))}
+      )}
     </div>
   );
 }
