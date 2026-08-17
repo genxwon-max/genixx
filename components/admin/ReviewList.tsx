@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
-import { daysWaiting, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
+import { daysWaiting, runAiAudit, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
 import { LEVELS, levelSpecs } from "@/lib/blueprint";
 import DataList, { Picker, type Column } from "./DataList";
 import { PageHead, Callout } from "./Parts";
@@ -44,6 +44,8 @@ export default function ReviewList() {
   const [subject, setSubject] = useState("all");
   const [level, setLevel] = useState("all");
   const [round, setRound] = useState("all");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [audited, setAudited] = useState<string | null>(null);
 
   /** 검수 대상 = 제출된 것 중 내가 쓰지 않은 것 */
   const queue = useMemo(
@@ -94,6 +96,19 @@ export default function ReviewList() {
 
   /** 닷새 넘게 묵은 것 — 회차 마감이 걸린 일이라 먼저 알린다 */
   const stale = hydrated ? queue.filter((i) => daysWaiting(i) >= 5).length : 0;
+
+  /** AI가 출제한 것만 — 기계가 낸 것을 기계가 먼저 훑는 자리다 */
+  const aiMade = queue.filter((i) => i.origin === "ai");
+
+  const audit = (ids: string[], label: string) => {
+    if (ids.length === 0) return;
+    const r = runAiAudit(ids);
+    setAudited(
+      `${label} ${r.done}건을 훑었습니다 — 걸린 것 없음 ${r.clean}건 · 확인할 것 있음 ${r.flagged}건. ` +
+        "결과는 각 문항의 검수 화면에 「AI가 짚은 것」으로 붙었고, 상태는 바뀌지 않았습니다.",
+    );
+    setPicked([]);
+  };
 
   if (!hydrated) {
     return (
@@ -178,6 +193,24 @@ export default function ReviewList() {
       },
     },
     {
+      key: "ai",
+      head: "AI 사전 검수",
+      cell: (i) => {
+        if (!i.aiAudit) return <span className="adm-t-sm text-exam-muted">아직 안 돌림</span>;
+        const { blocks, warns } = i.aiAudit;
+        if (blocks === 0 && warns === 0) {
+          return <span className="adm-t-sm font-bold text-emerald-700">걸린 것 없음</span>;
+        }
+        return (
+          <span className="adm-t-sm font-bold text-rose-700">
+            {blocks > 0 && `규칙 위반 ${blocks}`}
+            {blocks > 0 && warns > 0 && " · "}
+            {warns > 0 && `확인 필요 ${warns}`}
+          </span>
+        );
+      },
+    },
+    {
       key: "act",
       head: "할 일",
       cell: (i) => {
@@ -244,9 +277,71 @@ export default function ReviewList() {
         ))}
       </div>
 
+      {/* ── AI 사전 검수 ──
+          승인·반려 버튼은 여기 두지 않는다. 기계가 규칙 대조로 잡는 것과 이 학년
+          아이가 읽을 수 있는지는 다른 문제라, 기계가 통과시킨 것을 통과로 삼으면
+          3단 검수가 형식이 된다. 여기서는 짚어만 두고 결론은 사람이 낸다. */}
+      {tab === "queue" && queue.length > 0 && (
+        <div className={`${a.panel} mb-4 p-4`}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="min-w-0 flex-1">
+              <h2 className={a.cardTitle}>AI 사전 검수</h2>
+              <p className={`${a.bodyText} mt-1`}>
+                규칙으로 볼 수 있는 것을 기계가 먼저 훑습니다 — 단계·형식 매핑, 성취기준 코드, 보기
+                중복, 정답 길이 단서, 편향 소지 낱말.{" "}
+                <b className="font-bold">승인·반려는 하지 않습니다.</b>
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  audit(
+                    queue.map((i) => i.id),
+                    "검수 대기 전체",
+                  )
+                }
+                className={a.btnPrimary}
+              >
+                전체 {queue.length}건
+              </button>
+              <button
+                type="button"
+                disabled={picked.length === 0}
+                onClick={() => audit(picked, "고른 문항")}
+                className={picked.length === 0 ? a.btnDisabled : a.btnGhost}
+              >
+                고른 {picked.length}건
+              </button>
+              <button
+                type="button"
+                disabled={aiMade.length === 0}
+                onClick={() =>
+                  audit(
+                    aiMade.map((i) => i.id),
+                    "AI가 출제한 문항",
+                  )
+                }
+                className={aiMade.length === 0 ? a.btnDisabled : a.btnGhost}
+              >
+                AI 출제분 {aiMade.length}건
+              </button>
+            </div>
+          </div>
+
+          {audited && (
+            <div className="mt-4">
+              <Callout tone="good">{audited}</Callout>
+            </div>
+          )}
+        </div>
+      )}
+
       <DataList
         rows={rows}
         totalCount={base.length}
+        select={tab === "queue" ? { selected: picked, onChange: setPicked } : undefined}
         columns={columns}
         rowKey={(i) => i.id}
         searchPlaceholder="문항 ID · 발문 · 단원 · 성취기준 · 출제자로 찾기"

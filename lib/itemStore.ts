@@ -15,6 +15,7 @@ import {
   type TalentId,
 } from "./blueprint";
 import { pickSample } from "./itemBank";
+import { auditItem } from "./itemAudit";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
@@ -201,7 +202,23 @@ export type ItemDraft = {
   reviews: ReviewRecord[];
   /** 쓰다 만 검수. 승인·반려로 결론이 나면 지운다. */
   reviewDraft?: ReviewDraft;
+  /**
+   * AI 사전 검수 결과.
+   *
+   * reviewDraft와 따로 둔다. 한 칸에 같이 담으면 사람이 쓰던 소견을 기계가 덮어쓰거나,
+   * 반대로 화면에 뜬 소견을 누가 적은 것인지 알 수 없게 된다. 누가 짚었는지가 검수
+   * 기록에서 가장 중요한 값이라 자리를 갈라 둔다.
+   */
+  aiAudit?: AiAudit;
   updatedAt: string;
+};
+
+/** 기계가 짚어 둔 것 — 상태를 바꾸지 않는다 */
+export type AiAudit = {
+  at: string;
+  checks: { id: ReviewCheckId; ok: boolean; notes: string[] }[];
+  blocks: number;
+  warns: number;
 };
 
 /** 반려 사유 — 코드로 고르게 해서 출제자가 무엇을 고쳐야 하는지 바로 알게 한다 */
@@ -1061,6 +1078,49 @@ export function addComment(id: string, by: string, role: StaffRoleId, text: stri
 }
 
 /* ───────────────────────── 검수 ───────────────────────── */
+
+/**
+ * AI 사전 검수를 돌린다 (EXP-03-2).
+ *
+ * ⚠ 상태를 바꾸지 않는다. 승인도 반려도 하지 않고 「짚어 둔 것」만 남긴다.
+ *   AI가 낸 문항을 AI가 승인하는 길이 열리면 사람이 한 번도 안 본 문항이 검사지에
+ *   들어갈 수 있다. 규칙 대조로 잡히는 것과 이 학년 아이가 읽을 수 있는지는 다른
+ *   문제라, 기계가 통과시킨 것을 통과로 삼으면 안 된다.
+ *
+ * 검수 대기가 아닌 문항은 건너뛴다. 이미 결론이 난 것에 기계 소견을 덧붙이면
+ * 기록이 어느 시점의 것인지 알 수 없어진다.
+ */
+export function runAiAudit(ids: string[]): { done: number; clean: number; flagged: number } {
+  const at = now();
+  let done = 0;
+  let clean = 0;
+
+  const next = read().map((item) => {
+    if (!ids.includes(item.id) || item.state !== "submitted") return item;
+    const result = auditItem(item);
+    done += 1;
+    if (result.blocks === 0 && result.warns === 0) clean += 1;
+    return {
+      ...item,
+      aiAudit: {
+        at,
+        checks: result.checks.map((c) => ({
+          id: c.id,
+          ok: c.ok,
+          notes: c.findings.map(
+            (f) => `${f.tone === "block" ? "[규칙 위반] " : "[확인 필요] "}${f.text}`,
+          ),
+        })),
+        blocks: result.blocks,
+        warns: result.warns,
+      },
+      updatedAt: item.updatedAt,
+    };
+  });
+
+  write(next);
+  return { done, clean, flagged: done - clean };
+}
 
 /** 쓰다 만 검수를 문항에 붙여 둔다. 결론이 나기 전까지 상태는 그대로다. */
 export function saveReviewDraft(id: string, draft: Omit<ReviewDraft, "updatedAt">) {

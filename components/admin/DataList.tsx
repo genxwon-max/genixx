@@ -111,6 +111,16 @@ type Props<T> = {
   onReset: () => void;
   unit?: string;
   emptyText?: string;
+  /**
+   * 여러 줄을 골라 한꺼번에 처리하는 목록에만 준다.
+   *
+   * 머리글 체크상자는 「지금 이 쪽에 보이는 줄」만 고른다. 조건에 걸린 500줄을
+   * 한 번에 고르게 하면 무엇을 고른 것인지 화면에서 확인할 수가 없다.
+   */
+  select?: {
+    selected: string[];
+    onChange: (ids: string[]) => void;
+  };
 };
 
 export default function DataList<T>({
@@ -126,6 +136,7 @@ export default function DataList<T>({
   onReset,
   unit = "건",
   emptyText = "조건에 맞는 자료가 없습니다.",
+  select,
 }: Props<T>) {
   const [size, setSize] = useState<number>(20);
 
@@ -145,6 +156,28 @@ export default function DataList<T>({
   const current = Math.min(page, pages);
   const start = (current - 1) * size;
   const shown = useMemo(() => rows.slice(start, start + size), [rows, start, size]);
+
+  /* 고르기 — 머리글 체크는 지금 쪽에 보이는 줄만 다룬다 */
+  const pageIds = () => shown.map(rowKey);
+  const pageAllPicked =
+    !!select && shown.length > 0 && pageIds().every((id) => select.selected.includes(id));
+  const togglePage = () => {
+    if (!select) return;
+    const ids = pageIds();
+    select.onChange(
+      pageAllPicked
+        ? select.selected.filter((id) => !ids.includes(id))
+        : [...new Set([...select.selected, ...ids])],
+    );
+  };
+  const toggleOne = (id: string) => {
+    if (!select) return;
+    select.onChange(
+      select.selected.includes(id)
+        ? select.selected.filter((x) => x !== id)
+        : [...select.selected, id],
+    );
+  };
 
   return (
     <div>
@@ -207,6 +240,19 @@ export default function DataList<T>({
         <table className={a.table}>
           <thead>
             <tr>
+              {select && (
+                <th className={`${a.th} w-12`}>
+                  <label className="flex items-center justify-center">
+                    <span className="sr-only">이 쪽 전체 고르기</span>
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5"
+                      checked={pageAllPicked}
+                      onChange={togglePage}
+                    />
+                  </label>
+                </th>
+              )}
               {columns.map((c) => (
                 <th
                   key={c.key}
@@ -222,7 +268,10 @@ export default function DataList<T>({
           <tbody>
             {shown.length === 0 ? (
               <tr>
-                <td className={`${a.td} py-12 text-center`} colSpan={columns.length}>
+                <td
+                  className={`${a.td} py-12 text-center`}
+                  colSpan={columns.length + (select ? 1 : 0)}
+                >
                   <span className="adm-t-md font-bold text-exam-text">{emptyText}</span>
                   <span className="mt-1 block adm-t-sm">검색어나 조회 조건을 바꿔 보세요.</span>
                 </td>
@@ -230,6 +279,19 @@ export default function DataList<T>({
             ) : (
               shown.map((row) => (
                 <tr key={rowKey(row)}>
+                  {select && (
+                    <td className={a.td}>
+                      <label className="flex items-center justify-center">
+                        <span className="sr-only">이 줄 고르기</span>
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5"
+                          checked={select.selected.includes(rowKey(row))}
+                          onChange={() => toggleOne(rowKey(row))}
+                        />
+                      </label>
+                    </td>
+                  )}
                   {columns.map((c) => (
                     <td
                       key={c.key}

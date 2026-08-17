@@ -226,6 +226,58 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
                 칸마다 통과 여부를 짚습니다. 하나라도 「걸림」이면 승인할 수 없습니다.
               </p>
 
+              {/* AI가 먼저 훑은 것이 있으면 3단 위에 붙인다. 옮겨 담는 것은 사람이
+                  누른다 — 자동으로 채워 두면 읽지 않고 넘어가게 된다. */}
+              {item.aiAudit && (
+                <div className="mt-4 border-l-4 border-violet-500 pl-4">
+                  <p className="adm-t-md font-bold text-violet-800">
+                    AI가 짚은 것 · {item.aiAudit.at}
+                  </p>
+                  {item.aiAudit.blocks + item.aiAudit.warns === 0 ? (
+                    <p className={`${a.bodyText} mt-1.5`}>
+                      규칙으로 볼 수 있는 것에서는 걸린 것이 없습니다. 교과 내용과 학년 이독성은
+                      기계가 알 수 없으니 직접 보아 주세요.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-1.5">
+                      {item.aiAudit.checks.flatMap((c) =>
+                        c.notes.map((n, k) => (
+                          <li key={`${c.id}-${k}`} className="adm-t-sm text-exam-text">
+                            <b className="font-bold">
+                              {reviewChecks.find((x) => x.id === c.id)?.label}
+                            </b>{" "}
+                            — {n}
+                          </li>
+                        )),
+                      )}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      /* 「걸림」만 옮긴다. 통과는 옮기지 않는다 —
+                         규칙 대조에서 안 걸렸다는 것과 이 문항이 괜찮다는 것은
+                         다른 말이다. 특히 윤리·편향은 낱말로 잡는 것이라, 안 걸린
+                         것을 통과로 찍어 두면 사람이 보지 않고 넘어가게 된다. */
+                      const next = checks.map((c) => {
+                        const found = item.aiAudit?.checks.find((x) => x.id === c.id);
+                        if (!found || found.notes.length === 0) return c;
+                        return {
+                          ...c,
+                          ok: found.ok ? c.ok : false,
+                          note: [c.note, ...found.notes].filter(Boolean).join("\n"),
+                        };
+                      });
+                      setChecks(next);
+                      keep({ checks: next });
+                    }}
+                    className={`${a.btnGhost} mt-3`}
+                  >
+                    아래 3단에 옮겨 담기
+                  </button>
+                </div>
+              )}
+
               <ul className="mt-4 space-y-4">
                 {reviewChecks.map((c, i) => {
                   const r = checks.find((x) => x.id === c.id)!;
