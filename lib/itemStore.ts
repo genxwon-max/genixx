@@ -184,6 +184,10 @@ export type ItemDraft = {
   authorName: string;
   state: ItemState;
   comments: ItemComment[];
+  /** 끝난 검수 이력 — 승인이든 반려든 회차별로 쌓인다 */
+  reviews: ReviewRecord[];
+  /** 쓰다 만 검수. 승인·반려로 결론이 나면 지운다. */
+  reviewDraft?: ReviewDraft;
   updatedAt: string;
 };
 
@@ -199,17 +203,67 @@ export const rejectCodes = [
 
 export type RejectCode = (typeof rejectCodes)[number]["id"];
 
-export const rejectLabel = (id: RejectCode) =>
-  rejectCodes.find((c) => c.id === id)?.label ?? id;
+export const rejectLabel = (id: RejectCode) => rejectCodes.find((c) => c.id === id)?.label ?? id;
 
 /** 검수 3단 — 정의서 EXP-03-1~3 */
 export const reviewChecks = [
-  { id: "content", label: "1차 내용", desc: "교과 정확성 · 발문 명료성 · 정답 유일성 · 학년 이독성" },
+  {
+    id: "content",
+    label: "1차 내용",
+    desc: "교과 정확성 · 발문 명료성 · 정답 유일성 · 학년 이독성",
+  },
   { id: "tagging", label: "2차 태깅", desc: "이중태그와 S위계가 문항이 실제로 재는 것과 맞는가" },
   { id: "ethics", label: "3차 윤리·편향", desc: "성·지역·문화·SES 편향, 아동 정서 적합성" },
 ] as const;
 
 export type ReviewCheckId = (typeof reviewChecks)[number]["id"];
+
+/**
+ * 3단 각각의 결과와 소견.
+ *
+ * 예전에는 체크상자를 셋 다 켰는지만 보고 승인 버튼을 열어 주고, 무엇을 보고
+ * 통과시켰는지는 어디에도 남기지 않았다. 그러면 반려된 문항이 다시 올라왔을 때
+ * 다음 검수자가 지난번에 무엇이 걸렸는지 알 길이 없다. 칸마다 소견을 받아 둔다.
+ */
+export type ReviewCheckResult = {
+  id: ReviewCheckId;
+  /** null이면 아직 짚지 않았다. 「걸림」과 「안 봄」은 다른 상태다. */
+  ok: boolean | null;
+  note: string;
+};
+
+export type ReviewVerdict = "approve" | "reject";
+
+/** 끝난 검수 한 건 */
+export type ReviewRecord = {
+  at: string;
+  by: string;
+  /** 몇 회차 검수인가. 반려된 문항이 다시 올라오면 2회차가 된다. */
+  round: number;
+  verdict: ReviewVerdict;
+  checks: ReviewCheckResult[];
+  code?: RejectCode;
+  text: string;
+};
+
+/**
+ * 쓰다 만 검수.
+ *
+ * 검수는 문항 하나에 몇 분씩 걸리고 중간에 다른 문항을 열어 볼 일이 생긴다.
+ * 목록으로 나갔다 돌아왔을 때 체크와 소견이 날아가 있으면 처음부터 다시 읽어야
+ * 한다. 출제 쪽이 임시저장을 하는 것과 같은 이유다.
+ */
+export type ReviewDraft = {
+  by: string;
+  checks: ReviewCheckResult[];
+  code?: RejectCode;
+  text: string;
+  updatedAt: string;
+};
+
+/** 아직 아무것도 안 짚은 3단 */
+export const blankChecks = (): ReviewCheckResult[] =>
+  reviewChecks.map((c) => ({ id: c.id, ok: null, note: "" }));
 
 /**
  * 예시 문항.
@@ -280,7 +334,12 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     passage: "",
     stem: "사과 24개를 한 상자에 6개씩 담으려고 합니다. 상자는 몇 개가 필요합니까?",
     choices: ["3개", "4개", "5개", "6개"],
-    distractorIntent: ["24-6=18을 다시 나눈 혼동", "", "몫과 나머지 혼동", "제수를 몫으로 읽는 혼동"],
+    distractorIntent: [
+      "24-6=18을 다시 나눈 혼동",
+      "",
+      "몫과 나머지 혼동",
+      "제수를 몫으로 읽는 혼동",
+    ],
     answer: 1,
     explain: "24 ÷ 6 = 4. 나눗셈의 등분제 상황입니다.",
     guidance: "",
@@ -435,7 +494,12 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     passage: "",
     stem: "다음 중 두 낱말의 관계가 '크다 — 작다'와 같은 것은?",
     choices: ["새 — 참새", "빠르다 — 느리다", "책 — 공책", "나무 — 소나무"],
-    distractorIntent: ["상하위어를 반대말로 보는 혼동", "", "나열을 관계로 보는 혼동", "상하위어를 반대말로 보는 혼동"],
+    distractorIntent: [
+      "상하위어를 반대말로 보는 혼동",
+      "",
+      "나열을 관계로 보는 혼동",
+      "상하위어를 반대말로 보는 혼동",
+    ],
     answer: 1,
     explain: "정답 ②(반대말 관계). ①④는 상하위어, ③은 나열입니다.",
     guidance:
@@ -672,6 +736,7 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
     tagA: raw.tagA ?? "",
     tagB: raw.tagB ?? "",
     comments: raw.comments ?? [],
+    reviews: raw.reviews ?? [],
     assets: raw.assets ?? [],
   };
 }
@@ -833,24 +898,72 @@ export function addComment(id: string, by: string, role: StaffRoleId, text: stri
   });
 }
 
+/* ───────────────────────── 검수 ───────────────────────── */
+
+/** 쓰다 만 검수를 문항에 붙여 둔다. 결론이 나기 전까지 상태는 그대로다. */
+export function saveReviewDraft(id: string, draft: Omit<ReviewDraft, "updatedAt">) {
+  patchItem(id, { reviewDraft: { ...draft, updatedAt: now() } });
+}
+
+export function clearReviewDraft(id: string) {
+  patchItem(id, { reviewDraft: undefined });
+}
+
 /** 반려 — 사유 코드와 코멘트가 붙어 출제자의 반려함으로 돌아간다 */
-export function rejectItem(id: string, by: string, code: RejectCode, text: string) {
+export function rejectItem(
+  id: string,
+  by: string,
+  code: RejectCode,
+  text: string,
+  checks: ReviewCheckResult[] = blankChecks(),
+) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
+  const at = now();
   patchItem(id, {
     state: "rejected",
-    comments: [...item.comments, { at: now(), by, role: "reviewer", kind: "reject", code, text }],
+    reviews: [
+      ...item.reviews,
+      { at, by, round: item.reviews.length + 1, verdict: "reject", checks, code, text },
+    ],
+    reviewDraft: undefined,
+    comments: [...item.comments, { at, by, role: "reviewer", kind: "reject", code, text }],
   });
 }
 
 /** 승인 — 문항 은행에 올라가 검사지 조립 대상이 된다 */
-export function approveItem(id: string, by: string, text: string) {
+export function approveItem(
+  id: string,
+  by: string,
+  text: string,
+  checks: ReviewCheckResult[] = blankChecks(),
+) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
+  const at = now();
   patchItem(id, {
     state: "approved",
-    comments: [...item.comments, { at: now(), by, role: "reviewer", kind: "approve", text }],
+    reviews: [
+      ...item.reviews,
+      { at, by, round: item.reviews.length + 1, verdict: "approve", checks, text },
+    ],
+    reviewDraft: undefined,
+    comments: [...item.comments, { at, by, role: "reviewer", kind: "approve", text }],
   });
+}
+
+/**
+ * 제출한 지 며칠 지났는가.
+ *
+ * ⚠ 오늘 날짜를 읽으므로 서버와 브라우저에서 값이 갈린다. 반드시 하이드레이션이
+ *   끝난 뒤에만 부른다(useHydrated).
+ */
+export function daysWaiting(item: ItemDraft) {
+  const submitted = Date.parse(item.updatedAt.slice(0, 10));
+  if (Number.isNaN(submitted)) return 0;
+  const today = new Date();
+  const midnight = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.max(0, Math.round((midnight - submitted) / 86_400_000));
 }
 
 /** 파일 붙이기 — 상한을 넘으면 받지 않는다 */
@@ -897,7 +1010,9 @@ export function missingFields(i: ItemDraft) {
   if (i.type === "choice") {
     if (!i.choices.every((c) => c.trim())) out.push("보기");
     // 오답마다 어떤 오개념을 잡는지 적지 않으면 변별도가 죽는다(§1.1)
-    const bad = i.choices.some((c, n) => c.trim() && n !== i.answer && !i.distractorIntent[n]?.trim());
+    const bad = i.choices.some(
+      (c, n) => c.trim() && n !== i.answer && !i.distractorIntent[n]?.trim(),
+    );
     if (bad) out.push("오답 의도");
   }
   if (i.type === "short" && !i.shortAnswers.trim()) out.push("허용 답안");
