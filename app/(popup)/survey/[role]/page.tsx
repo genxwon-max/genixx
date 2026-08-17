@@ -27,5 +27,7 @@ export default async function SurveyPopupPage({
   if (!isSurveyKey(role)) notFound();
 
   const studentId = typeof student === "string" && student ? student : "demo";
-  return <SurveyForm config={surveys[role]} studentId={studentId} />;
+  /* 문항은 서버가 아니라 설문 저장소가 준다. 여기서는 어느 설문인지만 넘긴다 —
+     관리자가 발행한 판이 곧바로 이 창에 뜨게 하기 위해서다. */
+  return <SurveyForm surveyKey={role} studentId={studentId} />;
 }

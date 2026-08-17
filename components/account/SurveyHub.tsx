@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { useExamStore, useHydrated, surveyKeys } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
-import { surveys } from "@/lib/survey";
+import { useSurveyDocs } from "@/lib/surveyStore";
 import { surveyWindow } from "@/lib/popup";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
@@ -28,6 +28,7 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
   const session = useSession();
   const roster = useRoster();
   const records = useExamStore();
+  const docs = useSurveyDocs();
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
@@ -88,7 +89,7 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
                       {surveyKeys.map((key) => {
-                        const cfg = surveys[key];
+                        const cfg = docs[key].live;
                         const submitted = records[student.id]?.surveys?.[key] === "done";
                         return (
                           <button

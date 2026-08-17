@@ -1,37 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { setSurvey, useExamRecord, useHydrated } from "@/lib/examStore";
-import type { SurveyConfig } from "@/lib/survey";
+import { setSurvey, useExamRecord, useHydrated, type SurveyKey } from "@/lib/examStore";
+import { useSurveyDoc, type SurveyDoc } from "@/lib/surveyStore";
 import { findById } from "@/lib/roster";
 import { CheckIcon } from "@/components/Icons";
 import { btnDisabled, btnGhost, btnPrimary, eyebrow, input, panel } from "./ui";
 
 const scale = ["전혀 아니다", "아니다", "보통이다", "그렇다", "매우 그렇다"];
 
-/** 고정 크기 팝업 창 안에서 도는 설문 폼 */
+/**
+ * 고정 크기 팝업 창 안에서 도는 설문 폼.
+ *
+ * 문항을 코드에서 읽지 않고 설문 저장소에서 「지금 나가고 있는 판」을 받아 온다.
+ * 관리자가 고치고 있는 초안은 여기 오지 않는다 — 발행한 것만 응답자에게 간다.
+ * 제출할 때 판 번호를 함께 적어, 뒤에 문항이 바뀌어도 이 응답이 무엇에 대한
+ * 답이었는지 남게 한다.
+ */
 export default function SurveyForm({
-  config,
+  surveyKey,
   studentId,
 }: {
-  config: SurveyConfig;
+  surveyKey: SurveyKey;
   studentId: string;
 }) {
   const hydrated = useHydrated();
   const record = useExamRecord(studentId);
+  const doc = useSurveyDoc(surveyKey);
+  const config = doc.live;
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [text, setText] = useState("");
   const [warn, setWarn] = useState(false);
 
   const student = hydrated ? findById(studentId) : null;
-  const done = record.surveys[config.key] === "done";
+  const done = record.surveys[surveyKey] === "done";
   const answered = Object.keys(answers).length;
   const complete = answered === config.items.length;
 
   if (hydrated && done) {
     return (
       <div className="flex min-h-dvh flex-col">
-        <PopupHeader config={config} studentName={student?.name} />
+        <PopupHeader doc={doc} studentName={student?.name} />
         <div className="flex flex-1 items-center px-5 py-10">
           <div className={`mx-auto w-full max-w-md p-8 text-center ${panel}`}>
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-emerald-300 bg-emerald-50 text-emerald-600">
@@ -47,7 +56,7 @@ export default function SurveyForm({
               </button>
               <button
                 type="button"
-                onClick={() => setSurvey(studentId, config.key, "none")}
+                onClick={() => setSurvey(studentId, surveyKey, "none")}
                 className={btnGhost}
               >
                 다시 작성하기
@@ -64,12 +73,12 @@ export default function SurveyForm({
       setWarn(true);
       return;
     }
-    setSurvey(studentId, config.key, "done");
+    setSurvey(studentId, surveyKey, "done", doc.liveVersion);
   };
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <PopupHeader config={config} studentName={student?.name} />
+      <PopupHeader doc={doc} studentName={student?.name} />
 
       <div className="sticky top-0 z-10 border-b border-exam-line bg-exam-panel px-5 py-3">
         <div className="flex items-center justify-between gap-3">
@@ -92,10 +101,10 @@ export default function SurveyForm({
 
         <ol className="mt-4 space-y-2.5">
           {config.items.map((item, i) => (
-            <li key={item} className={`p-4 ${panel}`}>
+            <li key={item.id} className={`p-4 ${panel}`}>
               <p className="text-[14px] font-medium leading-relaxed text-exam-text">
                 <span className="mr-1.5 font-bold tabular-nums text-exam-muted">{i + 1}.</span>
-                {item}
+                {item.text}
               </p>
               <div className="mt-3 grid grid-cols-5 gap-1">
                 {scale.map((label, v) => {
@@ -188,15 +197,19 @@ export default function SurveyForm({
   );
 }
 
-function PopupHeader({ config, studentName }: { config: SurveyConfig; studentName?: string }) {
+function PopupHeader({ doc, studentName }: { doc: SurveyDoc; studentName?: string }) {
   return (
     <header className="border-b-2 border-exam-text/80 bg-exam-panel px-5 py-4">
-      <p className={eyebrow}>{config.code} · 설문</p>
-      <h1 className="mt-2 text-[18px] font-black tracking-tight text-exam-text">{config.title}</h1>
-      <p className="mt-1.5 text-[12px] text-exam-muted">
-        대상 학생 <b className="text-exam-text">{studentName ?? "-"}</b> · 응답자 {config.who}
+      {/* 판 번호를 여기 적어 둔다. 응답자에게는 쓸모없어 보여도, 문의가 들어왔을 때
+          「어느 판을 보고 계셨는지」를 화면 사진 한 장으로 알 수 있다. */}
+      <p className={eyebrow}>
+        {doc.code} · 설문 <span className="font-medium">v{doc.liveVersion}</span>
       </p>
-      <p className="mt-2.5 text-[13px] leading-relaxed text-exam-muted">{config.desc}</p>
+      <h1 className="mt-2 text-[18px] font-black tracking-tight text-exam-text">{doc.live.title}</h1>
+      <p className="mt-1.5 text-[12px] text-exam-muted">
+        대상 학생 <b className="text-exam-text">{studentName ?? "-"}</b> · 응답자 {doc.live.who}
+      </p>
+      <p className="mt-2.5 text-[13px] leading-relaxed text-exam-muted">{doc.live.desc}</p>
     </header>
   );
 }

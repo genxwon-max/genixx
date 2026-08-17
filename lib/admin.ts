@@ -228,7 +228,7 @@ export const adminMenu: AdminMenuGroup[] = [
     ],
   },
   {
-    label: "문항 (출제 · 검수)",
+    label: "문항 · 설문 (출제 · 검수)",
     items: [
       {
         id: "EXP-02",
@@ -273,6 +273,32 @@ export const adminMenu: AdminMenuGroup[] = [
             id: "ADM-04-4",
             label: "문항 회전·보안",
             desc: "응시자별 동적 할당(57중 55), 캡처·드래그 차단, 노출 이력",
+          },
+        ],
+      },
+      {
+        /* 정의서에는 설문 원본을 다루는 화면이 없어서 번호를 새로 딴다. 설문 자체의
+           코드(ASM-05 학부모 · ASM-06 지도교사)는 화면 안에 그대로 적어 둔다. */
+        id: "ADM-14",
+        label: "설문 원본",
+        href: "/admin/surveys",
+        desc: "학부모·교사 설문 문항을 고치고 판을 발행합니다. 발행 이력이 남습니다.",
+        needs: ["item.write", "item.review"],
+        children: [
+          {
+            id: "ADM-14-1",
+            label: "문항 편집·파일 올리기",
+            desc: "초안에서만 고친다. CSV·TXT 한 줄에 한 문항으로 올릴 수 있다",
+          },
+          {
+            id: "ADM-14-2",
+            label: "판 발행",
+            desc: "발행해야 응답자 화면이 바뀐다. 사유를 받아 감사 로그에 남긴다",
+          },
+          {
+            id: "ADM-14-3",
+            label: "변경 기록·되돌리기",
+            desc: "판별 내용을 그대로 보관해 옛 판으로 되돌릴 수 있다",
           },
         ],
       },

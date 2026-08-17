@@ -107,6 +107,12 @@ export type ExamRecord = {
   subjects: Record<SubjectId, SubjectRecord>;
   surveys: Record<SurveyKey, SurveyState>;
   surveyAt: Partial<Record<SurveyKey, string>>;
+  /**
+   * 어느 판(version)의 설문에 답한 것인지. 설문 원본은 관리자 화면(ADM-14)에서
+   * 고칠 수 있어서, 판 번호가 없으면 이 응답이 무엇을 물은 것에 대한 답인지
+   * 나중에 알 길이 없다.
+   */
+  surveyVersion: Partial<Record<SurveyKey, number>>;
   /** 최종 제출(결과 산출 요청) 여부 */
   finalized: boolean;
   finalizedAt: string | null;
@@ -130,6 +136,7 @@ export const initialRecord: ExamRecord = {
   >,
   surveys: { mother: "none", father: "none", teacher: "none" },
   surveyAt: {},
+  surveyVersion: {},
   finalized: false,
   finalizedAt: null,
 };
@@ -152,6 +159,7 @@ function normalize(raw: Partial<ExamRecord> | undefined): ExamRecord {
     subjects,
     surveys: { ...initialRecord.surveys, ...raw?.surveys },
     surveyAt: { ...raw?.surveyAt },
+    surveyVersion: { ...raw?.surveyVersion },
     finalized: raw?.finalized ?? false,
     finalizedAt: raw?.finalizedAt ?? null,
   };
@@ -314,12 +322,20 @@ export function restartSubject(studentId: string, subject: SubjectId) {
   });
 }
 
-export function setSurvey(studentId: string, key: SurveyKey, state: SurveyState) {
+/** 제출 시각과 함께 「몇 판에 답한 것인지」를 적는다 */
+export function setSurvey(
+  studentId: string,
+  key: SurveyKey,
+  state: SurveyState,
+  version?: number,
+) {
   const current = readRecord(studentId);
+  const done = state === "done";
   writeRecord(studentId, {
     ...current,
     surveys: { ...current.surveys, [key]: state },
-    surveyAt: { ...current.surveyAt, [key]: state === "done" ? new Date().toISOString() : undefined },
+    surveyAt: { ...current.surveyAt, [key]: done ? new Date().toISOString() : undefined },
+    surveyVersion: { ...current.surveyVersion, [key]: done ? version : undefined },
   });
 }
 

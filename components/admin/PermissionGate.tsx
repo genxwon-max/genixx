@@ -1,6 +1,6 @@
 "use client";
 
-import { can, roleOf, type PermissionId } from "@/lib/admin";
+import { canAny, roleOf, type PermissionId } from "@/lib/admin";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { NoPermission } from "./Parts";
 
@@ -33,10 +33,12 @@ export default function PermissionGate({
   need,
   children,
 }: {
-  need: PermissionId;
+  /** 배열이면 하나만 있어도 열린다 — 출제자와 검수자가 함께 보는 화면을 위해 */
+  need: PermissionId | PermissionId[];
   children: React.ReactNode;
 }) {
   const { role } = useAdminPrefs();
-  if (can(role, need)) return <>{children}</>;
-  return <NoPermission need={permissionLabel[need]} role={roleOf(role).label} />;
+  if (canAny(role, need)) return <>{children}</>;
+  const names = (Array.isArray(need) ? need : [need]).map((n) => permissionLabel[n]).join(" 또는 ");
+  return <NoPermission need={names} role={roleOf(role).label} />;
 }
