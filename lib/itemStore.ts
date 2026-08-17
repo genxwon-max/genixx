@@ -14,6 +14,7 @@ import {
   type Level,
   type TalentId,
 } from "./blueprint";
+import { pickSample } from "./itemBank";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
@@ -825,21 +826,29 @@ export function addItem(author: string, authorName: string): ItemDraft {
   return item;
 }
 
-/* ───────────────────────── AI 초안 생성 (EXP-02-2) ─────────────────────────
+/* ───────────────────────── AI 문항 생성 (EXP-02-2) ─────────────────────────
  *
- * AI가 어디까지 하고 사람이 어디부터 하는지를 코드로 못 박아 둔다.
+ * 지문·발문·보기·정답·해설·채점 기준까지 갖춘 문항을 만든다.
  *
- *   AI가 낸다   — 문항 ID·형식·배점·b모수·이중태그, 단계에 맞는 발문 뼈대,
- *                 오답을 어떤 의도로 깔지, 채점 기준 골격, 출제 지침
- *   사람이 쓴다 — 지문, 보기 넷, 정답, 허용 답안, 해설 본문
+ * 처음에는 뼈대만 내고 보기와 정답은 사람이 채우게 했는데, 실제로 써 보니
+ * 「초안을 받아서 고친다」가 아니라 「빈칸을 처음부터 채운다」가 되어 AI를 부를
+ * 이유가 없었다. 출제자가 하는 일은 빈칸 채우기가 아니라 나온 문항을 읽고 고치거나
+ * 버리는 판단이다. 그 판단을 하려면 완성된 문항이 있어야 한다.
  *
- * 보기와 정답까지 지어내게 두지 않은 것은 일부러다. 그 자리가 채워진 채로 목록에
- * 뜨면 훑어보고 제출하게 되고, 그러면 3단 검수가 AI 산출물의 첫 번째 사람 검토가
- * 된다. 지금 구조는 「출제자가 채워야 제출 칸이 열리고, 그다음 다른 사람이 검수한다」로
- * 사람 손이 두 번 닿는다. missingFields()가 그 문을 지킨다.
+ * 대신 두 가지를 지킨다.
  *
- * 발문 뼈대는 지어낸 문장이 아니라 blueprint의 단계 정의와 세부기능 grid에서 만든다.
- * 같은 명세를 보고 사람이 쓰는 것과 같은 자리에서 출발해야 검수 기준도 같아진다.
+ *  1) 상태는 draft로 들어간다. 만들자마자 검수로 넘기는 길은 없다. 출제자가 열어
+ *     보고 제출 전 체크리스트(§9)를 직접 짚어야 제출 칸이 열린다 — 「사람이 한 번도
+ *     안 읽은 문항」이 검수 목록에 쌓이는 것을 여기서 막는다.
+ *  2) origin에 ai를 남긴다. 검수자가 AI 산출물인 줄 알고 봐야 한다.
+ *
+ * 문항 자체는 lib/itemBank.ts에 미리 써 둔 본에서 꺼낸다. 실제 서비스라면 그 자리에
+ * 생성 모델 호출이 들어간다. 화면 설계 단계에서 「그럴듯하지만 답이 두 개인 문항」을
+ * 흘리면 검수 화면을 시험해 볼 수가 없어서, 답이 하나로 떨어지는 문항만 담았다.
+ *
+ * ⚠ 재능 축(Tag B)은 생성 화면에서 사람이 고른 값을 그대로 붙인다. 고른 축과 나온
+ *   문항이 실제로 재는 것이 어긋날 수 있고, 그것을 잡는 자리가 검수 2차 태깅이다.
+ *   생성된 문항의 유의사항에도 그렇게 적어 둔다.
  */
 
 export type GenerateSpec = {
@@ -886,48 +895,14 @@ export function checkSpec(spec: GenerateSpec): string[] {
 
 const LEVELS_ALL: Level[] = ["S1", "S2", "S3", "S4"];
 
-/** 단계에 맞는 발문 뼈대 — 채울 자리는 […]로 남긴다 */
-function draftStem(spec: GenerateSpec, level: Level, gridLine: string) {
-  const s = levelSpecs[level];
-  const 소재 = spec.unit.trim() || "이 단원";
-  switch (level) {
-    case "S1":
-      return `다음 중 ${소재}에서 [   ]에 해당하는 것은 무엇입니까? (${gridLine})`;
-    case "S2":
-      return `${소재}의 [   ]에 대한 설명으로 알맞은 것은 무엇입니까? (${gridLine})`;
-    case "S3":
-      return `${소재}의 [   ]을(를) 보고, ${s.verb}한 결과를 쓰시오. (${gridLine})`;
-    default:
-      return `[   ]에 대한 주장이 옳은지 판단하고, 그렇게 생각한 까닭을 근거 두 가지를 들어 쓰시오. (${gridLine})`;
-  }
-}
-
-/** 오답을 어떤 의도로 깔지 — 선택형에서만 쓴다 */
-const distractorPlan = [
-  "표면만 닮은 것 — 같은 낱말·같은 그림이 들어가지만 묻는 것과 다르다",
-  "한 단계 위 조작을 해야 걸리는 것 — 이 단계에서 요구하면 단계 오류다",
-  "흔한 오개념 — 학년에서 실제로 자주 나오는 틀린 생각",
-];
-
-/** 서술형 채점 기준 골격 */
-function draftRubric(level: Level) {
-  const s = levelSpecs[level];
-  return [
-    `상 (${s.points}점) — [   ]을(를) 정확히 ${s.verb}하고 근거를 두 가지 이상 들었다.`,
-    `중 — ${s.verb}은 맞으나 근거가 하나이거나 표현이 불완전하다.`,
-    `하 — ${s.verb}이 틀렸거나 근거를 들지 못했다.`,
-  ].join("\n");
-}
-
 /**
- * 초안을 만들어 저장소 맨 앞에 넣는다.
+ * 문항을 만들어 저장소 맨 앞에 넣는다.
  *
  * 전부 draft 상태로 들어간다. 만들자마자 검수로 넘기는 길은 두지 않는다 —
  * 그 길이 있으면 사람이 한 번도 안 읽은 문항이 검수 목록에 쌓인다.
  */
 export function generateItems(spec: GenerateSpec, author: string, authorName: string): ItemDraft[] {
   const list = read();
-  const grid = subskillsOf(spec.talent).find((s) => s.code === spec.subskill);
   const made: ItemDraft[] = [];
 
   let serial = list.filter((i) => i.subject === spec.subject).length;
@@ -938,7 +913,7 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
       serial += 1;
       const s = levelSpecs[level];
       const type = typeForLevel[level];
-      const gridLine = grid?.grid[level] ?? s.define;
+      const sample = pickSample(spec.subject, level, k);
 
       const item = fill({
         id: `IT-AI-${Date.now().toString(36).toUpperCase()}-${serial}`,
@@ -946,33 +921,40 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         subject: spec.subject,
         band: spec.band,
         grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
-        passage: "",
-        stem: draftStem(spec, level, gridLine),
-        choices: ["", "", "", ""],
-        answer: 0,
-        explain: "",
+        passage: sample.passage ?? "",
+        stem: sample.stem,
+        choices: sample.choices ?? ["", "", "", ""],
+        answer: sample.answer ?? 0,
+        explain: sample.explain,
         type,
-        shortAnswers: "",
-        rubric: type === "descriptive" || type === "essay" ? draftRubric(level) : "",
+        shortAnswers: sample.shortAnswers ?? "",
+        rubric: sample.rubric ?? "",
         assets: [],
         version: 1,
         unit: spec.unit.trim(),
         unitNo: spec.unitNo.trim(),
         standardCode: spec.standardCode.trim(),
+        standardText: sample.standardText,
+        tagADetail: sample.tagADetail,
         talent: spec.talent,
         subskill: spec.subskill,
         points: s.points,
         b: s.b,
         anchor: false,
-        /* 같은 단계를 여러 개 뽑으면 뼈대가 똑같이 나온다. 명세가 같으니 당연한데,
-           그대로 두면 소재까지 겹친 문항이 함께 올라간다. 몇 번째인지 적어 둔다. */
-        guidance:
-          (n > 1
-            ? `${level} ${n}개 중 ${k + 1}번째 — 다른 초안과 소재가 겹치지 않게 쓸 것\n`
-            : "") +
-          `${s.rule}\n금지: ${s.deny}` +
-          (spec.brief.trim() ? `\n출제 지시: ${spec.brief.trim()}` : ""),
-        distractorIntent: type === "choice" ? distractorPlan : [],
+        /* 출제자가 열었을 때 무엇부터 봐야 하는지. 태깅을 먼저 적는 것은, 축은
+           사람이 고르고 문항은 본에서 나오므로 둘이 어긋날 수 있는 자리라서다. */
+        guidance: [
+          "AI가 만든 문항입니다. 그대로 두지 말고 아래를 확인하고 고쳐 주세요.",
+          `· 태깅 — 고른 축(${spec.talent} · ${spec.subskill})이 이 문항이 실제로 재는 것과 맞는가`,
+          `· 성취기준 — ${spec.standardCode.trim()}의 내용과 아래 성취기준 내용이 맞는가`,
+          `· 단계 — ${s.rule}`,
+          `· 금지 — ${s.deny}`,
+          n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
+          spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        distractorIntent: sample.distractorIntent ?? [],
         level,
         author,
         authorName,

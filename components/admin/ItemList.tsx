@@ -122,7 +122,7 @@ export default function ItemList() {
         action={
           <>
             <Link href="/admin/authoring/generate" className={a.btnGhost}>
-              AI로 초안 만들기
+              AI로 문항 출제
             </Link>
             <button type="button" onClick={create} className={a.btnPrimary}>
               + 새 문항 등록
@@ -227,7 +227,7 @@ function Row({ item }: { item: ItemDraft }) {
           </span>
           {/* AI가 낸 초안인지 목록에서 바로 보이게 한다 — 손볼 양이 다르다 */}
           {item.origin === "ai" && (
-            <span className="mt-0.5 block adm-t-xs font-bold text-violet-700">AI 초안</span>
+            <span className="mt-0.5 block adm-t-xs font-bold text-violet-700">AI 출제</span>
           )}
         </span>
 

@@ -30,15 +30,15 @@ import { PageHead, Callout } from "./Parts";
 import * as a from "./ui";
 
 /**
- * EXP-02-2 AI 문항 초안 생성.
+ * EXP-02-2 AI 문항 생성.
  *
- * 무엇을 뽑을지 정하는 화면이다. 「몇 문항」을 총량 하나로 받지 않고 단계별로
+ * 무엇을 출제할지 정하는 화면이다. 「몇 문항」을 총량 하나로 받지 않고 단계별로
  * 받는다 — 발주서가 검사지를 S1~S4 구성비로 짜기 때문에, 총 12문항이 아니라
  * S1 3 · S2 4 · S3 3 · S4 2가 실제로 필요한 값이다.
  *
- * AI가 어디까지 하는지는 lib/itemStore.ts generateItems 주석에 적어 두었고,
- * 화면에서도 숨기지 않고 먼저 적는다. 보기와 정답이 비어 있는 것을 결함으로
- * 읽으면 안 되기 때문이다 — 사람이 채워야 제출 칸이 열린다.
+ * 나온 문항이 어디로 가는지를 폼보다 먼저 적는다. 완성된 문항이 나오면 그대로
+ * 제출해도 되는 줄 알기 쉬운데, 여기서는 작성 중으로 들어가 출제자가 고치고
+ * 체크리스트를 짚어야 제출 칸이 열린다(lib/itemStore.ts generateItems 주석).
  */
 
 const EMPTY_COUNTS: Record<Level, number> = { S1: 0, S2: 0, S3: 0, S4: 0 };
@@ -108,20 +108,20 @@ export default function ItemGenerator() {
 
       <PageHead
         id="EXP-02-2"
-        title="AI 문항 초안 생성"
-        lead="조건을 정하면 그 조건에 맞는 문항 초안을 한 번에 만듭니다. 전부 「작성 중」으로 들어가고, 사람이 채워야 제출할 수 있습니다."
+        title="AI 문항 생성"
+        lead="조건을 정하면 그 조건에 맞는 문항을 한 번에 출제합니다. 지문·보기·정답·해설·채점 기준까지 채워져 나옵니다."
       />
 
       <div className="mb-6">
-        <Callout title="AI가 하는 일과 사람이 하는 일">
+        <Callout title="나온 문항은 그대로 나가지 않습니다">
           <p>
-            <b className="font-bold">AI가 냅니다</b> — 문항 ID · 형식 · 배점 · b모수 · 이중태그,
-            단계에 맞는 발문 뼈대, 오답을 어떤 의도로 깔지, 채점 기준 골격.
+            만들어진 문항은 <b className="font-bold">「작성 중」</b>으로 들어갑니다. 출제자가 열어
+            보고 고친 뒤 제출 전 체크리스트를 직접 짚어야 제출 칸이 열리고, 제출한 뒤에는 다른
+            사람이 내용·태깅·윤리 3단 검수를 합니다.
           </p>
           <p className="mt-1.5">
-            <b className="font-bold">사람이 씁니다</b> — 지문 · 보기 넷 · 정답 · 허용 답안 · 해설.
-            이 칸이 비어 있는 것은 결함이 아니라 일부러 둔 것입니다. 채워야 제출 칸이 열리고, 제출한
-            뒤에는 다른 사람이 3단 검수를 합니다.
+            특히 <b className="font-bold">태깅</b>을 확인해 주세요. 재능 축은 여기서 고르고 문항은
+            생성되므로 둘이 어긋날 수 있습니다. 문항마다 유의사항에 무엇을 볼지 적어 둡니다.
           </p>
         </Callout>
       </div>
@@ -180,11 +180,21 @@ export default function ItemGenerator() {
           </Field>
 
           <Field label="단원">
-            <div className="flex gap-2">
+            {/*
+              폭은 칸으로 나누고 입력에는 손대지 않는다.
+
+              처음에는 flex에 두고 번호 쪽에 w-28을 덧붙였는데, a.input이 이미 w-full을
+              달고 있어서 한 요소에 w-full과 w-28이 같이 붙었다. 둘은 특이도가 같아
+              class 문자열 순서가 아니라 스타일시트 순서로 이기고 지는데, 여기서는
+              w-full이 이겨서 번호 칸이 403px, 이름 칸이 34px가 됐다.
+              grid로 자리를 정하면 둘 다 자기 칸에서 w-full이면 된다.
+            */}
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
               <input
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="예: 낱말의 의미 관계"
+                aria-label="단원 이름"
                 className={a.input}
               />
               <input
@@ -193,7 +203,7 @@ export default function ItemGenerator() {
                 placeholder="번호 04"
                 inputMode="numeric"
                 aria-label="단원 번호"
-                className={`${a.input} w-28 shrink-0`}
+                className={a.input}
               />
             </div>
             <p className={`${a.hint} mt-2`}>단원 번호는 문항 ID에 두 자리로 들어갑니다.</p>
@@ -245,22 +255,25 @@ export default function ItemGenerator() {
                       <label className="sr-only" htmlFor={`n-${l}`}>
                         {l} 문항 수
                       </label>
-                      <input
-                        id={`n-${l}`}
-                        type="number"
-                        min={0}
-                        max={GENERATE_MAX}
-                        value={counts[l] || ""}
-                        onChange={(e) => {
-                          const v = Math.max(
-                            0,
-                            Math.min(GENERATE_MAX, Number(e.target.value) || 0),
-                          );
-                          setCounts((p) => ({ ...p, [l]: v }));
-                          setErrors([]);
-                        }}
-                        className={`${a.input} w-24 text-right`}
-                      />
+                      {/* 폭은 감싼 칸이 정한다 — a.input의 w-full과 다투지 않게 */}
+                      <span className="block w-20 shrink-0">
+                        <input
+                          id={`n-${l}`}
+                          type="number"
+                          min={0}
+                          max={GENERATE_MAX}
+                          value={counts[l] || ""}
+                          onChange={(e) => {
+                            const v = Math.max(
+                              0,
+                              Math.min(GENERATE_MAX, Number(e.target.value) || 0),
+                            );
+                            setCounts((p) => ({ ...p, [l]: v }));
+                            setErrors([]);
+                          }}
+                          className={`${a.input} text-right`}
+                        />
+                      </span>
                       <span className={a.hint}>문항</span>
                     </span>
                   ) : (
@@ -305,7 +318,7 @@ export default function ItemGenerator() {
 
       <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-exam-line pt-6">
         <button type="button" onClick={run} className={total > 0 ? a.btnPrimary : a.btnDisabled}>
-          초안 {total > 0 ? `${total}문항 ` : ""}만들기
+          {total > 0 ? `${total}문항 ` : ""}출제하기
         </button>
         <Link href="/admin/authoring" className={a.btnGhost}>
           취소
