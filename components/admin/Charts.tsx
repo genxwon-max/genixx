@@ -28,14 +28,22 @@ export function ColumnChart({
   subName,
   unit,
   caption,
+  height = "h-44",
+  numbers = true,
 }: {
   data: Column[];
   totalName: string;
   subName?: string;
   unit: string;
   caption: string;
+  /** 막대 높이. 대시보드 첫 화면에 놓는 것은 낮게 잡는다. */
+  height?: string;
+  /** 아래 「숫자로 보기」 표를 붙일지 — 이미 표가 딸린 자리에서는 끈다 */
+  numbers?: boolean;
 }) {
   const max = Math.max(1, ...data.map((d) => d.total));
+  /** 서넛뿐이면 자리가 넉넉하니 막대마다 값을 늘 적는다 */
+  const few = data.length <= 4;
 
   return (
     <figure>
@@ -59,13 +67,17 @@ export function ColumnChart({
         className="mt-4"
       >
         {/* 막대 */}
-        <div className="flex h-44 items-end gap-1 sm:gap-1.5">
+        <div className={`flex ${height} items-end ${few ? "gap-3" : "gap-1 sm:gap-1.5"}`}>
           {data.map((d) => {
             const h = (d.total / max) * 100;
             const sh = d.total ? ((d.sub ?? 0) / d.total) * 100 : 0;
             return (
               <div key={d.key} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-                <span className="mb-1 hidden text-center adm-t-xs tabular-nums text-exam-muted lg:block">
+                <span
+                  className={`mb-1 text-center adm-t-xs tabular-nums text-exam-muted ${
+                    few ? "" : "hidden lg:block"
+                  }`}
+                >
                   {d.total.toLocaleString("ko-KR")}
                 </span>
                 <div
@@ -91,7 +103,9 @@ export function ColumnChart({
         </div>
 
         {/* 축 — 막대와 같은 flex 규칙이라 칸이 어긋나지 않는다 */}
-        <div className="mt-2 flex gap-1 border-t border-exam-line pt-2 sm:gap-1.5">
+        <div
+          className={`mt-2 flex border-t border-exam-line pt-2 ${few ? "gap-3" : "gap-1 sm:gap-1.5"}`}
+        >
           {data.map((d, i) => (
             <span
               key={d.key}
@@ -105,7 +119,7 @@ export function ColumnChart({
         </div>
       </div>
 
-      <Numbers data={data} totalName={totalName} subName={subName} unit={unit} />
+      {numbers && <Numbers data={data} totalName={totalName} subName={subName} unit={unit} />}
     </figure>
   );
 }

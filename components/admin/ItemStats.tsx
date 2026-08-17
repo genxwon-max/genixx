@@ -50,35 +50,32 @@ export default function ItemStats() {
   }));
 
   return (
-    <section className="mt-7">
+    <section>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className={a.cardTitle}>문항 은행</h2>
+        <h2 className={a.cardTitle}>문항 은행 {total}개</h2>
         <Link href="/admin/authoring" className="adm-t-sm font-bold text-brand-700 hover:underline">
           출제 워크벤치로 →
         </Link>
       </div>
 
-      <p className={`${a.bodyText} mt-1.5`}>
-        지금 등록된 문항은 모두 <b className="font-bold text-exam-text">{total}개</b>이고, 이 중
-        검수를 통과해 검사지에 넣을 수 있는 것은{" "}
-        <b className="font-bold text-exam-text">{approved}개</b>입니다.
+      {/* 상태는 막대 넉 줄로 눕히지 않고 한 줄로 적는다. 첫 화면에서 알아야 할 것은
+          「검사지에 넣을 수 있는 것이 몇 개인가」 하나뿐이다. */}
+      <p className={`${a.bodyText} mt-1`}>
+        {byState.map((s, i) => (
+          <span key={s.key}>
+            {i > 0 && " · "}
+            {s.label} <b className="font-bold text-exam-text">{s.value}</b>
+          </span>
+        ))}
       </p>
 
-      <div className="mt-5 grid gap-x-10 gap-y-6 lg:grid-cols-2">
-        <div>
-          <h3 className={a.label}>과목별</h3>
-          <div className="mt-3">
-            <BarRows rows={bySubject} unit="개" emptyText="아직 등록된 문항이 없습니다." />
-          </div>
-        </div>
-
-        <div>
-          <h3 className={a.label}>상태별</h3>
-          <div className="mt-3">
-            <BarRows rows={byState} unit="개" emptyText="아직 등록된 문항이 없습니다." />
-          </div>
-        </div>
+      <div className="mt-4">
+        <BarRows rows={bySubject} unit="개" emptyText="아직 등록된 문항이 없습니다." />
       </div>
+
+      <p className="mt-3 adm-t-sm text-exam-muted">
+        검수를 통과해 검사지에 넣을 수 있는 것은 {approved}개입니다.
+      </p>
     </section>
   );
 }
