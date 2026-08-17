@@ -175,7 +175,7 @@ export default function GradingQueue() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="adm-t-sm font-bold text-exam-muted">검토중 · {opened.id}</p>
-              <h2 className="mt-1 adm-t-xl font-black text-exam-text">
+              <h2 className={`${a.cardTitle} mt-1`}>
                 응시번호 {opened.seat} · {opened.grade} · {opened.org}
               </h2>
               <p className="mt-1.5 adm-t-sm font-bold text-brand-700">

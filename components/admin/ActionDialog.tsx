@@ -61,7 +61,7 @@ export default function ActionDialog({
         tabIndex={-1}
         className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border border-exam-line bg-white p-6 outline-none sm:p-8"
       >
-        <h2 className="adm-t-xl font-black text-exam-text">
+        <h2 className={a.pageTitle}>
           {target}
           <br />
           {spec.verb}할까요?
@@ -110,7 +110,7 @@ export default function ActionDialog({
           />
         </label>
 
-        <p className="mt-3 adm-t-sm leading-relaxed text-exam-muted">
+        <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">
           기록에는 이렇게 남습니다 — <b className="text-exam-text">{reason}</b>
         </p>
 

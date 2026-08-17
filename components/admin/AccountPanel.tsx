@@ -81,14 +81,14 @@ export default function AccountPanel() {
               </div>
             ))}
           </dl>
-          <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-4 adm-t-md leading-relaxed text-exam-muted">
             역할을 바꾸려면 슈퍼 관리자에게 요청하세요. 권한 변경은 전건 감사 로그에 남습니다.
           </p>
         </section>
 
         <section className={`${a.panel} p-5 sm:p-6`}>
           <h2 className={a.cardTitle}>비밀번호 바꾸기</h2>
-          <p className="mt-1.5 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-1.5 adm-t-md leading-relaxed text-exam-muted">
             {prefs.temp
               ? "지금은 발급받은 임시 비밀번호를 쓰고 계십니다. 바꾸지 않아도 콘솔은 그대로 쓰실 수 있습니다."
               : "필요할 때 바꾸시면 됩니다."}

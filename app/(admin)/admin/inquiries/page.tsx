@@ -97,7 +97,7 @@ export default function InquiriesPage() {
           </table>
         </TableCard>
 
-        <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+        <p className="mt-4 adm-t-md leading-relaxed text-exam-muted">
           접속코드 분실 문의는 <b className="text-exam-text">학생·접속코드</b> 화면에서 코드를 다시
           발급한 뒤, 발급한 코드가 아니라 <b className="text-exam-text">발급했다는 사실</b>만 답변에
           적습니다. 코드는 보호자 화면에서 직접 확인하도록 안내합니다.

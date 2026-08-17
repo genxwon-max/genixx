@@ -219,7 +219,7 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
                       <p className="adm-t-md font-bold text-exam-text">
                         {i + 1}. {c.label}
                       </p>
-                      <p className="mt-1 adm-t-sm leading-relaxed text-exam-muted">{c.desc}</p>
+                      <p className="mt-1 adm-t-md leading-relaxed text-exam-muted">{c.desc}</p>
 
                       <div className="mt-2.5 flex gap-2">
                         <Choice
@@ -606,7 +606,7 @@ function ItemBody({ item }: { item: ItemDraft }) {
         </div>
       )}
 
-      <p className="mt-4 border-t border-exam-line pt-3 adm-t-sm leading-relaxed text-exam-muted">
+      <p className="mt-4 border-t border-exam-line pt-3 adm-t-md leading-relaxed text-exam-muted">
         해설 — {item.explain || "해설을 쓰지 않았습니다."}
       </p>
 

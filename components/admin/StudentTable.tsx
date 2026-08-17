@@ -162,9 +162,7 @@ export default function StudentTable() {
                       {shown ? showBirth(s.birth) : maskBirth(s.birth)}
                     </span>
                   </td>
-                  <td className={a.td}>
-                    {[s.grade, s.klass].filter(Boolean).join(" · ") || "—"}
-                  </td>
+                  <td className={a.td}>{[s.grade, s.klass].filter(Boolean).join(" · ") || "—"}</td>
                   <td className={a.td}>{s.org}</td>
                   <td className={a.td}>
                     <span className="font-bold tracking-wider tabular-nums text-exam-text">

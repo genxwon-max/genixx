@@ -147,7 +147,7 @@ function ConfirmDialog({
       }}
     >
       <div className="w-full max-w-xl rounded-lg border border-exam-line bg-white p-6 sm:p-8">
-        <h2 className="adm-t-xl font-black text-exam-text">
+        <h2 className={a.pageTitle}>
           {approve ? "이 신청을 승인할까요?" : "이 신청을 반려할까요?"}
         </h2>
         <p className={`${a.bodyText} mt-3`}>

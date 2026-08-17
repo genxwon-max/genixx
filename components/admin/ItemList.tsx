@@ -282,15 +282,7 @@ function Picker({
   );
 }
 
-function Pager({
-  page,
-  pages,
-  onGo,
-}: {
-  page: number;
-  pages: number;
-  onGo: (p: number) => void;
-}) {
+function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (p: number) => void }) {
   const from = Math.max(1, Math.min(page - 2, pages - 4));
   const to = Math.min(pages, from + 4);
   const nums = [];

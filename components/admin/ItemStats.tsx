@@ -30,7 +30,6 @@ export default function ItemStats() {
   }
 
   const total = items.length;
-  const approved = items.filter((i) => i.state === "approved").length;
 
   const bySubject = SUBJECTS.map((s) => {
     const rows = items.filter((i) => i.subject === s);
@@ -72,10 +71,6 @@ export default function ItemStats() {
       <div className="mt-4">
         <BarRows rows={bySubject} unit="개" emptyText="아직 등록된 문항이 없습니다." />
       </div>
-
-      <p className="mt-3 adm-t-sm text-exam-muted">
-        검수를 통과해 검사지에 넣을 수 있는 것은 {approved}개입니다.
-      </p>
     </section>
   );
 }

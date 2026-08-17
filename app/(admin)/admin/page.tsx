@@ -174,7 +174,7 @@ export default function AdminHome() {
           <summary className="cursor-pointer adm-t-sm font-bold text-brand-700">
             문항이 도는 길 — 누가 무엇을 확정하는지
           </summary>
-          <p className="mt-3 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">
             AI가 초안을 내도 확정은 사람이 합니다. 출제자와 검수자는 권한이 갈려 있어, 자기가 쓴
             문항을 자기가 승인할 수 없습니다.
           </p>
@@ -202,7 +202,7 @@ export default function AdminHome() {
             ))}
           </ol>
 
-          <p className="mt-3 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">
             반려되면 2번에서 1번으로 되돌아갑니다. 사유 코드와 코멘트가 문항에 붙어 출제자에게
             그대로 전달됩니다.
           </p>

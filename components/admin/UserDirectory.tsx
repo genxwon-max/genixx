@@ -345,7 +345,7 @@ function StudentList() {
         }
       />
 
-      <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+      <p className="mt-4 adm-t-md leading-relaxed text-exam-muted">
         학생은 따로 가입하지 않습니다. 보호자 계정 안의 프로필로 등록되고, 여기 접속코드와
         생년월일로 응시 화면에 들어갑니다. 생년월일은 이 목록에 싣지 않습니다 —{" "}
         <b className="text-exam-text">사유를 남기고 여는 개인정보 열람</b>에서만 보입니다.
@@ -439,7 +439,7 @@ function TeacherList({ onDone }: { onDone: (m: string) => void }) {
         }
       />
 
-      <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+      <p className="mt-4 adm-t-md leading-relaxed text-exam-muted">
         교사 계정은 소속 기관 관리자의 승인 뒤에 열립니다. 승인 전에는 학생 자료에 닿지 못합니다.
       </p>
 

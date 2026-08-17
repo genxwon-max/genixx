@@ -122,7 +122,7 @@ export function Callout({
   return (
     <div className={`border-l-4 pl-4 ${rule}`}>
       {title && <p className={`adm-t-md font-bold ${head}`}>{title}</p>}
-      <div className={`${title ? "mt-1.5 " : ""}adm-t-sm leading-relaxed text-exam-text`}>
+      <div className={`${title ? "mt-1.5 " : ""}adm-t-md leading-relaxed text-exam-text`}>
         {children}
       </div>
     </div>
@@ -140,10 +140,13 @@ export function Progress({ value, total, label }: { value: number; total: number
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="adm-t-sm font-bold text-exam-text">{label}</span>
-        <span className="adm-t-sm font-bold tabular-nums text-exam-text">
-          {value.toLocaleString("ko-KR")} / {total.toLocaleString("ko-KR")}
-          <span className="ml-2 text-exam-muted">{pct}%</span>
+        {/* 이름은 이름표 칸, 숫자는 읽는 글 칸 — 숫자가 이 줄의 내용이다 */}
+        <span className={a.label}>{label}</span>
+        <span className={a.strongText}>
+          <span className="tabular-nums">
+            {value.toLocaleString("ko-KR")} / {total.toLocaleString("ko-KR")}
+          </span>
+          <span className="ml-2 adm-t-sm text-exam-muted">{pct}%</span>
         </span>
       </div>
       <div className="mt-2 h-3 overflow-hidden rounded-full bg-exam-raised">

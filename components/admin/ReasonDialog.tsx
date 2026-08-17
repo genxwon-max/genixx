@@ -57,7 +57,7 @@ export default function ReasonDialog({
         ref={boxRef}
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-exam-line bg-white p-6 sm:p-8"
       >
-        <h2 id="reason-title" className="adm-t-xl font-black text-exam-text">
+        <h2 id="reason-title" className={a.pageTitle}>
           개인정보를 열기 전에 사유를 적어 주세요
         </h2>
         <p className={`${a.bodyText} mt-2.5`}>

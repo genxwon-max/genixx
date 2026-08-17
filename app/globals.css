@@ -272,30 +272,52 @@ body {
    상단 바의 '글자 크게' 버튼이 --adm-zoom 만 바꾸면 콘솔 전체가
    같은 비율로 커지도록 모든 크기를 이 변수에 곱해 둔다.
    ───────────────────────────────────────────────────────────── */
+/*
+ * 눈금은 다섯이고, 사이가 벌어져 있어야 한다.
+ *
+ * 처음에는 22 / 18 / 16 / 15 / 14 였다. 아래 셋이 1px씩 붙어 있어서 무엇을 골라도
+ * 화면에서 차이가 안 났고, 그러다 보니 화면마다 아무거나 집어 쓰다가 탭마다 크기가
+ * 어긋났다. 규칙이 없어서가 아니라 눈금이 없어서 생긴 일이다.
+ *
+ * 20 / 17 / 15 / 13 / 12로 다시 끊는다. 한 칸 건너뛰면 눈에 보인다.
+ *
+ * ── 어느 칸에 무엇을 쓰는가 ──
+ *
+ *   xl 20  화면 제목. 한 화면에 하나뿐이다(PageHead).
+ *   lg 17  구역 제목과 강조하는 숫자.
+ *   md 15  읽는 글. 표 셀·문단·목록 본문·입력값·버튼. **기본값이다.**
+ *   sm 13  그 글에 딸린 이름표. 표 머리글·폼 라벨·꼬리표·곁들이는 설명.
+ *   xs 12  뱃지 안 글자. 문장에는 쓰지 않는다.
+ *
+ * ⚠ 사람이 읽고 판단하는 글은 md(15) 아래로 내리지 않는다. sm(13)은 md 글에
+ *   딸려 나오는 이름표 자리이지, 본문을 줄이는 데 쓰는 칸이 아니다. 주 사용자가
+ *   50~60대 운영자·평가위원이라 여기가 바닥이고, 더 필요하면 상단 바의 글자 크기가
+ *   1.6배까지 올린다(--adm-zoom).
+ */
 @utility adm-t-xl {
-  font-size: calc(1.375rem * var(--adm-zoom, 1));
-  line-height: 1.4;
+  font-size: calc(1.25rem * var(--adm-zoom, 1));
+  line-height: 1.35;
   letter-spacing: -0.02em;
 }
 @utility adm-t-lg {
-  font-size: calc(1.125rem * var(--adm-zoom, 1));
-  line-height: 1.5;
+  font-size: calc(1.0625rem * var(--adm-zoom, 1));
+  line-height: 1.45;
   letter-spacing: -0.012em;
 }
-/* 본문·표 셀 기본 */
+/* 읽는 글 — 기본값 */
 @utility adm-t-md {
-  font-size: calc(1rem * var(--adm-zoom, 1));
+  font-size: calc(0.9375rem * var(--adm-zoom, 1));
   line-height: 1.6;
 }
-/* 표 머리글·보조 설명 — 이보다 작게는 쓰지 않는다 */
+/* 딸린 이름표 — 본문을 이 칸으로 내리지 않는다 */
 @utility adm-t-sm {
-  font-size: calc(0.9375rem * var(--adm-zoom, 1));
-  line-height: 1.55;
+  font-size: calc(0.8125rem * var(--adm-zoom, 1));
+  line-height: 1.5;
 }
-/* 배지·라벨 최소 크기 */
+/* 뱃지 안 글자 */
 @utility adm-t-xs {
-  font-size: calc(0.875rem * var(--adm-zoom, 1));
-  line-height: 1.45;
+  font-size: calc(0.75rem * var(--adm-zoom, 1));
+  line-height: 1.4;
 }
 /**
  * 관리자 콘솔 안에 놓는 shadcn 입력·선택 상자의 글자 크기.

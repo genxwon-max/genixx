@@ -53,7 +53,8 @@ export default function RoundsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="adm-t-xl font-black text-exam-text">{current.label}</h2>
+                {/* 구역 제목은 lg. xl은 화면 제목 한 자리에만 쓴다 */}
+                <h2 className={a.cardTitle}>{current.label}</h2>
                 <Badge {...roundState[current.state]} />
               </div>
               <p className="mt-1.5 adm-t-md text-exam-muted">

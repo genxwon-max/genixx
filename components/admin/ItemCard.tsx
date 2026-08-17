@@ -126,9 +126,7 @@ export default function ItemCard({ id }: { id: string }) {
           >
             ← 문항 목록
           </Link>
-          <h1 className="mt-2 adm-t-xl font-black tracking-tight text-exam-text">
-            {item.code || "문항 ID 미정"}
-          </h1>
+          <h1 className={`${a.pageTitle} mt-2`}>{item.code || "문항 ID 미정"}</h1>
           <p className="mt-1.5 adm-t-sm text-exam-muted">
             {item.authorName} · 마지막 저장 {item.updatedAt} · v{item.version}
           </p>
@@ -173,8 +171,8 @@ export default function ItemCard({ id }: { id: string }) {
       {mayWrite && !mine && (
         <div className="mb-5">
           <Callout tone="info" title="다른 출제자의 문항입니다">
-            {item.authorName} 위원이 쓴 문항이라 읽기만 됩니다. 고쳐야 한다면 검수 코멘트로
-            남기거나 관리자에게 요청하세요.
+            {item.authorName} 위원이 쓴 문항이라 읽기만 됩니다. 고쳐야 한다면 검수 코멘트로 남기거나
+            관리자에게 요청하세요.
           </Callout>
         </div>
       )}
@@ -225,7 +223,11 @@ export default function ItemCard({ id }: { id: string }) {
 
       <div className="grid gap-6">
         {/* ① 문항 ID */}
-        <Section no="①" title="문항 ID" note="학년 + 교과 + 단원 - 단계 - 일련번호 (예: 4K02-S2-001)">
+        <Section
+          no="①"
+          title="문항 ID"
+          note="학년 + 교과 + 단원 - 단계 - 일련번호 (예: 4K02-S2-001)"
+        >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="학년군">
               <select
@@ -333,7 +335,9 @@ export default function ItemCard({ id }: { id: string }) {
                   <span className="block adm-t-md font-black">
                     {l} {levelSpecs[l].name}
                   </span>
-                  <span className={`mt-0.5 block adm-t-xs ${on ? "text-brand-100" : "text-exam-muted"}`}>
+                  <span
+                    className={`mt-0.5 block adm-t-xs ${on ? "text-brand-100" : "text-exam-muted"}`}
+                  >
                     {ok ? levelSpecs[l].verb : `${talent.name}은 출제 불가`}
                   </span>
                 </button>
@@ -344,13 +348,11 @@ export default function ItemCard({ id }: { id: string }) {
           <p className="mt-3 adm-t-sm text-exam-text">
             <b>{spec.define}</b> — {spec.rule}
           </p>
-          {talent.scopeNote && (
-            <p className="mt-2 adm-t-sm text-exam-muted">{talent.scopeNote}</p>
-          )}
+          {talent.scopeNote && <p className="mt-2 adm-t-sm text-exam-muted">{talent.scopeNote}</p>}
 
           <div className="mt-4">
             <Foldable title="단계를 어떻게 정하는가 — 3문 판별 절차 (§1.2)">
-              <p className="adm-t-sm leading-relaxed text-exam-muted">
+              <p className="adm-t-md leading-relaxed text-exam-muted">
                 동사 해석이 아니라 판별 절차로 정합니다. 소재·난이도·형식은 보지 않고 「학생이
                 무엇을 하는가」만 봅니다.
               </p>
@@ -366,7 +368,7 @@ export default function ItemCard({ id }: { id: string }) {
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 adm-t-sm leading-relaxed text-exam-muted">{decisiveRule}</p>
+              <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">{decisiveRule}</p>
               <dl className="mt-4 space-y-2 border-t border-exam-line pt-3">
                 <Def k="허용 조작" v={spec.allow} />
                 <Def k="금지 조작" v={spec.deny} />
@@ -468,7 +470,7 @@ export default function ItemCard({ id }: { id: string }) {
           </div>
 
           {sub && (
-            <p className="mt-3 border-l-4 border-brand-700 pl-4 adm-t-sm leading-relaxed text-exam-text">
+            <p className="mt-3 border-l-4 border-brand-700 pl-4 adm-t-md leading-relaxed text-exam-text">
               <b>
                 {item.level}에서의 {sub.name}
               </b>{" "}
@@ -483,7 +485,7 @@ export default function ItemCard({ id }: { id: string }) {
 
           <div className="mt-4">
             <Foldable title="부태그 — 두 영역을 불가피하게 걸칠 때만">
-              <p className="adm-t-sm leading-relaxed text-exam-muted">
+              <p className="adm-t-md leading-relaxed text-exam-muted">
                 점수는 주태그에만 귀속됩니다. 판별표로도 결정되지 않으면 임의로 태깅하지 말고
                 출제본부에 질의하세요.
               </p>
@@ -664,9 +666,7 @@ export default function ItemCard({ id }: { id: string }) {
                         set({ distractorIntent: next });
                       }}
                       disabled={!editable || item.answer === n}
-                      placeholder={
-                        item.answer === n ? "정답입니다" : "이 오답이 잡는 오개념"
-                      }
+                      placeholder={item.answer === n ? "정답입니다" : "이 오답이 잡는 오개념"}
                       className={`${a.input} min-w-0 flex-1 basis-48`}
                     />
                   </li>
@@ -707,9 +707,7 @@ export default function ItemCard({ id }: { id: string }) {
                   onChange={(e) => set({ rubric: e.target.value })}
                   disabled={!editable}
                   rows={5}
-                  placeholder={
-                    "판단 1점 + 예시 제시 1점 + 까닭 설명 1점\n인정 예: …\n불인정 예: …"
-                  }
+                  placeholder={"판단 1점 + 예시 제시 1점 + 까닭 설명 1점\n인정 예: …\n불인정 예: …"}
                   className={a.input}
                 />
               </Field>
@@ -755,7 +753,11 @@ export default function ItemCard({ id }: { id: string }) {
           <ul className="border-t border-exam-line">
             {submitChecklist.map((c) => {
               const auto =
-                c.id === "code" ? std.ok : c.id === "tagb" ? levelAllowed(item.talent, item.level) : null;
+                c.id === "code"
+                  ? std.ok
+                  : c.id === "tagb"
+                    ? levelAllowed(item.talent, item.level)
+                    : null;
               const on = c.auto ? !!auto : item.checks.includes(c.id);
               return (
                 <li key={c.id} className="border-b border-exam-line">
@@ -778,7 +780,7 @@ export default function ItemCard({ id }: { id: string }) {
                       disabled={!editable && !c.auto}
                       className="mt-0.5 h-5 w-5 shrink-0 accent-[#1b2a6b]"
                     />
-                    <span className="adm-t-sm leading-relaxed text-exam-text">
+                    <span className="adm-t-md leading-relaxed text-exam-text">
                       {c.text}
                       {c.auto && (
                         <span className="ml-2 adm-t-xs text-exam-muted">
@@ -949,7 +951,7 @@ function Def({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex flex-wrap gap-x-3">
       <dt className="w-24 shrink-0 adm-t-sm font-bold text-exam-text">{k}</dt>
-      <dd className="min-w-0 flex-1 adm-t-sm leading-relaxed text-exam-muted">{v}</dd>
+      <dd className="min-w-0 flex-1 adm-t-md leading-relaxed text-exam-muted">{v}</dd>
     </div>
   );
 }

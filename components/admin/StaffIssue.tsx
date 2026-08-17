@@ -85,7 +85,7 @@ export default function StaffIssue() {
           <h3 className="adm-t-lg font-black text-emerald-700">
             {issued.account.name} 계정을 만들었습니다
           </h3>
-          <p className="mt-1.5 adm-t-sm leading-relaxed text-exam-text">
+          <p className="mt-1.5 adm-t-md leading-relaxed text-exam-text">
             아래 임시 비밀번호를 본인에게 전달해 주세요. 이 창을 닫으면 다시 볼 수 없습니다 —
             저장하지 않기 때문입니다. 잊으면 재발급하시면 됩니다.
           </p>
@@ -181,7 +181,7 @@ export default function StaffIssue() {
             </label>
           </div>
 
-          <p className="mt-4 adm-t-sm leading-relaxed text-exam-muted">
+          <p className="mt-4 adm-t-md leading-relaxed text-exam-muted">
             고른 역할이 곧 권한입니다 — {roleOf(form.role).desc}
           </p>
 
