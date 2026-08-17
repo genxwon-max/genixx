@@ -178,7 +178,24 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
             아래는 기록이며 다시 결론을 낼 수는 없습니다.
           </Callout>
         </div>
-      ) : (
+      ) : null}
+
+      {/* AI가 낸 초안이면 검수자가 먼저 알아야 한다 — 어디를 볼지가 달라진다 */}
+      {item.origin === "ai" && (
+        <div className="mb-5">
+          <Callout title="AI 초안에서 출발한 문항입니다">
+            형식·배점·태깅은 AI가 명세대로 채웠고, 지문·보기·정답은 출제자가 썼습니다. 형식이 맞는
+            것과 학년에 맞는 것은 다른 문제이니 3차 윤리·편향과 학년 이독성을 특히 보아 주세요.
+            {item.aiBrief && (
+              <span className="mt-1.5 block">
+                <b className="font-bold">출제 지시</b> — {item.aiBrief}
+              </span>
+            )}
+          </Callout>
+        </div>
+      )}
+
+      {!done && (
         <div className="mb-5">
           <Callout tone={daysWaiting(item) >= 5 ? "warn" : "info"}>
             {item.updatedAt}에 제출되어 {daysWaiting(item)}일째 기다리고 있습니다.

@@ -116,6 +116,9 @@ export default function ReviewList() {
           >
             {i.code || i.id}
           </Link>
+          {i.origin === "ai" && (
+            <span className="mt-0.5 block adm-t-xs font-bold text-violet-700">AI 초안</span>
+          )}
           {i.reviews.length > 0 && (
             <span className="mt-0.5 block adm-t-xs font-bold text-amber-700">
               {i.reviews.length + 1}회차 검수

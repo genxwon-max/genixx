@@ -29,6 +29,8 @@ import {
 
 export type ItemState = "draft" | "submitted" | "rejected" | "approved";
 
+export type ItemOrigin = "human" | "ai";
+
 /**
  * 문제 유형. 채점 방식이 갈리므로 문항을 쓸 때 가장 먼저 정한다.
  *  · 객관식 — 보기 중 하나. AI가 전수 채점한다.
@@ -184,6 +186,16 @@ export type ItemDraft = {
   authorName: string;
   state: ItemState;
   comments: ItemComment[];
+  /**
+   * 누가 낸 초안인가.
+   *
+   * 검수자가 이걸 모르면 안 된다. AI가 낸 틀은 사람이 쓴 것과 걸리는 자리가 달라서
+   * (형식은 맞는데 학년 어휘가 튀거나, 태깅은 맞는데 소재가 겹치거나) 어디를 먼저
+   * 볼지가 바뀐다. 진단 윤리 헌장이 AI 산출물 고지를 요구하기도 한다.
+   */
+  origin: ItemOrigin;
+  /** AI에게 무엇을 시켰는가 — 초안이 이상할 때 지시문부터 본다 */
+  aiBrief?: string;
   /** 끝난 검수 이력 — 승인이든 반려든 회차별로 쌓인다 */
   reviews: ReviewRecord[];
   /** 쓰다 만 검수. 승인·반려로 결론이 나면 지운다. */
@@ -736,6 +748,7 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
     tagA: raw.tagA ?? "",
     tagB: raw.tagB ?? "",
     comments: raw.comments ?? [],
+    origin: raw.origin ?? "human",
     reviews: raw.reviews ?? [],
     assets: raw.assets ?? [],
   };
@@ -810,6 +823,173 @@ export function addItem(author: string, authorName: string): ItemDraft {
   });
   write([item, ...list]);
   return item;
+}
+
+/* ───────────────────────── AI 초안 생성 (EXP-02-2) ─────────────────────────
+ *
+ * AI가 어디까지 하고 사람이 어디부터 하는지를 코드로 못 박아 둔다.
+ *
+ *   AI가 낸다   — 문항 ID·형식·배점·b모수·이중태그, 단계에 맞는 발문 뼈대,
+ *                 오답을 어떤 의도로 깔지, 채점 기준 골격, 출제 지침
+ *   사람이 쓴다 — 지문, 보기 넷, 정답, 허용 답안, 해설 본문
+ *
+ * 보기와 정답까지 지어내게 두지 않은 것은 일부러다. 그 자리가 채워진 채로 목록에
+ * 뜨면 훑어보고 제출하게 되고, 그러면 3단 검수가 AI 산출물의 첫 번째 사람 검토가
+ * 된다. 지금 구조는 「출제자가 채워야 제출 칸이 열리고, 그다음 다른 사람이 검수한다」로
+ * 사람 손이 두 번 닿는다. missingFields()가 그 문을 지킨다.
+ *
+ * 발문 뼈대는 지어낸 문장이 아니라 blueprint의 단계 정의와 세부기능 grid에서 만든다.
+ * 같은 명세를 보고 사람이 쓰는 것과 같은 자리에서 출발해야 검수 기준도 같아진다.
+ */
+
+export type GenerateSpec = {
+  subject: ItemDraft["subject"];
+  band: GradeBand;
+  talent: TalentId;
+  subskill: string;
+  unit: string;
+  unitNo: string;
+  standardCode: string;
+  /** 단계별 몇 문항을 뽑을지 */
+  counts: Record<Level, number>;
+  /** 소재·주의사항 지시문 */
+  brief: string;
+};
+
+/** 한 번에 뽑을 수 있는 최대 — 초안이 스물을 넘으면 사람이 손볼 수 없다 */
+export const GENERATE_MAX = 20;
+
+export const countOf = (counts: Record<Level, number>) =>
+  (Object.values(counts) as number[]).reduce((s, n) => s + (n || 0), 0);
+
+/** 생성 전에 걸러야 할 것 — 화면과 저장소가 같은 규칙을 본다 */
+export function checkSpec(spec: GenerateSpec): string[] {
+  const bad: string[] = [];
+  const total = countOf(spec.counts);
+
+  if (total === 0) bad.push("생성할 문항 수를 한 단계 이상 적어 주세요.");
+  if (total > GENERATE_MAX) bad.push(`한 번에 ${GENERATE_MAX}문항까지 뽑을 수 있습니다.`);
+  if (!spec.unit.trim()) bad.push("단원 이름을 적어 주세요.");
+  if (!/\d/.test(spec.unitNo)) bad.push("단원 번호를 숫자로 적어 주세요. 문항 ID에 들어갑니다.");
+
+  const code = checkStandardCode(spec.standardCode, spec.band);
+  if (!code.ok) bad.push(code.why);
+
+  /* 재능 축마다 다룰 수 있는 단계가 다르다 — 자기-성찰은 S4가 없다 */
+  for (const level of LEVELS_ALL) {
+    if ((spec.counts[level] ?? 0) > 0 && !levelAllowed(spec.talent, level)) {
+      bad.push(`${spec.talent} 축은 ${level} 문항을 만들 수 없습니다.`);
+    }
+  }
+  return bad;
+}
+
+const LEVELS_ALL: Level[] = ["S1", "S2", "S3", "S4"];
+
+/** 단계에 맞는 발문 뼈대 — 채울 자리는 […]로 남긴다 */
+function draftStem(spec: GenerateSpec, level: Level, gridLine: string) {
+  const s = levelSpecs[level];
+  const 소재 = spec.unit.trim() || "이 단원";
+  switch (level) {
+    case "S1":
+      return `다음 중 ${소재}에서 [   ]에 해당하는 것은 무엇입니까? (${gridLine})`;
+    case "S2":
+      return `${소재}의 [   ]에 대한 설명으로 알맞은 것은 무엇입니까? (${gridLine})`;
+    case "S3":
+      return `${소재}의 [   ]을(를) 보고, ${s.verb}한 결과를 쓰시오. (${gridLine})`;
+    default:
+      return `[   ]에 대한 주장이 옳은지 판단하고, 그렇게 생각한 까닭을 근거 두 가지를 들어 쓰시오. (${gridLine})`;
+  }
+}
+
+/** 오답을 어떤 의도로 깔지 — 선택형에서만 쓴다 */
+const distractorPlan = [
+  "표면만 닮은 것 — 같은 낱말·같은 그림이 들어가지만 묻는 것과 다르다",
+  "한 단계 위 조작을 해야 걸리는 것 — 이 단계에서 요구하면 단계 오류다",
+  "흔한 오개념 — 학년에서 실제로 자주 나오는 틀린 생각",
+];
+
+/** 서술형 채점 기준 골격 */
+function draftRubric(level: Level) {
+  const s = levelSpecs[level];
+  return [
+    `상 (${s.points}점) — [   ]을(를) 정확히 ${s.verb}하고 근거를 두 가지 이상 들었다.`,
+    `중 — ${s.verb}은 맞으나 근거가 하나이거나 표현이 불완전하다.`,
+    `하 — ${s.verb}이 틀렸거나 근거를 들지 못했다.`,
+  ].join("\n");
+}
+
+/**
+ * 초안을 만들어 저장소 맨 앞에 넣는다.
+ *
+ * 전부 draft 상태로 들어간다. 만들자마자 검수로 넘기는 길은 두지 않는다 —
+ * 그 길이 있으면 사람이 한 번도 안 읽은 문항이 검수 목록에 쌓인다.
+ */
+export function generateItems(spec: GenerateSpec, author: string, authorName: string): ItemDraft[] {
+  const list = read();
+  const grid = subskillsOf(spec.talent).find((s) => s.code === spec.subskill);
+  const made: ItemDraft[] = [];
+
+  let serial = list.filter((i) => i.subject === spec.subject).length;
+
+  for (const level of LEVELS_ALL) {
+    const n = spec.counts[level] ?? 0;
+    for (let k = 0; k < n; k += 1) {
+      serial += 1;
+      const s = levelSpecs[level];
+      const type = typeForLevel[level];
+      const gridLine = grid?.grid[level] ?? s.define;
+
+      const item = fill({
+        id: `IT-AI-${Date.now().toString(36).toUpperCase()}-${serial}`,
+        code: makeItemCode(spec.band, spec.subject, spec.unitNo, level, serial),
+        subject: spec.subject,
+        band: spec.band,
+        grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
+        passage: "",
+        stem: draftStem(spec, level, gridLine),
+        choices: ["", "", "", ""],
+        answer: 0,
+        explain: "",
+        type,
+        shortAnswers: "",
+        rubric: type === "descriptive" || type === "essay" ? draftRubric(level) : "",
+        assets: [],
+        version: 1,
+        unit: spec.unit.trim(),
+        unitNo: spec.unitNo.trim(),
+        standardCode: spec.standardCode.trim(),
+        talent: spec.talent,
+        subskill: spec.subskill,
+        points: s.points,
+        b: s.b,
+        anchor: false,
+        /* 같은 단계를 여러 개 뽑으면 뼈대가 똑같이 나온다. 명세가 같으니 당연한데,
+           그대로 두면 소재까지 겹친 문항이 함께 올라간다. 몇 번째인지 적어 둔다. */
+        guidance:
+          (n > 1
+            ? `${level} ${n}개 중 ${k + 1}번째 — 다른 초안과 소재가 겹치지 않게 쓸 것\n`
+            : "") +
+          `${s.rule}\n금지: ${s.deny}` +
+          (spec.brief.trim() ? `\n출제 지시: ${spec.brief.trim()}` : ""),
+        distractorIntent: type === "choice" ? distractorPlan : [],
+        level,
+        author,
+        authorName,
+        state: "draft",
+        origin: "ai",
+        aiBrief: spec.brief.trim(),
+        comments: [],
+        reviews: [],
+        updatedAt: now(),
+      });
+
+      made.push({ ...item, ...syncTags(item) });
+    }
+  }
+
+  write([...made, ...list]);
+  return made;
 }
 
 /**

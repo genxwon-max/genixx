@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHead } from "./Parts";
+import * as a from "./ui";
 
 /** 한 쪽에 담는 문항 수 */
 const PER_PAGE = 10;
@@ -118,7 +119,16 @@ export default function ItemList() {
         id="EXP-02"
         title="출제 워크벤치"
         lead="발주서 Ver.4.1의 문항 카드 양식으로 씁니다. 쓰는 동안은 임시저장되고, 제출해야 검수로 넘어갑니다."
-        action={<Button onClick={create}>+ 새 문항 등록</Button>}
+        action={
+          <>
+            <Link href="/admin/authoring/generate" className={a.btnGhost}>
+              AI로 초안 만들기
+            </Link>
+            <button type="button" onClick={create} className={a.btnPrimary}>
+              + 새 문항 등록
+            </button>
+          </>
+        }
       />
 
       {/* 찾기와 분류 */}
@@ -211,8 +221,14 @@ function Row({ item }: { item: ItemDraft }) {
         href={`/admin/authoring/${item.id}`}
         className="flex items-center gap-x-4 px-1 py-3 transition-colors hover:bg-slate-50"
       >
-        <span className="w-[8.5rem] shrink-0 adm-t-sm font-black tabular-nums text-exam-text">
-          {item.code || "ID 미정"}
+        <span className="w-[8.5rem] shrink-0">
+          <span className="block adm-t-md font-black tabular-nums text-exam-text">
+            {item.code || "ID 미정"}
+          </span>
+          {/* AI가 낸 초안인지 목록에서 바로 보이게 한다 — 손볼 양이 다르다 */}
+          {item.origin === "ai" && (
+            <span className="mt-0.5 block adm-t-xs font-bold text-violet-700">AI 초안</span>
+          )}
         </span>
 
         <span className="min-w-0 flex-1">
