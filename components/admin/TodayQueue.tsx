@@ -103,42 +103,65 @@ export default function TodayQueue() {
     );
   }
 
+  /* 가장 급한 것 — 「처리하기」 한 번으로 여기부터 연다 */
+  const first = mine.find((q) => q.urgent && q.count > 0) ?? mine[0];
+
   return (
     <section className={`${a.panel} overflow-hidden`}>
-      <h2 className="border-b border-exam-line px-5 py-4 adm-t-lg font-black text-exam-text">
-        처리 대기 {total}건
-        <span className="ml-2 adm-t-sm font-bold text-exam-muted">
-          {roleOf(role).short}가 처리할 수 있는 것만 보입니다
-        </span>
-      </h2>
-      <ul>
-        {mine.map((q) => (
-          <li key={q.label} className="border-b border-exam-line last:border-b-0">
-            <Link
-              href={q.href}
-              className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 transition-colors hover:bg-exam-raised"
-            >
-              <span
-                aria-hidden
-                className={`${a.dot} ${q.urgent ? "bg-rose-500" : "bg-exam-line"}`}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block adm-t-md font-bold text-exam-text">{q.label}</span>
-                <span className="mt-0.5 block adm-t-sm text-exam-muted">{q.note}</span>
-              </span>
-              <span
-                className={`adm-t-lg font-black tabular-nums ${
-                  q.urgent ? "text-rose-700" : "text-exam-text"
-                }`}
+      {/*
+        한 줄로 접어 둔다.
+
+        예전에는 대기 큐 예닐곱 줄을 대시보드 맨 위에 펼쳐 두었다. 매일 같은 목록을
+        같은 자리에서 보다 보면 줄이 아니라 덩어리로 보여서, 정작 숫자가 튄 날을
+        놓친다. 총 건수만 한 줄로 세우고 「처리하기」가 가장 급한 화면으로 바로
+        보낸다. 나머지는 접어 두되 지우지는 않는다 — 다른 큐로 가는 길이 여기
+        말고는 없다.
+      */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4">
+        <h2 className="adm-t-lg font-black text-exam-text">
+          처리 대기 <span className="tabular-nums text-rose-700">{total}</span>건
+        </h2>
+        <p className="adm-t-sm text-exam-muted">
+          {roleOf(role).short}가 처리할 수 있는 것만 셉니다
+        </p>
+        <Link href={first.href} className={`${a.btnPrimary} ml-auto`}>
+          처리하기
+        </Link>
+      </div>
+
+      <details className="border-t border-exam-line">
+        <summary className="cursor-pointer px-5 py-3 adm-t-sm font-bold text-brand-700">
+          무엇이 밀려 있는지 보기 ({mine.length}갈래)
+        </summary>
+        <ul className="border-t border-exam-line">
+          {mine.map((q) => (
+            <li key={q.label} className="border-b border-exam-line last:border-b-0">
+              <Link
+                href={q.href}
+                className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 transition-colors hover:bg-exam-raised"
               >
-                {q.count}
-                <span className="ml-1 adm-t-sm font-bold text-exam-muted">{q.unit}</span>
-              </span>
-              <span className="adm-t-sm font-bold text-brand-700">처리하기 →</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+                <span
+                  aria-hidden
+                  className={`${a.dot} ${q.urgent ? "bg-rose-500" : "bg-exam-line"}`}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block adm-t-md font-bold text-exam-text">{q.label}</span>
+                  <span className="mt-0.5 block adm-t-sm text-exam-muted">{q.note}</span>
+                </span>
+                <span
+                  className={`adm-t-lg font-black tabular-nums ${
+                    q.urgent ? "text-rose-700" : "text-exam-text"
+                  }`}
+                >
+                  {q.count}
+                  <span className="ml-1 adm-t-sm font-bold text-exam-muted">{q.unit}</span>
+                </span>
+                <span className="adm-t-sm font-bold text-brand-700">처리하기 →</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   );
 }

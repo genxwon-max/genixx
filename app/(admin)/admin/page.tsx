@@ -2,6 +2,8 @@ import Link from "next/link";
 import { approvals, gradingQueue, hitlFlow, inquiries, items, roleOf, rounds } from "@/lib/admin";
 import { PageHead, CountRows, Progress, TableCard, Badge } from "@/components/admin/Parts";
 import TodayQueue from "@/components/admin/TodayQueue";
+import BusinessMetrics from "@/components/admin/BusinessMetrics";
+import ItemStats from "@/components/admin/ItemStats";
 import { caseStates } from "@/lib/admin";
 import * as a from "@/components/admin/ui";
 
@@ -16,14 +18,21 @@ export default function AdminHome() {
     <>
       <PageHead
         id="ADM-01"
-        title="오늘 할 일"
-        lead={`${round.label} (${round.period}) 기준입니다. 아래 목록을 위에서부터 처리하시면 됩니다.`}
+        title="대시보드"
+        lead={`${round.label} (${round.period}) 기준입니다. 맨 위가 오늘 처리할 것이고, 그 아래가 이번 달 숫자입니다.`}
       />
 
-      {/* ① 할 일 — 지표가 아니라 처리할 목록이 먼저다. 역할이 손댈 수 있는 것만 남는다 */}
+      {/* ① 할 일 — 지표가 아니라 처리할 것이 먼저다. 한 줄로 접어 두고 역할이
+          손댈 수 있는 것만 센다 */}
       <TodayQueue />
 
-      {/* ② 사람이 도는 순환 — 네 칸을 늘어놓지 않고 한 줄씩 눕힌다. 단계마다 대기 건수가
+      {/* ② 이번 달 숫자와 추이 */}
+      <BusinessMetrics />
+
+      {/* ③ 문항 은행 — 저장소를 그대로 읽으므로 워크벤치와 숫자가 어긋나지 않는다 */}
+      <ItemStats />
+
+      {/* ④ 사람이 도는 순환 — 네 칸을 늘어놓지 않고 한 줄씩 눕힌다. 단계마다 대기 건수가
           오른쪽 끝에 모여, 어디가 막혀 있는지 세로로 훑힌다. */}
       <section className="mt-7">
         <h2 className={a.cardTitle}>문항이 도는 길</h2>
@@ -61,7 +70,7 @@ export default function AdminHome() {
         </p>
       </section>
 
-      {/* ③ 회차 진행 */}
+      {/* ⑤ 회차 진행 */}
       <div className="mt-7 grid gap-x-8 gap-y-6 lg:grid-cols-[1.15fr_1fr]">
         <section>
           <h2 className={a.cardTitle}>{round.label} 진행 상황</h2>
@@ -100,7 +109,7 @@ export default function AdminHome() {
         </section>
       </div>
 
-      {/* ③ 지금 큐 맨 앞 */}
+      {/* ⑥ 지금 큐 맨 앞 */}
       <div className="mt-6">
         <TableCard
           title="가장 오래 기다린 응시"
@@ -146,7 +155,7 @@ export default function AdminHome() {
         </TableCard>
       </div>
 
-      {/* ④ 참고 지표 — 아래로 내린다 */}
+      {/* ⑦ 참고 지표 — 아래로 내린다 */}
       <section className="mt-7">
         <h2 className={a.cardTitle}>눈여겨볼 것</h2>
         <div className="mt-4">
