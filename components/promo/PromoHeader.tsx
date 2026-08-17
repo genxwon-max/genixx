@@ -133,13 +133,13 @@ export default function PromoHeader() {
         <div className="hidden items-center gap-2 lg:flex">
           <Link
             href="/sample/report"
-            className="btn btn-md border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
+            className="btn-flat btn-md border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
           >
             샘플 리포트
           </Link>
           <Link
             href="/exam"
-            className="btn btn-md gap-2 bg-brand-900 text-white shadow-card hover:bg-brand-800"
+            className="btn-flat btn-md gap-2 bg-brand-900 text-white hover:bg-brand-800"
           >
             무료 진단 체험
             <ArrowRight className="h-3.5 w-3.5" />
@@ -167,7 +167,7 @@ export default function PromoHeader() {
             className="absolute inset-x-0 top-full hidden border-t border-brand-100 bg-white shadow-float lg:block"
           >
             <div className="container-x grid gap-8 py-8 lg:grid-cols-[260px_1fr]">
-              <div className="rounded-2xl bg-brand-50/70 p-5">
+              <div className="rounded-md bg-brand-50/70 p-5">
                 <p className="type-eyebrow text-brand-500">{group.id}</p>
                 <p className="type-h3 mt-2 font-black text-brand-950">{group.label}</p>
                 <p className="type-meta mt-2 text-slate-600">{group.summary}</p>
@@ -252,13 +252,13 @@ export default function PromoHeader() {
             <div className="mt-4 flex flex-col gap-2 pb-6" onClick={() => setOpen(false)}>
               <Link
                 href="/exam"
-                className="btn btn-md w-full bg-brand-900 text-white hover:bg-brand-800"
+                className="btn-flat btn-md w-full bg-brand-900 text-white hover:bg-brand-800"
               >
                 무료 진단 체험하기
               </Link>
               <Link
                 href="/sample/report"
-                className="btn btn-md w-full border border-brand-200 bg-white text-brand-700"
+                className="btn-flat btn-md w-full border border-brand-200 bg-white text-brand-700"
               >
                 샘플 리포트 보기
               </Link>

@@ -31,8 +31,8 @@ export default function TypeTicker() {
   const now = items[at];
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-brand-100 bg-white/80 px-4 py-3 shadow-card backdrop-blur">
-      <span className="type-tag shrink-0 rounded-full bg-surface-blue px-2.5 py-1 text-brand-700">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-brand-200 bg-white px-4 py-3">
+      <span className="type-tag shrink-0 rounded-sm bg-surface-blue px-2 py-1 text-brand-700">
         결과 유형 예시
       </span>
 

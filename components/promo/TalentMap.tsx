@@ -135,12 +135,9 @@ const flow = ["글 · 말 · 손 · 행동", "AI 1차 분석", "교육전문가 
 export default function TalentMap() {
   return (
     <div className="relative mx-auto w-full max-w-[600px]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-brand-200/25 blur-2xl"
-      />
-
-      <figure className="relative overflow-hidden rounded-3xl bg-white shadow-float ring-1 ring-brand-100">
+      {/* 뒤에 깔았던 번진 광채를 걷어냈다. 리포트 첫 장을 보여 주는 자리인데
+          후광이 있으면 문서가 아니라 광고 배너로 읽힌다. */}
+      <figure className="relative overflow-hidden rounded-md border border-brand-200 bg-white shadow-card">
         {/* 절차 — 무엇을 넣으면 무엇을 거쳐 나오는가 */}
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-brand-100 bg-brand-50/80 px-4 py-3">
           {flow.map((step, i) => (
@@ -159,9 +156,7 @@ export default function TalentMap() {
           <span className="type-caption font-bold text-slate-500">
             재능 지도 · 2026년 1회차(26A)
           </span>
-          <span className="type-tag rounded-full bg-surface-blue px-2.5 py-1 text-brand-700">
-            샘플
-          </span>
+          <span className="type-tag rounded-sm bg-surface-blue px-2 py-1 text-brand-700">샘플</span>
         </figcaption>
 
         {/* 결과 */}
@@ -178,10 +173,7 @@ export default function TalentMap() {
                 <dt className="type-caption w-[5.5rem] shrink-0 text-slate-500">드러난 축</dt>
                 <dd className="flex flex-wrap gap-1.5">
                   {["언어 88", "자연·탐구 81"].map((t) => (
-                    <span
-                      key={t}
-                      className="type-tag rounded-full bg-brand-900 px-2.5 py-1 text-white"
-                    >
+                    <span key={t} className="type-tag rounded-sm bg-brand-900 px-2 py-1 text-white">
                       {t}
                     </span>
                   ))}
@@ -190,7 +182,7 @@ export default function TalentMap() {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <dt className="type-caption w-[5.5rem] shrink-0 text-slate-500">아직 안 잰 축</dt>
                 <dd className="type-caption text-slate-500">
-                  <span className="rounded-full border border-dashed border-brand-300 px-2.5 py-1">
+                  <span className="rounded-sm border border-dashed border-brand-300 px-2 py-1">
                     5개 · 2027년 확대
                   </span>
                 </dd>

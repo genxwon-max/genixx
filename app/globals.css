@@ -241,6 +241,29 @@ body {
   line-height: 1.2;
 }
 
+/*
+ * 각진 버튼 — 홍보 존(/home2)에서 btn 대신 쓴다.
+ *
+ * 알약 모양은 부드럽고 가벼워 보이는데, 이 서비스가 파는 것은 「사람이 확정한
+ * 판정」이라 가벼우면 곤란하다. 모서리를 6px로 죽이면 같은 글씨도 문서처럼
+ * 읽힌다. btn-lg·btn-md는 크기만 정하므로 그대로 같이 쓴다.
+ *
+ * btn을 고쳐서 전역으로 바꾸지 않은 이유는 기존 홍보 첫 화면(/)이 알약 모양을
+ * 전제로 잡혀 있어서다. 둘 중 하나를 고르고 나면 진 쪽과 함께 지우면 된다.
+ */
+@utility btn-flat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  font-weight: 700;
+  white-space: nowrap;
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: 160ms;
+}
+
 /* ─────────────────────────────────────────────────────────────
    관리자 존(ADM) 글자 크기.
 
@@ -356,9 +379,10 @@ body {
   html {
     scroll-behavior: auto;
   }
-  .animate-fade-up,
-  /* 스크롤 유도 화살표 — 계속 튀는 움직임은 전정 반응에 가장 크게 걸린다 */
-  .animate-bounce {
+  /* 계속 튀던 스크롤 유도 화살표(animate-bounce)는 아예 걷어냈다. 움직임에
+     민감한 사람 문제이기도 했지만, 그 진동 하나가 화면 전체를 템플릿처럼
+     보이게 만들고 있었다. 지금은 마우스를 올렸을 때만 한 번 내려간다. */
+  .animate-fade-up {
     animation: none;
   }
 }

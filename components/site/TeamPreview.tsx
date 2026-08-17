@@ -4,8 +4,18 @@ import SectionHead from "./SectionHead";
 import { people, peopleGroups, peopleOf } from "@/lib/people";
 import { ArrowRight } from "@/components/Icons";
 
-/** 홈에서 보여주는 참여진 요약 */
-export default function TeamPreview() {
+/**
+ * 홈에서 보여주는 참여진 요약.
+ *
+ * flat은 홍보 존(/home2)이 쓰는 각진 규격이다. 그 화면은 둥근 모서리와 그림자를
+ * 걷어내고 실선으로만 칸을 나누는데, 이 구간만 알약과 그림자로 남으면 남의 집에서
+ * 가져다 붙인 것처럼 보인다. 기존 첫 화면(/)은 그대로 두어야 해서 값으로 가른다.
+ */
+export default function TeamPreview({ flat = false }: { flat?: boolean }) {
+  const card = flat
+    ? "rounded-md border border-brand-200 bg-white transition-colors hover:border-brand-400"
+    : "rounded-3xl border border-brand-100 bg-white shadow-card transition-shadow hover:shadow-float";
+
   const featured = peopleGroups
     .map((g) => peopleOf(g.id)[0])
     .filter(Boolean)
@@ -28,7 +38,7 @@ export default function TeamPreview() {
           />
           <Link
             href="/about/team"
-            className="btn btn-md border border-brand-200 bg-white text-brand-800 hover:border-brand-400"
+            className={`${flat ? "btn-flat" : "btn"} btn-md border border-brand-200 bg-white text-brand-800 hover:border-brand-400`}
           >
             참여진 전체 보기
             <ArrowRight className="h-4 w-4" />
@@ -42,7 +52,7 @@ export default function TeamPreview() {
               <li key={p.id}>
                 <Link
                   href={`/about/team/${p.id}`}
-                  className="group flex h-full flex-col rounded-3xl border border-brand-100 bg-white p-6 shadow-card transition-shadow hover:shadow-float"
+                  className={`group flex h-full flex-col p-6 ${card}`}
                 >
                   <div className="flex items-center gap-3.5">
                     <PersonAvatar person={p} size={56} />
@@ -51,7 +61,9 @@ export default function TeamPreview() {
                       <p className="type-caption mt-0.5 truncate text-slate-500">{p.role}</p>
                     </div>
                   </div>
-                  <span className={`type-tag mt-4 w-fit rounded-full px-2.5 py-1 ${g.tone}`}>
+                  <span
+                    className={`type-tag mt-4 w-fit px-2.5 py-1 ${flat ? "rounded-sm" : "rounded-full"} ${g.tone}`}
+                  >
                     {g.label}
                   </span>
                   <p className="type-body mt-3 flex-1 text-slate-600">{p.headline}</p>
