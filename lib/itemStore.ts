@@ -249,6 +249,86 @@ export const reviewChecks = [
 export type ReviewCheckId = (typeof reviewChecks)[number]["id"];
 
 /**
+ * 3단마다 자주 나오는 소견 — 번호로 고른다.
+ *
+ * 소견을 서술로만 받으면 두 가지가 깨진다. 하나는 사람마다 다르게 적어서 같은
+ * 지적이 「정답이 두 개」·「답이 둘로 읽힘」·「복수정답」으로 흩어지고, 나중에
+ * 「무엇 때문에 많이 걸리는가」를 셀 수 없게 된다. 다른 하나는 바빠지면 아무도
+ * 안 적어서 결국 통과 여부만 남는다 — 예전에 체크상자만 켜던 때로 돌아간다.
+ *
+ * 그래서 고르는 칸을 앞에 두고 서술은 뒤에 선택으로 둔다. 하나만 고르게 하는
+ * 것은 「가장 큰 이유」를 대게 하려는 것이다. 나머지는 아래 서술에 적는다.
+ *
+ * 통과와 걸림의 목록이 다르다. 통과에도 목록을 두는 것은, 무엇을 보고 통과시킨
+ * 것인지가 남아야 재검수하는 사람이 같은 곳을 두 번 읽지 않기 때문이다.
+ */
+export type CheckReason = { id: string; text: string };
+
+export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: CheckReason[] }> = {
+  content: {
+    pass: [
+      { id: "c-p-fact", text: "교과 내용이 정확하고 근거가 지문 안에 있습니다" },
+      { id: "c-p-one", text: "정답이 하나로만 성립합니다" },
+      { id: "c-p-clear", text: "발문이 한 가지로만 읽힙니다" },
+      { id: "c-p-grade", text: "학년 어휘와 문장 길이가 무리 없습니다" },
+      { id: "c-p-explain", text: "해설이 답만이 아니라 까닭까지 짚습니다" },
+      { id: "c-p-fixed", text: "지난 회차에 걸렸던 곳이 고쳐졌습니다" },
+    ],
+    block: [
+      { id: "c-b-fact", text: "교과 내용에 사실 오류가 있습니다" },
+      { id: "c-b-multi", text: "정답이 둘 이상 성립합니다" },
+      { id: "c-b-vague", text: "발문이 두 가지로 읽힙니다" },
+      { id: "c-b-distractor", text: "오답 보기가 답이 될 수 없을 만큼 뻔하거나 의도가 겹칩니다" },
+      { id: "c-b-grade", text: "학년에 비해 어휘·문장이 어렵습니다" },
+      { id: "c-b-explain", text: "해설이 답만 말하고 까닭을 말하지 않습니다" },
+    ],
+  },
+  tagging: {
+    pass: [
+      { id: "t-p-standard", text: "성취기준이 문항이 실제로 묻는 것과 맞습니다" },
+      { id: "t-p-talent", text: "재능 축과 세부 기능이 문항이 재는 능력과 맞습니다" },
+      { id: "t-p-level", text: "S단계가 요구하는 조작 수준과 발문이 맞습니다" },
+      { id: "t-p-spec", text: "형식·배점·b모수가 단계 명세대로입니다" },
+      { id: "t-p-band", text: "학년군이 지문과 보기 수준에 맞습니다" },
+      { id: "t-p-single", text: "두 축이 겹치지 않고 하나로 읽힙니다" },
+    ],
+    block: [
+      { id: "t-b-standard", text: "성취기준이 문항이 실제로 묻는 것과 다릅니다" },
+      { id: "t-b-talent", text: "재능 축이 문항이 재는 능력과 다릅니다" },
+      { id: "t-b-subskill", text: "세부 기능이 더 맞는 것으로 따로 있습니다" },
+      { id: "t-b-level", text: "S단계가 발문의 조작 수준과 어긋납니다" },
+      { id: "t-b-spec", text: "형식·배점·b모수가 단계 명세와 다릅니다" },
+      { id: "t-b-mixed", text: "한 문항이 두 축을 같이 재고 있어 점수 해석이 안 됩니다" },
+    ],
+  },
+  ethics: {
+    pass: [
+      { id: "e-p-ses", text: "가정 형편이 있어야 풀리는 소재가 없습니다" },
+      { id: "e-p-gender", text: "성 역할을 고정하는 표현이 없습니다" },
+      { id: "e-p-region", text: "특정 지역·문화의 경험을 전제하지 않습니다" },
+      { id: "e-p-emotion", text: "아동 정서에 부담이 되는 소재가 없습니다" },
+      { id: "e-p-label", text: "아이를 규정하지 않고 수행만 묻습니다" },
+      { id: "e-p-belief", text: "특정 종교·정치색이 드러나지 않습니다" },
+    ],
+    block: [
+      { id: "e-b-ses", text: "가정 형편(SES)이 드러나거나 있어야 풀리는 소재입니다" },
+      { id: "e-b-gender", text: "성 역할을 고정하는 표현이 있습니다" },
+      { id: "e-b-region", text: "특정 지역·문화의 경험이 있어야 풀립니다" },
+      { id: "e-b-emotion", text: "아동 정서에 부담이 될 수 있는 소재입니다" },
+      { id: "e-b-label", text: "아이의 특성을 규정하는 표현이 있습니다" },
+      { id: "e-b-belief", text: "특정 종교·정치색이 드러납니다" },
+    ],
+  },
+};
+
+/** 고른 소견을 글로 되돌린다. 통과와 걸림의 목록이 다르므로 ok가 있어야 찾을 수 있다. */
+export function reasonText(id: ReviewCheckId, ok: boolean | null, reason?: string) {
+  if (!reason || ok === null) return "";
+  const list = ok ? checkReasons[id].pass : checkReasons[id].block;
+  return list.find((r) => r.id === reason)?.text ?? "";
+}
+
+/**
  * 3단 각각의 결과와 소견.
  *
  * 예전에는 체크상자를 셋 다 켰는지만 보고 승인 버튼을 열어 주고, 무엇을 보고
@@ -259,6 +339,11 @@ export type ReviewCheckResult = {
   id: ReviewCheckId;
   /** null이면 아직 짚지 않았다. 「걸림」과 「안 봄」은 다른 상태다. */
   ok: boolean | null;
+  /**
+   * 고른 소견의 id. 통과·걸림 목록이 달라서 ok를 뒤집으면 뜻이 달라지므로,
+   * 통과↔걸림을 바꿀 때 반드시 비운다.
+   */
+  reason?: string;
   note: string;
 };
 

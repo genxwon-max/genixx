@@ -9,8 +9,10 @@ import {
   addComment,
   approveItem,
   blankChecks,
+  checkReasons,
   clearReviewDraft,
   daysWaiting,
+  reasonText,
   rejectCodes,
   rejectLabel,
   rejectItem,
@@ -136,7 +138,14 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
   };
 
   const setCheck = (cid: ReviewCheckId, patch: Partial<ReviewCheckResult>) => {
-    const next = checks.map((c) => (c.id === cid ? { ...c, ...patch } : c));
+    const next = checks.map((c) => {
+      if (c.id !== cid) return c;
+      /* 통과↔걸림을 바꾸면 고른 소견을 버린다. 두 목록이 다른 말을 담고 있어서,
+         남겨 두면 「통과 3번」이 소리 없이 「걸림 3번」이 된다. */
+      const flipped = patch.ok !== undefined && patch.ok !== c.ok;
+      const reason = flipped ? undefined : "reason" in patch ? patch.reason : c.reason;
+      return { ...c, ...patch, reason };
+    });
     setChecks(next);
     keep({ checks: next });
   };
@@ -153,6 +162,17 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
   };
 
   const doReject = () => {
+    /* 「걸림」은 그대로 출제자에게 돌아간다. 무엇이 걸렸는지 없이 돌려보내면
+       출제자는 문항을 처음부터 다시 읽으며 무엇이 문제인지 추측해야 한다.
+       고른 소견 하나면 충분하므로, 서술까지 요구하지는 않는다. */
+    const unsaid = checks.filter((c) => c.ok === false && !c.reason && !c.note.trim());
+    if (unsaid.length > 0) {
+      const names = unsaid
+        .map((c) => reviewChecks.find((x) => x.id === c.id)?.label)
+        .filter(Boolean)
+        .join(" · ");
+      return setError(`${names} — 「걸림」으로 두었는데 무엇이 걸리는지가 없습니다.`);
+    }
     if (!code) return setError("반려 사유를 골라 주세요.");
     if (text.trim().length < 10)
       return setError("무엇을 어떻게 고쳐야 하는지 한 문장 이상 적어 주세요.");
@@ -262,9 +282,13 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
                       const next = checks.map((c) => {
                         const found = item.aiAudit?.checks.find((x) => x.id === c.id);
                         if (!found || found.notes.length === 0) return c;
+                        const ok = found.ok ? c.ok : false;
                         return {
                           ...c,
-                          ok: found.ok ? c.ok : false,
+                          ok,
+                          /* 통과였다가 걸림으로 뒤집히면 「무엇을 보고 통과시켰나」로
+                             골라 둔 것은 더 이상 맞는 말이 아니다 */
+                          reason: ok === c.ok ? c.reason : undefined,
                           note: [c.note, ...found.notes].filter(Boolean).join("\n"),
                         };
                       });
@@ -310,16 +334,27 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
                         </Choice>
                       </div>
 
+                      {/* 자주 나오는 소견은 골라서 끝낸다. 서술은 그 아래 선택으로
+                          둔다 — 고를 것이 없거나 더 적을 것이 있을 때 쓴다. */}
+                      {r.ok !== null && (
+                        <ReasonPicker
+                          check={c.id}
+                          ok={r.ok}
+                          picked={r.reason}
+                          onPick={(reason) => setCheck(c.id, { reason })}
+                        />
+                      )}
+
                       <label className="mt-2.5 block">
-                        <span className="sr-only">{c.label} 소견</span>
+                        <span className="sr-only">{c.label} 소견 서술</span>
                         <textarea
                           value={r.note}
                           onChange={(e) => setCheck(c.id, { note: e.target.value })}
                           rows={2}
                           placeholder={
                             r.ok === false
-                              ? "무엇이 걸리는지 적어 주세요"
-                              : "무엇을 보고 통과시켰는지 (선택)"
+                              ? "고른 것 말고 더 적을 것이 있으면 (선택)"
+                              : "덧붙일 것이 있으면 (선택)"
                           }
                           className={a.input}
                         />
@@ -518,6 +553,73 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
 
 /* ───────────────────────── 조각 ───────────────────────── */
 
+/**
+ * 자주 나오는 소견 여섯 가지 — 번호로 고른다.
+ *
+ * 통과와 걸림에서 목록이 갈린다. 하나만 고르게 두는 것은 「가장 큰 이유」를
+ * 대게 하려는 것이고, 그 밖은 아래 서술 칸에 적는다. 잘못 골랐을 때 되돌릴
+ * 자리가 없으면 라디오는 한 번 켜면 끌 수 없으므로 지우는 버튼을 함께 둔다.
+ */
+function ReasonPicker({
+  check,
+  ok,
+  picked,
+  onPick,
+}: {
+  check: ReviewCheckId;
+  ok: boolean;
+  picked?: string;
+  onPick: (reason: string | undefined) => void;
+}) {
+  const list = ok ? checkReasons[check].pass : checkReasons[check].block;
+  const active = ok
+    ? "border-emerald-600 bg-emerald-50 text-emerald-900"
+    : "border-rose-500 bg-rose-50 text-rose-900";
+
+  return (
+    <fieldset className="mt-3">
+      <legend className="adm-t-xs font-bold text-exam-muted">
+        {ok ? "무엇을 보고 통과시켰습니까" : "무엇이 걸립니까"}
+        <span className="font-normal"> · 하나 고르기</span>
+      </legend>
+
+      <ul className="mt-1.5 space-y-1">
+        {list.map((r, n) => (
+          <li key={r.id}>
+            <label
+              className={`flex cursor-pointer items-start gap-2 rounded-md border px-2.5 py-2 adm-t-sm leading-snug transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-brand-700 ${
+                picked === r.id
+                  ? active
+                  : "border-exam-line text-exam-text hover:bg-exam-raised"
+              }`}
+            >
+              <input
+                type="radio"
+                name={`reason-${check}`}
+                checked={picked === r.id}
+                onChange={() => onPick(r.id)}
+                className="sr-only"
+              />
+              <span className="w-3.5 shrink-0 text-center font-bold tabular-nums">{n + 1}</span>
+              <span>{r.text}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+
+      {picked && (
+        <button
+          type="button"
+          onClick={() => onPick(undefined)}
+          className="mt-1.5 adm-t-xs font-bold text-exam-muted underline hover:text-exam-text"
+        >
+          고른 것 지우기
+        </button>
+      )}
+    </fieldset>
+  );
+}
+
 /** 통과 / 걸림 — 색만으로 가르지 않고 글자를 본체로 둔다 */
 function Choice({
   on,
@@ -572,6 +674,7 @@ function History({ reviews }: { reviews: ReviewRecord[] }) {
             <ul className="mt-2.5 space-y-1">
               {r.checks.map((c) => {
                 const spec = reviewChecks.find((x) => x.id === c.id);
+                const picked = reasonText(c.id, c.ok, c.reason);
                 return (
                   <li key={c.id} className="adm-t-sm text-exam-muted">
                     <span
@@ -586,7 +689,8 @@ function History({ reviews }: { reviews: ReviewRecord[] }) {
                       {spec?.label}{" "}
                       {c.ok === true ? "통과" : c.ok === false ? "걸림" : "확인 안 함"}
                     </span>
-                    {c.note && <span> — {c.note}</span>}
+                    {picked && <span> — {picked}</span>}
+                    {c.note && <span className="whitespace-pre-line"> — {c.note}</span>}
                   </li>
                 );
               })}
