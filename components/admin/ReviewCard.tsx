@@ -30,6 +30,7 @@ import {
 } from "@/lib/itemStore";
 import { levelSpecs, talents } from "@/lib/blueprint";
 import { PageHead, Badge, Callout } from "./Parts";
+import AssetView from "./AssetView";
 import CommentList from "./CommentList";
 import * as a from "./ui";
 
@@ -716,29 +717,16 @@ function ItemBody({ item }: { item: ItemDraft }) {
         </p>
       )}
 
-      {/* 붙임 파일 — 원본 시험지나 지문 그림과 대조할 수 있어야 한다 */}
+      {/* 붙임 파일 — 그림이 문항의 일부이면 발문과 같은 무게로 봐야 검수가 된다.
+          눌러서 원본 크기로 열 수 있다. */}
       {item.assets.length > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {item.assets.map((f) =>
-            f.kind === "image" && f.dataUrl ? (
-              // 사람이 올린 자료라 빌드 시점에 알 수 없다
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={f.id}
-                src={f.dataUrl}
-                alt={f.name}
-                className="h-28 w-auto rounded border border-exam-line bg-white"
-              />
-            ) : (
-              <span
-                key={f.id}
-                className="inline-flex items-center gap-2 rounded border border-exam-line bg-white px-3 py-2 adm-t-sm text-exam-text"
-              >
-                {f.kind === "pdf" ? "PDF" : "엑셀·CSV"} · {f.name}
-              </span>
-            ),
-          )}
-        </ul>
+        <div className="mt-4 border-t border-exam-line pt-3">
+          <p className="adm-t-sm font-bold text-exam-text">
+            붙임 파일 {item.assets.length}건{" "}
+            <span className="font-normal text-exam-muted">— 눌러서 크게 볼 수 있습니다</span>
+          </p>
+          <AssetView assets={item.assets} />
+        </div>
       )}
 
       <p className="mt-4 adm-t-md font-bold text-exam-text">

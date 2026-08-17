@@ -86,6 +86,15 @@ export type ItemAsset = {
   size: number;
   /** 이미지일 때만 미리보기에 쓴다 */
   dataUrl?: string;
+  /**
+   * 그림을 글로 옮긴 것.
+   *
+   * 저시력·전맹 학생에게는 이 글이 그림을 대신한다. 없으면 그 학생에게는 문항이
+   * 아예 성립하지 않으므로, 파일 이름(IMG_2481.png)으로 때울 수 있는 자리가 아니다.
+   * 다만 제출을 막지는 않는다 — 지문 그림이 없는 문항이 대부분이고, 있는 문항은
+   * 검수에서 걸러진다.
+   */
+  alt?: string;
   at: string;
 };
 
@@ -1278,6 +1287,15 @@ export function attachAsset(id: string, asset: ItemAsset) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
   patchItem(id, { assets: [...item.assets, asset] });
+}
+
+/** 붙임 파일 한 건 고치기 — 지금은 대체 텍스트만 고칠 일이 있다 */
+export function patchAsset(id: string, assetId: string, patch: Partial<ItemAsset>) {
+  const item = read().find((i) => i.id === id);
+  if (!item) return;
+  patchItem(id, {
+    assets: item.assets.map((x) => (x.id === assetId ? { ...x, ...patch } : x)),
+  });
 }
 
 export function removeAsset(id: string, assetId: string) {

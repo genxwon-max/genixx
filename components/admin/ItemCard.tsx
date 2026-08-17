@@ -14,6 +14,7 @@ import {
   itemTypes,
   MAX_ASSET_BYTES,
   missingFields,
+  patchAsset,
   patchItem,
   removeAsset,
   reviseApproved,
@@ -46,6 +47,7 @@ import {
   type TalentId,
 } from "@/lib/blueprint";
 import { Button } from "@/components/ui/button";
+import AssetView from "./AssetView";
 import CommentList from "./CommentList";
 import { Callout, Foldable } from "./Parts";
 import * as a from "./ui";
@@ -848,7 +850,8 @@ function Preview({ item }: { item: ItemDraft }) {
                 <img
                   key={f.id}
                   src={f.dataUrl}
-                  alt={f.name}
+                  /* 파일 이름은 대체 텍스트가 아니다. 없으면 없다고 읽히는 편이 낫다. */
+                  alt={f.alt ?? ""}
                   className="h-36 w-auto rounded border border-exam-line"
                 />
               ))}
@@ -956,11 +959,19 @@ function Def({ k, v }: { k: string; v: string }) {
   );
 }
 
-/** 지문·보기에 딸린 파일 */
+/**
+ * 지문·보기에 딸린 파일.
+ *
+ * 넣는 길을 셋 둔다 — 끌어다 놓기, 붙여넣기, 고르기. 그림 문항은 대개 캡처에서
+ * 시작하는데, 붙여넣을 자리가 없으면 캡처를 파일로 저장했다가 다시 찾아 올려야
+ * 한다. 붙여넣기는 이 상자에 초점이 있을 때만 받는다 — 문서 전체에서 가로채면
+ * 지문 칸에 글을 붙여넣을 수 없게 된다.
+ */
 function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
   const [error, setError] = useState<string | null>(null);
+  const [over, setOver] = useState(false);
 
-  const take = async (files: FileList | null) => {
+  const take = async (files: FileList | File[] | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
       const kind = assetKindOf(file);
@@ -992,51 +1003,79 @@ function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
     }
   };
 
+  /** 클립보드에서 그림만 꺼낸다. 글은 그냥 지나가게 둔다. */
+  const paste = (e: React.ClipboardEvent) => {
+    const shots = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+    if (shots.length === 0) return;
+    e.preventDefault();
+    /* 클립보드 그림은 이름이 image.png로 다 같아서, 목록에서 서로 구별되지 않는다 */
+    void take(
+      shots.map(
+        (f, n) =>
+          new File([f], `붙여넣은 그림 ${item.assets.length + n + 1}.png`, { type: f.type }),
+      ),
+    );
+  };
+
   return (
     <div>
       <p className="adm-t-sm font-bold text-exam-text">붙임 파일</p>
-      <p className="mt-1 adm-t-xs text-exam-muted">
+      <p className="mt-1 adm-t-xs leading-relaxed text-exam-muted">
         삽화·그림은 색맹·저시력 학생도 풀 수 있게 설계합니다. 색 외에 빗금·형태로도 구별되어야
         합니다. 한 파일 2MB까지.
       </p>
+
       {!disabled && (
-        <input
-          type="file"
-          multiple
-          onChange={(e) => void take(e.target.files)}
-          className="mt-2 block adm-t-sm text-exam-muted file:mr-3 file:rounded-md file:border file:border-exam-line file:bg-white file:px-4 file:py-2 file:adm-t-sm file:font-bold file:text-exam-text"
-        />
+        <div
+          tabIndex={0}
+          onPaste={paste}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setOver(true);
+          }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOver(false);
+            void take(e.dataTransfer.files);
+          }}
+          className={`mt-2 rounded-md border border-dashed p-4 text-center transition-colors focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand-700 ${
+            over ? "border-brand-700 bg-brand-50" : "border-exam-line bg-exam-raised"
+          }`}
+        >
+          <p className="adm-t-sm font-bold text-exam-text">
+            {over ? "여기에 놓으세요" : "여기에 파일을 끌어다 놓으세요"}
+          </p>
+          <p className="mt-1 adm-t-xs text-exam-muted">
+            이 상자를 한 번 누르고 <b className="font-bold">Ctrl+V</b>로 캡처를 붙여넣어도 됩니다
+          </p>
+          <label className="mt-2.5 inline-block">
+            <span className={`${a.btnGhost} cursor-pointer`}>파일 고르기</span>
+            <input
+              type="file"
+              multiple
+              accept="image/*,application/pdf,.csv,.xls,.xlsx"
+              onChange={(e) => {
+                void take(e.target.files);
+                e.target.value = "";
+              }}
+              className="sr-only"
+            />
+          </label>
+        </div>
       )}
+
       {error && (
         <p role="alert" className="mt-2 adm-t-xs font-bold text-rose-600">
           {error}
         </p>
       )}
-      {item.assets.length > 0 && (
-        <ul className="mt-3 border-t border-exam-line">
-          {item.assets.map((f) => (
-            <li key={f.id} className="flex items-center gap-3 border-b border-exam-line py-2.5">
-              {f.dataUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.dataUrl} alt="" className="h-10 w-10 shrink-0 object-cover" />
-              )}
-              <span className="min-w-0 flex-1 truncate adm-t-sm text-exam-text">{f.name}</span>
-              <span className="shrink-0 adm-t-xs text-exam-muted">
-                {Math.round(f.size / 1024)}KB
-              </span>
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => removeAsset(item.id, f.id)}
-                  className="shrink-0 adm-t-xs font-bold text-rose-600 underline underline-offset-4"
-                >
-                  빼기
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+
+      <AssetView
+        assets={item.assets}
+        onRemove={disabled ? undefined : (assetId) => removeAsset(item.id, assetId)}
+        onAlt={disabled ? undefined : (assetId, alt) => patchAsset(item.id, assetId, { alt })}
+      />
     </div>
   );
 }

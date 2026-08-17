@@ -189,6 +189,16 @@ export function auditItem(item: ItemDraft): AuditResult {
     }
   }
 
+  /* 그림을 못 보는 학생에게는 대체 텍스트가 그림을 대신한다. 없으면 그 학생에게만
+     문항이 성립하지 않으므로 공정성 문제다. 다만 장식용 그림도 있어서 warn이다. */
+  const naked = item.assets.filter((f) => f.kind === "image" && !f.alt?.trim());
+  if (naked.length > 0) {
+    ethics.push({
+      tone: "warn",
+      text: `그림 ${naked.length}건에 대체 텍스트가 없습니다. 이 그림이 있어야 풀리는 문항이면 저시력·전맹 학생에게는 성립하지 않습니다.`,
+    });
+  }
+
   const checks: AuditCheck[] = [
     { id: "content", findings: content, ok: !content.some((f) => f.tone === "block") },
     { id: "tagging", findings: tagging, ok: !tagging.some((f) => f.tone === "block") },
