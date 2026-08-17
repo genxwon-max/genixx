@@ -26,6 +26,73 @@ export function PageHead({
   );
 }
 
+/**
+ * 메뉴의 하위 항목이 내려앉는 구역.
+ *
+ * id는 사이트맵 화면 ID를 그대로 쓴다(lib/admin.ts의 subHref 참조). 상단 바가 고정
+ * 이라 그냥 두면 제목이 바 뒤로 숨으므로, 스크롤이 멈추는 자리를 바 아래로 내려 둔다.
+ */
+export function AnchorSection({
+  id,
+  title,
+  lead,
+  children,
+}: {
+  id: string;
+  title: string;
+  lead?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-28">
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-3">
+        <h2 className={a.cardTitle}>{title}</h2>
+        <span className="adm-t-xs font-bold text-exam-muted">{id}</span>
+      </div>
+      {lead && <p className={`${a.bodyText} mb-4`}>{lead}</p>}
+      {children}
+    </section>
+  );
+}
+
+/**
+ * 아직 만들지 않은 구역.
+ *
+ * 메뉴에서 눌러 여기 왔는데 아무것도 없으면 잘못 눌렀나 하게 된다. 무엇이 들어올
+ * 자리인지, 지금은 왜 비어 있는지를 적어 둔다.
+ */
+export function PlannedSection({
+  id,
+  title,
+  lead,
+  todo,
+}: {
+  id: string;
+  title: string;
+  lead?: string;
+  todo?: string[];
+}) {
+  return (
+    <AnchorSection id={id} title={title} lead={lead}>
+      <div className="border-l-4 border-exam-line pl-4">
+        <p className="adm-t-md font-bold text-exam-text">아직 만들지 않은 자리입니다</p>
+        <p className={`${a.bodyText} mt-1`}>
+          화면 설계가 확정되면 이 구역이 채워집니다. 지금은 무엇을 담을지만 적어 둡니다.
+        </p>
+        {todo && todo.length > 0 && (
+          <ul className="mt-3 space-y-1.5">
+            {todo.map((t) => (
+              <li key={t} className="adm-t-md text-exam-text">
+                · {t}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </AnchorSection>
+  );
+}
+
 export type CountRow = {
   label: string;
   value: number | string;

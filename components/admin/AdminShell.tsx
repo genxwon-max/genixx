@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { adminMenu, canAny, pending, roleOf, staffRoles, type AdminMenuItem } from "@/lib/admin";
+import {
+  adminMenu,
+  canAny,
+  pending,
+  roleOf,
+  staffRoles,
+  subHref,
+  type AdminMenuItem,
+} from "@/lib/admin";
 import {
   adminSignOut,
   bumpZoom,
@@ -42,6 +50,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const role = roleOf(prefs.role);
+  const [hash, setHash] = useHash(pathname);
 
   const groups = adminMenu
     .map((g) => ({ ...g, items: g.items.filter((i) => canAny(prefs.role, i.needs)) }))
@@ -166,19 +175,40 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     return (
                       <li key={item.href}>
                         <MenuLink item={item} active={active} onNavigate={() => setOpen(false)} />
-                        {/* 정의서상의 하위 화면. 지금은 상위 화면 안에서 다루므로 목록만
-                            보여 준다 — 어디까지 설계됐는지 메뉴에서 바로 보이게. */}
+                        {/* 정의서상의 하위 화면. 독립 화면이 없는 것은 상위 화면 안의
+                            구역으로 보낸다 — 적어만 두고 못 누르게 하면 「아직 없는 것」인지
+                            「내가 못 찾는 것」인지 구분할 길이 없다. */}
                         {active && item.children && (
                           <ul className="mb-2 ml-4 border-l border-white/10 pl-3">
-                            {item.children.map((c) => (
-                              <li
-                                key={c.id}
-                                title={`${c.id} · ${c.desc}`}
-                                className="py-1.5 adm-t-sm text-slate-400"
-                              >
-                                {c.label}
-                              </li>
-                            ))}
+                            {item.children.map((c) => {
+                              const href = subHref(item, c);
+                              const here = hash !== "" && href.endsWith(`#${hash}`);
+                              return (
+                                <li key={c.id}>
+                                  <Link
+                                    href={href}
+                                    onClick={() => {
+                                      setOpen(false);
+                                      setHash(c.id);
+                                      /* 같은 주소를 다시 누르면 Next는 아무것도 하지
+                                         않는다. 구역을 읽다가 위로 올라온 뒤 다시
+                                         누른 사람에게는 그것이 고장으로 보이므로,
+                                         이미 열려 있는 화면이면 직접 옮겨 준다. */
+                                      document.getElementById(c.id)?.scrollIntoView();
+                                    }}
+                                    aria-current={here ? "location" : undefined}
+                                    title={`${c.id} · ${c.desc}`}
+                                    className={`flex min-h-[2.5rem] items-center rounded-md px-2 py-1.5 adm-t-sm transition-colors ${
+                                      here
+                                        ? "bg-white/10 font-bold text-white"
+                                        : "text-slate-400 hover:bg-white/5 hover:text-white"
+                                    }`}
+                                  >
+                                    {c.label}
+                                  </Link>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </li>
@@ -201,6 +231,36 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </div>
     </div>
   );
+}
+
+/**
+ * 지금 주소의 # 뒤. 하위 항목 중 어디를 눌렀는지 메뉴에 표시하려고 본다.
+ *
+ * usePathname은 해시를 주지 않는다. 같은 화면 안 구역으로 옮겨 다니는 동안 메뉴가
+ * 아무 반응도 하지 않으면 눌린 것인지 알 수 없어서, 해시를 따로 좇는다.
+ */
+function useHash(pathname: string) {
+  const [hash, setHash] = useState("");
+  useEffect(() => {
+    const read = () => setHash(decodeURIComponent(window.location.hash.slice(1)));
+    /* 주소가 바뀔 때 한 번 읽고, 뒤로·앞으로에 따라 오는 hashchange도 받는다.
+       ⚠ Next의 <Link>는 pushState로 옮기므로 hashchange가 오지 않는다. 눌러서
+         옮긴 경우는 아래 onClick이 직접 알려 준다. */
+    read();
+    /* 주소를 그대로 붙여 넣거나 즐겨찾기로 들어오면 브라우저가 앵커로 내려 주지
+       않는다 — 화면이 그려지기 전이라 그 자리가 아직 없기 때문이다. 그릴 것을
+       다 그린 다음 한 번 더 옮겨 준다. */
+    const at = window.location.hash.slice(1);
+    const jump = at
+      ? requestAnimationFrame(() => document.getElementById(decodeURIComponent(at))?.scrollIntoView())
+      : 0;
+    window.addEventListener("hashchange", read);
+    return () => {
+      cancelAnimationFrame(jump);
+      window.removeEventListener("hashchange", read);
+    };
+  }, [pathname]);
+  return [hash, setHash] as const;
 }
 
 function MenuLink({

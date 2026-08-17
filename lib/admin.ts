@@ -172,13 +172,24 @@ export function canAny(role: StaffRoleId, needs: PermissionId | PermissionId[]) 
 /* ───────────────────────── 메뉴 (ADM 사이트맵) ───────────────────────── */
 
 export type AdminSubItem = {
-  /** 사이트맵 화면 ID */
+  /** 사이트맵 화면 ID. 상위 화면 안 그 구역의 앵커(id)로도 그대로 쓴다. */
   id: string;
   label: string;
-  /** 아직 화면이 없으면 상위 화면 안에 목록으로만 적는다 */
+  /** 독립 화면이 있으면 그 주소. 없으면 상위 화면 안의 구역으로 간다. */
   href?: string;
   desc: string;
 };
+
+/**
+ * 하위 항목을 눌렀을 때 갈 자리.
+ *
+ * 독립 화면이 없는 하위 항목은 상위 화면 안의 구역으로 보낸다 — 메뉴에 적어 두고
+ * 누를 수는 없게 두면, 쓰는 사람은 그것이 「아직 없는 것」인지 「내가 못 찾는 것」인지
+ * 알 수 없다. 앵커는 화면 ID를 그대로 쓰므로, 상위 화면은 각 구역에 id={sub.id}만
+ * 달아 두면 된다.
+ */
+export const subHref = (item: AdminMenuItem, sub: AdminSubItem) =>
+  sub.href ?? `${item.href}#${sub.id}`;
 
 export type AdminMenuItem = {
   /** 사이트맵 화면 ID */

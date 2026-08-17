@@ -1,5 +1,13 @@
 import { items, itemStates } from "@/lib/admin";
-import { PageHead, TableCard, Badge, CountRows, Foldable } from "@/components/admin/Parts";
+import {
+  AnchorSection,
+  Badge,
+  CountRows,
+  Foldable,
+  PageHead,
+  PlannedSection,
+  TableCard,
+} from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -77,6 +85,11 @@ export default function ItemsPage() {
           <CountRows rows={counts} />
         </div>
 
+        <AnchorSection
+          id="ADM-04-1"
+          title="문항 CRUD · 버전"
+          lead="승인된 문항을 좌표·태그·난이도·상태로 훑습니다. 고치는 일은 출제 워크벤치(EXP-02)에서 합니다."
+        >
         <TableCard
           title={`전체 문항 ${items.length}건`}
           caption="정답률이 90%를 넘거나 40% 아래로 떨어지면 변별이 되지 않아 다시 봅니다."
@@ -137,6 +150,40 @@ export default function ItemsPage() {
             </tbody>
           </table>
         </TableCard>
+        </AnchorSection>
+
+        <div className="mt-8 space-y-8">
+          <PlannedSection
+            id="ADM-04-2"
+            title="앵커 문항"
+            lead="회차가 달라도 같은 잣대로 재려면, 공개하지 않고 오래 쓰는 기준 문항이 필요합니다."
+            todo={[
+              "앵커군 지정·해제와 노출 이력 — 한 번이라도 공개된 문항은 앵커로 쓸 수 없습니다",
+              "회차 간 등화(equating) 계산에 들어간 앵커 목록과 그때의 모수",
+              "앵커는 문항 목록에서 따로 감춥니다. 검사지 조립 화면에도 뜨지 않습니다",
+            ]}
+          />
+          <PlannedSection
+            id="ADM-04-3"
+            title="검사지 조립"
+            lead="승인된 문항을 골라 한 회차의 검사지를 만듭니다. AI가 조합을 제안하고 사람이 확정합니다."
+            todo={[
+              "재능 축 × S1~S4 배분이 발주 사양과 맞는지 대조",
+              "forms · form_items 스키마 — 어떤 판의 어떤 문항이 몇 번에 놓였는지",
+              "확정 전에는 조립본을 미리보기로만 열 수 있게 합니다",
+            ]}
+          />
+          <PlannedSection
+            id="ADM-04-4"
+            title="문항 회전 · 보안"
+            lead="같은 문항이 같은 자리에 계속 나오면 문항이 새어 나갑니다."
+            todo={[
+              "응시자별 동적 할당 — 57문항 중 55문항처럼 겹치되 같지 않게",
+              "캡처·드래그 차단과 그 한계를 함께 적기 (막을 수 있는 것과 없는 것)",
+              "문항별 노출 횟수와 마지막 사용 회차 — 회전 판단의 근거",
+            ]}
+          />
+        </div>
       </PermissionGate>
     </>
   );
