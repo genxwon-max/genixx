@@ -48,9 +48,60 @@ export type SubjectRecord = {
   attemptsLeft: number;
   /** 제출 후 문항별로 적는 해석 — 왜 그렇게 답했는지 / 왜 못 풀었는지 */
   reflections: Record<string, string>;
+  /**
+   * 문항별로 고른 까닭. 문항 ID → reflectionReasons의 id.
+   *
+   * 글로만 받으면 3~4학년은 「몰라서요」 넉 자로 끝난다. 쓰기가 어려운 것이지
+   * 생각이 없는 것이 아닌데, 그 구별이 기록에 남지 않는다. 고르는 칸을 먼저
+   * 두면 쓰기 힘이 약한 아이도 자기 상태를 말할 수 있다.
+   */
+  reflectionPicks: Record<string, string>;
   /** 해석 작성을 마친 시각. null이면 아직 작성 중 */
   reflectionAt: string | null;
 };
+
+/**
+ * 왜 그렇게 답했는지 — 고를 수 있는 까닭.
+ *
+ * 세 벌로 갈린다. 답을 못 낸 문항에 「어떻게 골랐나」를 물으면 답할 말이 없고,
+ * 서술형에 「보기를 지웠나」를 물어도 마찬가지다. 물음이 맞아야 답이 나온다.
+ *
+ * 말투는 아이가 자기를 탓하지 않도록 고른다. 「몰라서 틀렸다」가 아니라
+ * 「무슨 말인지 잘 모르겠어서 못 풀었어요」다. 진단 윤리 헌장이 막는 것은
+ * 아이를 규정하는 말인데, 아이가 스스로에게 붙이는 말도 다르지 않다.
+ */
+export type ReflectionReason = { id: string; text: string };
+
+export const reflectionReasons: Record<"blank" | "choice" | "essay", ReflectionReason[]> = {
+  blank: [
+    { id: "b1", text: "무슨 말인지 잘 모르겠어서 못 풀었어요" },
+    { id: "b2", text: "어디를 봐야 할지 몰라서 못 찾았어요" },
+    { id: "b3", text: "알 것 같은데 어떻게 써야 할지 몰랐어요" },
+    { id: "b4", text: "처음 보는 내용이라 배운 적이 없어요" },
+    { id: "b5", text: "풀다가 헷갈려서 그만뒀어요" },
+    { id: "b6", text: "시간이 모자랐어요" },
+  ],
+  choice: [
+    { id: "c1", text: "자료에서 그렇게 쓰인 곳을 찾아서 골랐어요" },
+    { id: "c2", text: "배운 것이 생각나서 골랐어요" },
+    { id: "c3", text: "나머지가 아닌 것 같아서 남은 것을 골랐어요" },
+    { id: "c4", text: "두 개 사이에서 고민하다가 하나를 골랐어요" },
+    { id: "c5", text: "잘 모르겠어서 하나를 골랐어요" },
+    { id: "c6", text: "다 읽지 못하고 골랐어요" },
+  ],
+  essay: [
+    { id: "e1", text: "자료에서 까닭을 찾아 그대로 썼어요" },
+    { id: "e2", text: "배운 것을 떠올려 내 말로 썼어요" },
+    { id: "e3", text: "내 생각을 먼저 정하고 까닭을 붙였어요" },
+    { id: "e4", text: "무슨 말인지는 알겠는데 쓰기가 어려웠어요" },
+    { id: "e5", text: "생각나는 대로 일단 썼어요" },
+    { id: "e6", text: "시간이 모자라서 다 쓰지 못했어요" },
+  ],
+};
+
+/** 고른 까닭을 글로 되돌린다 */
+export const reflectionReasonText = (kind: "blank" | "choice" | "essay", id?: string) =>
+  (id && reflectionReasons[kind].find((r) => r.id === id)?.text) || "";
 
 export type ExamRecord = {
   subjects: Record<SubjectId, SubjectRecord>;
@@ -68,6 +119,7 @@ const emptySubject: SubjectRecord = {
   submittedAt: null,
   attemptsLeft: 1,
   reflections: {},
+  reflectionPicks: {},
   reflectionAt: null,
 };
 
@@ -216,6 +268,20 @@ export function setReflection(
   });
 }
 
+/** 고른 까닭. 같은 것을 다시 누르면 지워진다 — 잘못 고르고 못 되돌리면 아이는 멈춘다. */
+export function setReflectionPick(
+  studentId: string,
+  subject: SubjectId,
+  questionId: string,
+  reasonId: string | null,
+) {
+  const rec = readRecord(studentId).subjects[subject];
+  const next = { ...rec.reflectionPicks };
+  if (reasonId) next[questionId] = reasonId;
+  else delete next[questionId];
+  patchSubject(studentId, subject, { reflectionPicks: next });
+}
+
 export function finishReflection(studentId: string, subject: SubjectId) {
   patchSubject(studentId, subject, { reflectionAt: new Date().toISOString() });
 }
@@ -229,6 +295,7 @@ export function forfeitSubject(studentId: string, subject: SubjectId) {
     submittedAt: new Date().toISOString(),
     attemptsLeft: Math.max(0, rec.attemptsLeft - 1),
     reflections: {},
+    reflectionPicks: {},
     reflectionAt: null,
   });
 }
@@ -242,6 +309,7 @@ export function restartSubject(studentId: string, subject: SubjectId) {
     startedAt: null,
     submittedAt: null,
     reflections: {},
+    reflectionPicks: {},
     reflectionAt: null,
   });
 }

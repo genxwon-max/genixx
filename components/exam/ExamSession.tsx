@@ -15,8 +15,10 @@ import {
   finishReflection,
   forfeitSubject,
   restartSubject,
+  reflectionReasons,
   setAnswer,
   setReflection,
+  setReflectionPick,
   startSubject,
   submitSubject,
   useExamRecord,
@@ -549,7 +551,10 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
   const [warn, setWarn] = useState(false);
 
   const question = list[index];
-  const written = (q: Question) => (rec.reflections[q.id] ?? "").trim().length >= 5;
+  /* 고르기만 해도, 쓰기만 해도, 둘 다 해도 된다. 쓰기가 어려운 것과 할 말이 없는
+     것은 다른데, 글만 받으면 둘이 똑같이 빈칸으로 남는다. */
+  const written = (q: Question) =>
+    Boolean(rec.reflectionPicks[q.id]) || (rec.reflections[q.id] ?? "").trim().length >= 5;
   const writtenCount = list.filter(written).length;
   const complete = writtenCount === list.length;
   const isLast = index === list.length - 1;
@@ -559,6 +564,10 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
   const essayText = question.type === "essay" && typeof value === "string" ? value.trim() : "";
   const blank = question.type === "choice" ? picked === null : essayText.length === 0;
   const text = rec.reflections[question.id] ?? "";
+  /* 물음이 셋으로 갈린다 — 못 낸 답 / 고른 답 / 쓴 답 */
+  const kind = blank ? "blank" : question.type === "choice" ? "choice" : "essay";
+  const reasons = reflectionReasons[kind];
+  const pick = rec.reflectionPicks[question.id];
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
@@ -705,26 +714,74 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
             </p>
           )}
 
-          {/* 새로 열리는 칸 하나 */}
+          {/* 새로 열리는 칸 — 고르기가 먼저, 쓰기가 그다음 */}
           <div className="mt-8 border-t border-exam-line pt-6">
+            <p className="text-[15px] font-bold text-exam-text">
+              {blank
+                ? "왜 풀지 못했는지 알려 주세요"
+                : picked !== null
+                  ? `${picked + 1}번을 고른 까닭을 알려 주세요`
+                  : "왜 그렇게 썼는지 알려 주세요"}
+            </p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-exam-muted">
+              가까운 것을 하나 고르거나, 아래에 직접 써도 됩니다. 둘 다 해도 좋습니다.
+            </p>
+
+            <ul className="mt-4 grid gap-2">
+              {reasons.map((r, n) => {
+                const on = pick === r.id;
+                return (
+                  <li key={r.id}>
+                    <label
+                      className={`flex cursor-pointer items-center gap-4 rounded-[6px] border p-3.5 transition-colors ${
+                        on ? "border-exam-text" : "border-exam-line hover:bg-exam-raised"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`reason-${question.id}`}
+                        checked={on}
+                        /* 같은 것을 다시 누르면 지워진다 — 잘못 골랐을 때
+                           되돌릴 길이 없으면 아이는 거기서 멈춘다 */
+                        onClick={() =>
+                          setReflectionPick(studentId, subject, question.id, on ? null : r.id)
+                        }
+                        onChange={() => {}}
+                        className="sr-only"
+                      />
+                      <span
+                        aria-hidden
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
+                          on
+                            ? "border-exam-text bg-exam-text text-white"
+                            : "border-exam-line text-exam-muted"
+                        }`}
+                      >
+                        {n + 1}
+                      </span>
+                      <span
+                        className={`text-[15px] leading-[1.7] ${
+                          on ? "font-semibold text-exam-text" : "text-exam-text/90"
+                        }`}
+                      >
+                        {r.text}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+
             <label
               htmlFor={`ref-${question.id}`}
-              className="block text-[15px] font-bold text-exam-text"
+              className="mt-6 block text-[13px] font-bold text-exam-text"
             >
-              {blank
-                ? "왜 풀지 못했는지 적어 주세요"
-                : picked !== null
-                  ? `${picked + 1}번을 고른 까닭을 적어 주세요`
-                  : "왜 그렇게 썼는지 적어 주세요"}
+              더 하고 싶은 말이 있으면 써 주세요{" "}
+              <span className="font-medium text-exam-muted">(안 써도 괜찮아요)</span>
             </label>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-exam-muted">
-              {blank
-                ? "어느 부분에서 막혔는지, 무엇을 몰랐는지 쓰면 됩니다. 모르겠다고 써도 괜찮습니다."
-                : "근거로 삼은 부분과, 지운 보기가 있다면 왜 지웠는지를 쓰면 좋습니다."}
-            </p>
             <textarea
               id={`ref-${question.id}`}
-              rows={6}
+              rows={4}
               value={text}
               onChange={(e) => {
                 setWarn(false);
@@ -739,7 +796,9 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
             />
             <p className="mt-2 flex items-center justify-between gap-3 text-[12px] tabular-nums text-exam-muted">
               <span>맞고 틀리고를 보는 칸이 아닙니다. 점수에 반영되지 않습니다.</span>
-              <span>{text.trim().length}자 · 5자 이상</span>
+              <span>
+                {written(question) ? "다 되었습니다" : `${text.trim().length}자 · 고르거나 5자 이상`}
+              </span>
             </p>
           </div>
         </section>
@@ -749,7 +808,7 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
           index={index}
           isDone={written}
           onPick={setIndex}
-          doneLabel="해석을 적은 문항"
+          doneLabel="해석을 남긴 문항"
           doneVerb="작성함"
         />
       </div>
@@ -759,8 +818,8 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
           <p className="hidden text-[12px] leading-tight text-exam-muted sm:block">
             {warn
-              ? "아직 해석을 적지 않은 문항이 있습니다. 번호판에서 줄이 없는 번호를 확인하세요."
-              : "쓰는 대로 저장됩니다. 모든 문항에 적으면 이 과목이 끝납니다."}
+              ? "아직 답하지 않은 문항이 있습니다. 번호판에서 줄이 없는 번호를 확인하세요."
+              : "고르거나 쓰는 대로 저장됩니다. 모든 문항에 답하면 이 과목이 끝납니다."}
           </p>
 
           <div className="flex items-center gap-2">
