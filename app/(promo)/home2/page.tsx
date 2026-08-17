@@ -116,7 +116,7 @@ const traces = [
     when: "2027 확대",
     live: false,
     image: "promo-trace-speak",
-    alt: "태블릿 앞에서 손짓을 섞어 신나게 설명하고 있는 초등학생",
+    alt: "노트북 앞에서 두 손을 벌려 크기를 나타내며 신나게 설명하고 있는 초등학생",
   },
   {
     n: "손",
@@ -134,7 +134,7 @@ const traces = [
     when: "2026 측정",
     live: true,
     image: "promo-trace-observe",
-    alt: "교실에서 활동하는 아이들을 흐뭇하게 지켜보며 메모하는 교사",
+    alt: "교실에서 모둠 활동을 하는 아이들을 지켜보며 수첩에 메모하는 교사",
   },
 ];
 
@@ -328,19 +328,20 @@ export default function PromoHome() {
       {/* ───── ③ 어떤 도움이 되는가 ───── */}
       <section className="section-y bg-brand-50/50">
         <div className="container-x grid gap-8 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-center lg:gap-12">
+          {/* 제목이 사진보다 먼저 온다. 사진만 먼저 보이면 무슨 이야기가 시작되는지
+              모르는 채로 큰 그림 한 장을 지나치게 된다. */}
           <div>
+            <SectionHead
+              eyebrow="이런 경우"
+              title="이런 고민에서 시작하셨다면"
+              lead="진단이 필요해지는 순간은 대체로 비슷합니다."
+            />
             <PromoImage
               name="promo-parent-worry"
               alt="식탁에 마주 앉아 아이의 공책을 함께 들여다보며 이야기하는 학부모와 초등학생"
               ratio="aspect-[4/3]"
               sizes="(max-width: 1024px) 100vw, 420px"
-              className="shadow-card"
-            />
-            <SectionHead
-              className="mt-7"
-              eyebrow="이런 경우"
-              title="이런 고민에서 시작하셨다면"
-              lead="진단이 필요해지는 순간은 대체로 비슷합니다."
+              className="mt-7 shadow-card"
             />
           </div>
 
@@ -575,7 +576,7 @@ export default function PromoHome() {
             />
             <PromoImage
               name="promo-expert"
-              alt="회의실 테이블에 둘러앉아 화면에 띄운 진단 결과 자료를 함께 검토하며 논의하는 교육 전문가 네 명"
+              alt="회의실 테이블에 둘러앉아 출력된 진단 결과 자료의 한 줄을 짚어 가며 논의하는 교육 전문가 세 명"
               ratio="aspect-[3/2]"
               sizes="(max-width: 1024px) 100vw, 440px"
               className="shadow-card"
