@@ -1289,7 +1289,10 @@ export const stubSections: Record<
     ],
   },
   billing: {
-    id: "ADM-08",
+    /* 사이드바(위 menu)는 이 화면을 ADM-12로 부른다. 여기만 ADM-08로 적혀 있어서
+       리포트 자산과 번호가 겹쳤다 — 화면 ID는 정의서에서 그대로 인용하는 값이라
+       두 화면이 같은 번호를 달면 안 된다. */
+    id: "ADM-12",
     title: "결제·정산",
     lead: "개인 응시권 결제(PAY-03)와 기관 단위 정산을 함께 봅니다.",
     todo: [
