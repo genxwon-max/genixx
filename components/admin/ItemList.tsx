@@ -32,8 +32,14 @@ import * as a from "./ui";
 /** 한 쪽에 담는 문항 수 */
 const PER_PAGE = 10;
 
-/** 손볼 것이 먼저 보여야 한다 — 반려 → 작성 중 → 검수 대기 → 승인 */
-const order: Record<ItemState, number> = { rejected: 0, draft: 1, submitted: 2, approved: 3 };
+/** 손볼 것이 먼저 보여야 한다 — 반려 → 작성 중 → 검수 대기 → 승인 → 사용 중지 */
+const order: Record<ItemState, number> = {
+  rejected: 0,
+  draft: 1,
+  submitted: 2,
+  approved: 3,
+  retired: 4,
+};
 
 const stateOptions: { value: "all" | ItemState; label: string }[] = [
   { value: "all", label: "상태 전체" },
@@ -41,6 +47,7 @@ const stateOptions: { value: "all" | ItemState; label: string }[] = [
   { value: "rejected", label: "반려됨" },
   { value: "submitted", label: "검수 대기" },
   { value: "approved", label: "승인됨" },
+  { value: "retired", label: "사용 중지" },
 ];
 
 const levelOptions: { value: "all" | Level; label: string }[] = [

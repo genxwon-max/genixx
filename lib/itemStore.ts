@@ -29,7 +29,14 @@ import { auditItem } from "./itemAudit";
  *   rejected는 고쳐서 다시 submitted로 간다.
  */
 
-export type ItemState = "draft" | "submitted" | "rejected" | "approved";
+/**
+ * 문항의 상태.
+ *
+ * retired(사용 중지)는 승인 뒤에만 붙는다. 정답률이 한쪽으로 치우쳐 변별이 되지
+ * 않거나 소재가 낡은 문항을 회차에서 빼는 자리인데, 지우지는 않는다 — 그 문항으로
+ * 이미 판정한 아이들의 결과를 나중에 설명할 수 있어야 한다.
+ */
+export type ItemState = "draft" | "submitted" | "rejected" | "approved" | "retired";
 
 export type ItemOrigin = "human" | "ai";
 
@@ -153,6 +160,12 @@ export type ItemDraft = {
   assets: ItemAsset[];
   /** 승인본을 고칠 때 만든 새 버전이면, 원본 번호 */
   revisionOf?: string;
+  /** 지난 회차 정답률(%). 아직 출제되지 않았으면 null */
+  correctRate: number | null;
+  /** 사용 중지한 시각·사람·까닭. 되돌리면 지운다. */
+  retiredAt?: string;
+  retiredBy?: string;
+  retireReason?: string;
   version: number;
   /* ── 발주서 Ver.4.1 문항 카드 (lib/blueprint.ts) ── */
   /** 학년군 — 성취기준 코드의 접두를 결정한다 */
@@ -557,6 +570,21 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     author: "author.kim",
     authorName: "김출제",
     state: "approved",
+    correctRate: 88,
+    reviews: [
+      {
+        at: "2026-08-09 11:30",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-one", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-standard", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
+        ],
+        text: "정답 유일성과 학년 이독성 모두 문제 없습니다. 승인합니다.",
+      },
+    ],
     comments: [
       {
         at: "2026-08-09 11:30",
@@ -638,6 +666,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     author: "author.kim",
     authorName: "김출제",
     state: "approved",
+    correctRate: 41,
     comments: [],
     updatedAt: "2026-08-08 10:00",
   },
@@ -676,6 +705,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     author: "author.kim",
     authorName: "김출제",
     state: "approved",
+    correctRate: 95,
     comments: [],
     updatedAt: "2026-08-08 10:05",
   },
@@ -709,6 +739,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     author: "author.kim",
     authorName: "김출제",
     state: "approved",
+    correctRate: 62,
     comments: [],
     updatedAt: "2026-08-08 10:10",
   },
@@ -744,6 +775,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     author: "author.kim",
     authorName: "김출제",
     state: "approved",
+    correctRate: 73,
     comments: [],
     updatedAt: "2026-08-08 10:20",
   },
@@ -779,7 +811,30 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     level: "S1",
     author: "author.yoon",
     authorName: "윤출제",
-    state: "approved",
+    state: "retired",
+    correctRate: 96,
+    reviews: [
+      {
+        at: "2026-06-18 16:20",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-clear", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-level", note: "" },
+          {
+            id: "ethics",
+            ok: true,
+            reason: "e-p-label",
+            note: "그림마다 대체 텍스트가 붙어 있어 색을 못 보아도 등분을 셀 수 있습니다.",
+          },
+        ],
+        text: "S1 지각 단계에 맞고 그림 구별이 색에만 기대지 않습니다. 승인합니다.",
+      },
+    ],
+    retiredAt: "2026-07-30 14:05",
+    retiredBy: "송준영",
+    retireReason: "26A 회차 정답률 96% — 변별이 되지 않아 회차에서 뺍니다. 문항 자체에 오류는 없습니다.",
     comments: [],
     updatedAt: "2026-08-08 11:00",
   },
@@ -863,6 +918,7 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
     origin: raw.origin ?? "human",
     reviews: raw.reviews ?? [],
     assets: raw.assets ?? [],
+    correctRate: raw.correctRate ?? null,
   };
 }
 
@@ -1274,6 +1330,40 @@ export function approveItem(
  * ⚠ 오늘 날짜를 읽으므로 서버와 브라우저에서 값이 갈린다. 반드시 하이드레이션이
  *   끝난 뒤에만 부른다(useHydrated).
  */
+/**
+ * 승인된 문항을 회차에서 뺀다.
+ *
+ * 지우지 않는다. 상태만 바꾸고 까닭을 남긴다 — 이 문항으로 이미 판정한 결과가
+ * 있는데 문항이 사라지면 그 판정을 설명할 길이 없어진다. 되돌릴 수도 있어야 해서
+ * 까닭을 코멘트로도 남겨 둔다.
+ */
+export function retireItem(id: string, by: string, role: StaffRoleId, reason: string) {
+  const item = read().find((i) => i.id === id);
+  if (!item || item.state !== "approved") return null;
+  patchItem(id, {
+    state: "retired",
+    retiredAt: now(),
+    retiredBy: by,
+    retireReason: reason,
+    comments: [...item.comments, { at: now(), by, role, kind: "note", text: `사용 중지 — ${reason}` }],
+  });
+  return item;
+}
+
+/** 사용 중지한 문항을 다시 쓴다 */
+export function restoreItem(id: string, by: string, role: StaffRoleId, reason: string) {
+  const item = read().find((i) => i.id === id);
+  if (!item || item.state !== "retired") return null;
+  patchItem(id, {
+    state: "approved",
+    retiredAt: undefined,
+    retiredBy: undefined,
+    retireReason: undefined,
+    comments: [...item.comments, { at: now(), by, role, kind: "note", text: `다시 씀 — ${reason}` }],
+  });
+  return item;
+}
+
 export function daysWaiting(item: ItemDraft) {
   const submitted = Date.parse(item.updatedAt.slice(0, 10));
   if (Number.isNaN(submitted)) return 0;
@@ -1363,6 +1453,7 @@ export const stateLabel: Record<ItemState, string> = {
   submitted: "검수 대기",
   rejected: "반려됨",
   approved: "승인됨",
+  retired: "사용 중지",
 };
 
 export const stateTone: Record<ItemState, string> = {
@@ -1370,4 +1461,5 @@ export const stateTone: Record<ItemState, string> = {
   submitted: "text-brand-700",
   rejected: "text-rose-700",
   approved: "text-emerald-700",
+  retired: "text-exam-muted",
 };
