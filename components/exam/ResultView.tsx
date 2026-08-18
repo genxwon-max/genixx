@@ -8,6 +8,7 @@ import { useSession } from "@/lib/authStore";
 import { findById, formatCode, useRoster } from "@/lib/roster";
 import { confidenceOf, decideType, scoreAxes, scoreSubject } from "@/lib/result";
 import { blockText, useReportOf } from "@/lib/reportStore";
+import { useExamConfig } from "@/lib/roundStore";
 import OctagonChart from "./OctagonChart";
 import SectionTitle from "./SectionTitle";
 import { ArrowRight } from "@/components/Icons";
@@ -51,6 +52,7 @@ function downloadPng(studentName: string) {
 export default function ResultView() {
   const hydrated = useHydrated();
   const session = useSession();
+  const config = useExamConfig();
   const params = useSearchParams();
   const roster = useRoster();
 
@@ -149,7 +151,7 @@ export default function ResultView() {
             {name} 학생 진단 결과
           </h1>
           <p className="mt-2 text-[12px] text-soft-muted">
-            {assessment.name} {assessment.round} · 접속코드{" "}
+            {assessment.name} {config.roundLabel} · 접속코드{" "}
             {student ? formatCode(student.code) : "-"} · 발행{" "}
             {record.finalizedAt ? new Date(record.finalizedAt).toLocaleDateString("ko-KR") : "-"}
           </p>

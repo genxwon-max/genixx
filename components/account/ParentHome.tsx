@@ -5,9 +5,9 @@ import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
 import { progressOf, phaseTone, subjectTone } from "@/lib/progress";
-import { assessment } from "@/lib/exam";
 import { ageFromBirth } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import { useExamConfig } from "@/lib/roundStore";
 import SectionTitle from "@/components/exam/SectionTitle";
 import { eyebrow } from "@/components/exam/ui";
 import { EmptyChild } from "./AuthArt";
@@ -28,6 +28,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
   const t = themeOf(variant);
   const hydrated = useHydrated();
   const session = useSession();
+  const config = useExamConfig();
   const all = useRoster();
   const children = all.filter((s) => s.owner === "parent");
 
@@ -46,7 +47,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
             {session?.name ?? "보호자"}님, 안녕하세요
           </h1>
           <p className={`mt-2 text-[13px] ${t.muted}`}>
-            {assessment.round} · 등록 {hydrated ? children.length : 0}명
+            {config.roundLabel} · 등록 {hydrated ? children.length : 0}명
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">

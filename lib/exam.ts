@@ -35,8 +35,8 @@ export const assessment = {
  * 서버와 브라우저의 날짜가 갈리면 하이드레이션이 어긋나므로, 부르는 쪽에서
  * 하이드레이션이 끝난 뒤에만 쓴다.
  */
-export function deadlineDays(at: Date = new Date()): number {
-  const [y, m, d] = assessment.deadline.split("-").map(Number);
+export function deadlineDays(at: Date = new Date(), deadline = assessment.deadline): number {
+  const [y, m, d] = deadline.split("-").map(Number);
   const end = Date.UTC(y, m - 1, d);
   const now = Date.UTC(at.getFullYear(), at.getMonth(), at.getDate());
   return Math.round((end - now) / 86_400_000);

@@ -25,6 +25,7 @@ import {
   useHydrated,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
+import { useExamConfig } from "@/lib/roundStore";
 import { enterFullscreen, leaveFullscreen } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { btnDanger, btnDisabled, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
@@ -45,6 +46,7 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
+  const config = useExamConfig();
   const [index, setIndex] = useState(0);
   const [askForfeit, setAskForfeit] = useState(false);
   const [askSubmit, setAskSubmit] = useState(false);
@@ -57,6 +59,14 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   const rec = record.subjects[subject];
   const running = rec.status === "ready" || rec.status === "in-progress";
 
+  /**
+   * 제한 시간은 **시작할 때의 값**을 쓴다.
+   *
+   * 회차 설정(ADM-05)에서 관리자가 도중에 시간을 줄여도 지금 풀고 있는 아이의 시계는
+   * 줄지 않는다. 아직 시작하지 않았으면 지금 설정을 그대로 보여 준다.
+   */
+  const limitMin = rec.limitMin ?? config.limits[subject];
+
   useEffect(() => {
     if (!running || !entered) return;
     const tick = () => {
@@ -67,6 +77,19 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [running, entered, rec.startedAt]);
+
+  /**
+   * 시간이 다 되면 자동 제출.
+   *
+   * 마무리 시간을 함께 두는 까닭은 서술형 때문이다. 문장 한가운데서 잘린 답은
+   * 채점자가 무슨 말인지 읽을 수 없고, 그러면 그 아이는 쓸 줄 몰라서가 아니라
+   * 시계 때문에 낮은 값을 받는다.
+   */
+  useEffect(() => {
+    if (!running || !entered || !config.autoSubmit) return;
+    if (elapsed < (limitMin + config.graceMin) * 60) return;
+    submitSubject(studentId, subject);
+  }, [running, entered, elapsed, limitMin, config.autoSubmit, config.graceMin, studentId, subject]);
 
   if (!hydrated) {
     return (
@@ -87,6 +110,28 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   if (rec.status === "forfeited")
     return <Forfeited subject={subject} studentId={studentId} attemptsLeft={rec.attemptsLeft} />;
 
+  /* 이번 회차에서 뺀 과목 — 주소를 직접 쳐서 들어오는 길도 막는다. 다만 이미 시작한
+     아이는 그대로 마치게 둔다. 중간에 문이 닫히면 그 아이의 답은 갈 곳이 없다. */
+  if (!config.enabled[subject] && !rec.startedAt) {
+    return (
+      <div className="container-x flex min-h-[calc(100dvh-4rem)] items-center py-10">
+        <div className={`mx-auto w-full max-w-xl p-8 md:p-10 ${panel}`}>
+          <p className={eyebrow}>응시 안내</p>
+          <h1 className="mt-3 text-[24px] font-black tracking-tight text-exam-text">
+            {meta.name}은 이번 회차에 보지 않습니다
+          </h1>
+          <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
+            이번 회차의 응시 과목에서 빠져 있습니다. 지금까지 본 과목의 기록은 그대로 남아 있습니다.
+          </p>
+          <Link href="/exam" className={`mt-8 ${btnPrimary}`}>
+            응시 현황으로 돌아가기
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // 응시 전 안내 화면 (전체화면 진입 지점)
   if (!entered) {
     return (
@@ -104,7 +149,7 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   const question = list[index];
   const value = rec.answers[question.id];
   const doneCount = list.filter((q) => isAnswered(q, rec.answers[q.id])).length;
-  const remain = Math.max(0, meta.limitMin * 60 - elapsed);
+  const remain = Math.max(0, limitMin * 60 - elapsed);
   const isLast = index === list.length - 1;
   const unanswered = list.length - doneCount;
 
@@ -117,7 +162,7 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
           <div className="flex items-baseline gap-3">
             <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
             <span className="hidden text-[12px] text-exam-muted sm:block">
-              총 {QUESTIONS_PER_SUBJECT}문항 · 제한 {meta.limitMin}분
+              총 {QUESTIONS_PER_SUBJECT}문항 · 제한 {limitMin}분
             </span>
           </div>
           <p className="text-[12px] font-medium tabular-nums text-exam-muted">
@@ -487,6 +532,8 @@ function QuestionPad({
 
 function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => void }) {
   const meta = subjectOf(subject)!;
+  const config = useExamConfig();
+  const limitMin = config.limits[subject];
   return (
     <div className="container-x flex min-h-[calc(100dvh-4rem)] items-center py-10">
       <div className={`mx-auto w-full max-w-xl p-8 md:p-10 ${panel}`}>
@@ -502,7 +549,12 @@ function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => vo
         <ul className="mt-6 space-y-2.5 border-t border-exam-line pt-6 text-[13px] leading-relaxed text-exam-muted">
           <li>
             · 문항 <b className="text-exam-text">{QUESTIONS_PER_SUBJECT}개</b> · 제한 시간{" "}
-            <b className="text-exam-text">{meta.limitMin}분</b> (남은 시간은 오른쪽 위에 표시됩니다)
+            <b className="text-exam-text">{limitMin}분</b> (남은 시간은 오른쪽 위에 표시됩니다)
+          </li>
+          <li>
+            {config.autoSubmit
+              ? `· 시간이 다 되면 ${config.graceMin > 0 ? `${config.graceMin}분 뒤에 ` : ""}쓰던 답 그대로 자동으로 제출됩니다.`
+              : "· 시간이 다 되어도 답을 계속 쓸 수 있습니다. 다만 걸린 시간은 기록에 남습니다."}
           </li>
           <li>· 답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다.</li>
           <li>· 제출 후에는 문항마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>

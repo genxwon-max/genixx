@@ -20,6 +20,7 @@ import { useSession } from "@/lib/authStore";
 import { findById, formatCode } from "@/lib/roster";
 import { examWindow, surveyWindow } from "@/lib/popup";
 import { ensureReport } from "@/lib/reportStore";
+import { useExamConfig } from "@/lib/roundStore";
 import { isAnswered } from "./ExamSession";
 import SectionTitle from "./SectionTitle";
 import { ArrowRight } from "@/components/Icons";
@@ -58,6 +59,7 @@ export default function StatusTable() {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
+  const config = useExamConfig();
   const studentId = session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
   const student = hydrated ? findById(studentId) : null;
@@ -109,11 +111,12 @@ export default function StatusTable() {
         <div>
           <p className={eyebrow}>ASM-01 · 응시 현황</p>
           <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
-            {assessment.name} {assessment.round} 진단 현황
+            {assessment.name} {config.roundLabel} 진단 현황
           </h1>
         </div>
         <p className="text-[12px] text-soft-muted">
-          응시 기간 2026-08-10 ~ 2026-08-24 · 조회 기준 {fmt(new Date().toISOString())}
+          응시 기간 {config.opensAt} ~ {config.closesAt} · 조회 기준{" "}
+          {fmt(new Date().toISOString())}
         </p>
       </div>
 
@@ -146,7 +149,9 @@ export default function StatusTable() {
 
       {/* 표 1 — 과목별 평가 */}
       <section className="mt-9">
-        <SectionTitle note="과목마다 따로 응시하며, 한 과목당 10문항 40분입니다. 응시 버튼을 누르면 별도 창이 열립니다.">
+        <SectionTitle
+          note={`과목마다 따로 응시하며, 한 과목당 ${QUESTIONS_PER_SUBJECT}문항입니다. 제한 시간은 과목마다 다를 수 있어 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
+        >
           평가 응시 현황
         </SectionTitle>
 
@@ -184,6 +189,9 @@ export default function StatusTable() {
                   ? stateText.reflecting
                   : (stateText[rec.status] ?? stateText.ready);
                 const exhausted = rec.status === "forfeited" && rec.attemptsLeft <= 0;
+                /* 이번 회차에서 뺀 과목. 이미 제출한 기록은 그대로 두고 새 응시만 막는다 —
+                   줄을 아예 지우면 지난주에 본 아이가 자기 기록을 찾지 못한다. */
+                const off = !config.enabled[s.id];
 
                 return (
                   <tr key={s.id}>
@@ -198,14 +206,24 @@ export default function StatusTable() {
                     <td className={`${td} tabular-nums`}>
                       {answered}/{QUESTIONS_PER_SUBJECT}
                     </td>
-                    <td className={`${td} tabular-nums`}>{s.limitMin}분</td>
+                    <td className={`${td} tabular-nums`}>
+                      {/* 이미 시작했다면 그 아이가 받은 시간을 적는다. 지금 설정을 적으면
+                          45분에 푼 아이의 기록에 20분이라고 남는다. */}
+                      {off && !rec.startedAt ? "—" : `${rec.limitMin ?? config.limits[s.id]}분`}
+                    </td>
                     <td className={td}>
-                      <span className={st.className}>{st.label}</span>
+                      {off && rec.status === "ready" ? (
+                        <span className="text-soft-muted">이번 회차 미포함</span>
+                      ) : (
+                        <span className={st.className}>{st.label}</span>
+                      )}
                     </td>
                     <td className={`${td} tabular-nums`}>{fmt(rec.submittedAt)}</td>
                     <td className={td}>
                       {asGuardian ? (
                         <span className={btnSmMuted}>열람 불가</span>
+                      ) : off && rec.status === "ready" ? (
+                        <span className={btnSmMuted}>미포함</span>
                       ) : reflecting ? (
                         <button type="button" onClick={() => openExam(s.id)} className={btnSm}>
                           해석 작성

@@ -4,6 +4,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
+import { useExamConfig } from "@/lib/roundStore";
+import { subjects } from "@/lib/exam";
+import { QUESTIONS_PER_SUBJECT } from "@/lib/exam";
 import { ArrowRight } from "@/components/Icons";
 import { btnGhost, btnPrimary, eyebrow, panel, panelRaised } from "./ui";
 
@@ -32,6 +35,10 @@ const entries = [
 export default function ExamGate({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();
   const session = useSession();
+  const config = useExamConfig();
+  const on = subjects.filter((s) => config.enabled[s.id]);
+  /* 과목마다 시간이 다를 수 있으므로 한 값으로 뭉뚱그리지 않는다 */
+  const sameLimit = on.every((s) => config.limits[s.id] === config.limits[on[0]?.id]);
 
   if (!hydrated) {
     return <div className="py-20 text-center text-[13px] text-exam-muted">확인 중입니다…</div>;
@@ -76,9 +83,15 @@ export default function ExamGate({ children }: { children: ReactNode }) {
           <p className="text-[13px] font-bold text-exam-text">응시 전에 확인해 주세요</p>
           <ul className="mt-3 space-y-1.5 text-[13px] leading-relaxed text-exam-muted">
             <li>
-              · 국어(언어)·수학·과학을 <b className="text-exam-text">과목별로 따로</b> 응시합니다.
+              · {on.map((s) => s.name).join(" · ")}을 <b className="text-exam-text">과목별로 따로</b>{" "}
+              응시합니다.
             </li>
-            <li>· 한 과목은 10문항이며 제한 시간은 40분입니다.</li>
+            <li>
+              · 한 과목은 {QUESTIONS_PER_SUBJECT}문항이며 제한 시간은{" "}
+              {sameLimit && on.length > 0
+                ? `${config.limits[on[0].id]}분입니다.`
+                : `${on.map((s) => `${s.short} ${config.limits[s.id]}분`).join(" · ")}입니다.`}
+            </li>
             <li>· 한 과목을 모두 풀어야 그 과목을 제출할 수 있습니다.</li>
             <li>· 중간에 포기하면 해당 과목의 응시 기회가 사라집니다.</li>
           </ul>

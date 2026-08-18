@@ -455,8 +455,20 @@ export const adminMenu: AdminMenuGroup[] = [
         id: "ADM-05",
         label: "회차·응시 현황",
         href: "/admin/rounds",
-        desc: "26A~26D 회차 개설·응시기간·대상 학년·세션 구성",
+        desc: "회차 개설·응시기간·세션 구성. 과목별 제한 시간을 여기서 정합니다",
         needs: "round.manage",
+        children: [
+          {
+            id: "ADM-05-1",
+            label: "시험 설정",
+            desc: "과목별 제한 시간·자동 제출·응시 기간. 바꾸면 판 번호가 올라간다",
+          },
+          {
+            id: "ADM-05-2",
+            label: "설정 변경 기록",
+            desc: "언제 누가 무엇을 왜 바꿨나. 회차 간 비교의 전제가 되는 표",
+          },
+        ],
       },
       {
         id: "ADM-06",

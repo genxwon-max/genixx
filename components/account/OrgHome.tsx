@@ -7,8 +7,8 @@ import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
 import { phaseTone, progressOf } from "@/lib/progress";
-import { assessment } from "@/lib/exam";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import { useExamConfig } from "@/lib/roundStore";
 import SectionTitle from "@/components/exam/SectionTitle";
 import { eyebrow } from "@/components/exam/ui";
 import { EmptyChild } from "./AuthArt";
@@ -45,6 +45,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
+  const config = useExamConfig();
   const all = useRoster();
   const students = all.filter((s) => s.owner === "director");
 
@@ -89,7 +90,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
             {session?.org ?? "소속 기관"}
           </h1>
           <p className={`mt-2 text-[13px] ${t.muted}`}>
-            {assessment.round} · 등록 {students.length}명 · 개인 상세는 보호자 동의 범위 안에서만
+            {config.roundLabel} · 등록 {students.length}명 · 개인 상세는 보호자 동의 범위 안에서만
             열립니다
           </p>
         </div>

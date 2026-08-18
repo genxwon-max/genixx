@@ -2,9 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { QUESTIONS_PER_SUBJECT, isSubjectId, questionsOf, subjectOf } from "@/lib/exam";
+import { QUESTIONS_PER_SUBJECT, isSubjectId, questionsOf } from "@/lib/exam";
 import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
+import { useExamConfig } from "@/lib/roundStore";
 import { enterFullscreen, leaveFullscreen } from "@/lib/fullscreen";
 import { isAnswered } from "./ExamSession";
 
@@ -18,6 +19,7 @@ export default function ExamStatusBar() {
   const hydrated = useHydrated();
   const session = useSession();
   const record = useExamRecord(session?.studentId ?? "demo");
+  const config = useExamConfig();
   const [now, setNow] = useState(0);
   const [full, setFull] = useState(false);
 
@@ -43,12 +45,13 @@ export default function ExamStatusBar() {
 
   if (!subject || !rec || !hydrated || !live) return null;
 
-  const meta = subjectOf(subject)!;
   const done = questionsOf(subject).filter((q) => isAnswered(q, rec.answers[q.id])).length;
   const started = rec.startedAt ? new Date(rec.startedAt).getTime() : now;
   const elapsed = Math.max(0, Math.floor((now - started) / 1000));
-  const remain = Math.max(0, meta.limitMin * 60 - elapsed);
-  const low = remain < 300;
+  /* 시작할 때 박아 둔 값을 쓴다 — 관리자가 도중에 줄여도 이 시계는 줄지 않는다 */
+  const limitMin = rec.limitMin ?? config.limits[subject];
+  const remain = Math.max(0, limitMin * 60 - elapsed);
+  const low = remain < config.warnMin * 60;
 
   return (
     <div className="flex items-center gap-2">
@@ -78,7 +81,7 @@ export default function ExamStatusBar() {
           {pad(Math.floor(remain / 60))}:{pad(remain % 60)}
         </span>
         <span className="hidden text-[10px] tabular-nums text-exam-muted md:block">
-          / {meta.limitMin}:00
+          / {limitMin}:00
         </span>
       </div>
 

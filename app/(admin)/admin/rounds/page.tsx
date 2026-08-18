@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { rounds } from "@/lib/admin";
 import { subjects } from "@/lib/exam";
 import { PageHead, TableCard, Progress, Badge, CountRows } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
+import RoundSettings from "@/components/admin/RoundSettings";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "회차·응시 현황 · GENIXX 관리자" };
@@ -33,18 +35,13 @@ export default function RoundsPage() {
   return (
     <>
       <PageHead
-        id="ADM-04"
+        id="ADM-05"
         title="회차 · 응시 현황"
         lead="지금 열려 있는 회차가 어디까지 왔는지 봅니다. 과목은 한 번에 몰아 보지 않고 따로 응시하므로 과목별로 나눠 표시합니다."
         action={
-          <>
-            <button type="button" className={a.btnGhost}>
-              응시 명단 내려받기
-            </button>
-            <button type="button" className={a.btnPrimary}>
-              새 회차 만들기
-            </button>
-          </>
+          <Link href="/admin/rounds#ADM-05-1" className={a.btnPrimary}>
+            시험 설정 바꾸기
+          </Link>
         }
       />
 
@@ -61,9 +58,9 @@ export default function RoundsPage() {
                 {current.period} · 응시 대상 {current.target.toLocaleString("ko-KR")}명
               </p>
             </div>
-            <button type="button" className={a.btnGhost}>
-              회차 설정 바꾸기
-            </button>
+            <Link href="/admin/rounds#ADM-05-1" className={a.btnGhost}>
+              제한 시간 · 응시 기간 바꾸기
+            </Link>
           </div>
 
           <div className="mt-6 grid gap-5 lg:grid-cols-3">
@@ -74,7 +71,10 @@ export default function RoundsPage() {
         </section>
 
         <div className="mt-6 grid gap-5 xl:grid-cols-2">
-          <TableCard title="과목별 응시" caption="한 과목당 10문항 · 제한 시간 40분입니다.">
+          <TableCard
+            title="과목별 응시"
+            caption="과목은 따로 응시합니다. 과목별 제한 시간은 아래 「시험 설정」에서 정합니다."
+          >
             <table className={a.table}>
               <thead>
                 <tr>
@@ -147,12 +147,21 @@ export default function RoundsPage() {
                 unit: "개",
                 note: "공간·청각·신체·관계·자기이해 — 2027 심화진단",
               },
-              { label: "평균 응시 소요", value: "27", unit: "분", note: "과목당 · 제한 40분" },
+              {
+                label: "평균 응시 소요",
+                value: "27",
+                unit: "분",
+                note: "과목당 — 제한 시간은 시험 설정에서 봅니다",
+              },
             ]}
           />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-10">
+          <RoundSettings started={current.submitted} />
+        </div>
+
+        <div className="mt-10">
           <TableCard title="지난 회차" caption="마감된 회차는 자료를 읽기만 할 수 있습니다.">
             <table className={a.table}>
               <thead>

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { SUBJECT_IDS, type SubjectId } from "./exam";
+import { getExamConfig } from "./roundStore";
 
 /** 설문 상태 — 미제출 / 제출 완료 */
 export type SurveyState = "none" | "done";
@@ -44,6 +45,15 @@ export type SubjectRecord = {
   status: ExamStatus;
   startedAt: string | null;
   submittedAt: string | null;
+  /**
+   * 시작할 때의 제한 시간(분).
+   *
+   * 회차 설정(ADM-05)에서 읽어 여기에 박아 둔다. 관리자가 도중에 40분을 30분으로
+   * 줄여도 이미 시작한 아이의 시계는 줄지 않는다 — 푸는 중에 남은 시간이 갑자기
+   * 깎이면, 그 아이는 자기가 무엇을 잘못했는지 알 수 없다.
+   * null이면 옛 기록이므로 지금 회차 설정을 쓴다.
+   */
+  limitMin: number | null;
   /** 남은 응시 기회. '포기하기' 선택 시 1 감소 */
   attemptsLeft: number;
   /** 제출 후 문항별로 적는 해석 — 왜 그렇게 답했는지 / 왜 못 풀었는지 */
@@ -123,6 +133,7 @@ const emptySubject: SubjectRecord = {
   status: "ready",
   startedAt: null,
   submittedAt: null,
+  limitMin: null,
   attemptsLeft: 1,
   reflections: {},
   reflectionPicks: {},
@@ -249,14 +260,25 @@ export function setAnswer(
   patchSubject(studentId, subject, {
     status: rec.status === "ready" ? "in-progress" : rec.status,
     startedAt: rec.startedAt ?? new Date().toISOString(),
+    limitMin: rec.limitMin ?? getExamConfig().limits[subject],
     answers: { ...rec.answers, [questionId]: value },
   });
 }
 
+/**
+ * 응시 시작 — 이때의 제한 시간을 기록에 박아 둔다.
+ *
+ * 회차 설정을 바로 읽어 쓰면, 관리자가 도중에 시간을 줄이는 순간 이미 풀고 있던
+ * 아이의 남은 시간이 함께 깎인다. 시작한 시점의 조건이 그 아이의 조건이다.
+ */
 export function startSubject(studentId: string, subject: SubjectId) {
   const rec = readRecord(studentId).subjects[subject];
   if (rec.startedAt) return;
-  patchSubject(studentId, subject, { status: "in-progress", startedAt: new Date().toISOString() });
+  patchSubject(studentId, subject, {
+    status: "in-progress",
+    startedAt: new Date().toISOString(),
+    limitMin: getExamConfig().limits[subject],
+  });
 }
 
 export function submitSubject(studentId: string, subject: SubjectId) {
@@ -316,6 +338,8 @@ export function restartSubject(studentId: string, subject: SubjectId) {
     status: "ready",
     startedAt: null,
     submittedAt: null,
+    /* 다시 볼 때는 지금 회차 설정을 새로 받는다 */
+    limitMin: null,
     reflections: {},
     reflectionPicks: {},
     reflectionAt: null,

@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { roleLabel, signOut, useSession, type Role } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
-import { assessment, deadlineDays } from "@/lib/exam";
+import { deadlineDays } from "@/lib/exam";
+import { useExamConfig } from "@/lib/roundStore";
 import { ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
 
@@ -223,6 +224,7 @@ function Chip({ k, v }: { k: string; v: string }) {
 export default function DashShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hydrated = useHydrated();
+  const config = useExamConfig();
   const session = useSession();
   const roster = useRoster();
 
@@ -233,7 +235,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
   const name = session?.name ?? "회원";
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
-  const dday = hydrated ? deadlineDays() : null;
+  const dday = hydrated ? deadlineDays(new Date(), config.closesAt) : null;
 
   return (
     <div className="flex min-h-full bg-[#f4f6fb] text-soft-ink">
@@ -277,7 +279,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
             </span>
 
             <div className="ml-auto flex items-center gap-3">
-              <Chip k="회차" v={assessment.round} />
+              <Chip k="회차" v={config.roundLabel} />
               {dday !== null && (
                 <Chip k="응시 마감" v={dday > 0 ? `D-${dday}` : dday === 0 ? "오늘" : "마감"} />
               )}
