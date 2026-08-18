@@ -198,7 +198,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                                       document.getElementById(c.id)?.scrollIntoView();
                                     }}
                                     aria-current={here ? "location" : undefined}
-                                    title={`${c.id} · ${c.desc}`}
+                                    title={c.desc}
                                     className={`flex min-h-[2.5rem] items-center rounded-md px-2 py-1.5 adm-t-sm transition-colors ${
                                       here
                                         ? "bg-white/10 font-bold text-white"
@@ -280,7 +280,7 @@ function MenuLink({
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      title={`${item.label} · ${item.id}`}
+      title={`${item.label} · ${item.desc}`}
       // 현재 위치는 색·배경·굵기·왼쪽 막대 네 가지로 동시에 표시한다
       className={`relative flex min-h-[3rem] items-center gap-2 rounded-md py-2 pl-4 pr-3 adm-t-md transition-colors ${
         active

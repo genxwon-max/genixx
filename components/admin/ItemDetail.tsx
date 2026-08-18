@@ -45,7 +45,6 @@ export default function ItemDetail({ id }: { id: string }) {
     return (
       <>
         <PageHead
-          id="ADM-04-1"
           title="문항을 찾을 수 없습니다"
           lead={`${id} 번호로 저장된 문항이 없습니다. 주소가 바뀌었거나 폐기된 문항일 수 있습니다.`}
         />
@@ -65,7 +64,6 @@ export default function ItemDetail({ id }: { id: string }) {
   return (
     <>
       <PageHead
-        id={`ADM-04-1 · ${item.id}`}
         title={item.code || "번호가 아직 없는 문항"}
         lead={`${item.subject} · ${item.grade} · ${typeLabel(item.type)} · ${item.level} ${levelSpecs[item.level].name} · ${item.points}점`}
         action={

@@ -32,7 +32,6 @@ export default function AdminHome() {
   return (
     <>
       <PageHead
-        id="ADM-01"
         title="대시보드"
         lead={`${round.label} (${round.period}) 기준입니다.`}
       />

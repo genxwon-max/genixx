@@ -31,7 +31,7 @@ export default function StubPage({ section }: { section: keyof typeof stubSectio
 
   return (
     <>
-      <PageHead id={s.id} title={s.title} lead={s.lead} />
+      <PageHead title={s.title} lead={s.lead} />
 
       {children.length > 0 ? (
         <div className="space-y-8">

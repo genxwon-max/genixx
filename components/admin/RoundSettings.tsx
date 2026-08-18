@@ -128,7 +128,7 @@ export default function RoundSettings({ started }: { started: number }) {
 
             <p className={`${a.hint} mt-5 border-t border-exam-line pt-4`}>
               문항 수는 여기서 정하지 않습니다. 한 검사지에 몇 문항이 들어가는지는{" "}
-              <b>검사지 조립(ADM-04-3)</b>에서 정해지고, 이 화면은 그 검사지를 푸는 조건만 다룹니다.
+              <b>검사지 조립</b>에서 정해지고, 이 화면은 그 검사지를 푸는 조건만 다룹니다.
             </p>
           </div>
 

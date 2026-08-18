@@ -11,7 +11,6 @@ export default function InquiriesPage() {
   return (
     <>
       <PageHead
-        id="ADM-10"
         title="문의"
         lead="홈페이지 1:1 문의와 기관 도입 문의가 함께 들어옵니다. 답변 목표는 접수 후 24시간입니다."
         action={

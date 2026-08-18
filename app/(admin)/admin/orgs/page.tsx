@@ -12,7 +12,6 @@ export default function OrgsPage() {
   return (
     <>
       <PageHead
-        id="ADM-07"
         title="기관"
         lead="학원·학교·교육원·교육청 계약과 응시권 배정을 관리합니다. 기관 관리자가 학생 명부를 직접 등록합니다."
         action={

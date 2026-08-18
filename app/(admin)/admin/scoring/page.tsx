@@ -9,7 +9,6 @@ export default function ScoringPage() {
   return (
     <>
       <PageHead
-        id="EXP-04"
         title="채점 워크벤치"
         lead="서술형 응답에 AI가 1차로 매긴 값을 사람이 루브릭으로 확정합니다. 확신도가 낮은 건은 자동으로 사람에게 넘어옵니다."
       />

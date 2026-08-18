@@ -79,7 +79,6 @@ export default function SurveyEditor() {
   return (
     <>
       <PageHead
-        id="ADM-14 · ASM-05 · ASM-06"
         title="설문 원본"
         lead="학부모·교사 설문의 문항과 안내 문구를 고칩니다. 고친 것은 초안에만 담기고, 발행해야 응답자 화면이 바뀝니다. 발행·되돌리기는 사유와 함께 기록에 남습니다."
       />

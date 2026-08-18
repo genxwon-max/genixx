@@ -107,7 +107,6 @@ export default function ItemGenerator() {
       </Link>
 
       <PageHead
-        id="EXP-02-2"
         title="AI 문항 생성"
         lead="조건을 정하면 그 조건에 맞는 문항을 한 번에 출제합니다. 지문·보기·정답·해설·채점 기준까지 채워져 나옵니다."
       />

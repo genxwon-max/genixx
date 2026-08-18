@@ -52,7 +52,6 @@ export default function AccountPanel() {
   return (
     <>
       <PageHead
-        id="ADM-03-1"
         title="내 계정"
         lead="아이디와 역할은 슈퍼 관리자가 정합니다. 비밀번호는 직접 바꾸실 수 있습니다."
       />

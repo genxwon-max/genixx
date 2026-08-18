@@ -138,7 +138,6 @@ export default function ItemList() {
   return (
     <div>
       <PageHead
-        id="EXP-02"
         title="출제 워크벤치"
         lead="발주서 Ver.4.1의 문항 카드 양식으로 씁니다. 쓰는 동안은 임시저장되고, 제출해야 검수로 넘어갑니다."
         action={

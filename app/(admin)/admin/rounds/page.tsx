@@ -35,7 +35,6 @@ export default function RoundsPage() {
   return (
     <>
       <PageHead
-        id="ADM-05"
         title="회차 · 응시 현황"
         lead="지금 열려 있는 회차가 어디까지 왔는지 봅니다. 과목은 한 번에 몰아 보지 않고 따로 응시하므로 과목별로 나눠 표시합니다."
         action={

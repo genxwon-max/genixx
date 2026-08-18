@@ -21,7 +21,6 @@ export default function ItemsPage() {
   return (
     <>
       <PageHead
-        id="ADM-05"
         title="문항 은행"
         lead="검수를 지나 확정된 문항이 모이는 자리입니다. 여기서는 고르고 훑기만 합니다 — 만들고 고치는 일은 출제 워크벤치에서 합니다."
         action={

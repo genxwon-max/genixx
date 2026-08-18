@@ -121,7 +121,7 @@ export default function ReviewList() {
   if (!hydrated) {
     return (
       <>
-        <PageHead id="EXP-03" title="검수 워크벤치" lead={LEAD} />
+        <PageHead title="검수 워크벤치" lead={LEAD} />
         <p className="py-16 text-center adm-t-sm text-exam-muted">확인 중입니다…</p>
       </>
     );
@@ -180,7 +180,7 @@ export default function ReviewList() {
 
   return (
     <>
-      <PageHead id="EXP-03" title="검수 워크벤치" lead={LEAD} />
+      <PageHead title="검수 워크벤치" lead={LEAD} />
 
       {mineSubmitted > 0 && (
         <div className="mb-5">

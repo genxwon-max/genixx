@@ -9,7 +9,6 @@ export default function InterviewPage() {
   return (
     <>
       <PageHead
-        id="EXP-06"
         title="면담 워크벤치"
         lead="면담 대상을 규칙으로 뽑고, 고정된 질문으로 묻고, 전사한 내용을 사람이 코딩해 확정합니다."
       />

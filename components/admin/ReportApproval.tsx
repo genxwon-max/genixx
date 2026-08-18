@@ -49,7 +49,6 @@ export default function ReportApproval() {
   return (
     <>
       <PageHead
-        id="EXP-08"
         title="리포트 승인"
         lead="조립된 리포트를 확인하고 발행합니다. 발행하기 전까지 보호자 화면에는 결과가 보이지 않습니다 — 이 화면이 그 관문입니다."
       />

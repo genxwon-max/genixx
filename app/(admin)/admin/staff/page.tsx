@@ -31,7 +31,6 @@ export default function StaffPage() {
   return (
     <>
       <PageHead
-        id="ADM-03"
         title="운영자 · 권한"
         lead="아이디를 만들고 역할을 붙이면 그 역할이 곧 권한입니다. 출제자는 자기 문항을 스스로 승인할 수 없고, 검수자는 문항을 쓸 수 없습니다."
       />

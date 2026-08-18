@@ -186,7 +186,6 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
       <BackLink />
 
       <PageHead
-        id="EXP-03-1"
         title={item.code || item.id}
         lead={`${typeLabel(item.type)} · ${item.subject} · ${item.grade} · ${item.level} ${levelSpecs[item.level].name} · 출제 ${item.authorName}`}
         action={<Badge label={stateLabel[item.state]} className={stateTone[item.state]} />}

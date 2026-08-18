@@ -1,15 +1,19 @@
 import Link from "next/link";
 import * as a from "./ui";
 
-/** 화면 제목 줄 — 왼쪽에 제목·설명, 오른쪽에 주 동작 */
+/**
+ * 화면 제목 줄 — 왼쪽에 제목·설명, 오른쪽에 주 동작.
+ *
+ * 사이트맵 화면 ID(EXP-03 · ADM-05 …)는 화면에 적지 않는다. 정의서를 들고 만드는
+ * 사람에게는 길잡이지만, 매일 이 콘솔을 쓰는 사람에게는 뜻을 알 수 없는 글자가
+ * 제목 위에 상시로 놓여 있는 것이다. ID는 코드 주석과 앵커(AnchorSection의 id)에
+ * 그대로 남아 있어 정의서와 대조하는 데 문제가 없다.
+ */
 export function PageHead({
-  id,
   title,
   lead,
   action,
 }: {
-  /** 사이트맵 화면 ID */
-  id: string;
   title: string;
   lead: string;
   action?: React.ReactNode;
@@ -17,8 +21,7 @@ export function PageHead({
   return (
     <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
       <div className="max-w-3xl">
-        <p className="adm-t-xs font-bold text-exam-muted">{id}</p>
-        <h1 className={`${a.pageTitle} mt-1.5`}>{title}</h1>
+        <h1 className={a.pageTitle}>{title}</h1>
         <p className={`${a.bodyText} mt-2`}>{lead}</p>
       </div>
       {action && <div className="flex flex-wrap gap-2">{action}</div>}
@@ -44,11 +47,9 @@ export function AnchorSection({
   children: React.ReactNode;
 }) {
   return (
+    /* id 는 메뉴의 하위 항목이 내려앉는 앵커로만 쓴다 — 화면에는 적지 않는다 */
     <section id={id} className="scroll-mt-20">
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-3">
-        <h2 className={a.cardTitle}>{title}</h2>
-        <span className="adm-t-xs font-bold text-exam-muted">{id}</span>
-      </div>
+      <h2 className={`${a.cardTitle} mb-3`}>{title}</h2>
       {lead && <p className={`${a.bodyText} mb-4`}>{lead}</p>}
       {children}
     </section>
