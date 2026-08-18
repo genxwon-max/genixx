@@ -315,16 +315,86 @@ export const adminMenu: AdminMenuGroup[] = [
       },
     ],
   },
+  /* 정의서 9장의 「7 워크벤치」 — 출제(EXP-02)·검수(EXP-03)·채점(EXP-04)·개방형
+     코딩(EXP-05)·면담(EXP-06)·판정 협진(EXP-07)·리포트 승인(EXP-08).
+     앞의 둘은 문항을 만드는 일이라 위 그룹에 두고, 뒤의 다섯은 한 아이의 자료가
+     흐르는 순서 그대로 여기에 세운다. 채점과 판정을 한 화면에 뭉쳐 두면 확정하는
+     자리가 두 곳이 되므로 갈라 둔다. */
   {
-    label: "판정 · 리포트",
+    label: "판정 · 리포트 (전문가 콘솔)",
     items: [
       {
-        id: "EXP-04 · EXP-07",
-        label: "채점·판정 큐",
-        href: "/admin/grading",
-        desc: "AI 1차 제안값 검토 → 케이스 회의 → 확정",
+        id: "EXP-04",
+        label: "채점 워크벤치",
+        href: "/admin/scoring",
+        desc: "서술형 AI 1차 채점 검토 → 루브릭 확정. 저신뢰는 자동으로 사람에게",
         needs: "grade.review",
         badge: "grading",
+        children: [
+          {
+            id: "EXP-04-1",
+            label: "AI 채점 결과 검토 큐",
+            desc: "서술형 AI 1차 채점 결과와 확신도",
+          },
+          {
+            id: "EXP-04-2",
+            label: "저신뢰 자동 라우팅",
+            desc: "확신도 0.75 미만 자동 배정. 저학년 서술은 오판 위험이 크다",
+          },
+          { id: "EXP-04-3", label: "루브릭 채점", desc: "완전정답·부분정답·오답 3단 루브릭" },
+          {
+            id: "EXP-04-4",
+            label: "이중 채점 · ICC 모니터",
+            desc: "두 사람이 독립으로 매긴 표본, AI-인간 일치도 ICC ≥ 0.80",
+          },
+        ],
+      },
+      {
+        id: "EXP-05",
+        label: "개방형 코딩 워크벤치",
+        href: "/admin/coding",
+        desc: "소개·에피소드 응답에 부호 붙이기. AI 전수 → 사람 표본 검증",
+        needs: "grade.review",
+        children: [
+          { id: "EXP-05-1", label: "표본 비율 조정", desc: "불일치율(ai_human_agree)로 다음 회차 표본을 정한다" },
+          { id: "EXP-05-2", label: "응답 코딩 확정", desc: "AI가 붙인 부호를 사람이 두거나 고친다" },
+          { id: "EXP-05-3", label: "「불명」으로 남은 응답", desc: "억지로 축에 넣지 않고 면담으로 넘긴다" },
+        ],
+      },
+      {
+        id: "EXP-06",
+        label: "면담 워크벤치",
+        href: "/admin/interview",
+        desc: "지필로 재지 못한 것을 직접 묻는다. 선발 → 프로토콜 → 코딩 확정",
+        needs: "grade.review",
+        children: [
+          {
+            id: "EXP-06-1",
+            label: "면담 대상 선발 큐",
+            desc: "배제영역 고신호 → 크로스 불일치 → 응답 괴리 → 코딩 불명 → 일반 신청",
+          },
+          { id: "EXP-06-2", label: "구조화 프로토콜 · 기록", desc: "질문 스크립트를 고정해 면담원 간 차이를 없앤다" },
+          { id: "EXP-06-3", label: "전사 · 코딩 확정", desc: "AI 전사 → 사람 확정 → interview.coded 이벤트" },
+        ],
+      },
+      {
+        id: "EXP-07",
+        label: "판정 협진",
+        href: "/admin/conference",
+        desc: "지필·설문·관찰·면담 4정보원을 함께 보고 확정. 경계선은 유보",
+        needs: "grade.review",
+        badge: "cases",
+        children: [
+          { id: "EXP-07-1", label: "케이스 카드", desc: "네 정보원을 한 화면에 나란히" },
+          {
+            id: "EXP-07-2",
+            label: "크로스 판정 6셀 확인",
+            desc: "강신호 확증 / 잠재-발현 갭 / 능력-흥미 불일치 / 현시점 비우선 / 배제영역 고신호 · 무신호",
+          },
+          { id: "EXP-07-3", label: "경계선 유보 처리", desc: "컷 ±0.25 안이면 확정하지 않고 다음 회차로" },
+          { id: "EXP-07-4", label: "다분야 전문가 코멘트", desc: "합의되지 않은 이견도 지우지 않는다" },
+          { id: "EXP-07-5", label: "최종 확정 · 전자서명", desc: "확정자·시각·근거 해시를 함께 굳힌다" },
+        ],
       },
       {
         id: "EXP-08",

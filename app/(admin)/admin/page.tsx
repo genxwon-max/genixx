@@ -165,8 +165,8 @@ export default function AdminHome() {
               </tbody>
             </table>
           </div>
-          <Link href="/admin/grading" className={`${a.btnRowGhost} mt-3`}>
-            채점·판정 큐 전체 보기
+          <Link href="/admin/conference" className={`${a.btnRowGhost} mt-3`}>
+            판정 협진 전체 보기
           </Link>
         </details>
 

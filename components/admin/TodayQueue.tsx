@@ -22,19 +22,19 @@ const queue: {
   needs: PermissionId;
 }[] = [
   {
-    label: "AI 분석이 끝나 검토를 기다리는 응시",
+    label: "AI가 1차로 매긴 서술형 채점 검토",
     count: pending.grading,
     unit: "건",
-    href: "/admin/grading",
+    href: "/admin/scoring",
     urgent: true,
-    note: "이 중 판정 컷 경계 사례는 확정하지 말고 케이스 회의로 넘깁니다.",
+    note: "확신도가 낮은 건은 자동으로 사람에게 배정되어 있습니다.",
     needs: "grade.review",
   },
   {
-    label: "케이스 회의에서 합의해야 하는 경계 사례",
+    label: "판정 협진에서 합의해야 하는 경계 사례",
     count: pending.cases,
     unit: "건",
-    href: "/admin/grading",
+    href: "/admin/conference",
     urgent: true,
     note: "오늘 오후 4시 회의 안건입니다.",
     needs: "grade.confirm",
