@@ -44,7 +44,7 @@ export function AnchorSection({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-28">
+    <section id={id} className="scroll-mt-20">
       <div className="mb-3 flex flex-wrap items-baseline gap-x-3">
         <h2 className={a.cardTitle}>{title}</h2>
         <span className="adm-t-xs font-bold text-exam-muted">{id}</span>

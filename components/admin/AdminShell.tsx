@@ -8,7 +8,6 @@ import {
   canAny,
   pending,
   roleOf,
-  staffRoles,
   subHref,
   type AdminMenuItem,
 } from "@/lib/admin";
@@ -21,7 +20,7 @@ import {
   ZOOM_MIN,
 } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
-import { MenuIcon, CloseIcon, ChevronDown } from "@/components/Icons";
+import { MenuIcon, CloseIcon } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
 import ConsoleLogin from "./ConsoleLogin";
 
@@ -91,16 +90,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <header className="sticky top-0 z-40 bg-slate-900 text-white">
         {/* 맨 윗줄은 글자 크기만 두는 얇은 띠다. 배율은 하루에 한두 번 만지고 마는
             설정이라, 헤더 한복판에서 늘 자리를 차지할 이유가 없다. */}
-        <div className="flex h-8 items-center justify-end gap-2 bg-slate-950 px-4 lg:px-6">
+        <div className="flex h-7 items-center justify-end gap-2 bg-slate-950 px-4 lg:px-6">
           <ZoomControl value={prefs.zoom} />
         </div>
 
-        {/* 태블릿 폭에서는 오른쪽 묶음이 한 줄에 다 서지 못한다. 줄을 접게 두고 높이를 늘린다. */}
-        <div className="flex min-h-[4.5rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 lg:flex-nowrap lg:py-0 lg:px-6">
+        {/* 태블릿 폭에서는 오른쪽 묶음이 한 줄에 다 서지 못한다. 줄을 접게 두고 높이를 늘린다.
+
+            높이는 min-h로 잡는다. 이 콘솔은 --adm-zoom으로 글자를 1.6배까지 키우는데,
+            h로 못 박으면 글자만 커지고 바는 그대로라 넘친다. */}
+        <div className="flex min-h-[2.75rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-1.5 lg:flex-nowrap lg:py-0 lg:px-6">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex min-h-[2.75rem] items-center gap-2 rounded-md border border-white/20 px-4 adm-t-sm font-bold text-white transition-colors hover:bg-white/10 lg:hidden"
+            className="inline-flex min-h-[2.25rem] items-center gap-2 rounded-md border border-white/20 px-3.5 adm-t-sm font-bold text-white transition-colors hover:bg-white/10 lg:hidden"
             aria-expanded={open}
           >
             {open ? <CloseIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
@@ -108,16 +110,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </button>
 
           <Link href="/admin" className="flex items-center gap-2.5">
-            <LogoLockup tone="white" className="text-[1.375rem]" />
+            <LogoLockup tone="white" className="text-[1.125rem]" />
             <span className="adm-t-sm font-bold text-slate-400">관리자 콘솔</span>
           </Link>
 
           <div className="ml-auto flex items-center gap-3">
-            <RoleSwitch value={prefs.role} />
-            <div className="hidden items-center gap-2.5 border-l border-white/15 pl-4 sm:flex">
+            <div className="hidden items-center gap-2 border-l border-white/15 pl-3 sm:flex">
               <span
                 aria-hidden
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 adm-t-sm font-black text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 adm-t-xs font-black text-white"
               >
                 {prefs.staffName.slice(1)}
               </span>
@@ -131,14 +132,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
             <Link
               href="/admin/account"
-              className="hidden min-h-[2.75rem] items-center rounded-md border border-white/20 px-4 adm-t-sm font-bold text-white transition-colors hover:bg-white/10 sm:inline-flex"
+              className="hidden min-h-[2.25rem] items-center rounded-md border border-white/20 px-3.5 adm-t-sm font-bold text-white transition-colors hover:bg-white/10 sm:inline-flex"
             >
               내 계정
             </Link>
             <button
               type="button"
               onClick={adminSignOut}
-              className="inline-flex min-h-[2.75rem] items-center rounded-md border border-white/20 px-4 adm-t-sm font-bold text-white transition-colors hover:bg-white/10"
+              className="inline-flex min-h-[2.25rem] items-center rounded-md border border-white/20 px-3.5 adm-t-sm font-bold text-white transition-colors hover:bg-white/10"
             >
               로그아웃
             </button>
@@ -154,7 +155,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           aria-label="관리자 메뉴"
           className={`${
             open ? "block" : "hidden"
-          } w-full shrink-0 bg-slate-900 text-slate-300 lg:sticky lg:top-[6.5rem] lg:block lg:h-[calc(100vh-6.5rem)] lg:w-[17.5rem] lg:overflow-y-auto`}
+          } w-full shrink-0 bg-slate-900 text-slate-300 lg:sticky lg:top-[4.5rem] lg:block lg:h-[calc(100vh-4.5rem)] lg:w-[17.5rem] lg:overflow-y-auto`}
         >
           <div className="px-3 py-5">
             {/* 지금 어떤 역할로 보고 있는지 메뉴 맨 위에 적는다 —
@@ -355,26 +356,3 @@ function ZoomControl({ value }: { value: number }) {
   );
 }
 
-/** 권한별로 화면이 어떻게 달라지는지 확인하기 위한 역할 전환 (시연용) */
-function RoleSwitch({ value }: { value: string }) {
-  return (
-    <label className="relative hidden lg:block">
-      <span className="sr-only">운영자 역할 전환</span>
-      <select
-        value={value}
-        onChange={(e) => patchAdminPrefs({ role: e.target.value as never })}
-        className="min-h-[2.75rem] appearance-none rounded-md border border-white/20 bg-white/10 py-2 pl-4 pr-10 adm-t-sm font-bold text-white outline-none focus:border-white/50"
-      >
-        {staffRoles.map((r) => (
-          <option key={r.id} value={r.id} className="text-slate-900">
-            {r.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        aria-hidden
-        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-      />
-    </label>
-  );
-}

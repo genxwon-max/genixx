@@ -236,7 +236,7 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
         {/* ── 오른쪽: 쓰는 면 ──
             읽는 면과 쓰는 면을 갈라 둔다. 세로로 이으면 지문을 확인하려고 스크롤을
             올리는 순간 방금 적던 소견이 화면 밖으로 나간다. */}
-        <div className="space-y-5 xl:sticky xl:top-[7.5rem]">
+        <div className="space-y-5 xl:sticky xl:top-[5.5rem]">
           {!done && (
             <section className={`${a.panel} p-5`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">

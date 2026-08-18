@@ -117,7 +117,7 @@ export default function SurveyEditor() {
       </div>
 
       {/* ── 지금 상태와 발행 (ADM-14-2) ── */}
-      <section id="ADM-14-2" className={`${a.panel} mt-5 scroll-mt-28 p-6`}>
+      <section id="ADM-14-2" className={`${a.panel} mt-5 scroll-mt-20 p-6`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className={a.cardTitle}>{doc.live.title}</h2>
@@ -195,7 +195,7 @@ export default function SurveyEditor() {
           {mayEdit ? (
             <Draft doc={doc} surveyKey={key} by={by} />
           ) : (
-            <section id="ADM-14-1" className={`${a.panel} scroll-mt-28 p-6`}>
+            <section id="ADM-14-1" className={`${a.panel} scroll-mt-20 p-6`}>
               <h2 className={a.cardTitle}>초안 (읽기만)</h2>
               <p className={`${a.bodyText} mt-2`}>
                 지금 역할에는 문항을 고칠 권한(출제)이 없습니다. 아래 미리보기로 내용은 확인하실 수
@@ -209,7 +209,7 @@ export default function SurveyEditor() {
       </div>
 
       {/* ── 기록 (ADM-14-3) ── */}
-      <div id="ADM-14-3" className="mt-6 scroll-mt-28">
+      <div id="ADM-14-3" className="mt-6 scroll-mt-20">
         <TableCard
           title={`변경 기록 ${mine.length}건`}
           caption="발행·되돌리기·파일 올리기가 남습니다. 발행 건은 그때 내보낸 판 전체를 함께 보관해, 언제든 그 판으로 되돌릴 수 있습니다."
@@ -334,7 +334,7 @@ function Draft({ doc, surveyKey, by }: { doc: SurveyDoc; surveyKey: SurveyKey; b
   const set = (patch: Partial<SurveyForm>) => patchDraft(surveyKey, patch, by);
 
   return (
-    <section id="ADM-14-1" className={`${a.panel} scroll-mt-28 p-6`}>
+    <section id="ADM-14-1" className={`${a.panel} scroll-mt-20 p-6`}>
       <h2 className={a.cardTitle}>초안 고치기</h2>
       <p className={`${a.hint} mt-1.5`}>
         여기서 고친 것은 곧바로 저장되지만, 발행 전까지는 응답자에게 나가지 않습니다.
