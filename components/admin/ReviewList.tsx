@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { maySelfReview } from "@/lib/admin";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { daysWaiting, runAiAudit, useItems, type ItemDraft } from "@/lib/itemStore";
@@ -55,10 +56,19 @@ export default function ReviewList() {
   const [picked, setPicked] = useState<string[]>([]);
   const [audited, setAudited] = useState<string | null>(null);
 
-  /** 검수 대상 = 제출된 것 중 내가 쓰지 않은 것 */
+  /**
+   * 검수 대상 = 제출된 것 중 내가 쓰지 않은 것.
+   *
+   * 슈퍼 관리자는 자기가 쓴 것도 목록에 든다 — 콘솔의 모든 권한을 가지므로 막지
+   * 않되, 검수 화면에서 경고하고 기록에 자가 검수로 남긴다.
+   */
+  const selfOk = maySelfReview(prefs.role);
   const queue = useMemo(
-    () => all.filter((i) => i.state === "submitted" && i.author !== prefs.loginId).sort(byWaiting),
-    [all, prefs.loginId],
+    () =>
+      all
+        .filter((i) => i.state === "submitted" && (selfOk || i.author !== prefs.loginId))
+        .sort(byWaiting),
+    [all, prefs.loginId, selfOk],
   );
 
   /** 내가 결론을 낸 문항 — 「이거 내가 봤던가」를 확인하는 자리 */
@@ -112,8 +122,12 @@ export default function ReviewList() {
     if (ids.length === 0) return;
     const r = runAiAudit(ids);
     setAudited(
-      `${label} ${r.done}건을 훑었습니다 — 걸린 것 없음 ${r.clean}건 · 확인할 것 있음 ${r.flagged}건. ` +
-        "결과는 각 문항의 검수 화면에 「AI가 짚은 것」으로 붙었고, 상태는 바뀌지 않았습니다.",
+      `${label} ${r.done}건을 훑었습니다 — 걸린 것 없음 ${r.clean}건 · 확인할 것 있음 ${r.flagged}건` +
+        `(그중 규칙 위반으로 반려 ${r.rejected}건). ` +
+        (r.rejected > 0
+          ? "반려한 문항에는 사유 코드와 「무엇을 어떻게 고쳐야 하는지」를 적어 출제자의 반려함으로 돌려보냈습니다. "
+          : "") +
+        "나머지는 상태를 바꾸지 않고 각 문항의 검수 화면에 「AI가 짚은 것」으로만 붙였습니다.",
     );
     setPicked([]);
   };
@@ -148,7 +162,7 @@ export default function ReviewList() {
       nowrap: true,
       cell: (i) => {
         if (!i.aiAudit) return <span className="adm-t-md">아직 안 돌림</span>;
-        const { blocks, warns } = i.aiAudit;
+        const { blocks, warns, verdict } = i.aiAudit;
         if (blocks === 0 && warns === 0) {
           return <span className="adm-t-md font-bold text-emerald-700">걸린 것 없음</span>;
         }
@@ -157,6 +171,9 @@ export default function ReviewList() {
             {blocks > 0 && `규칙 위반 ${blocks}`}
             {blocks > 0 && warns > 0 && " · "}
             {warns > 0 && `확인 필요 ${warns}`}
+            {verdict === "reject" && (
+              <span className="block font-bold text-violet-800">기계가 반려함</span>
+            )}
           </span>
         );
       },
@@ -184,9 +201,18 @@ export default function ReviewList() {
 
       {mineSubmitted > 0 && (
         <div className="mb-5">
-          <Callout tone="info">
-            내가 쓴 문항 {mineSubmitted}건은 이 목록에 없습니다. 자기가 낸 문항을 자기가 승인하지
-            못하도록 갈라 두었습니다 — 다른 검수자에게 넘어갑니다.
+          <Callout tone={selfOk ? "warn" : "info"}>
+            {selfOk ? (
+              <>
+                내가 쓴 문항 {mineSubmitted}건도 이 목록에 함께 있습니다. 슈퍼 관리자만 자기가 낸
+                문항을 볼 수 있고, 결론을 내면 검수 기록에 「본인 출제 문항 자가 검수」로 남습니다.
+              </>
+            ) : (
+              <>
+                내가 쓴 문항 {mineSubmitted}건은 이 목록에 없습니다. 자기가 낸 문항을 자기가
+                승인하지 못하도록 갈라 두었습니다 — 다른 검수자에게 넘어갑니다.
+              </>
+            )}
           </Callout>
         </div>
       )}
@@ -224,9 +250,11 @@ export default function ReviewList() {
       </div>
 
       {/* ── AI 사전 검수 ──
-          승인·반려 버튼은 여기 두지 않는다. 기계가 규칙 대조로 잡는 것과 이 학년
-          아이가 읽을 수 있는지는 다른 문제라, 기계가 통과시킨 것을 통과로 삼으면
-          3단 검수가 형식이 된다. 여기서는 짚어만 두고 결론은 사람이 낸다. */}
+          승인 버튼은 여기 두지 않는다. 기계가 규칙 대조로 잡는 것과 이 학년 아이가
+          읽을 수 있는지는 다른 문제라, 기계가 통과시킨 것을 통과로 삼으면 3단 검수가
+          형식이 된다. 반려는 다르다 — 문항을 출제자에게 되돌릴 뿐이고, 규칙을 그대로
+          어긴 것은 근거가 사람이 쓸 때와 같다. 그래서 반려는 하되 왜 반려했는지를
+          사람 검수자와 같은 형식으로 적는다. */}
       {tab === "queue" && queue.length > 0 && (
         <div className={`${a.panel} mb-4 p-4`}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -234,8 +262,9 @@ export default function ReviewList() {
               <h2 className={a.cardTitle}>AI 사전 검수</h2>
               <p className={`${a.bodyText} mt-1`}>
                 규칙으로 볼 수 있는 것을 기계가 먼저 훑습니다 — 단계·형식 매핑, 성취기준 코드, 보기
-                중복, 정답 길이 단서, 편향 소지 낱말.{" "}
-                <b className="font-bold">승인·반려는 하지 않습니다.</b>
+                중복, 정답 길이 단서, 편향 소지 낱말. 규칙을 명백히 어긴 것은{" "}
+                <b className="font-bold">사유 코드와 고칠 곳을 적어 반려</b>하고, 나머지는 짚어만
+                둡니다. <b className="font-bold">승인은 하지 않습니다</b> — 사람만 합니다.
               </p>
             </div>
 
@@ -290,6 +319,7 @@ export default function ReviewList() {
         select={tab === "queue" ? { selected: picked, onChange: setPicked } : undefined}
         columns={columns}
         rowKey={(i) => i.id}
+        rowHref={(i) => `/admin/review/${i.id}`}
         searchPlaceholder="문항 ID · 발문 · 단원 · 성취기준 · 출제자로 찾기"
         query={q}
         onQuery={setQ}

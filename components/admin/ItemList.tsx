@@ -160,6 +160,7 @@ export default function ItemList() {
           totalCount={items.length}
           columns={columns}
           rowKey={(i) => i.id}
+          rowHref={(i) => `/admin/authoring/${i.id}`}
           searchPlaceholder="문항 ID · 발문 · 단원 · 성취기준 · 출제자로 찾기"
           query={query}
           onQuery={setQuery}

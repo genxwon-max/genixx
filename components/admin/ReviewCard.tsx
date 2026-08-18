@@ -28,6 +28,7 @@ import {
   type ReviewCheckResult,
   type ReviewRecord,
 } from "@/lib/itemStore";
+import { maySelfReview } from "@/lib/admin";
 import { levelSpecs, talents } from "@/lib/blueprint";
 import { PageHead, Badge, Callout } from "./Parts";
 import AssetView from "./AssetView";
@@ -66,8 +67,11 @@ export default function ReviewCard({ id }: { id: string }) {
   }
 
   /* 자기가 쓴 문항은 자기가 못 본다. 목록에서 감추는 것만으로는 부족하다 —
-     주소를 직접 치면 열리는 문을 남겨 두면 갈라 둔 의미가 없다. */
-  if (item.author === prefs.loginId) {
+     주소를 직접 치면 열리는 문을 남겨 두면 갈라 둔 의미가 없다.
+     슈퍼 관리자는 예외다. 콘솔의 모든 권한을 가지므로 막지 않되, 검수판에 경고를
+     띄우고 검수 기록에 자가 검수로 남긴다. */
+  const self = item.author === prefs.loginId;
+  if (self && !maySelfReview(prefs.role)) {
     return (
       <Gate title="내가 쓴 문항은 검수할 수 없습니다">
         {item.code || item.id}은(는) 본인이 출제한 문항입니다. 출제자와 검수자를 갈라 두었기 때문에
@@ -76,7 +80,7 @@ export default function ReviewCard({ id }: { id: string }) {
     );
   }
 
-  return <Panel key={item.id} item={item} reviewer={prefs.staffName || "검수자"} />;
+  return <Panel key={item.id} item={item} reviewer={prefs.staffName || "검수자"} self={self} />;
 }
 
 function Gate({ title, children }: { title: string; children: React.ReactNode }) {
@@ -107,7 +111,16 @@ function BackLink() {
 
 /* ───────────────────────── 검수판 ───────────────────────── */
 
-function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
+function Panel({
+  item,
+  reviewer,
+  self,
+}: {
+  item: ItemDraft;
+  reviewer: string;
+  /** 본인이 출제한 문항을 보고 있는가 — 슈퍼 관리자만 여기까지 온다 */
+  self: boolean;
+}) {
   const router = useRouter();
   const done = item.state !== "submitted";
 
@@ -158,6 +171,7 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
       reviewer,
       text.trim() || "3단 검수를 모두 통과했습니다. 승인합니다.",
       checks,
+      self,
     );
     router.push("/admin/review");
   };
@@ -177,7 +191,7 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
     if (!code) return setError("반려 사유를 골라 주세요.");
     if (text.trim().length < 10)
       return setError("무엇을 어떻게 고쳐야 하는지 한 문장 이상 적어 주세요.");
-    rejectItem(item.id, reviewer, code, text.trim(), checks);
+    rejectItem(item.id, reviewer, code, text.trim(), checks, self);
     router.push("/admin/review");
   };
 
@@ -199,6 +213,33 @@ function Panel({ item, reviewer }: { item: ItemDraft; reviewer: string }) {
           </Callout>
         </div>
       ) : null}
+
+      {/* 기계가 반려한 문항 — 사람이 반려한 것과 자리가 같으므로 소견문은 아래
+          「지난 검수」에 그대로 있다. 여기서는 누가 왜 반려했는지만 한 줄로 짚는다. */}
+      {item.aiAudit?.verdict === "reject" && (
+        <div className="mb-5">
+          <Callout tone="warn" title="사람이 아니라 AI 사전 검수가 반려했습니다">
+            {item.aiAudit.at}에 규칙 위반 {item.aiAudit.blocks}건이 확인되어{" "}
+            <b className="font-bold">
+              {item.aiAudit.code ? rejectLabel(item.aiAudit.code) : "사유 없음"}
+            </b>
+            으로 반려했습니다. 무엇을 어떻게 고쳐야 하는지는 아래 「지난 검수」와 코멘트에 적혀
+            있습니다. 규칙 대조로 확인되는 것만 반려 사유가 되며, 승인은 사람만 합니다.
+          </Callout>
+        </div>
+      )}
+
+      {/* 자기가 쓴 문항을 자기가 보고 있다. 슈퍼 관리자만 여기까지 오는데, 열려
+          있다는 것과 그래도 된다는 것은 다른 말이라 화면에서 한 번 짚는다. */}
+      {self && !done && (
+        <div className="mb-5">
+          <Callout tone="warn" title="본인이 출제한 문항입니다">
+            출제자와 검수자를 갈라 두는 것이 이 콘솔의 전제이고, 여기까지 열려 있는 것은 슈퍼
+            관리자뿐입니다. 결론을 내면 검수 기록에 「본인 출제 문항 자가 검수」로 남습니다. 다른
+            검수자에게 넘길 수 있다면 그편이 낫습니다.
+          </Callout>
+        </div>
+      )}
 
       {/* AI가 낸 초안이면 검수자가 먼저 알아야 한다 — 어디를 볼지가 달라진다 */}
       {item.origin === "ai" && (
@@ -668,8 +709,13 @@ function History({ reviews }: { reviews: ReviewRecord[] }) {
                   ? "승인"
                   : `반려 — ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
               </span>
+              {/* 누가 본 것인지가 이 기록의 값이다 — 기계와 자가 검수는 반드시 적는다 */}
+              {r.machine && <span className="ml-2 text-violet-800">기계 검수</span>}
+              {r.self && <span className="ml-2 text-amber-700">본인 출제 문항 자가 검수</span>}
             </p>
-            <p className="mt-1.5 adm-t-md leading-relaxed text-exam-muted">{r.text}</p>
+            <p className="mt-1.5 whitespace-pre-line adm-t-md leading-relaxed text-exam-muted">
+              {r.text}
+            </p>
 
             <ul className="mt-2.5 space-y-1">
               {r.checks.map((c) => {

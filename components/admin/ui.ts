@@ -96,6 +96,15 @@ export const nowrap = "whitespace-nowrap";
 export const tdTight = `${td} ${nowrap}`;
 export const tdStrongTight = `${tdStrong} ${nowrap}`;
 
+/**
+ * 줄 전체가 상세로 가는 표의 한 줄.
+ *
+ * ID 링크만 눌리게 두면 줄마다 그 좁은 글자를 겨냥해야 한다. 줄 아무 데나 눌러도
+ * 열리게 하되, 눌리는 줄이라는 것이 보여야 한다 — 커서와 배경으로 알린다. 링크
+ * 자체는 그대로 둔다. 키보드로 도는 사람은 그 링크로 들어간다.
+ */
+export const rowLink = "cursor-pointer transition-colors hover:bg-exam-raised";
+
 /* ── 상태 ──
    면을 두지 않는다. 표 한 칸마다 색 상자가 서면 정작 읽어야 할 지문과 숫자가 뒤로
    밀린다. 상태는 글자로 적고 색은 글자에만 얹는다 — 색을 못 보아도 라벨이 남는다. */

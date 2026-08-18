@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,6 +120,16 @@ type Props<T> = {
   unit?: string;
   emptyText?: string;
   /**
+   * 줄 아무 데나 눌러도 상세로 간다.
+   *
+   * ID 링크만 눌리게 두면 줄마다 그 좁은 글자를 겨냥해야 한다. 목록을 훑다가
+   * 「이거」 하고 누르는 자리는 발문이나 이름 쪽이지 ID가 아니다.
+   *
+   * 링크·버튼·체크상자는 그대로 자기 일을 한다(아래 fromControl). ID 링크도 남겨
+   * 둔다 — 줄에는 초점이 가지 않으므로 키보드로 도는 사람은 그 링크로 들어간다.
+   */
+  rowHref?: (row: T) => string;
+  /**
    * 여러 줄을 골라 한꺼번에 처리하는 목록에만 준다.
    *
    * 머리글 체크상자는 「지금 이 쪽에 보이는 줄」만 고른다. 조건에 걸린 500줄을
@@ -143,8 +154,10 @@ export default function DataList<T>({
   onReset,
   unit = "건",
   emptyText = "조건에 맞는 자료가 없습니다.",
+  rowHref,
   select,
 }: Props<T>) {
+  const router = useRouter();
   const [size, setSize] = useState<number>(20);
 
   /**
@@ -184,6 +197,21 @@ export default function DataList<T>({
         ? select.selected.filter((x) => x !== id)
         : [...select.selected, id],
     );
+  };
+
+  /* 줄 안에 이미 자기 일을 하는 것이 있으면 줄 클릭으로 삼지 않는다. 「검수하기」
+     버튼을 눌렀는데 줄도 함께 움직이면 어디로 간 것인지 알 수 없다. */
+  const fromControl = (el: EventTarget | null) =>
+    el instanceof Element &&
+    !!el.closest("a,button,input,select,textarea,label,[role='button'],[role='link']");
+
+  const goRow = (e: MouseEvent<HTMLTableRowElement>, href: string) => {
+    if (fromControl(e.target)) return;
+    /* 발문을 긁던 손이 떨어지는 자리도 줄 안이다 — 글을 고르던 것이면 두고 본다 */
+    if (window.getSelection()?.toString()) return;
+    /* 새 탭으로 열려는 손짓은 그대로 살린다 */
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return window.open(href, "_blank", "noopener");
+    router.push(href);
   };
 
   return (
@@ -285,7 +313,11 @@ export default function DataList<T>({
               </tr>
             ) : (
               shown.map((row) => (
-                <tr key={rowKey(row)}>
+                <tr
+                  key={rowKey(row)}
+                  onClick={rowHref ? (e) => goRow(e, rowHref(row)) : undefined}
+                  className={rowHref ? a.rowLink : undefined}
+                >
                   {select && (
                     <td className={a.td}>
                       <label className="flex items-center justify-center">

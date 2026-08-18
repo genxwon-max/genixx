@@ -15,7 +15,7 @@ import {
   type TalentId,
 } from "./blueprint";
 import { pickSample } from "./itemBank";
-import { auditItem } from "./itemAudit";
+import { auditItem, auditRejection } from "./itemAudit";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
@@ -130,7 +130,8 @@ export type CommentKind = "note" | "reject" | "approve";
 export type ItemComment = {
   at: string;
   by: string;
-  role: StaffRoleId;
+  /** 기계가 남긴 말은 ai — 누가 한 말인지가 검수 기록에서 가장 중요한 값이다 */
+  role: StaffRoleId | "ai";
   kind: CommentKind;
   /** 반려 사유 코드. kind가 reject일 때만 있다. */
   code?: RejectCode;
@@ -242,13 +243,30 @@ export type ItemDraft = {
   updatedAt: string;
 };
 
-/** 기계가 짚어 둔 것 — 상태를 바꾸지 않는다 */
+/**
+ * 기계가 훑고 남긴 것.
+ *
+ * 승인은 하지 않는다. 규칙을 명백히 어긴 것(blocks)이 있으면 반려까지 하고, 왜
+ * 반려했는지를 사람 검수자와 같은 형식으로 적어 verdict·code·text에 담는다. 걸린
+ * 것이 확인 필요(warns)뿐이면 상태를 건드리지 않고 짚어만 둔다.
+ */
 export type AiAudit = {
   at: string;
   checks: { id: ReviewCheckId; ok: boolean; notes: string[] }[];
   blocks: number;
   warns: number;
+  /** clean 걸린 것 없음 · flag 짚어만 둠 · reject 기계가 반려함 */
+  verdict: AiVerdict;
+  /** 반려했을 때의 사유 코드 — 사람이 고르는 것과 같은 목록을 쓴다 */
+  code?: RejectCode;
+  /** 반려 소견문. 반려하지 않았으면 비어 있다. */
+  text?: string;
 };
+
+export type AiVerdict = "clean" | "flag" | "reject";
+
+/** 검수 기록·코멘트에 찍히는 기계 검수자의 이름 */
+export const AI_REVIEWER = "AI 사전 검수";
 
 /** 반려 사유 — 코드로 고르게 해서 출제자가 무엇을 고쳐야 하는지 바로 알게 한다 */
 export const rejectCodes = [
@@ -388,6 +406,10 @@ export type ReviewRecord = {
   checks: ReviewCheckResult[];
   code?: RejectCode;
   text: string;
+  /** 기계가 낸 결론인가. 사람 이름과 섞이면 누가 본 것인지 알 수 없어진다. */
+  machine?: boolean;
+  /** 자기가 쓴 문항을 자기가 본 것인가 (슈퍼 관리자만 가능) */
+  self?: boolean;
 };
 
 /**
@@ -1445,44 +1467,104 @@ export function addComment(id: string, by: string, role: StaffRoleId, text: stri
 /**
  * AI 사전 검수를 돌린다 (EXP-03-2).
  *
- * ⚠ 상태를 바꾸지 않는다. 승인도 반려도 하지 않고 「짚어 둔 것」만 남긴다.
- *   AI가 낸 문항을 AI가 승인하는 길이 열리면 사람이 한 번도 안 본 문항이 검사지에
- *   들어갈 수 있다. 규칙 대조로 잡히는 것과 이 학년 아이가 읽을 수 있는지는 다른
- *   문제라, 기계가 통과시킨 것을 통과로 삼으면 안 된다.
+ * ⚠ 승인은 하지 않는다. AI가 낸 문항을 AI가 승인하는 길이 열리면 사람이 한 번도
+ *   안 본 문항이 검사지에 들어갈 수 있다. 규칙 대조로 잡히는 것과 이 학년 아이가
+ *   읽을 수 있는지는 다른 문제라, 기계가 통과시킨 것을 통과로 삼으면 안 된다.
+ *
+ * 반려는 한다. 반려는 문항을 출제자에게 되돌릴 뿐이라 검증되지 않은 문항이 밖으로
+ * 나가지 않고, block으로 잡은 것은 발주서·blueprint에 적힌 규칙을 그대로 어긴
+ * 것이라 근거가 사람이 쓸 때와 같다. 대신 사람 검수와 똑같은 것을 남긴다 — 사유
+ * 코드 하나, 3단 소견, 무엇을 어떻게 고쳐야 하는지 적은 소견문. 출제자의 반려함에는
+ * 사람이 반려한 것과 같은 모양으로 도착한다.
  *
  * 검수 대기가 아닌 문항은 건너뛴다. 이미 결론이 난 것에 기계 소견을 덧붙이면
  * 기록이 어느 시점의 것인지 알 수 없어진다.
  */
-export function runAiAudit(ids: string[]): { done: number; clean: number; flagged: number } {
+export function runAiAudit(ids: string[]): {
+  done: number;
+  clean: number;
+  flagged: number;
+  rejected: number;
+} {
   const at = now();
   let done = 0;
   let clean = 0;
+  let rejected = 0;
 
   const next = read().map((item) => {
     if (!ids.includes(item.id) || item.state !== "submitted") return item;
     const result = auditItem(item);
+    const verdict = auditRejection(result);
     done += 1;
     if (result.blocks === 0 && result.warns === 0) clean += 1;
+
+    const audit: AiAudit = {
+      at,
+      checks: result.checks.map((c) => ({
+        id: c.id,
+        ok: c.ok,
+        notes: c.findings.map(
+          (f) => `${f.tone === "block" ? "[규칙 위반] " : "[확인 필요] "}${f.text} → ${f.fix}`,
+        ),
+      })),
+      blocks: result.blocks,
+      warns: result.warns,
+      verdict: verdict ? "reject" : result.warns > 0 ? "flag" : "clean",
+      code: verdict?.code,
+      text: verdict?.text,
+    };
+
+    if (!verdict) return { ...item, aiAudit: audit };
+
+    /* 반려 — 사람이 누른 것과 같은 자리에 같은 형식으로 쌓는다. 3단 소견도 채우되
+       걸린 칸만 「걸림」으로 두고 나머지는 확인 안 함(null)으로 남긴다. 규칙 대조에서
+       안 걸렸다는 것과 그 칸이 통과라는 것은 다른 말이다. */
+    rejected += 1;
+    const checks: ReviewCheckResult[] = result.checks.map((c) => {
+      const blocked = c.findings.filter((f) => f.tone === "block");
+      return {
+        id: c.id,
+        ok: blocked.length > 0 ? false : null,
+        reason: blocked.find((f) => f.reason)?.reason,
+        note: c.findings.map((f) => f.text).join("\n"),
+      };
+    });
+
     return {
       ...item,
-      aiAudit: {
-        at,
-        checks: result.checks.map((c) => ({
-          id: c.id,
-          ok: c.ok,
-          notes: c.findings.map(
-            (f) => `${f.tone === "block" ? "[규칙 위반] " : "[확인 필요] "}${f.text}`,
-          ),
-        })),
-        blocks: result.blocks,
-        warns: result.warns,
-      },
-      updatedAt: item.updatedAt,
+      state: "rejected" as ItemState,
+      updatedAt: at,
+      aiAudit: audit,
+      reviews: [
+        ...item.reviews,
+        {
+          at,
+          by: AI_REVIEWER,
+          round: item.reviews.length + 1,
+          verdict: "reject" as ReviewVerdict,
+          checks,
+          code: verdict.code,
+          text: verdict.text,
+          machine: true,
+        },
+      ],
+      reviewDraft: undefined,
+      comments: [
+        ...item.comments,
+        {
+          at,
+          by: AI_REVIEWER,
+          role: "ai" as const,
+          kind: "reject" as CommentKind,
+          code: verdict.code,
+          text: verdict.text,
+        },
+      ],
     };
   });
 
   write(next);
-  return { done, clean, flagged: done - clean };
+  return { done, clean, flagged: done - clean, rejected };
 }
 
 /** 쓰다 만 검수를 문항에 붙여 둔다. 결론이 나기 전까지 상태는 그대로다. */
@@ -1501,6 +1583,8 @@ export function rejectItem(
   code: RejectCode,
   text: string,
   checks: ReviewCheckResult[] = blankChecks(),
+  /** 본인이 출제한 문항을 본인이 본 경우 — 슈퍼 관리자만 열려 있고 기록에 남는다 */
+  self = false,
 ) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
@@ -1509,7 +1593,7 @@ export function rejectItem(
     state: "rejected",
     reviews: [
       ...item.reviews,
-      { at, by, round: item.reviews.length + 1, verdict: "reject", checks, code, text },
+      { at, by, round: item.reviews.length + 1, verdict: "reject", checks, code, text, self },
     ],
     reviewDraft: undefined,
     comments: [...item.comments, { at, by, role: "reviewer", kind: "reject", code, text }],
@@ -1522,6 +1606,8 @@ export function approveItem(
   by: string,
   text: string,
   checks: ReviewCheckResult[] = blankChecks(),
+  /** 본인이 출제한 문항을 본인이 본 경우 — 슈퍼 관리자만 열려 있고 기록에 남는다 */
+  self = false,
 ) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
@@ -1530,7 +1616,7 @@ export function approveItem(
     state: "approved",
     reviews: [
       ...item.reviews,
-      { at, by, round: item.reviews.length + 1, verdict: "approve", checks, text },
+      { at, by, round: item.reviews.length + 1, verdict: "approve", checks, text, self },
     ],
     reviewDraft: undefined,
     comments: [...item.comments, { at, by, role: "reviewer", kind: "approve", text }],

@@ -37,6 +37,34 @@ export type PermissionId =
   | "psychometrics.read" // 심리측정 분석 콘솔 (ADM-07)
   | "system.manage"; // 시스템 설정 (ADM-13)
 
+/**
+ * 권한 전부.
+ *
+ * 슈퍼 관리자가 이 목록을 통째로 가진다. 역할마다 손으로 적어 두면 권한을 새로 하나
+ * 만들 때 슈퍼 관리자에게 붙이는 것을 잊게 되고, 그러면 총괄이 자기가 만든 화면에서
+ * 「권한이 없습니다」를 보는 일이 생긴다. 목록을 한 곳에 두고 거기서 끌어다 쓴다.
+ */
+export const permissionIds: PermissionId[] = [
+  "member.read",
+  "member.approve",
+  "student.pii",
+  "student.code",
+  "round.manage",
+  "item.write",
+  "item.review",
+  "grade.review",
+  "grade.confirm",
+  "org.manage",
+  "billing.read",
+  "content.publish",
+  "inquiry.reply",
+  "audit.read",
+  "staff.manage",
+  "report.publish",
+  "psychometrics.read",
+  "system.manage",
+];
+
 /** 정의서 9장의 HITL 4역할. 출제자와 검수자는 이해충돌을 막기 위해 권한을 맞물려 가른다. */
 export type StaffRoleId = "super" | "author" | "reviewer" | "master";
 
@@ -55,28 +83,10 @@ export const staffRoles: StaffRole[] = [
     id: "super",
     label: "관리자 (슈퍼 관리자)",
     short: "관리자",
-    desc: "시스템 전반 및 통합 관리. 운영자 계정과 권한을 직접 다룹니다.",
+    desc: "시스템 전반 및 통합 관리. 콘솔의 모든 권한을 가지며, 운영자 계정과 권한을 직접 다룹니다.",
     tone: "text-brand-700",
-    permissions: [
-      "member.read",
-      "member.approve",
-      "student.pii",
-      "student.code",
-      "round.manage",
-      "item.write",
-      "item.review",
-      "grade.review",
-      "grade.confirm",
-      "org.manage",
-      "billing.read",
-      "content.publish",
-      "inquiry.reply",
-      "audit.read",
-      "staff.manage",
-      "report.publish",
-      "psychometrics.read",
-      "system.manage",
-    ],
+    /* 전부 — 권한이 새로 생기면 자동으로 따라온다. 손으로 옮겨 적지 않는다. */
+    permissions: [...permissionIds],
   },
   {
     id: "author",
@@ -168,6 +178,16 @@ export function can(role: StaffRoleId, permission: PermissionId) {
 export function canAny(role: StaffRoleId, needs: PermissionId | PermissionId[]) {
   return Array.isArray(needs) ? needs.some((n) => can(role, n)) : can(role, needs);
 }
+
+/**
+ * 자기가 쓴 문항을 자기가 검수할 수 있는가.
+ *
+ * 권한 목록과 따로 두는 까닭 — 이건 「할 수 있는 일」이 아니라 이해충돌 규칙이다.
+ * 출제자와 검수자를 갈라 둔 것이 이 콘솔의 전제라 기본은 막는다. 다만 슈퍼 관리자는
+ * 콘솔의 모든 권한을 가지므로 여기서도 막지 않는다. 대신 검수 화면에 경고를 띄우고,
+ * 검수 기록에 「본인 출제 문항 자가 검수」로 남겨 나중에 셀 수 있게 한다.
+ */
+export const maySelfReview = (role: StaffRoleId) => role === "super";
 
 /* ───────────────────────── 메뉴 (ADM 사이트맵) ───────────────────────── */
 

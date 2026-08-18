@@ -8,14 +8,18 @@ import * as a from "@/components/admin/ui";
 export const metadata = { title: "운영자·권한 · GENIXX 관리자" };
 
 /** 권한 표에 쓰는 사람 말 라벨 */
+/* 권한을 전부 적는다. 한 줄이라도 빠지면 「내가 저걸 할 수 있는가」를 여기서
+   확인할 수 없어, 이 표를 보러 온 까닭이 사라진다. */
 const permissionRows: { id: PermissionId; label: string; note: string }[] = [
+  { id: "member.read", label: "회원 목록 열람", note: "" },
   { id: "member.approve", label: "가입 승인", note: "교사·기관 계정을 열어 줍니다" },
   { id: "student.pii", label: "학생 개인정보 열람", note: "사유 입력이 강제됩니다" },
   { id: "student.code", label: "접속코드 발급·회수", note: "분실 신고 처리" },
+  { id: "round.manage", label: "회차 개설·마감", note: "" },
   { id: "grade.review", label: "채점 검토", note: "AI 제안값에 의견을 답니다" },
   { id: "grade.confirm", label: "판정 확정", note: "리포트가 보호자에게 나갑니다" },
   { id: "item.write", label: "문항 작성", note: "" },
-  { id: "item.review", label: "문항 검수", note: "작성자 본인은 불가" },
+  { id: "item.review", label: "문항 검수", note: "작성자 본인은 슈퍼 관리자만 가능" },
   { id: "report.publish", label: "리포트 발행 승인", note: "승인 전 결과 미노출" },
   { id: "psychometrics.read", label: "심리측정 분석", note: "" },
   { id: "system.manage", label: "시스템 설정", note: "연동 키·기능 플래그" },
@@ -32,7 +36,7 @@ export default function StaffPage() {
     <>
       <PageHead
         title="운영자 · 권한"
-        lead="아이디를 만들고 역할을 붙이면 그 역할이 곧 권한입니다. 출제자는 자기 문항을 스스로 승인할 수 없고, 검수자는 문항을 쓸 수 없습니다."
+        lead="아이디를 만들고 역할을 붙이면 그 역할이 곧 권한입니다. 출제자는 자기 문항을 스스로 승인할 수 없고, 검수자는 문항을 쓸 수 없습니다. 슈퍼 관리자는 모든 권한을 가집니다."
       />
 
       <PermissionGate need="staff.manage">

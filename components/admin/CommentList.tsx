@@ -21,8 +21,12 @@ export default function CommentList({ comments }: { comments: ItemComment[] }) {
             )}
             {c.kind === "approve" && <span className="ml-2 text-emerald-700">승인</span>}
             {c.kind === "note" && <span className="ml-2 text-exam-muted">코멘트</span>}
+            {/* 기계가 한 말인지 사람이 한 말인지는 이름만으로는 헷갈린다 */}
+            {c.role === "ai" && <span className="ml-2 text-violet-800">기계 검수</span>}
           </p>
-          <p className="mt-1.5 adm-t-md leading-relaxed text-exam-muted">{c.text}</p>
+          <p className="mt-1.5 whitespace-pre-line adm-t-md leading-relaxed text-exam-muted">
+            {c.text}
+          </p>
         </li>
       ))}
     </ul>
