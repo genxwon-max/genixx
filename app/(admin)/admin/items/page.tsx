@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { items } from "@/lib/admin";
 import {
   AnchorSection,
-  CountRows,
   Foldable,
   PageHead,
   PlannedSection,
 } from "@/components/admin/Parts";
+import AnchorPanel from "@/components/admin/AnchorPanel";
+import FormBuilder from "@/components/admin/FormBuilder";
 import ItemBank from "@/components/admin/ItemBank";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
@@ -19,31 +19,6 @@ const flow = [
   { step: "2", label: "교차 검수", desc: "작성자가 아닌 다른 사람이 반드시 봅니다" },
   { step: "3", label: "승인", desc: "승인된 문항만 회차에 배치할 수 있습니다" },
   { step: "4", label: "출제 후 점검", desc: "정답률이 너무 높거나 낮으면 사용을 멈춥니다" },
-];
-
-const countOf = (state: (typeof items)[number]["state"]) =>
-  items.filter((i) => i.state === state).length;
-
-const counts = [
-  {
-    label: "검수를 기다리는 문항",
-    value: countOf("review"),
-    unit: "건",
-    note: "아직 은행에 없습니다 — 검수 워크벤치에 있습니다",
-    href: "/admin/review",
-  },
-  {
-    label: "승인된 문항",
-    value: countOf("approved"),
-    unit: "건",
-    note: "회차에 바로 넣을 수 있습니다",
-  },
-  {
-    label: "사용 중지",
-    value: countOf("retired"),
-    unit: "건",
-    note: "은행에 그대로 남습니다. 회차에는 넣지 않습니다",
-  },
 ];
 
 export default function ItemsPage() {
@@ -79,10 +54,6 @@ export default function ItemsPage() {
           </Foldable>
         </div>
 
-        <div className="mb-6">
-          <CountRows rows={counts} />
-        </div>
-
         <AnchorSection
           id="ADM-04-1"
           title="문항 CRUD · 버전"
@@ -92,26 +63,22 @@ export default function ItemsPage() {
         </AnchorSection>
 
         <div className="mt-8 space-y-8">
-          <PlannedSection
+          <AnchorSection
             id="ADM-04-2"
             title="앵커 문항"
-            lead="회차가 달라도 같은 잣대로 재려면, 공개하지 않고 오래 쓰는 기준 문항이 필요합니다."
-            todo={[
-              "앵커군 지정·해제와 노출 이력 — 한 번이라도 공개된 문항은 앵커로 쓸 수 없습니다",
-              "회차 간 등화(equating) 계산에 들어간 앵커 목록과 그때의 모수",
-              "앵커는 문항 목록에서 따로 감춥니다. 검사지 조립 화면에도 뜨지 않습니다",
-            ]}
-          />
-          <PlannedSection
+            lead="회차가 달라도 같은 잣대로 재려면, 공개하지 않고 오래 쓰는 기준 문항이 필요합니다. 두 회차에 똑같이 들어간 문항이 있어야 점수를 견줄 수 있습니다(등화)."
+          >
+            <AnchorPanel />
+          </AnchorSection>
+
+          <AnchorSection
             id="ADM-04-3"
             title="검사지 조립"
-            lead="승인된 문항을 골라 한 회차의 검사지를 만듭니다. AI가 조합을 제안하고 사람이 확정합니다."
-            todo={[
-              "재능 축 × S1~S4 배분이 발주 사양과 맞는지 대조",
-              "forms · form_items 스키마 — 어떤 판의 어떤 문항이 몇 번에 놓였는지",
-              "확정 전에는 조립본을 미리보기로만 열 수 있게 합니다",
-            ]}
-          />
+            lead="승인된 문항을 골라 한 회차의 검사지를 만듭니다. 기계가 조합을 제안하고 사람이 확정합니다."
+          >
+            <FormBuilder />
+          </AnchorSection>
+
           <PlannedSection
             id="ADM-04-4"
             title="문항 회전 · 보안"

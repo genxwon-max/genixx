@@ -193,6 +193,13 @@ export type ItemDraft = {
   b: number;
   /** 앵커 문항(장기 재사용·미공개). 전체의 30%(§7.1) */
   anchor: boolean;
+  /**
+   * 밖으로 공개된 적이 있는가 — 샘플 문항·보도자료·설명회 자료로 나간 것.
+   *
+   * 공개된 문항은 앵커가 될 수 없다. 앵커는 회차가 달라도 같은 잣대로 재려고 두는
+   * 기준인데, 답이 알려진 문항은 그 기준 노릇을 못 한다.
+   */
+  disclosed?: boolean;
   /** ⑦ 출제자 유의사항 */
   guidance: string;
   /** ⑦ 오답마다 어떤 오개념을 잡는가 — 보기와 같은 순서 */
@@ -565,12 +572,13 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     rubric: "",
     assets: [],
     version: 1,
-    anchor: true,
+    anchor: false,
     level: "S1",
     author: "author.kim",
     authorName: "김출제",
     state: "approved",
     correctRate: 88,
+    disclosed: true,
     reviews: [
       {
         at: "2026-08-09 11:30",
@@ -872,6 +880,211 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     state: "submitted",
     comments: [],
     updatedAt: "2026-08-11 15:40",
+  },
+  {
+    id: "IT-2612",
+    code: "4K02-S1-002",
+    subject: "국어",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "낱말의 의미 관계",
+    unitNo: "02",
+    standardCode: "[4국04-02]",
+    standardText: "낱말과 낱말의 의미 관계를 파악한다.",
+    tagADetail: "비슷한 말 짝 식별",
+    talent: "LANG",
+    subskill: "LANG-01",
+    passage: "",
+    stem: "다음 중 두 낱말의 뜻이 서로 비슷한 것은?",
+    choices: ["춥다 — 덥다", "고치다 — 수리하다", "책상 — 의자", "달리다 — 걷다"],
+    distractorIntent: [
+      "반대말을 비슷한 말로 보는 혼동",
+      "",
+      "같이 쓰이는 낱말을 비슷한 말로 보는 혼동",
+      "같은 무리의 낱말을 비슷한 말로 보는 혼동",
+    ],
+    answer: 1,
+    explain: "정답 ②. '고치다'와 '수리하다'는 바꾸어 써도 뜻이 통합니다. ①은 반대말, ③④는 뜻이 다릅니다.",
+    guidance:
+      "바꾸어 써도 뜻이 통하는지만 봅니다. 문장 속 쓰임의 차이를 묻기 시작하면 S2로 이탈합니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: true,
+    level: "S1",
+    author: "author.kim",
+    authorName: "김출제",
+    state: "approved",
+    correctRate: 72,
+    comments: [],
+    updatedAt: "2026-08-08 10:10",
+  },
+  {
+    id: "IT-2613",
+    code: "4K02-S2-002",
+    subject: "국어",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "낱말의 의미 관계",
+    unitNo: "02",
+    standardCode: "[4국04-02]",
+    standardText: "낱말과 낱말의 의미 관계를 파악한다.",
+    tagADetail: "관계가 다른 까닭 판별",
+    talent: "LANG",
+    subskill: "LANG-01",
+    passage: "",
+    stem: "'과일 — 사과'와 관계가 같은 짝은 무엇이며, 그렇게 생각한 까닭으로 알맞은 것은?",
+    choices: [
+      "'옷 — 바지' — 앞의 말이 뒤의 말을 포함하기 때문",
+      "'낮 — 밤' — 둘이 짝을 이루기 때문",
+      "'가방 — 신발' — 함께 쓰는 물건이기 때문",
+      "'먹다 — 마시다' — 둘 다 입으로 하기 때문",
+    ],
+    distractorIntent: [
+      "",
+      "포함 관계와 반대 관계를 뒤섞는 오개념",
+      "함께 놓이는 것을 관계로 보는 오개념",
+      "비슷한 뜻을 포함 관계로 보는 오개념",
+    ],
+    answer: 0,
+    explain:
+      "정답 ①. '과일'이 '사과'를 포함하듯 '옷'이 '바지'를 포함합니다. 나머지는 반대·나열·비슷한 말이라 포함이 아닙니다.",
+    guidance: "까닭까지 함께 고르게 해 관계의 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S2",
+    author: "author.kim",
+    authorName: "김출제",
+    state: "approved",
+    correctRate: 58,
+    comments: [],
+    updatedAt: "2026-08-08 10:20",
+  },
+  {
+    id: "IT-2614",
+    code: "4K03-S2-001",
+    subject: "국어",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "문단의 짜임",
+    unitNo: "03",
+    standardCode: "[4국02-01]",
+    standardText: "문단과 글의 중심 생각을 파악한다.",
+    tagADetail: "중심 문장 판별",
+    talent: "LANG",
+    subskill: "LANG-02",
+    passage:
+      "여름에는 물을 자주 마셔야 한다. 날이 더우면 땀이 많이 나서 몸속 물이 빠르게 줄어든다. 물이 모자라면 쉽게 지치고 어지러울 수 있다. 그래서 목이 마르지 않아도 조금씩 자주 마시는 것이 좋다.",
+    stem: "이 문단의 중심 문장은 무엇이며, 나머지 문장은 어떤 구실을 합니까?",
+    choices: [
+      "첫 문장 — 나머지는 그 까닭을 밝힌다",
+      "둘째 문장 — 나머지는 예를 든다",
+      "셋째 문장 — 나머지는 반대 경우를 든다",
+      "마지막 문장 — 나머지는 차례를 알려 준다",
+    ],
+    distractorIntent: [
+      "",
+      "설명 문장을 중심 문장으로 보는 오개념",
+      "결과 문장을 중심 문장으로 보는 오개념",
+      "맺음말을 중심 문장으로 보는 오개념",
+    ],
+    answer: 0,
+    explain: "정답 ①. 첫 문장이 주장이고 나머지 세 문장은 그 까닭을 밝히는 뒷받침 문장입니다.",
+    guidance: "지문은 네 문장을 넘기지 않습니다. 중심 문장이 문단 첫머리에만 오지 않도록 회차마다 자리를 바꿉니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: true,
+    level: "S2",
+    author: "author.han",
+    authorName: "한나래",
+    state: "approved",
+    correctRate: 64,
+    comments: [],
+    updatedAt: "2026-08-08 10:30",
+  },
+  {
+    id: "IT-2615",
+    code: "4K03-S3-001",
+    subject: "국어",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "문단의 짜임",
+    unitNo: "03",
+    standardCode: "[4국02-01]",
+    standardText: "문단과 글의 중심 생각을 파악한다.",
+    tagADetail: "중심 생각 한 문장 산출",
+    talent: "LANG",
+    subskill: "LANG-03",
+    passage:
+      "학교 앞 골목은 차가 다니는 길이 좁다. 등교 시간에는 사람과 차가 뒤엉켜 위험하다. 요즘은 아침 시간에만 차를 막고 걸어 다니게 하는 학교가 늘고 있다.",
+    stem: "이 글의 중심 생각을 한 문장으로 쓰시오.",
+    choices: ["", "", "", ""],
+    distractorIntent: [],
+    answer: 0,
+    explain:
+      "'학교 앞 골목이 위험하므로 등교 시간에 차를 막아야 한다'는 뜻이 담기면 정답입니다. 표현은 달라도 됩니다.",
+    guidance: "낱말을 그대로 옮겨 적어도 뜻이 맞으면 인정합니다. 맞춤법은 채점하지 않습니다.",
+    type: "short",
+    shortAnswers:
+      "등교 시간에 차를 막아야 한다, 학교 앞 골목이 위험해서 차를 막아야 한다, 아침에 차를 막고 걸어 다니게 해야 한다",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S3",
+    author: "author.han",
+    authorName: "한나래",
+    state: "approved",
+    correctRate: 47,
+    comments: [],
+    updatedAt: "2026-08-08 10:40",
+  },
+  {
+    id: "IT-2616",
+    code: "4K03-S4-001",
+    subject: "국어",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "문단의 짜임",
+    unitNo: "03",
+    standardCode: "[4국02-01]",
+    standardText: "문단과 글의 중심 생각을 파악한다.",
+    tagADetail: "두 글의 관점 비교와 판단",
+    talent: "LANG",
+    subskill: "LANG-03",
+    passage:
+      "[가] 쉬는 시간에는 교실에서 조용히 쉬는 것이 좋다. 뛰어놀다 다치는 일이 잦기 때문이다.\n[나] 쉬는 시간에는 밖에 나가 몸을 움직이는 것이 좋다. 앉아만 있으면 다음 시간에 더 졸리기 때문이다.",
+    stem: "[가]와 [나] 중 어느 쪽에 더 동의하는지 정하고, 그렇게 생각한 까닭을 두 가지 들어 쓰시오. 반대쪽 글이 든 까닭도 한 가지 짚어 답하시오.",
+    choices: ["", "", "", ""],
+    distractorIntent: [],
+    answer: 0,
+    explain:
+      "어느 쪽을 골라도 됩니다. 고른 쪽의 까닭 두 가지와 반대쪽 까닭에 대한 응답이 모두 성립하는지를 봅니다.",
+    guidance:
+      "어느 쪽이 옳은지를 채점하지 않습니다. 아이의 태도가 아니라 근거의 성립만 봅니다(진단 윤리 헌장 7조).",
+    type: "essay",
+    shortAnswers: "",
+    rubric:
+      "고른 쪽 밝힘 1점 + 까닭 두 가지 2점(하나면 1점) + 반대쪽 까닭에 대한 응답 1점. 맞춤법·글씨는 감점하지 않습니다.",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S4",
+    author: "author.han",
+    authorName: "한나래",
+    state: "approved",
+    correctRate: 39,
+    comments: [],
+    updatedAt: "2026-08-08 10:50",
   },
 ];
 
@@ -1330,6 +1543,32 @@ export function approveItem(
  * ⚠ 오늘 날짜를 읽으므로 서버와 브라우저에서 값이 갈린다. 반드시 하이드레이션이
  *   끝난 뒤에만 부른다(useHydrated).
  */
+/**
+ * 앵커로 삼거나 뺀다.
+ *
+ * 확정된(승인) 문항만 앵커가 된다. 아직 검수를 안 지난 문항을 등화 기준으로 삼으면
+ * 그 회차의 잣대 자체가 검증되지 않은 것이 된다. 공개된 적이 있는 문항도 안 된다.
+ */
+export function setAnchor(
+  id: string,
+  on: boolean,
+  by: string,
+  role: StaffRoleId,
+  reason: string,
+) {
+  const item = read().find((i) => i.id === id);
+  if (!item) return null;
+  if (on && (item.state !== "approved" || item.disclosed)) return null;
+  patchItem(id, {
+    anchor: on,
+    comments: [
+      ...item.comments,
+      { at: now(), by, role, kind: "note", text: `${on ? "앵커 지정" : "앵커 해제"} — ${reason}` },
+    ],
+  });
+  return item;
+}
+
 /**
  * 승인된 문항을 회차에서 뺀다.
  *

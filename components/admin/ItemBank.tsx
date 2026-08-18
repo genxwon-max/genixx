@@ -11,7 +11,7 @@ import {
   type ItemDraft,
   type ItemState,
 } from "@/lib/itemStore";
-import { TableCard } from "./Parts";
+import { CountRows, TableCard } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -118,6 +118,34 @@ export default function ItemBank() {
 
   return (
     <>
+      {/* 건수는 목록과 같은 자료에서 센다. 위쪽 숫자만 따로 계산하면 언젠가 어긋나고,
+          어긋난 화면에서는 어느 쪽이 맞는지 아무도 답할 수 없다. */}
+      <div className="mb-5">
+        <CountRows
+          rows={[
+            {
+              label: "승인된 문항",
+              value: items.filter((i) => i.state === "approved").length,
+              unit: "건",
+              note: "검사지에 바로 넣을 수 있습니다",
+            },
+            {
+              label: "사용 중지",
+              value: items.filter((i) => i.state === "retired").length,
+              unit: "건",
+              note: "은행에 그대로 남습니다. 회차에는 넣지 않습니다",
+            },
+            {
+              label: "검수를 기다리는 문항",
+              value: items.filter((i) => i.state === "submitted").length,
+              unit: "건",
+              note: "아직 은행에 없습니다 — 검수 워크벤치에 있습니다",
+              href: "/admin/review",
+            },
+          ]}
+        />
+      </div>
+
       {/* 두 갈래. 어느 쪽을 보고 있는지 글자로도 적는다 — 색만으로 나누지 않는다. */}
       <div className="mb-4 flex flex-wrap gap-2">
         {views.map((v) => {
