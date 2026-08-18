@@ -50,7 +50,13 @@ export const stemCol: Column<ItemDraft> = {
     /* 다른 칸이 모두 nowrap이라 좁아지면 이 칸만 줄어든다. 바닥을 정해 두지 않으면
        한 줄에 두세 글자만 남아 발문이 아니라 얼룩처럼 보인다. */
     <span className="block min-w-[13rem]">
-      <span className="line-clamp-2 adm-t-md font-bold text-exam-text">
+      {/* 한 줄만 두고 넘치면 …으로 자른다. 발문은 목록에서 「이게 그 문항인가」를
+          가리는 데만 쓰이고, 전문은 눌러 들어가면 있다. 두 줄로 두면 문항마다 줄
+          높이가 달라져 세로로 훑는 눈이 매번 걸린다.
+
+          truncate(=nowrap)가 아니라 line-clamp-1을 쓴다. 표 안에서 nowrap을 주면
+          이 칸의 최소 폭이 발문 전체 길이가 되어 칸이 줄어들지 못한다. */}
+      <span className="line-clamp-1 adm-t-md font-bold text-exam-text" title={i.stem || undefined}>
         {i.stem || "발문을 아직 쓰지 않았습니다"}
       </span>
       {/* truncate(=nowrap)를 쓰지 않는다. 표 안에서 nowrap을 주면 이 줄의 최소 폭이
