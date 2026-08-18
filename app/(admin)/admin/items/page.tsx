@@ -1,13 +1,13 @@
-import { items, itemStates } from "@/lib/admin";
+import Link from "next/link";
+import { items } from "@/lib/admin";
 import {
   AnchorSection,
-  Badge,
   CountRows,
   Foldable,
   PageHead,
   PlannedSection,
-  TableCard,
 } from "@/components/admin/Parts";
+import ItemBank from "@/components/admin/ItemBank";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -29,7 +29,8 @@ const counts = [
     label: "검수를 기다리는 문항",
     value: countOf("review"),
     unit: "건",
-    note: "다음 회차 배치 전까지",
+    note: "아직 은행에 없습니다 — 검수 워크벤치에 있습니다",
+    href: "/admin/review",
   },
   {
     label: "승인된 문항",
@@ -41,7 +42,7 @@ const counts = [
     label: "사용 중지",
     value: countOf("retired"),
     unit: "건",
-    note: "정답률이 한쪽으로 치우친 문항",
+    note: "은행에 그대로 남습니다. 회차에는 넣지 않습니다",
   },
 ];
 
@@ -51,16 +52,13 @@ export default function ItemsPage() {
       <PageHead
         id="ADM-05"
         title="문항 은행"
-        lead="문항을 만들고, 다른 사람이 검수하고, 승인된 것만 회차에 넣습니다. 작성자 본인은 자기 문항을 검수할 수 없습니다."
+        lead="검수를 지나 확정된 문항이 모이는 자리입니다. 여기서는 고르고 훑기만 합니다 — 만들고 고치는 일은 출제 워크벤치에서 합니다."
         action={
-          <>
-            <button type="button" className={a.btnGhost}>
-              문항 내려받기
-            </button>
-            <button type="button" className={a.btnPrimary}>
-              새 문항 만들기
-            </button>
-          </>
+          /* 만드는 길은 하나여야 한다. 은행에도 만들기 버튼을 세워 두면 두 갈래가
+             있는 줄 알게 되므로, 여기서는 그 자리로 보내기만 한다. */
+          <Link href="/admin/authoring" className={a.btnPrimary}>
+            출제 워크벤치에서 새로 만들기 →
+          </Link>
         }
       />
 
@@ -88,68 +86,9 @@ export default function ItemsPage() {
         <AnchorSection
           id="ADM-04-1"
           title="문항 CRUD · 버전"
-          lead="승인된 문항을 좌표·태그·난이도·상태로 훑습니다. 고치는 일은 출제 워크벤치(EXP-02)에서 합니다."
+          lead="확정된 문항을 좌표·태그·난이도·상태로 훑습니다. 정답률이 90%를 넘거나 40% 아래로 떨어지면 변별이 되지 않아 다시 봅니다."
         >
-        <TableCard
-          title={`전체 문항 ${items.length}건`}
-          caption="정답률이 90%를 넘거나 40% 아래로 떨어지면 변별이 되지 않아 다시 봅니다."
-        >
-          <table className={a.table}>
-            <thead>
-              <tr>
-                <th className={a.th}>문항번호</th>
-                <th className={a.th}>과목 · 학년</th>
-                <th className={a.th}>유형</th>
-                <th className={a.th}>재능 축</th>
-                <th className={a.th}>발문</th>
-                <th className={a.th}>작성</th>
-                <th className={a.th}>검수</th>
-                <th className={a.th}>지난 회차 정답률</th>
-                <th className={a.th}>상태</th>
-                <th className={a.th}>할 일</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((q) => {
-                const odd = q.correctRate !== null && (q.correctRate > 90 || q.correctRate < 40);
-                return (
-                  <tr key={q.id}>
-                    <td className={a.tdStrong}>{q.id}</td>
-                    <td className={a.td}>
-                      {q.subject} · {q.grade}
-                    </td>
-                    <td className={a.td}>{q.type}</td>
-                    <td className={a.td}>{q.axis}</td>
-                    <td className={`${a.td} min-w-[18rem] text-left`}>{q.stem}</td>
-                    <td className={a.td}>{q.author}</td>
-                    <td className={a.td}>{q.reviewer ?? "미배정"}</td>
-                    <td className={a.tdNum}>
-                      {q.correctRate === null ? (
-                        "출제 전"
-                      ) : (
-                        <span className={odd ? "font-bold text-rose-700" : undefined}>
-                          {q.correctRate}%
-                          {odd && <span className="block adm-t-sm">다시 볼 것</span>}
-                        </span>
-                      )}
-                    </td>
-                    <td className={a.td}>
-                      <Badge {...itemStates[q.state]} />
-                    </td>
-                    <td className={a.td}>
-                      <button
-                        type="button"
-                        className={q.state === "review" ? a.btnRow : a.btnRowGhost}
-                      >
-                        {q.state === "review" ? "검수하기" : "열어 보기"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </TableCard>
+          <ItemBank />
         </AnchorSection>
 
         <div className="mt-8 space-y-8">
