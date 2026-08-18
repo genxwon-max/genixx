@@ -545,8 +545,8 @@ export default function ItemCard({ id }: { id: string }) {
                 <tbody>
                   {boundaryRules.map((b) => (
                     <tr key={b.pair}>
-                      <td className={a.tdStrong}>{b.pair}</td>
-                      <td className={a.td}>{b.ask}</td>
+                      <td className={a.tdStrongTight}>{b.pair}</td>
+                      <td className={a.tdTight}>{b.ask}</td>
                       <td className={a.td}>
                         {b.rule}
                         <span className="mt-1 block text-exam-muted">{b.example}</span>

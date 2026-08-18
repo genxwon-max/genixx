@@ -157,7 +157,7 @@ function Numbers({
           <tbody>
             {data.map((d) => (
               <tr key={d.key}>
-                <td className={a.tdStrong}>{d.full}</td>
+                <td className={a.tdStrongTight}>{d.full}</td>
                 <td className={a.tdNum}>{d.total.toLocaleString("ko-KR")}</td>
                 {subName && <td className={a.tdNum}>{(d.sub ?? 0).toLocaleString("ko-KR")}</td>}
               </tr>

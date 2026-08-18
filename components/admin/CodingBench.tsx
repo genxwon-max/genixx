@@ -206,9 +206,9 @@ export default function CodingBench() {
                           {t.grade}
                         </span>
                       </td>
-                      <td className={a.td}>{t.prompt}</td>
+                      <td className={a.tdTight}>{t.prompt}</td>
                       <td className={`${a.td} max-w-[22rem]`}>{t.text}</td>
-                      <td className={a.td}>{t.aiCodes.join(" · ")}</td>
+                      <td className={a.tdTight}>{t.aiCodes.join(" · ")}</td>
                       <td className={a.td}>
                         <span className="font-bold tabular-nums text-exam-text">
                           {t.confidence.toFixed(2)}
@@ -286,15 +286,15 @@ export default function CodingBench() {
                 <tbody>
                   {unclear.map((t) => (
                     <tr key={t.id}>
-                      <td className={a.tdStrong}>{t.seat}</td>
-                      <td className={a.td}>{t.prompt}</td>
+                      <td className={a.tdStrongTight}>{t.seat}</td>
+                      <td className={a.tdTight}>{t.prompt}</td>
                       <td className={`${a.td} max-w-[24rem]`}>{t.text}</td>
                       <td className={a.td}>
                         <span className="font-bold tabular-nums text-rose-700">
                           {t.confidence.toFixed(2)}
                         </span>
                       </td>
-                      <td className={a.td}>면담 선발 큐 4순위</td>
+                      <td className={a.tdTight}>면담 선발 큐 4순위</td>
                     </tr>
                   ))}
                   {unclear.length === 0 && (

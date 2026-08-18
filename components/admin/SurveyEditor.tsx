@@ -233,7 +233,7 @@ export default function SurveyEditor() {
                 {mine.map((e) => (
                   <tr key={e.id}>
                     <td className={`${a.td} whitespace-nowrap`}>{e.at}</td>
-                    <td className={a.tdStrong}>{e.by}</td>
+                    <td className={a.tdStrongTight}>{e.by}</td>
                     <td className={a.td}>
                       <span
                         className={`${a.badge} ${
@@ -247,7 +247,7 @@ export default function SurveyEditor() {
                         {actionLabel[e.action]}
                       </span>
                     </td>
-                    <td className={a.td}>{e.version ? `v${e.version}` : "초안"}</td>
+                    <td className={a.tdTight}>{e.version ? `v${e.version}` : "초안"}</td>
                     <td className={`${a.td} min-w-[14rem]`}>{e.reason}</td>
                     <td className={`${a.td} min-w-[18rem]`}>
                       {e.lines.length === 0 ? (

@@ -1,17 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { talentOf } from "@/lib/blueprint";
+import { LEVELS, levelSpecs, type Level } from "@/lib/blueprint";
 import {
   stateLabel,
-  stateTone,
   typeLabel,
   useItems,
   type ItemDraft,
   type ItemState,
 } from "@/lib/itemStore";
-import { CountRows, TableCard } from "./Parts";
+import DataList, { Picker, type Column } from "./DataList";
+import {
+  actionCol,
+  authorCol,
+  codeCol,
+  linkBtn,
+  stateCol,
+  stemCol,
+  talentCol,
+  typeCol,
+  whenCol,
+} from "./itemColumns";
+import { CountRows } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -28,8 +39,9 @@ import * as a from "./ui";
  * 있는지 한자리에서 세어 보는 일은 실제로 필요하고, 이름이 다르면 은행과 헷갈리지
  * 않는다. 그 화면에서 아직 확정되지 않은 줄은 워크벤치로 보내기만 한다.
  *
- * 자료는 출제 워크벤치와 **같은 저장소**를 본다. 은행이 따로 자료를 들면 같은
- * 문항이 두 화면에서 다르게 보이고, 어느 쪽이 맞는지 아무도 답할 수 없게 된다.
+ * 자료는 출제 워크벤치와 **같은 저장소**를 보고, 표도 **같은 표**를 쓴다
+ * (DataList + itemColumns). 은행이 따로 자료나 표를 들면 같은 문항이 두 화면에서
+ * 다르게 보이고, 어느 쪽이 맞는지 아무도 답할 수 없게 된다.
  */
 
 /** 확정된 것 — 한 번이라도 승인을 지난 문항 */
@@ -62,13 +74,53 @@ const deskOf = (state: ItemState) =>
 
 const lastReviewer = (item: ItemDraft) => item.reviews[item.reviews.length - 1]?.by ?? "미배정";
 
+/** 너무 쉽거나 너무 어려운 문항 — 다시 봐야 한다 */
+const oddRate = (i: ItemDraft) => i.correctRate !== null && (i.correctRate > 90 || i.correctRate < 40);
+
 export default function ItemBank() {
   const items = useItems();
   const [view, setView] = useState<ViewId>("bank");
+  const [query, setQuery] = useState("");
+  const [subject, setSubject] = useState("all");
+  const [level, setLevel] = useState("all");
 
   const bankCount = items.filter((i) => CONFIRMED.includes(i.state)).length;
-  const rows = view === "bank" ? items.filter((i) => CONFIRMED.includes(i.state)) : items;
   const current = views.find((v) => v.id === view)!;
+
+  const base = useMemo(
+    () => (view === "bank" ? items.filter((i) => CONFIRMED.includes(i.state)) : items),
+    [items, view],
+  );
+
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    let list = base;
+    if (needle) {
+      list = list.filter(
+        (i) =>
+          i.code.toLowerCase().includes(needle) ||
+          i.stem.toLowerCase().includes(needle) ||
+          i.unit.toLowerCase().includes(needle) ||
+          i.standardCode.toLowerCase().includes(needle) ||
+          i.authorName.toLowerCase().includes(needle),
+      );
+    }
+    if (subject !== "all") list = list.filter((i) => i.subject === subject);
+    if (level !== "all") list = list.filter((i) => i.level === level);
+    return list;
+  }, [base, query, subject, level]);
+
+  const filtering = query.trim() !== "" || subject !== "all" || level !== "all";
+  const reset = () => {
+    setQuery("");
+    setSubject("all");
+    setLevel("all");
+  };
+
+  const subjectOptions = useMemo(
+    () => [...new Set(items.map((i) => i.subject))].map((s) => ({ value: s, label: s })),
+    [items],
+  );
 
   /**
    * 지금 보고 있는 목록을 그대로 내려받는다.
@@ -106,15 +158,61 @@ export default function ItemBank() {
     const csv = [head, ...body]
       .map((cells) => cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
       .join("\r\n");
-    const url = URL.createObjectURL(
-      new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }),
-    );
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
     link.download = `문항목록-${current.label}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
+
+  const columns: Column<ItemDraft>[] = [
+    codeCol((i) => `/admin/items/${i.id}`),
+    stemCol,
+    typeCol,
+    talentCol,
+    authorCol,
+    { ...whenCol("최근 변경"), hide: "xl" },
+    {
+      key: "reviewer",
+      head: "검수",
+      hide: "xl",
+      nowrap: true,
+      cell: (i) => <span className="adm-t-md text-exam-text">{lastReviewer(i)}</span>,
+    },
+    {
+      key: "rate",
+      head: "정답률",
+      hide: "lg",
+      align: "right",
+      nowrap: true,
+      cell: (i) =>
+        i.correctRate === null ? (
+          <span className="adm-t-md">출제 전</span>
+        ) : (
+          <>
+            <span
+              className={`adm-t-md font-bold tabular-nums ${
+                oddRate(i) ? "text-rose-700" : "text-exam-text"
+              }`}
+            >
+              {i.correctRate}%
+            </span>
+            {oddRate(i) && (
+              <span className="mt-0.5 block adm-t-sm font-bold text-rose-700">다시 볼 것</span>
+            )}
+          </>
+        ),
+    },
+    stateCol((i) => (i.anchor ? "앵커" : null)),
+    actionCol("어디에 있나", (i) =>
+      CONFIRMED.includes(i.state) ? (
+        linkBtn(`/admin/items/${i.id}`, "문항 보기")
+      ) : (
+        linkBtn(deskOf(i.state).href, `${deskOf(i.state).label}에서 보기`)
+      ),
+    ),
+  ];
 
   return (
     <>
@@ -147,14 +245,17 @@ export default function ItemBank() {
       </div>
 
       {/* 두 갈래. 어느 쪽을 보고 있는지 글자로도 적는다 — 색만으로 나누지 않는다. */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {views.map((v) => {
           const on = v.id === view;
           return (
             <button
               key={v.id}
               type="button"
-              onClick={() => setView(v.id)}
+              onClick={() => {
+                setView(v.id);
+                reset();
+              }}
               aria-pressed={on}
               className={`min-h-[2.75rem] rounded-md border px-4 py-2 text-left transition-colors ${
                 on
@@ -170,88 +271,47 @@ export default function ItemBank() {
             </button>
           );
         })}
+
+        <button type="button" onClick={download} className={`${a.btnGhost} ml-auto`}>
+          지금 목록 내려받기
+        </button>
       </div>
 
-      <TableCard
-        title={`${current.label} ${rows.length}건`}
-        caption={current.caption}
-        action={
-          <button type="button" onClick={download} className={a.btnGhost}>
-            지금 목록 내려받기
-          </button>
+      <p className={`${a.bodyText} mb-4`}>{current.caption}</p>
+
+      <DataList
+        rows={rows}
+        totalCount={base.length}
+        columns={columns}
+        rowKey={(i) => i.id}
+        searchPlaceholder="문항 ID · 발문 · 단원 · 성취기준 · 출제자로 찾기"
+        query={query}
+        onQuery={setQuery}
+        filtering={filtering}
+        onReset={reset}
+        emptyText="찾는 문항이 없습니다."
+        filters={
+          <>
+            <Picker
+              label="과목 전체"
+              options={subjectOptions}
+              value={subject}
+              onChange={setSubject}
+              className="w-full sm:w-32"
+            />
+            <Picker
+              label="단계 전체"
+              options={LEVELS.map((l) => ({ value: l, label: `${l} ${levelSpecs[l as Level].name}` }))}
+              value={level}
+              onChange={setLevel}
+              className="w-full sm:w-44"
+            />
+          </>
         }
-      >
-        <table className={a.table}>
-          <thead>
-            <tr>
-              <th className={a.th}>문항번호</th>
-              <th className={a.th}>과목 · 학년</th>
-              <th className={a.th}>유형 · 단계</th>
-              <th className={a.th}>재능 축</th>
-              <th className={a.th}>발문</th>
-              <th className={a.th}>작성</th>
-              <th className={a.th}>검수</th>
-              <th className={a.th}>지난 회차 정답률</th>
-              <th className={a.th}>상태</th>
-              <th className={a.th}>어디에 있나</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((q) => {
-              const odd = q.correctRate !== null && (q.correctRate > 90 || q.correctRate < 40);
-              const confirmed = CONFIRMED.includes(q.state);
-              const desk = deskOf(q.state);
-              return (
-                <tr key={q.id}>
-                  <td className={a.tdStrong}>
-                    <Link
-                      href={`/admin/items/${q.id}`}
-                      className="font-bold text-brand-700 underline underline-offset-4"
-                    >
-                      {q.code || q.id}
-                    </Link>
-                  </td>
-                  <td className={a.td}>
-                    {q.subject} · {q.grade}
-                  </td>
-                  <td className={a.td}>
-                    {typeLabel(q.type)} · {q.level}
-                  </td>
-                  <td className={a.td}>{talentOf(q.talent).name}</td>
-                  <td className={`${a.td} min-w-[18rem] text-left`}>{q.stem}</td>
-                  <td className={a.td}>{q.authorName}</td>
-                  <td className={a.td}>{lastReviewer(q)}</td>
-                  <td className={a.tdNum}>
-                    {q.correctRate === null ? (
-                      "출제 전"
-                    ) : (
-                      <span className={odd ? "font-bold text-rose-700" : undefined}>
-                        {q.correctRate}%
-                        {odd && <span className="block adm-t-sm">다시 볼 것</span>}
-                      </span>
-                    )}
-                  </td>
-                  <td className={a.td}>
-                    <span className={`${a.badge} ${stateTone[q.state]}`}>{stateLabel[q.state]}</span>
-                  </td>
-                  <td className={a.td}>
-                    {confirmed ? (
-                      <span className={a.hint}>은행</span>
-                    ) : (
-                      <Link href={desk.href} className={a.btnRowGhost}>
-                        {desk.label}에서 보기
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </TableCard>
+      />
 
       <p className={`${a.hint} mt-3`}>
-        문항번호를 누르면 지문·보기·해설과 검수 이력까지 볼 수 있습니다.
+        문항 ID를 누르면 지문·보기·해설과 검수 이력까지 볼 수 있습니다.
         {view === "bank" && items.length - bankCount > 0 && (
           <>
             {" "}

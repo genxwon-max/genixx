@@ -356,8 +356,8 @@ export default function RoundSettings({ started }: { started: number }) {
                 {log.map((l) => (
                   <tr key={`${l.version}-${l.at}`}>
                     <td className={a.tdStrong}>v{l.version}</td>
-                    <td className={a.td}>{l.at}</td>
-                    <td className={a.td}>{l.by}</td>
+                    <td className={a.tdTight}>{l.at}</td>
+                    <td className={a.tdTight}>{l.by}</td>
                     <td className={a.td}>
                       {l.lines.length === 0 ? (
                         <span>첫 판</span>

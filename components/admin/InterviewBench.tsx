@@ -115,7 +115,7 @@ export default function InterviewBench() {
                   const s = interviewStateLabel[v.state];
                   return (
                     <tr key={v.id}>
-                      <td className={a.tdStrong}>{top.rank}</td>
+                      <td className={a.tdStrongTight}>{top.rank}</td>
                       <td className={a.td}>
                         <span className="font-bold text-exam-text">{v.seat}</span>
                         <span className="mt-0.5 block adm-t-sm font-bold text-exam-muted">

@@ -90,15 +90,15 @@ export default function ReportApproval() {
                 const warns = found.length - blocks;
                 return (
                   <tr key={r.id}>
-                    <td className={a.tdStrong}>{r.id}</td>
+                    <td className={a.tdStrongTight}>{r.id}</td>
                     <td className={a.td}>
                       {r.student} · {r.grade}
                     </td>
-                    <td className={a.td}>{r.round}</td>
+                    <td className={a.tdTight}>{r.round}</td>
                     <td className={a.td}>
                       {r.typeCode} {r.typeName}
                     </td>
-                    <td className={a.td}>{r.confidence}</td>
+                    <td className={a.tdTight}>{r.confidence}</td>
                     <td className={a.td}>
                       {blocks > 0 ? (
                         <span className="font-bold text-rose-700">막힘 {blocks}건</span>

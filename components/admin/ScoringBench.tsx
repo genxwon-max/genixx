@@ -134,7 +134,7 @@ export default function ScoringBench() {
                           {t.grade}
                         </span>
                       </td>
-                      <td className={a.td}>{t.subject}</td>
+                      <td className={a.tdTight}>{t.subject}</td>
                       <td className={`${a.td} max-w-[20rem]`}>{t.stem}</td>
                       <td className={a.td}>
                         <Badge label={rubric[t.aiLevel].label} className={rubric[t.aiLevel].tone} />
@@ -168,7 +168,7 @@ export default function ScoringBench() {
                           <span className="text-exam-muted">아직</span>
                         )}
                       </td>
-                      <td className={a.td}>{t.assignee ?? "미배정"}</td>
+                      <td className={a.tdTight}>{t.assignee ?? "미배정"}</td>
                       <td className={a.td}>
                         <button
                           type="button"
@@ -263,7 +263,7 @@ export default function ScoringBench() {
                       <td className={a.tdStrong}>
                         {t.seat} · {t.subject}
                       </td>
-                      <td className={a.td}>{t.grade}</td>
+                      <td className={a.tdTight}>{t.grade}</td>
                       <td className={a.td}>
                         <span className="adm-t-md font-black tabular-nums text-rose-700">
                           {t.confidence.toFixed(2)}

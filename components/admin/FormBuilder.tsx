@@ -151,7 +151,7 @@ export default function FormBuilder() {
                   const anchors = picked.filter((i) => i.anchor).length;
                   return (
                     <tr key={f.id}>
-                      <td className={a.tdStrong}>{f.title}</td>
+                      <td className={a.tdStrongTight}>{f.title}</td>
                       <td className={a.tdNum}>
                         <span className={picked.length === FORM_SIZE ? undefined : "text-rose-700"}>
                           {picked.length} / {FORM_SIZE}
@@ -168,7 +168,7 @@ export default function FormBuilder() {
                           {f.state === "confirmed" ? "확정" : "초안"}
                         </span>
                       </td>
-                      <td className={a.td}>{f.createdBy}</td>
+                      <td className={a.tdTight}>{f.createdBy}</td>
                       <td className={a.td}>
                         <button
                           type="button"

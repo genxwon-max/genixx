@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { can, rounds } from "@/lib/admin";
 import { recordAction, useAdminPrefs } from "@/lib/adminStore";
 import { useForms, type ExamForm } from "@/lib/formStore";
@@ -14,6 +13,7 @@ import {
   type GuardId,
   type SecuritySettings,
 } from "@/lib/securityStore";
+import { ItemCode, LevelText, RateText } from "./itemColumns";
 import { Callout, TableCard } from "./Parts";
 import * as a from "./ui";
 
@@ -127,21 +127,18 @@ export default function RotationPanel() {
               <tbody>
                 {used.map(({ item, runs, labels, rest }) => (
                   <tr key={item.id}>
-                    <td className={a.tdStrong}>
-                      <Link
-                        href={`/admin/items/${item.id}`}
-                        className="font-bold text-brand-700 underline underline-offset-4"
-                      >
-                        {item.code || item.id}
-                      </Link>
+                    <td className={a.tdStrongTight}>
+                      <ItemCode item={item} />
                     </td>
-                    <td className={a.td}>{item.level}</td>
+                    <td className={a.tdTight}>
+                      <LevelText item={item} />
+                    </td>
                     <td className={a.tdNum}>{runs}회</td>
                     <td className={a.td}>{labels.join(", ")}</td>
-                    <td className={a.tdNum}>
-                      {item.correctRate === null ? "출제 전" : `${item.correctRate}%`}
+                    <td className={`${a.tdNum} ${a.nowrap}`}>
+                      <RateText item={item} />
                     </td>
-                    <td className={a.td}>{item.anchor ? "앵커" : "—"}</td>
+                    <td className={a.tdTight}>{item.anchor ? "앵커" : "—"}</td>
                     <td className={a.td}>
                       {item.anchor ? (
                         <span className="font-bold text-brand-700">계속 넣습니다</span>
@@ -253,8 +250,8 @@ export default function RotationPanel() {
               <tbody>
                 {log.map((e) => (
                   <tr key={e.id}>
-                    <td className={`${a.td} whitespace-nowrap`}>{e.at}</td>
-                    <td className={a.tdStrong}>{e.by}</td>
+                    <td className={a.tdTight}>{e.at}</td>
+                    <td className={a.tdStrongTight}>{e.by}</td>
                     <td className={a.td}>{e.text}</td>
                     <td className={`${a.td} min-w-[18rem]`}>{e.reason}</td>
                   </tr>

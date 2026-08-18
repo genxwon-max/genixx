@@ -112,7 +112,7 @@ export default function ConferencePanel() {
                 ].filter(Boolean).length;
                 return (
                   <tr key={c.id}>
-                    <td className={a.tdStrong}>{c.seat}</td>
+                    <td className={a.tdStrongTight}>{c.seat}</td>
                     <td className={a.td}>
                       {c.grade}
                       <span className="mt-0.5 block adm-t-sm">{c.org}</span>

@@ -59,13 +59,13 @@ export default function AuditLog() {
               <tbody>
                 {local.map((r) => (
                   <tr key={r.id}>
-                    <td className={a.td}>{r.id}</td>
-                    <td className={a.td}>
+                    <td className={a.tdTight}>{r.id}</td>
+                    <td className={a.tdTight}>
                       <span className="tabular-nums">{r.at}</span>
                     </td>
-                    <td className={a.tdStrong}>{r.actor}</td>
-                    <td className={a.td}>{r.action ?? "개인정보 열람"}</td>
-                    <td className={a.td}>{r.target}</td>
+                    <td className={a.tdStrongTight}>{r.actor}</td>
+                    <td className={a.tdTight}>{r.action ?? "개인정보 열람"}</td>
+                    <td className={`${a.td} text-left`}>{r.target}</td>
                     <td className={`${a.td} min-w-[20rem] text-left`}>{r.reason}</td>
                   </tr>
                 ))}
@@ -95,18 +95,18 @@ export default function AuditLog() {
           <tbody>
             {auditLog.map((r) => (
               <tr key={r.id}>
-                <td className={a.td}>{r.id}</td>
-                <td className={a.td}>
+                <td className={a.tdTight}>{r.id}</td>
+                <td className={a.tdTight}>
                   <span className="tabular-nums">{r.at}</span>
                 </td>
-                <td className={a.tdStrong}>{r.actor}</td>
-                <td className={a.td}>{roleOf(r.role).label}</td>
-                <td className={a.td}>{r.action}</td>
+                <td className={a.tdStrongTight}>{r.actor}</td>
+                <td className={a.tdTight}>{roleOf(r.role).label}</td>
+                <td className={a.tdTight}>{r.action}</td>
                 <td className={`${a.td} text-left`}>{r.target}</td>
                 <td className={`${a.td} min-w-[18rem] text-left`}>
                   {r.reason ?? <span className="text-exam-muted">— (개인정보 열람 아님)</span>}
                 </td>
-                <td className={a.td}>
+                <td className={a.tdTight}>
                   <span className="tabular-nums">{r.ip}</span>
                 </td>
               </tr>

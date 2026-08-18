@@ -216,9 +216,9 @@ export default function StaffIssue() {
           <tbody>
             {(hydrated ? accounts : []).map((s) => (
               <tr key={s.loginId}>
-                <td className={a.td}>{s.id}</td>
-                <td className={a.tdStrong}>{s.loginId}</td>
-                <td className={a.td}>{s.name}</td>
+                <td className={a.tdTight}>{s.id}</td>
+                <td className={a.tdStrongTight}>{s.loginId}</td>
+                <td className={a.tdTight}>{s.name}</td>
                 <td className={a.td}>
                   <Badge label={roleOf(s.role).label} className={roleOf(s.role).tone} />
                 </td>
@@ -240,7 +240,7 @@ export default function StaffIssue() {
                     className={s.mfa ? "text-emerald-700" : "text-rose-700"}
                   />
                 </td>
-                <td className={a.td}>{s.lastSeen ?? "접속 전"}</td>
+                <td className={a.tdTight}>{s.lastSeen ?? "접속 전"}</td>
                 <td className={a.td}>
                   <span className="flex flex-wrap gap-2">
                     <button

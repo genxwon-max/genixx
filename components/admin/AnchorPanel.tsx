@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { can } from "@/lib/admin";
 import { recordAction, useAdminPrefs } from "@/lib/adminStore";
 import { ANCHOR_RATIO, talentOf } from "@/lib/blueprint";
 import { roundsOf, useForms } from "@/lib/formStore";
-import { setAnchor, stateLabel, useItems, type ItemDraft } from "@/lib/itemStore";
+import { setAnchor, useItems, type ItemDraft } from "@/lib/itemStore";
+import { ItemCode, LevelText, RateText, StateText } from "./itemColumns";
 import { Callout, TableCard } from "./Parts";
 import * as a from "./ui";
 
@@ -230,25 +230,23 @@ function Table({
           const went = roundsOf(i.id, forms);
           return (
             <tr key={i.id}>
-              <td className={a.tdStrong}>
-                <Link
-                  href={`/admin/items/${i.id}`}
-                  className="font-bold text-brand-700 underline underline-offset-4"
-                >
-                  {i.code || i.id}
-                </Link>
+              <td className={a.tdStrongTight}>
+                <ItemCode item={i} />
               </td>
-              <td className={a.td}>
+              <td className={a.tdTight}>
                 {i.subject} · {i.band === "3-4" ? "3~4학년군" : "5~6학년군"}
               </td>
-              <td className={a.td}>{i.level}</td>
-              <td className={a.td}>{talentOf(i.talent).name}</td>
+              <td className={a.tdTight}>
+                <LevelText item={i} />
+              </td>
+              <td className={a.tdTight}>{talentOf(i.talent).name}</td>
               <td className={a.tdNum}>{i.b}</td>
-              <td className={a.tdNum}>{i.correctRate === null ? "출제 전" : `${i.correctRate}%`}</td>
+              <td className={`${a.tdNum} ${a.nowrap}`}>
+                <RateText item={i} />
+              </td>
               <td className={a.td}>{went.length === 0 ? "아직 없음" : went.join(", ")}</td>
-              <td className={a.td}>
-                {stateLabel[i.state]}
-                {i.disclosed && <span className="ml-1.5 font-bold text-rose-700">공개됨</span>}
+              <td className={a.tdTight}>
+                <StateText item={i} note={i.disclosed ? "공개됨" : null} />
               </td>
               {mayEdit && (
                 <td className={a.td}>

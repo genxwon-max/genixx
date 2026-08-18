@@ -155,21 +155,21 @@ export default function StudentTable() {
               const shown = open.has(s.id);
               return (
                 <tr key={s.id}>
-                  <td className={a.td}>{s.id}</td>
-                  <td className={a.tdStrong}>{shown ? s.name : maskName(s.name)}</td>
+                  <td className={a.tdTight}>{s.id}</td>
+                  <td className={a.tdStrongTight}>{shown ? s.name : maskName(s.name)}</td>
                   <td className={a.td}>
                     <span className="tabular-nums">
                       {shown ? showBirth(s.birth) : maskBirth(s.birth)}
                     </span>
                   </td>
-                  <td className={a.td}>{[s.grade, s.klass].filter(Boolean).join(" · ") || "—"}</td>
-                  <td className={a.td}>{s.org}</td>
+                  <td className={a.tdTight}>{[s.grade, s.klass].filter(Boolean).join(" · ") || "—"}</td>
+                  <td className={a.tdTight}>{s.org}</td>
                   <td className={a.td}>
                     <span className="font-bold tracking-wider tabular-nums text-exam-text">
                       {formatCode(s.code)}
                     </span>
                   </td>
-                  <td className={a.td}>
+                  <td className={a.tdTight}>
                     <span className="tabular-nums">{s.guardian}</span>
                   </td>
                   <td className={a.td}>

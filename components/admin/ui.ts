@@ -80,6 +80,22 @@ export const tdStrong = "border-b border-exam-line px-4 py-4 align-middle font-b
 /** 숫자 칸 — 자릿수 고정 */
 export const tdNum = `${td} text-right tabular-nums`;
 
+/**
+ * 통짜 값 칸 — 줄바꿈하지 않는다.
+ *
+ * 문항 ID·시각·상태처럼 **쪼개지면 뜻이 상하는 값**에 쓴다. 「KOR-3-014」가
+ * 「KOR-3-」와 「014」로 갈리거나 「2026-08-10 14:20」이 두 줄로 접히면, 세로로 훑던
+ * 눈이 매 줄에서 멈춘다. 줄 높이도 행마다 들쭉날쭉해진다.
+ *
+ * 자리가 모자라면 칸을 접는 것(hide)이 먼저지, 값을 접는 것이 아니다. 표는
+ * overflow-x-auto 안에 있으므로 정 좁으면 옆으로 밀린다.
+ *
+ * 반대로 발문·사유처럼 **읽는 글**에는 쓰지 않는다. 그쪽은 접혀야 읽힌다.
+ */
+export const nowrap = "whitespace-nowrap";
+export const tdTight = `${td} ${nowrap}`;
+export const tdStrongTight = `${tdStrong} ${nowrap}`;
+
 /* ── 상태 ──
    면을 두지 않는다. 표 한 칸마다 색 상자가 서면 정작 읽어야 할 지문과 숫자가 뒤로
    밀린다. 상태는 글자로 적고 색은 글자에만 얹는다 — 색을 못 보아도 라벨이 남는다. */

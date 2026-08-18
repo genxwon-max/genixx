@@ -1,12 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
-import { daysWaiting, runAiAudit, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
+import { daysWaiting, runAiAudit, useItems, type ItemDraft } from "@/lib/itemStore";
 import { LEVELS, levelSpecs } from "@/lib/blueprint";
 import DataList, { Picker, type Column } from "./DataList";
+import {
+  actionCol,
+  authorCol,
+  codeCol,
+  linkBtn,
+  stemCol,
+  typeCol,
+  whenCol,
+} from "./itemColumns";
 import { PageHead, Callout } from "./Parts";
 import * as a from "./ui";
 
@@ -120,89 +128,32 @@ export default function ReviewList() {
   }
 
   const columns: Column<ItemDraft>[] = [
-    {
-      key: "code",
-      head: "문항 ID",
-      cell: (i) => (
-        <>
-          <Link
-            href={`/admin/review/${i.id}`}
-            className="font-black tabular-nums text-brand-800 underline underline-offset-4 hover:text-brand-600"
-          >
-            {i.code || i.id}
-          </Link>
-          {i.origin === "ai" && (
-            <span className="mt-0.5 block adm-t-xs font-bold text-violet-700">AI 초안</span>
-          )}
-          {i.reviews.length > 0 && (
-            <span className="mt-0.5 block adm-t-xs font-bold text-amber-700">
-              {i.reviews.length + 1}회차 검수
-            </span>
-          )}
-        </>
-      ),
-    },
-    {
-      key: "stem",
-      head: "발문",
-      cell: (i) => (
-        <>
-          <span className="line-clamp-2 font-bold text-exam-text">
-            {i.stem || "발문을 아직 쓰지 않았습니다"}
-          </span>
-          <span className="mt-0.5 block adm-t-xs">
-            {[i.subject, i.grade, i.unit || "단원 미정"].join(" · ")}
-          </span>
-        </>
-      ),
-    },
-    {
-      key: "type",
-      head: "유형 · 단계",
-      hide: "md",
-      cell: (i) => (
-        <>
-          {typeLabel(i.type)}
-          <span className="mt-0.5 block adm-t-xs">
-            {i.level} {levelSpecs[i.level].name}
-          </span>
-        </>
-      ),
-    },
-    { key: "author", head: "출제자", hide: "lg", cell: (i) => i.authorName },
-    {
-      key: "waited",
-      head: tab === "queue" ? "제출 · 대기" : "최근 변경",
-      hide: "md",
-      cell: (i) => {
-        const days = daysWaiting(i);
-        return (
-          <>
-            <span className="tabular-nums">{i.updatedAt}</span>
-            {tab === "queue" && (
-              <span
-                className={`mt-0.5 block adm-t-xs font-bold ${
-                  days >= 5 ? "text-rose-700" : "text-exam-muted"
-                }`}
-              >
-                {days === 0 ? "오늘" : `${days}일째 대기`}
-              </span>
-            )}
-          </>
-        );
-      },
-    },
+    /* 앞의 여섯 열은 출제 워크벤치·문항 은행과 같은 것을 쓴다(itemColumns.tsx).
+       뒤의 둘만 이 화면의 일이다 — AI 사전 검수 결과와 검수 버튼. */
+    codeCol((i) => `/admin/review/${i.id}`),
+    stemCol,
+    typeCol,
+    authorCol,
+    whenCol(tab === "queue" ? "제출 · 대기" : "최근 변경", (i) => {
+      if (tab !== "queue") return null;
+      const days = daysWaiting(i);
+      return {
+        text: days === 0 ? "오늘" : `${days}일째 대기`,
+        tone: days >= 5 ? "text-rose-700" : undefined,
+      };
+    }),
     {
       key: "ai",
       head: "AI 사전 검수",
+      nowrap: true,
       cell: (i) => {
-        if (!i.aiAudit) return <span className="adm-t-sm text-exam-muted">아직 안 돌림</span>;
+        if (!i.aiAudit) return <span className="adm-t-md">아직 안 돌림</span>;
         const { blocks, warns } = i.aiAudit;
         if (blocks === 0 && warns === 0) {
-          return <span className="adm-t-sm font-bold text-emerald-700">걸린 것 없음</span>;
+          return <span className="adm-t-md font-bold text-emerald-700">걸린 것 없음</span>;
         }
         return (
-          <span className="adm-t-sm font-bold text-rose-700">
+          <span className="adm-t-md font-bold text-rose-700">
             {blocks > 0 && `규칙 위반 ${blocks}`}
             {blocks > 0 && warns > 0 && " · "}
             {warns > 0 && `확인 필요 ${warns}`}
@@ -210,26 +161,21 @@ export default function ReviewList() {
         );
       },
     },
-    {
-      key: "act",
-      head: "할 일",
-      cell: (i) => {
-        const draft = i.reviewDraft;
-        return (
-          <span className="flex flex-col items-start gap-1">
-            <Link
-              href={`/admin/review/${i.id}`}
-              className={tab === "queue" ? a.btnRow : a.btnRowGhost}
-            >
-              {tab === "queue" ? (draft ? "이어서 검수" : "검수하기") : "검수 기록 보기"}
-            </Link>
-            {tab === "queue" && draft && (
-              <span className="adm-t-xs text-exam-muted">{draft.by} 작성 중</span>
-            )}
-          </span>
-        );
-      },
-    },
+    actionCol("할 일", (i) => {
+      const draft = i.reviewDraft;
+      return (
+        <span className="flex flex-col items-start gap-1">
+          {linkBtn(
+            `/admin/review/${i.id}`,
+            tab === "queue" ? (draft ? "이어서 검수" : "검수하기") : "검수 기록 보기",
+            tab === "queue",
+          )}
+          {tab === "queue" && draft && (
+            <span className="adm-t-sm text-exam-muted">{draft.by} 작성 중</span>
+          )}
+        </span>
+      );
+    }),
   ];
 
   return (

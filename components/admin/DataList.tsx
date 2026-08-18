@@ -40,6 +40,8 @@ import * as a from "./ui";
  *   세로로 훑을 때 눈이 걸린다. 셋째 줄이 필요하면 열을 늘리거나 상세로 넘긴다.
  * ⚠ 값을 sm으로 내리지 않는다. 좁아 보인다고 첫 줄을 줄이기 시작하면 그 목록만
  *   다른 화면이 된다 — 좁으면 hide로 열을 접는다.
+ * ⚠ ID·시각·상태처럼 통짜 값에는 nowrap을 준다. 「KOR-3-014」가 두 줄로 갈리면
+ *   세로로 훑던 눈이 매 줄에서 멈춘다. 발문 같은 읽는 글에는 주지 않는다.
  */
 
 export type Column<T> = {
@@ -48,6 +50,11 @@ export type Column<T> = {
   /** 이 폭 아래에서는 접는다. 목록을 고르는 데 꼭 필요한 열에는 쓰지 않는다. */
   hide?: "md" | "lg" | "xl";
   align?: "right";
+  /**
+   * 줄바꿈하지 않는다 — ID·시각·상태처럼 쪼개지면 뜻이 상하는 값에 준다.
+   * 발문 같은 읽는 글에는 주지 않는다. 자세한 까닭은 ui.ts의 nowrap 주석에.
+   */
+  nowrap?: boolean;
   cell: (row: T) => ReactNode;
 };
 
@@ -296,8 +303,8 @@ export default function DataList<T>({
                     <td
                       key={c.key}
                       className={`${c.align === "right" ? a.tdNum : a.td} ${
-                        c.hide ? hideClass[c.hide] : ""
-                      }`}
+                        c.nowrap ? a.nowrap : ""
+                      } ${c.hide ? hideClass[c.hide] : ""}`}
                     >
                       {c.cell(row)}
                     </td>
