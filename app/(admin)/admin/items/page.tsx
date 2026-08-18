@@ -1,13 +1,9 @@
 import Link from "next/link";
-import {
-  AnchorSection,
-  Foldable,
-  PageHead,
-  PlannedSection,
-} from "@/components/admin/Parts";
+import { AnchorSection, Foldable, PageHead } from "@/components/admin/Parts";
 import AnchorPanel from "@/components/admin/AnchorPanel";
 import FormBuilder from "@/components/admin/FormBuilder";
 import ItemBank from "@/components/admin/ItemBank";
+import RotationPanel from "@/components/admin/RotationPanel";
 import PermissionGate from "@/components/admin/PermissionGate";
 import * as a from "@/components/admin/ui";
 
@@ -79,16 +75,13 @@ export default function ItemsPage() {
             <FormBuilder />
           </AnchorSection>
 
-          <PlannedSection
+          <AnchorSection
             id="ADM-04-4"
             title="문항 회전 · 보안"
-            lead="같은 문항이 같은 자리에 계속 나오면 문항이 새어 나갑니다."
-            todo={[
-              "응시자별 동적 할당 — 57문항 중 55문항처럼 겹치되 같지 않게",
-              "캡처·드래그 차단과 그 한계를 함께 적기 (막을 수 있는 것과 없는 것)",
-              "문항별 노출 횟수와 마지막 사용 회차 — 회전 판단의 근거",
-            ]}
-          />
+            lead="같은 문항이 같은 자리에 계속 나오면 몇 회차 만에 답이 돕니다. 그때부터 그 문항은 아이의 힘이 아니라 정보를 잽니다."
+          >
+            <RotationPanel />
+          </AnchorSection>
         </div>
       </PermissionGate>
     </>
