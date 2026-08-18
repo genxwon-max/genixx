@@ -6,7 +6,8 @@ import { assessment, subjects } from "@/lib/exam";
 import { surveyKeys, surveyMeta, useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { findById, formatCode, useRoster } from "@/lib/roster";
-import { confidenceOf, decideType, expertNotes, scoreAxes, scoreSubject } from "@/lib/result";
+import { confidenceOf, decideType, scoreAxes, scoreSubject } from "@/lib/result";
+import { blockText, useReportOf } from "@/lib/reportStore";
 import OctagonChart from "./OctagonChart";
 import SectionTitle from "./SectionTitle";
 import { ArrowRight } from "@/components/Icons";
@@ -65,6 +66,7 @@ export default function ResultView() {
   const mine = asked ? roster.find((s) => s.id === asked) : null;
   const studentId = mine?.id ?? session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
+  const report = useReportOf(studentId);
   const student = hydrated ? findById(studentId) : null;
   const name = student?.name ?? session?.name ?? "응시자";
 
@@ -95,9 +97,45 @@ export default function ResultView() {
     );
   }
 
+  /**
+   * 발행 전에는 결과를 보여 주지 않는다.
+   *
+   * 이 서비스가 파는 것은 「사람이 확정한 판정」이다. 조립된 해석을 그대로 흘려
+   * 보내면 그 약속이 거짓이 되므로, 담당자가 리포트 승인(EXP-08)에서 발행을 누른
+   * 뒤에만 이 화면이 열린다.
+   */
+  if (!report || report.state !== "published") {
+    return (
+      <div className="container-x py-16">
+        <div className={`mx-auto max-w-lg p-8 text-center ${panel}`}>
+          <p className={eyebrow}>확인 중</p>
+          <h1 className="mt-3 text-[20px] font-bold text-soft-ink">
+            전문가가 결과를 확인하고 있습니다
+          </h1>
+          <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
+            제출한 답안으로 해석이 조립되었고, 지금은 교육전문가가 그 해석을 한 줄씩 보고 있습니다.
+            확인이 끝나면 이 화면에서 바로 열립니다.
+          </p>
+          <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
+            AI가 만든 해석을 그대로 내보내지 않습니다. 사람이 확인하고 확정한 것만 보여 드립니다.
+          </p>
+          {report?.state === "hold" && (
+            <p className="mt-4 rounded border border-soft-line bg-slate-50 px-4 py-3 text-[12.5px] leading-relaxed text-soft-muted">
+              이 리포트는 담당자가 한 번 더 보기로 하여 시간이 조금 더 걸립니다. 확인이 끝나면
+              알려 드립니다.
+            </p>
+          )}
+          <Link href="/my" className={`mt-7 ${btnPrimary}`}>
+            내 아이 현황으로
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const scores = scoreAxes(record);
   const type = decideType(scores);
-  const notes = expertNotes(scores, record);
   const confidence = confidenceOf(record);
   const measured = scores.filter((s) => s.measured);
   const doneSurveys = surveyKeys.filter((k) => record.surveys[k] === "done");
@@ -275,11 +313,14 @@ export default function ResultView() {
           전문가 평가
         </SectionTitle>
 
+        {/* 승인 화면(EXP-08)에서 확정된 문구를 그대로 싣는다. 담당자가 고친 문장이
+            있으면 고친 쪽이 나간다 — 승인 화면에서 고쳤는데 여기 옛 문장이 남으면
+            「사람이 확정한 판정」이라는 말이 무색해진다. */}
         <div className="grid gap-3 md:grid-cols-2">
-          {notes.map((n) => (
-            <div key={n.title} className={`p-5 ${panel}`}>
-              <p className="text-[14px] font-bold text-soft-ink">{n.title}</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{n.body}</p>
+          {report.blocks.map((blk) => (
+            <div key={blk.id} className={`p-5 ${panel}`}>
+              <p className="text-[14px] font-bold text-soft-ink">{blk.title}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{blockText(blk)}</p>
             </div>
           ))}
         </div>
@@ -292,7 +333,9 @@ export default function ResultView() {
               : doneSurveys.map((k) => surveyMeta[k].who).join(" · ")}
             {" · "}측정 축 {measured.length} / {scores.length}
           </p>
-          <span className="text-[12px] font-bold text-soft-ink">판정 확정 · GENIXX 평가운영팀</span>
+          <span className="text-[12px] font-bold text-soft-ink">
+            판정 확정 · {report.publishedBy ?? "GENIXX 평가운영팀"} · {report.publishedAt ?? ""}
+          </span>
         </div>
       </section>
 

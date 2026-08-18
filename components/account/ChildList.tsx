@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { ageFromBirth } from "@/lib/account";
 import { formatCode, reissueCode, useRoster, type Student } from "@/lib/roster";
-import { subjects } from "@/lib/exam";
+import { assessment, subjects } from "@/lib/exam";
 import {
   allSubmitted,
   finalize,
@@ -18,6 +18,7 @@ import {
   useHydrated,
 } from "@/lib/examStore";
 import { progressOf, type Phase } from "@/lib/progress";
+import { ensureReport } from "@/lib/reportStore";
 import { ArrowRight } from "@/components/Icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -401,6 +402,13 @@ function ChildRow({ student }: { student: Student }) {
           onCancel={() => setAsk(null)}
           onConfirm={() => {
             finalize(student.id);
+            ensureReport(
+              student.id,
+              student.name,
+              student.grade ?? "",
+              assessment.round,
+              record,
+            );
             setAsk(null);
             router.push(`/exam/result?student=${student.id}`);
           }}

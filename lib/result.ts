@@ -186,6 +186,14 @@ export function decideType(scores: AxisScore[]): TalentType | null {
 
 /* ───────────────────────── 전문가 코멘트 ───────────────────────── */
 
+/**
+ * 리포트에 실릴 해석 문구.
+ *
+ * ⚠ 여기 문장은 아이를 규정하는 말이 되지 않아야 한다(진단 윤리 헌장 7조). 등급·서열·
+ *   백분위처럼 줄 세우는 표현은 리포트 승인 화면(EXP-08)의 라벨링 점검이 막는다 —
+ *   실제로 「상위 구간에 위치합니다」가 걸려 발현 서술로 고쳤다. 템플릿을 고칠 때
+ *   그 점검을 먼저 떠올릴 것.
+ */
 export function expertNotes(scores: AxisScore[], record: ExamRecord) {
   const measured = scores.filter((s) => s.measured && s.score !== null);
   const ranked = [...measured].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -200,7 +208,7 @@ export function expertNotes(scores: AxisScore[], record: ExamRecord) {
   if (top) {
     notes.push({
       title: "강하게 나타난 축",
-      body: `${top.axis.label} 영역에서 또래 발달 단계 상한 대비 상위 구간에 위치합니다. 정답 여부보다 서술 응답에서 근거를 함께 적은 점이 확인됩니다. 이 축은 다음 회차에서도 이어서 관찰할 가치가 있습니다.`,
+      body: `${top.axis.label} 영역에서 이 학년에 기대하는 수행이 안정적으로 나타났습니다. 정답 여부보다 서술 응답에서 근거를 함께 적은 점이 확인됩니다. 이 축은 다음 회차에서도 이어서 관찰할 가치가 있습니다.`,
     });
   }
   if (low && ranked.length > 1 && (low.score ?? 0) < (top?.score ?? 0)) {

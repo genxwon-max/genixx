@@ -19,6 +19,7 @@ import {
 import { useSession } from "@/lib/authStore";
 import { findById, formatCode } from "@/lib/roster";
 import { examWindow, surveyWindow } from "@/lib/popup";
+import { ensureReport } from "@/lib/reportStore";
 import { isAnswered } from "./ExamSession";
 import SectionTitle from "./SectionTitle";
 import { ArrowRight } from "@/components/Icons";
@@ -350,6 +351,15 @@ export default function StatusTable() {
           }}
           onConfirm={() => {
             finalize(studentId);
+            /* 제출과 동시에 규칙이 리포트를 조립한다. 조립된 것은 「검토 대기」이지
+               결과가 아니다 — 사람이 발행을 누르기 전까지 결과 화면은 닫혀 있다. */
+            ensureReport(
+              studentId,
+              student?.name ?? "응시자",
+              student?.grade ?? "",
+              assessment.round,
+              record,
+            );
             setAskFinal(false);
             router.push("/exam/result");
           }}
