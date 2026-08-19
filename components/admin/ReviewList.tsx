@@ -112,9 +112,6 @@ export default function ReviewList() {
     (i) => i.state === "submitted" && i.author === prefs.loginId,
   ).length;
 
-  /** 닷새 넘게 묵은 것 — 회차 마감이 걸린 일이라 먼저 알린다 */
-  const stale = hydrated ? queue.filter((i) => daysWaiting(i) >= 5).length : 0;
-
   /** AI 검수를 돌릴 대상 — 고른 것이 있으면 그것만, 없으면 대기 전체 */
   const target = picked.length > 0 ? picked : queue.map((i) => i.id);
 
@@ -149,6 +146,9 @@ export default function ReviewList() {
     stemCol,
     typeCol,
     authorCol,
+    /* 오래 기다린 것은 이 칸이 줄마다 붉게 적는다(닷새 넘으면 색이 바뀐다).
+       목록 위에 「닷새 넘은 것 3건」 배너를 따로 세우면 같은 말을 두 번 하는 데다,
+       매일 같은 자리에 같은 문구가 떠 있어 곧 배경처럼 읽힌다. */
     whenCol(tab === "queue" ? "제출 · 대기" : "최근 변경", (i) => {
       if (tab !== "queue") return null;
       const days = daysWaiting(i);
@@ -260,15 +260,6 @@ export default function ReviewList() {
                 승인하지 못하도록 갈라 두었습니다 — 다른 검수자에게 넘어갑니다.
               </>
             )}
-          </Callout>
-        </div>
-      )}
-
-      {stale > 0 && tab === "queue" && (
-        <div className="mb-5">
-          <Callout tone="warn">
-            닷새 넘게 검수를 기다리는 문항이 {stale}건 있습니다. 목록은 오래 기다린 것부터 보여
-            줍니다.
           </Callout>
         </div>
       )}

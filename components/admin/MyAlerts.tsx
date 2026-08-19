@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { can, maySelfReview, pending, roleOf, type Round } from "@/lib/admin";
+import { can, maySelfReview, pending, type Round } from "@/lib/admin";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { useItems } from "@/lib/itemStore";
 import * as a from "./ui";
 
 /**
- * 내게 온 일 (ADM-01).
+ * 알림 (ADM-01).
  *
  * 사이트맵이 대시보드에 요구하는 셋 — **내 배정 건수 · 마감 · 반려 알림**.
  *
@@ -131,7 +131,7 @@ export default function MyAlerts({ round }: { round: Round }) {
 
   return (
     <section className="mt-6">
-      <h2 className={a.cardTitle}>{roleOf(prefs.role).short}님께 온 것</h2>
+      <h2 className={a.cardTitle}>알림</h2>
       <ul className="mt-3 border-b border-exam-line">
         {alerts.map((x) => (
           <li key={x.label} className="border-t border-exam-line">

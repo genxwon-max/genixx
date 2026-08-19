@@ -56,19 +56,17 @@ export default function ScoringBench() {
 
   return (
     <>
-      <Callout tone="info" title="AI는 전수로 매기고, 사람은 확정합니다">
-        AI가 매긴 값은 확정이 아닙니다. 아래에서 사람이 루브릭으로 고르기 전까지 이 응답의 점수는
-        판정 협진으로 넘어가지 않습니다.
-      </Callout>
-
+      {/* 「AI가 매긴 값은 확정이 아니다」를 판으로 세워 두지 않는다. 매일 같은
+          자리에 같은 문구가 떠 있으면 곧 배경처럼 읽히고, 그 말이 정작 필요한
+          자리는 여기가 아니라 값을 고르는 루브릭 옆이다. */}
       {done && (
-        <div className="mt-5">
+        <div className="mb-5">
           <Callout tone="good">{done}</Callout>
         </div>
       )}
 
       {/* ── EXP-04-1 검토 큐 ── */}
-      <div className="mt-8">
+      <div>
         <AnchorSection
           id="EXP-04-1"
           title="AI 채점 결과 검토 큐"

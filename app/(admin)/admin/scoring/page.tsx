@@ -8,10 +8,9 @@ export const metadata = { title: "채점 워크벤치 · GENIXX 관리자" };
 export default function ScoringPage() {
   return (
     <>
-      <PageHead
-        title="채점 워크벤치"
-        lead="서술형 응답에 AI가 1차로 매긴 값을 사람이 루브릭으로 확정합니다. 확신도가 낮은 건은 자동으로 사람에게 넘어옵니다."
-      />
+      {/* 설명 줄을 두지 않는다. 무엇을 하는 화면인지는 아래 큐 제목과 확신도 칸이
+          이미 말한다. */}
+      <PageHead title="채점 워크벤치" />
       <PermissionGate need="grade.review">
         <ScoringBench />
       </PermissionGate>
