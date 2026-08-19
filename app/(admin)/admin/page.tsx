@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { approvals, gradingQueue, hitlFlow, inquiries, items, roleOf, rounds } from "@/lib/admin";
-import { PageHead, CountRows, Progress, Badge } from "@/components/admin/Parts";
-import TodayQueue from "@/components/admin/TodayQueue";
+import { rounds } from "@/lib/admin";
+import { PageHead, Progress } from "@/components/admin/Parts";
+import MyAlerts from "@/components/admin/MyAlerts";
+import RoundSwitch from "@/components/admin/RoundSwitch";
 import BusinessMetrics from "@/components/admin/BusinessMetrics";
 import ItemStats from "@/components/admin/ItemStats";
-import { caseStates } from "@/lib/admin";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "대시보드 · GENIXX 관리자" };
@@ -21,23 +21,51 @@ export const metadata = { title: "대시보드 · GENIXX 관리자" };
  *  3) 설명하는 글은 접는다. 「문항이 도는 길」은 매일 읽을 것이 아니라 처음
  *     한 번 읽고 나면 아는 내용이다.
  *
- * 남긴 순서는 급한 것 → 이번 달 → 지금 상태 → 파고들 것이다.
+ * 남긴 순서는 내게 온 것 → 이번 달 → 지금 상태다.
+ *
+ * ── 걷어낸 것들 ──
+ *
+ * **처리 대기 줄** — 역할별 대기 건수를 모아 두었는데, 왼쪽 메뉴 배지와 같은 값을
+ * (lib/admin.ts의 pending) 같은 링크로 한 번 더 보여 주는 것이었다. 갈래별 숫자는
+ * 메뉴가 맡는다. 대신 **내게 온 것**(MyAlerts)을 둔다 — 배지가 말하지 못하는
+ * 내 배정·마감·반려다.
+ *
+ * **오늘 숫자 · 눈여겨볼 것** — 넷씩 두 벌, 여덟 줄이 모두 예시 수치였다. 「어제
+ * 발행한 리포트 62건」을 보고 사람이 할 일이 없다.
+ *
+ * **가장 오래 기다린 응시 · 문항이 도는 길** — 앞엣것은 판정 협진 화면이 그대로
+ * 갖고 있고, 뒤엣것은 처음 한 번 읽으면 되는 설명이라 매일 오는 화면에 둘 것이
+ * 아니다. 설명이 필요하면 그 일을 하는 화면에서 한다.
+ *
+ * ── 회차 ──
+ *
+ * 진단은 한 해에 네 번 돈다. 오른쪽 위 고르개로 앞뒤 회차를 넘긴다(RoundSwitch).
+ * 고른 회차는 주소(`?round=`)에 남으므로 뒤로 가기와 링크 공유가 그대로 된다.
+ *
+ * ⚠ 제목 줄의 설명(lead)에는 회차를 적지 않는다. 회차마다 글자 수가 달라 머리글
+ *   높이가 바뀌면, 화살표를 연달아 누를 때 고르개가 위아래로 흔들린다.
  */
 
-const round = rounds[0];
-
-export default function AdminHome() {
-  const soon = gradingQueue.filter((c) => c.state === "ai" || c.state === "conference").slice(0, 4);
+export default async function AdminHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ round?: string }>;
+}) {
+  const { round: picked } = await searchParams;
+  /* 없는 회차를 물어 오면 최신 회차를 보여 준다 — 빈 화면보다 낫다 */
+  const round = rounds.find((r) => r.id === picked) ?? rounds[0];
 
   return (
     <>
-      <PageHead
-        title="대시보드"
-        lead={`${round.label} (${round.period}) 기준입니다.`}
-      />
+      {/* 설명 줄을 두지 않는다. 「회차 진행과 이번 달 숫자입니다」는 화면을 보면
+          아는 말이고, 회차를 넘기는 법은 화살표가 이미 말하고 있다.
 
-      {/* ① 급한 것 — 한 줄 */}
-      <TodayQueue />
+          회차 고르개는 오른쪽 끝이 아니라 제목 옆에 붙인다. 아래 숫자가 전부 이
+          회차 것이라, 제목과 떨어져 있으면 그 이음을 눈이 한 번 더 만들어야 한다. */}
+      <PageHead title="대시보드" beside={<RoundSwitch id={round.id} />} />
+
+      {/* ① 내게 온 것 — 배정 · 마감 · 반려 */}
+      <MyAlerts round={round} />
 
       {/* ② 이번 달 숫자와 석 달 추이 */}
       <BusinessMetrics />
@@ -47,8 +75,10 @@ export default function AdminHome() {
         <ItemStats />
 
         <section>
+          {/* 회차 이름은 오른쪽 위 고르개에 이미 있다. 여기 한 번 더 적으면 읽는
+              사람은 둘이 다른 것인 줄 알고 두 번 읽는다. */}
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className={a.cardTitle}>{round.label}</h2>
+            <h2 className={a.cardTitle}>회차 진행</h2>
             <Link
               href="/admin/rounds"
               className="adm-t-sm font-bold text-brand-700 hover:underline"
@@ -70,143 +100,6 @@ export default function AdminHome() {
         </section>
       </div>
 
-      {/* ④ 오늘 숫자와 눈여겨볼 것 — 둘 다 짧은 목록이라 나란히 */}
-      <div className="mt-6 grid gap-x-10 gap-y-6 border-t border-exam-line pt-6 lg:grid-cols-2">
-        <section>
-          <h2 className={a.cardTitle}>오늘 숫자</h2>
-          <div className="mt-3">
-            <CountRows
-              rows={[
-                { label: "오늘 응시 제출", value: 128, unit: "건", note: "어제 같은 시각 111건" },
-                { label: "설문 수집률", value: "74", unit: "%", note: "학부모 설문 기준" },
-                {
-                  label: "활성 기관",
-                  value: 5,
-                  unit: "곳",
-                  note: "시범 2곳 포함",
-                  href: "/admin/orgs",
-                },
-                { label: "어제 발행한 리포트", value: 62, unit: "건", note: "반송 0건" },
-              ]}
-            />
-          </div>
-        </section>
-
-        <section>
-          <h2 className={a.cardTitle}>눈여겨볼 것</h2>
-          <div className="mt-3">
-            <CountRows
-              rows={[
-                {
-                  label: "승인 대기 중 확인 필요",
-                  value: approvals.filter((x) => x.warning).length,
-                  unit: "건",
-                  note: "증빙이 부족하거나 메일 도메인이 다릅니다",
-                  href: "/admin/approvals",
-                },
-                {
-                  label: "24시간 넘긴 문의",
-                  value: inquiries.filter((x) => x.overdue).length,
-                  unit: "건",
-                  note: "개인정보 파기 요청 포함",
-                  href: "/admin/inquiries",
-                },
-                {
-                  label: "수정 요청된 문항",
-                  value: items.filter((x) => x.state === "revise").length,
-                  unit: "건",
-                  note: "다음 회차 전까지 반영해야 합니다",
-                  href: "/admin/items",
-                },
-              ]}
-            />
-          </div>
-        </section>
-      </div>
-
-      {/* ⑤ 파고들 것 — 여기부터는 접어 둔다 */}
-      <div className="mt-6 space-y-2 border-t border-exam-line pt-4">
-        <details>
-          <summary className="cursor-pointer adm-t-sm font-bold text-brand-700">
-            가장 오래 기다린 응시 {soon.length}건 보기
-          </summary>
-          <div className="mt-3 overflow-x-auto">
-            <table className={a.table}>
-              <thead>
-                <tr>
-                  <th className={a.th}>응시번호</th>
-                  <th className={a.th}>학년</th>
-                  <th className={a.th}>소속</th>
-                  <th className={a.th}>상태</th>
-                  <th className={a.th}>사람이 봐야 하는 이유</th>
-                  <th className={a.th}>대기 시작</th>
-                </tr>
-              </thead>
-              <tbody>
-                {soon.map((c) => (
-                  <tr key={c.id}>
-                    <td className={a.tdStrong}>{c.seat}</td>
-                    <td className={a.td}>{c.grade}</td>
-                    <td className={a.td}>{c.org}</td>
-                    <td className={a.td}>
-                      <Badge {...caseStates[c.state]} />
-                    </td>
-                    <td className={a.td}>
-                      {c.flag ? (
-                        <span className="font-bold text-rose-700">{c.flag}</span>
-                      ) : (
-                        <span>특이사항 없음 · 확인 후 확정</span>
-                      )}
-                    </td>
-                    <td className={a.td}>{c.updatedAt}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Link href="/admin/conference" className={`${a.btnRowGhost} mt-3`}>
-            판정 협진 전체 보기
-          </Link>
-        </details>
-
-        <details>
-          <summary className="cursor-pointer adm-t-sm font-bold text-brand-700">
-            문항이 도는 길 — 누가 무엇을 확정하는지
-          </summary>
-          <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">
-            AI가 초안을 내도 확정은 사람이 합니다. 출제자와 검수자는 권한이 갈려 있어, 자기가 쓴
-            문항을 자기가 승인할 수 없습니다.
-          </p>
-
-          <ol className="mt-3 border-b border-exam-line">
-            {hitlFlow.map((step, i) => (
-              <li key={step.id} className="border-t border-exam-line">
-                <Link
-                  href={step.href}
-                  className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3 transition-colors hover:bg-exam-raised"
-                >
-                  <span aria-hidden className="adm-t-sm tabular-nums text-exam-muted">
-                    {i + 1}
-                  </span>
-                  <span className="adm-t-md font-bold text-exam-text">{step.title}</span>
-                  <span className="adm-t-sm text-exam-muted">
-                    {roleOf(step.role).short} · {step.desc}
-                  </span>
-                  <span className="ml-auto adm-t-md font-bold tabular-nums text-exam-text">
-                    {step.count}건
-                  </span>
-                  <span className="adm-t-sm font-bold text-brand-700">→</span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-
-          <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">
-            반려되면 2번에서 1번으로 되돌아갑니다. 사유 코드와 코멘트가 문항에 붙어 출제자에게
-            그대로 전달됩니다.
-          </p>
-        </details>
-      </div>
     </>
   );
 }

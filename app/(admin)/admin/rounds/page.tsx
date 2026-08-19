@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { rounds } from "@/lib/admin";
+import { rounds, roundStates } from "@/lib/admin";
 import { subjects } from "@/lib/exam";
 import { PageHead, TableCard, Progress, Badge, CountRows } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
@@ -7,12 +7,6 @@ import RoundSettings from "@/components/admin/RoundSettings";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "회차·응시 현황 · GENIXX 관리자" };
-
-const roundState = {
-  open: { label: "응시 진행중", className: "text-emerald-700" },
-  grading: { label: "채점중", className: "text-amber-700" },
-  closed: { label: "마감", className: "text-exam-muted" },
-} as const;
 
 /** 이번 회차 과목별 진행 (예시 데이터) */
 const bySubject = [
@@ -58,7 +52,7 @@ export default function RoundsPage() {
               <div className="flex flex-wrap items-center gap-3">
                 {/* 구역 제목은 lg. xl은 화면 제목 한 자리에만 쓴다 */}
                 <h2 className={a.cardTitle}>{current.label}</h2>
-                <Badge {...roundState[current.state]} />
+                <Badge {...roundStates[current.state]} />
               </div>
               <p className="mt-1.5 adm-t-md text-exam-muted">
                 {current.period} · 응시 대상 {current.target.toLocaleString("ko-KR")}명
@@ -187,7 +181,7 @@ export default function RoundsPage() {
                     <td className={a.tdStrong}>{r.label}</td>
                     <td className={a.td}>{r.period}</td>
                     <td className={a.td}>
-                      <Badge {...roundState[r.state]} />
+                      <Badge {...roundStates[r.state]} />
                     </td>
                     <td className={a.tdNum}>{r.target.toLocaleString("ko-KR")}</td>
                     <td className={a.tdNum}>{r.submitted.toLocaleString("ko-KR")}</td>

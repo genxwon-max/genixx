@@ -253,8 +253,18 @@ export const adminMenu: AdminMenuGroup[] = [
         id: "ADM-01 · EXP-01",
         label: "대시보드",
         href: "/admin",
-        desc: "내 역할의 큐와 회차 진행률",
+        desc: "회차 진행률과 이번 달 숫자",
         needs: ["member.read", "item.write", "item.review", "grade.review"],
+        children: [
+          {
+            /* 정의서에 없는 번호다. 대시보드 안에 접이식으로 있던 열두 달 추이를
+               화면으로 내보내면서 땄다 — 훑는 자리와 파고드는 자리를 가른다. */
+            id: "ADM-01-1",
+            label: "운영 지표",
+            href: "/admin/metrics",
+            desc: "최근 열두 달 회원가입·유료 전환·결제 금액 추이",
+          },
+        ],
       },
     ],
   },
@@ -634,6 +644,15 @@ export type Round = {
   id: string;
   label: string;
   period: string;
+  /**
+   * 응시가 닫히는 날 (YYYY-MM-DD).
+   *
+   * period 문자열에서 뽑아 쓰지 않는다. 「2026.08.01 – 08.31」에서 뒤쪽을 잘라
+   * 내려면 앞의 연도를 빌려 와야 하고, 해를 넘기는 회차가 한 번이라도 생기면
+   * 그 계산이 조용히 틀린다. 마감까지 며칠인지는 사람이 이 값을 보고 움직이는
+   * 숫자라 조용히 틀리면 안 된다.
+   */
+  closesOn: string;
   state: "open" | "grading" | "closed";
   /** 응시 대상 인원 */
   target: number;
@@ -642,11 +661,26 @@ export type Round = {
   published: number;
 };
 
+/**
+ * 회차 상태 표시.
+ *
+ * 회차 현황(ADM-05)과 대시보드가 같은 회차를 저마다 다른 말로 부르면, 두 화면을
+ * 오가는 사람이 같은 회차인지 먼저 의심하게 된다. 말과 색을 여기서 한 번만 정한다.
+ */
+export const roundStates = {
+  open: { label: "응시 진행중", className: "text-emerald-700" },
+  grading: { label: "채점중", className: "text-amber-700" },
+  closed: { label: "마감", className: "text-exam-muted" },
+} as const;
+
+/* 최신 회차가 앞에 온다 — 대시보드는 rounds[0]으로 들어오고, 회차 고르개의
+   「이전」은 뒤로(오래된 쪽), 「다음」은 앞으로(새 쪽) 간다. */
 export const rounds: Round[] = [
   {
     id: "2026-3",
     label: "2026 파일럿 3회차",
     period: "2026.08.01 – 08.31",
+    closesOn: "2026-08-31",
     state: "open",
     target: 1284,
     submitted: 806,
@@ -657,6 +691,7 @@ export const rounds: Round[] = [
     id: "2026-2",
     label: "2026 파일럿 2회차",
     period: "2026.05.01 – 05.31",
+    closesOn: "2026-05-31",
     state: "grading",
     target: 1120,
     submitted: 1094,
@@ -667,6 +702,7 @@ export const rounds: Round[] = [
     id: "2026-1",
     label: "2026 파일럿 1회차",
     period: "2026.02.01 – 02.28",
+    closesOn: "2026-02-28",
     state: "closed",
     target: 862,
     submitted: 851,

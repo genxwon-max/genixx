@@ -169,9 +169,16 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <p className="px-3 pb-2 adm-t-xs font-bold text-slate-500">{group.label}</p>
                 <ul>
                   {group.items.map((item) => {
+                    /* 대시보드의 주소(/admin)는 콘솔의 모든 주소가 앞머리로 갖고
+                       있어 startsWith로 보면 늘 켜져 있게 된다. 그래서 정확히
+                       같을 때만 켜되, 제 하위 화면(운영 지표)에 있을 때는 함께
+                       켠다 — 안 그러면 그 화면에서 하위 항목이 통째로 사라진다. */
+                    const onChild = item.children?.some(
+                      (c) => c.href && pathname.startsWith(c.href.split("#")[0]),
+                    );
                     const active =
                       item.href === "/admin"
-                        ? pathname === "/admin"
+                        ? pathname === "/admin" || !!onChild
                         : pathname.startsWith(item.href);
                     return (
                       <li key={item.href}>
