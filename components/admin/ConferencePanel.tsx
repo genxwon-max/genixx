@@ -25,7 +25,7 @@ import {
   type CrossCell,
 } from "@/lib/expertStore";
 import { ro } from "@/lib/utils";
-import { AnchorSection, Badge, Callout, Foldable, TableCard } from "./Parts";
+import { AnchorSection, Badge, Callout, Foldable, TableCard, Tabs } from "./Parts";
 import ReasonDialog from "./ReasonDialog";
 import * as a from "./ui";
 
@@ -59,18 +59,15 @@ export default function ConferencePanel() {
 
   return (
     <>
-      <Callout tone="info" title="네 정보원을 나란히 놓고 함께 봅니다">
-        지필 하나로 판정을 굳히지 않기 위한 화면입니다. AI가 고른 칸은 제안일 뿐이고, 확정은 사람이
-        이름을 걸고 합니다.
-      </Callout>
-
+      {/* 「네 정보원을 나란히 놓고 본다」를 판으로 세워 두지 않는다. 케이스 카드가
+          지필·설문·관찰·면담을 실제로 나란히 펴 보이므로 화면이 그 말을 한다. */}
       {done && (
-        <div className="mt-5">
+        <div className="mb-6">
           <Callout tone="good">{done}</Callout>
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="협진 대기" value={`${openCases.length}건`} note="아직 확정되지 않음" />
         <Stat
           label="경계선"
@@ -242,6 +239,9 @@ function Stat({
 
 /* ───────────────────────── 케이스 한 벌 ───────────────────────── */
 
+/** 한 케이스에서 거치는 다섯 구역. 왼쪽부터 오른쪽이 실제 판정 순서다. */
+type Step = "card" | "cross" | "hold" | "comment" | "sign";
+
 function CaseView({
   c,
   mayConfirm,
@@ -257,11 +257,30 @@ function CaseView({
   const itv = interviews.find((v) => v.id === c.interviewId) ?? null;
   const mine = scores.filter((t) => t.seat === c.seat);
   const locked = c.state === "signed";
+  const [step, setStep] = useState<Step>("card");
 
   return (
     <>
+      {/* 다섯 구역을 세로로 이으면 한 케이스가 화면 대여섯 장이 된다. 왼쪽부터
+          오른쪽으로 실제 판정 순서이기도 하다 — 근거를 보고, 칸을 고치고, 경계선을
+          가리고, 의견을 달고, 이름을 건다. */}
+      <div className="mt-8">
+        <Tabs
+          label="케이스 구역"
+          value={step}
+          onChange={setStep}
+          items={[
+            { id: "card", label: "케이스 카드" },
+            { id: "cross", label: "크로스 6셀" },
+            { id: "hold", label: "경계선 유보" },
+            { id: "comment", label: "전문가 코멘트", n: c.comments.length },
+            { id: "sign", label: "확정 · 서명" },
+          ]}
+        />
+      </div>
+
       {/* ── EXP-07-1 케이스 카드 ── */}
-      <div className="mt-10">
+      <div className={step === "card" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-07-1"
           title="케이스 카드"
@@ -382,22 +401,22 @@ function CaseView({
       </div>
 
       {/* ── EXP-07-2 크로스 6셀 ── */}
-      <div className="mt-10">
+      <div className={step === "cross" ? "mt-6" : "hidden"}>
         <CrossPanel c={c} locked={locked} staffName={staffName} onDone={onDone} />
       </div>
 
       {/* ── EXP-07-3 경계선 유보 ── */}
-      <div className="mt-10">
+      <div className={step === "hold" ? "mt-6" : "hidden"}>
         <HoldPanel c={c} mayConfirm={mayConfirm} staffName={staffName} onDone={onDone} />
       </div>
 
       {/* ── EXP-07-4 코멘트 ── */}
-      <div className="mt-10">
+      <div className={step === "comment" ? "mt-6" : "hidden"}>
         <CommentPanel c={c} staffName={staffName} onDone={onDone} />
       </div>
 
       {/* ── EXP-07-5 확정·서명 ── */}
-      <div className="mt-10">
+      <div className={step === "sign" ? "mt-6" : "hidden"}>
         <SignPanel c={c} mayConfirm={mayConfirm} staffName={staffName} onDone={onDone} />
       </div>
     </>

@@ -15,7 +15,7 @@ import {
   type OpenCode,
 } from "@/lib/expertStore";
 import { ro } from "@/lib/utils";
-import { AnchorSection, Badge, Callout, Foldable, TableCard } from "./Parts";
+import { AnchorSection, Badge, Callout, Foldable, TableCard, Tabs } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -29,11 +29,15 @@ import * as a from "./ui";
  * 영영 모른다. 그래서 표본에서 나온 불일치율이 다음 회차의 표본 비율을 정한다.
  * 검증이 스스로 크기를 조절하는 구조다.
  */
+/** 정의서의 하위 화면 셋. 한 번에 하나만 연다. */
+type View = "code" | "sample" | "unclear";
+
 export default function CodingBench() {
   const { coding, sampleRate } = useExpert();
   const { role, staffName } = useAdminPrefs();
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [view, setView] = useState<View>("code");
   const [onlySampled, setOnlySampled] = useState(true);
 
   const may = can(role, "grade.review");
@@ -59,13 +63,21 @@ export default function CodingBench() {
 
   return (
     <>
-      <Callout tone="info" title="AI가 전수로 코딩하고, 사람은 표본을 확인합니다">
-        사람이 확인하는 것은 지금 <b>{Math.round(sampleRate * 100)}%</b>입니다. 표본에서 나온
-        불일치율이 다음 회차의 비율을 정합니다 — 검증의 크기를 감으로 정하지 않기 위해서입니다.
-      </Callout>
+      {/* 「AI가 전수로 코딩하고 사람은 표본을 확인한다」를 판으로 세워 두지 않는다.
+          바로 아래 숫자 넷(전수·표본·사람 확정·불일치율)이 같은 말을 값으로 한다. */}
+      <Tabs
+        label="개방형 코딩 구역"
+        value={view}
+        onChange={setView}
+        items={[
+          { id: "code", label: "응답 코딩", n: rows.length },
+          { id: "sample", label: "표본 비율" },
+          { id: "unclear", label: "불명", n: unclear.length },
+        ]}
+      />
 
       {done && (
-        <div className="mt-5">
+        <div className="mt-6">
           <Callout tone="good">{done}</Callout>
         </div>
       )}
@@ -87,7 +99,7 @@ export default function CodingBench() {
       </div>
 
       {/* ── 표본 조정 ── */}
-      <div className="mt-10">
+      <div className={view === "sample" ? "mt-8" : "hidden"}>
         <AnchorSection
           id="EXP-05-1"
           title="표본 비율 조정"
@@ -143,7 +155,7 @@ export default function CodingBench() {
       </div>
 
       {/* ── 코딩 확정 ── */}
-      <div className="mt-10">
+      <div className={view === "code" ? "mt-8" : "hidden"}>
         <AnchorSection
           id="EXP-05-2"
           title="응답 코딩 확정"
@@ -259,7 +271,7 @@ export default function CodingBench() {
       </div>
 
       {/* ── 불명 처리 ── */}
-      <div className="mt-10">
+      <div className={view === "unclear" ? "mt-8" : "hidden"}>
         <AnchorSection
           id="EXP-05-3"
           title="「불명」으로 남은 응답"

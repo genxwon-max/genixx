@@ -8,10 +8,9 @@ export const metadata = { title: "개방형 코딩 워크벤치 · GENIXX 관리
 export default function CodingPage() {
   return (
     <>
-      <PageHead
-        title="개방형 코딩 워크벤치"
-        lead="소개·에피소드 같은 개방형 응답에 부호를 붙입니다. AI가 전수로 붙이고 사람은 표본을 확인합니다."
-      />
+      {/* 설명 줄을 두지 않는다. 무엇을 하는 화면인지는 아래 구역 이름과 표가
+          이미 말한다. */}
+      <PageHead title="개방형 코딩 워크벤치" />
       <PermissionGate need="grade.review">
         <CodingBench />
       </PermissionGate>

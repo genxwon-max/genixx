@@ -8,10 +8,9 @@ export const metadata = { title: "판정 협진 · GENIXX 관리자" };
 export default function ConferencePage() {
   return (
     <>
-      <PageHead
-        title="판정 협진"
-        lead="지필·설문·관찰·면담을 한 화면에 놓고 판정을 확정합니다. 의사 협진처럼 여러 분야가 함께 보고, 경계선 사례는 유보합니다."
-      />
+      {/* 설명 줄을 두지 않는다. 무엇을 하는 화면인지는 아래 구역 이름과 표가
+          이미 말한다. */}
+      <PageHead title="판정 협진" />
       <PermissionGate need="grade.review">
         <ConferencePanel />
       </PermissionGate>

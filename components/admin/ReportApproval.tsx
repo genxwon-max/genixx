@@ -48,17 +48,12 @@ export default function ReportApproval() {
 
   return (
     <>
-      <PageHead
-        title="리포트 승인"
-        lead="조립된 리포트를 확인하고 발행합니다. 발행하기 전까지 보호자 화면에는 결과가 보이지 않습니다 — 이 화면이 그 관문입니다."
-      />
+      {/* 설명 줄도 상시 안내판도 두지 않는다. 「조립은 규칙이 하고 내보내는 것은
+          사람이 한다」는 아래 리포트를 열면 블록마다 규칙과 수치가 적혀 있어 그
+          자리에서 읽힌다. 목록 위에 늘 떠 있으면 곧 배경처럼 읽힌다. */}
+      <PageHead title="리포트 승인" />
 
-      <Callout tone="info" title="조립은 규칙이 하고, 내보내는 것은 사람이 합니다">
-        블록마다 어떤 규칙으로 뽑혔는지와 그 규칙이 본 수치를 함께 적어 두었습니다. 문장이 매끄러운지가
-        아니라 <b>이 아이 자료에서 나온 말인지</b>를 보셔야 합니다.
-      </Callout>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="검토 대기" value={`${waiting.length}건`} note="보호자 화면은 닫혀 있습니다" />
         <Stat label="보류" value={`${held.length}건`} note="판정을 다시 보기로 한 건" />
         <Stat label="발행됨" value={`${done.length}건`} note="보호자가 열어 볼 수 있습니다" />

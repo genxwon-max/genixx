@@ -52,6 +52,56 @@ export function PageHead({
 }
 
 /**
+ * 한 화면 안의 구역 갈래 — 밑줄 탭.
+ *
+ * 정의서의 하위 화면(EXP-04-1·-2·-3…)을 세로로 이어 붙이면 화면이 대여섯 장이 되고,
+ * 아래쪽 구역은 있는 줄도 모르게 된다. 한 번에 하나만 열고 여기서 옮긴다.
+ *
+ * ⚠ 알약 단추(btnPrimary/btnGhost)를 쓰지 않는다. 알약은 「목록에서 무엇을 고를까」
+ *   자리에 이미 쓰고 있어서(검수 대기·처리됨, 은행·전체 문항), 같은 모양을 위아래로
+ *   포개면 두 줄이 한 덩어리로 읽혀 어느 쪽이 상위인지 알 수 없다. **바깥 갈래는
+ *   밑줄, 안쪽 고르기는 알약**이 이 콘솔의 규칙이다.
+ *
+ * 고른 것을 색 하나로만 알리지 않는다 — 밑줄·글자 굵기·색이 함께 바뀐다.
+ */
+export function Tabs<T extends string>({
+  label,
+  items,
+  value,
+  onChange,
+}: {
+  /** 스크린리더가 읽는 이 갈래 줄의 이름 */
+  label: string;
+  items: { id: T; label: string; n?: number }[];
+  value: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <nav aria-label={label} className="flex flex-wrap border-b border-exam-line">
+      {items.map((t) => {
+        const on = t.id === value;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onChange(t.id)}
+            aria-current={on ? "page" : undefined}
+            className={`-mb-px min-h-[2.75rem] border-b-2 px-4 py-2.5 adm-t-md transition-colors ${
+              on
+                ? "border-brand-900 font-black text-brand-800"
+                : "border-transparent font-bold text-exam-muted hover:text-exam-text"
+            }`}
+          >
+            {t.label}
+            {t.n !== undefined && <span className="ml-1.5 tabular-nums">{t.n}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/**
  * 메뉴의 하위 항목이 내려앉는 구역.
  *
  * id는 사이트맵 화면 ID를 그대로 쓴다(lib/admin.ts의 subHref 참조). 상단 바가 고정

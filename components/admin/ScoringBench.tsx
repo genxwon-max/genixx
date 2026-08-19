@@ -19,7 +19,7 @@ import {
   type ScoreTask,
 } from "@/lib/expertStore";
 import { ro } from "@/lib/utils";
-import { AnchorSection, Badge, Callout, Foldable, TableCard } from "./Parts";
+import { AnchorSection, Badge, Callout, Foldable, TableCard, Tabs } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -32,12 +32,16 @@ import * as a from "./ui";
  * AI 값은 지우지 않는다. 사람이 바꾼 자리가 어디인지가 남아야 다음 회차에 무엇을
  * 고쳐야 하는지 알 수 있다. 화면에서도 AI 값과 사람 값을 나란히 둔다.
  */
+/** 정의서의 하위 화면 넷. 한 번에 하나만 연다. */
+type View = "queue" | "rubric" | "routed" | "icc";
+
 export default function ScoringBench() {
   const { scores } = useExpert();
   const { role, staffName } = useAdminPrefs();
   const [filter, setFilter] = useState<"all" | "wait" | "routed" | "done">("wait");
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [view, setView] = useState<View>("queue");
 
   const may = can(role, "grade.review");
 
@@ -56,17 +60,31 @@ export default function ScoringBench() {
 
   return (
     <>
+      {/* 정의서의 하위 화면 넷을 세로로 잇지 않는다. 이어 붙였더니 화면 대여섯 장이
+          되어, 아래쪽 「이중 채점·ICC」는 있는 줄도 모르는 자리가 되었다. */}
+      <Tabs
+        label="채점 워크벤치 구역"
+        value={view}
+        onChange={setView}
+        items={[
+          { id: "queue", label: "검토 큐", n: waiting.length },
+          { id: "rubric", label: "루브릭 채점" },
+          { id: "routed", label: "저신뢰 라우팅", n: routed.length },
+          { id: "icc", label: "이중 채점 · ICC" },
+        ]}
+      />
+
       {/* 「AI가 매긴 값은 확정이 아니다」를 판으로 세워 두지 않는다. 매일 같은
           자리에 같은 문구가 떠 있으면 곧 배경처럼 읽히고, 그 말이 정작 필요한
           자리는 여기가 아니라 값을 고르는 루브릭 옆이다. */}
       {done && (
-        <div className="mb-5">
+        <div className="mt-6">
           <Callout tone="good">{done}</Callout>
         </div>
       )}
 
       {/* ── EXP-04-1 검토 큐 ── */}
-      <div>
+      <div className={view === "queue" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-04-1"
           title="AI 채점 결과 검토 큐"
@@ -168,12 +186,18 @@ export default function ScoringBench() {
                       </td>
                       <td className={a.tdTight}>{t.assignee ?? "미배정"}</td>
                       <td className={a.td}>
+                        {/* 큐와 루브릭이 다른 구역이 되었으므로, 고르는 순간 그
+                            구역으로 함께 옮겨 준다. 안 그러면 눌러도 아무 일이
+                            일어나지 않는 것처럼 보인다. */}
                         <button
                           type="button"
-                          onClick={() => setOpenId(openId === t.id ? null : t.id)}
-                          className={openId === t.id ? a.btnRow : a.btnRowGhost}
+                          onClick={() => {
+                            setOpenId(t.id);
+                            setView("rubric");
+                          }}
+                          className={a.btnRowGhost}
                         >
-                          {openId === t.id ? "닫기" : t.human ? "다시 보기" : "채점하기"}
+                          {t.human ? "다시 보기" : "채점하기"}
                         </button>
                       </td>
                     </tr>
@@ -186,7 +210,7 @@ export default function ScoringBench() {
       </div>
 
       {/* ── EXP-04-3 루브릭 채점 ── */}
-      <div className="mt-10">
+      <div className={view === "rubric" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-04-3"
           title="루브릭 채점"
@@ -206,15 +230,23 @@ export default function ScoringBench() {
             <div className="border-l-4 border-exam-line pl-4">
               <p className="adm-t-md font-bold text-exam-text">채점할 응답을 고르세요</p>
               <p className={`${a.bodyText} mt-1`}>
-                위 큐에서 「채점하기」를 누르면 아이가 쓴 답과 루브릭 기준이 이 자리에 펼쳐집니다.
+                「검토 큐」에서 「채점하기」를 누르면 아이가 쓴 답과 루브릭 기준이 이 자리에
+                펼쳐집니다.
               </p>
+              <button
+                type="button"
+                onClick={() => setView("queue")}
+                className={`${a.btnGhost} mt-3`}
+              >
+                검토 큐로 가기
+              </button>
             </div>
           )}
         </AnchorSection>
       </div>
 
       {/* ── EXP-04-2 저신뢰 자동 라우팅 ── */}
-      <div className="mt-10">
+      <div className={view === "routed" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-04-2"
           title="저신뢰 자동 라우팅"
@@ -303,7 +335,7 @@ export default function ScoringBench() {
       </div>
 
       {/* ── EXP-04-4 이중 채점·ICC ── */}
-      <div className="mt-10">
+      <div className={view === "icc" ? "mt-6" : "hidden"}>
         <IccPanel may={may} staffName={staffName} onDone={setDone} />
       </div>
     </>

@@ -18,7 +18,7 @@ import {
   type OpenCode,
 } from "@/lib/expertStore";
 import { ro } from "@/lib/utils";
-import { AnchorSection, Badge, Callout, Foldable, TableCard } from "./Parts";
+import { AnchorSection, Badge, Callout, Foldable, TableCard, Tabs } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -33,6 +33,9 @@ import * as a from "./ui";
  *  3) 전사는 AI가 하고 코딩은 사람이 확정한다. 확정 전까지 면담 내용은 판정 협진
  *     화면에 올라가지 않는다.
  */
+/** 정의서의 하위 화면 셋. 한 번에 하나만 연다. */
+type View = "queue" | "protocol" | "coding";
+
 export default function InterviewBench() {
   const { interviews } = useExpert();
   const { role, staffName } = useAdminPrefs();
@@ -55,22 +58,31 @@ export default function InterviewBench() {
 
   const open = interviews.find((v) => v.id === openId) ?? null;
   const coded = interviews.filter((v) => v.state === "coded").length;
+  const [view, setView] = useState<View>("queue");
 
   return (
     <>
-      <Callout tone="info" title="지필로 재지 못한 것을 직접 묻는 자리입니다">
-        면담은 점수를 매기는 자리가 아닙니다. 여기서 나온 것은 부호로 확정된 뒤에야 판정 협진 화면에
-        올라갑니다.
-      </Callout>
+      {/* 「면담은 점수를 매기는 자리가 아니다」를 판으로 세워 두지 않는다. 그 말이
+          정작 필요한 자리는 부호를 확정하는 「전사·코딩」 구역이고 거기에 적혀 있다. */}
+      <Tabs
+        label="면담 워크벤치 구역"
+        value={view}
+        onChange={setView}
+        items={[
+          { id: "queue", label: "선발 큐", n: interviews.length },
+          { id: "protocol", label: "프로토콜 · 기록" },
+          { id: "coding", label: "전사 · 코딩 확정", n: coded },
+        ]}
+      />
 
       {done && (
-        <div className="mt-5">
+        <div className="mt-6">
           <Callout tone="good">{done}</Callout>
         </div>
       )}
 
       {/* ── EXP-06-1 선발 큐 ── */}
-      <div className="mt-8">
+      <div className={view === "queue" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-06-1"
           title="면담 대상 선발 큐"
@@ -158,12 +170,17 @@ export default function InterviewBench() {
                         )}
                       </td>
                       <td className={a.td}>
+                        {/* 고르는 순간 프로토콜 구역으로 함께 옮겨 준다 —
+                            안 그러면 눌러도 아무 일이 없는 것처럼 보인다. */}
                         <button
                           type="button"
-                          onClick={() => setOpenId(openId === v.id ? null : v.id)}
-                          className={openId === v.id ? a.btnRow : a.btnRowGhost}
+                          onClick={() => {
+                            setOpenId(v.id);
+                            setView("protocol");
+                          }}
+                          className={a.btnRowGhost}
                         >
-                          {openId === v.id ? "닫기" : "면담 열기"}
+                          면담 열기
                         </button>
                       </td>
                     </tr>
@@ -176,7 +193,7 @@ export default function InterviewBench() {
       </div>
 
       {/* ── EXP-06-2 프로토콜·기록 ── */}
-      <div className="mt-10">
+      <div className={view === "protocol" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-06-2"
           title="구조화 프로토콜 · 기록"
@@ -213,7 +230,7 @@ export default function InterviewBench() {
       </div>
 
       {/* ── EXP-06-3 전사·코딩 확정 ── */}
-      <div className="mt-10">
+      <div className={view === "coding" ? "mt-6" : "hidden"}>
         <AnchorSection
           id="EXP-06-3"
           title="전사 · 코딩 확정"
