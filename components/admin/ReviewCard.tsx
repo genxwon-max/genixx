@@ -214,17 +214,29 @@ function Panel({
         </div>
       ) : null}
 
-      {/* 기계가 반려한 문항 — 사람이 반려한 것과 자리가 같으므로 소견문은 아래
-          「지난 검수」에 그대로 있다. 여기서는 누가 왜 반려했는지만 한 줄로 짚는다. */}
+      {/* AI가 결론을 낸 문항 — 사람이 낸 것과 자리가 같으므로 소견문은 아래
+          「지난 검수」에 그대로 있다. 여기서는 누가 무엇으로 끝냈는지만 한 줄로 짚는다.
+          사람 검수자의 이름과 섞이면 이 문항을 누가 통과시켰는지 알 수 없어진다. */}
       {item.aiAudit?.verdict === "reject" && (
         <div className="mb-5">
-          <Callout tone="warn" title="사람이 아니라 AI 사전 검수가 반려했습니다">
+          <Callout tone="warn" title="사람이 아니라 AI 검수가 반려했습니다">
             {item.aiAudit.at}에 규칙 위반 {item.aiAudit.blocks}건이 확인되어{" "}
             <b className="font-bold">
               {item.aiAudit.code ? rejectLabel(item.aiAudit.code) : "사유 없음"}
             </b>
             으로 반려했습니다. 무엇을 어떻게 고쳐야 하는지는 아래 「지난 검수」와 코멘트에 적혀
-            있습니다. 규칙 대조로 확인되는 것만 반려 사유가 되며, 승인은 사람만 합니다.
+            있습니다.
+          </Callout>
+        </div>
+      )}
+
+      {item.aiAudit?.verdict === "approve" && (
+        <div className="mb-5">
+          <Callout tone="info" title="사람이 아니라 AI 검수가 승인했습니다">
+            {item.aiAudit.at}에 3단을 모두 대조했고 걸린 것이 없어 승인했습니다. 규칙으로 대조할
+            수 있는 범위 안에서 낸 결론이라, 교과 내용이 실제로 맞는지와 이 학년 아이가 읽을 수
+            있는지는 사람 눈으로 다시 보실 수 있습니다 — 문항 은행에서 사용 중지로 되돌릴 수
+            있습니다.
           </Callout>
         </div>
       )}

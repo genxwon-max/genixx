@@ -143,9 +143,11 @@ export default function ItemList() {
 
   return (
     <div>
+      {/* 설명 줄을 두지 않는다. 「임시저장되고 제출해야 검수로 넘어간다」는 매일
+          오는 사람이 이미 아는 말이고, 정말 필요한 순간은 문항을 쓰는 중이라 그
+          말은 문항 카드 안에 있어야 한다. 설명이 빠지면 버튼이 제목과 한 줄에 선다. */}
       <PageHead
         title="출제 워크벤치"
-        lead="발주서 Ver.4.1의 문항 카드 양식으로 씁니다. 쓰는 동안은 임시저장되고, 제출해야 검수로 넘어갑니다."
         action={
           <>
             <Link href="/admin/authoring/generate" className={a.btnGhost}>

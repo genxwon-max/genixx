@@ -233,7 +233,7 @@ export type ItemDraft = {
   /** 쓰다 만 검수. 승인·반려로 결론이 나면 지운다. */
   reviewDraft?: ReviewDraft;
   /**
-   * AI 사전 검수 결과.
+   * AI 검수 결과.
    *
    * reviewDraft와 따로 둔다. 한 칸에 같이 담으면 사람이 쓰던 소견을 기계가 덮어쓰거나,
    * 반대로 화면에 뜬 소견을 누가 적은 것인지 알 수 없게 된다. 누가 짚었는지가 검수
@@ -244,18 +244,20 @@ export type ItemDraft = {
 };
 
 /**
- * 기계가 훑고 남긴 것.
+ * AI 검수가 남긴 것.
  *
- * 승인은 하지 않는다. 규칙을 명백히 어긴 것(blocks)이 있으면 반려까지 하고, 왜
- * 반려했는지를 사람 검수자와 같은 형식으로 적어 verdict·code·text에 담는다. 걸린
- * 것이 확인 필요(warns)뿐이면 상태를 건드리지 않고 짚어만 둔다.
+ * AI는 검수자다 — 사람 검수자와 같은 자리에 같은 형식으로 결론을 쌓는다.
+ *
+ *   승인  걸린 것이 하나도 없음. 문항 은행으로 올라간다.
+ *   보류  규칙으로는 못 가리는 것(warns)이 남음. 짚어만 두고 사람에게 넘긴다.
+ *   반려  규칙을 그대로 어긴 것(blocks)이 있음. 사유 코드와 고칠 곳을 적어 되돌린다.
  */
 export type AiAudit = {
   at: string;
   checks: { id: ReviewCheckId; ok: boolean; notes: string[] }[];
   blocks: number;
   warns: number;
-  /** clean 걸린 것 없음 · flag 짚어만 둠 · reject 기계가 반려함 */
+  /** approve 승인함 · hold 사람에게 넘김 · reject 반려함 */
   verdict: AiVerdict;
   /** 반려했을 때의 사유 코드 — 사람이 고르는 것과 같은 목록을 쓴다 */
   code?: RejectCode;
@@ -263,10 +265,10 @@ export type AiAudit = {
   text?: string;
 };
 
-export type AiVerdict = "clean" | "flag" | "reject";
+export type AiVerdict = "approve" | "hold" | "reject";
 
-/** 검수 기록·코멘트에 찍히는 기계 검수자의 이름 */
-export const AI_REVIEWER = "AI 사전 검수";
+/** 검수 기록·코멘트에 찍히는 AI 검수자의 이름 */
+export const AI_REVIEWER = "AI 검수";
 
 /** 반려 사유 — 코드로 고르게 해서 출제자가 무엇을 고쳐야 하는지 바로 알게 한다 */
 export const rejectCodes = [
@@ -1464,39 +1466,49 @@ export function addComment(id: string, by: string, role: StaffRoleId, text: stri
 
 /* ───────────────────────── 검수 ───────────────────────── */
 
+/** 승인할 때 남기는 소견문 — 사람 검수자가 쓰는 것과 같은 자리에 들어간다 */
+const APPROVE_TEXT =
+  "AI 검수에서 3단을 모두 대조했고 걸린 것이 없어 승인합니다.\n" +
+  "· 1차 내용 — 정답 유일성, 보기 중복, 정답 길이 단서\n" +
+  "· 2차 태깅 — 단계·형식 매핑, 성취기준 코드, 재능 좌표\n" +
+  "· 3차 윤리·편향 — 특정 계층·지역·성별을 가리키는 표현\n" +
+  "규칙으로 대조할 수 있는 범위에서 본 결론입니다. 승인 뒤에도 사람이 사용 중지로 되돌릴 수 있습니다.";
+
 /**
- * AI 사전 검수를 돌린다 (EXP-03-2).
+ * AI 검수를 돌린다 (EXP-03-2).
  *
- * ⚠ 승인은 하지 않는다. AI가 낸 문항을 AI가 승인하는 길이 열리면 사람이 한 번도
- *   안 본 문항이 검사지에 들어갈 수 있다. 규칙 대조로 잡히는 것과 이 학년 아이가
- *   읽을 수 있는지는 다른 문제라, 기계가 통과시킨 것을 통과로 삼으면 안 된다.
+ * AI는 사전 점검이 아니라 **검수자**다. 사람 검수자와 같은 자리에 같은 형식으로
+ * 결론을 쌓는다 — 3단 소견, 사유 코드, 소견문. 결론은 셋 중 하나다.
  *
- * 반려는 한다. 반려는 문항을 출제자에게 되돌릴 뿐이라 검증되지 않은 문항이 밖으로
- * 나가지 않고, block으로 잡은 것은 발주서·blueprint에 적힌 규칙을 그대로 어긴
- * 것이라 근거가 사람이 쓸 때와 같다. 대신 사람 검수와 똑같은 것을 남긴다 — 사유
- * 코드 하나, 3단 소견, 무엇을 어떻게 고쳐야 하는지 적은 소견문. 출제자의 반려함에는
- * 사람이 반려한 것과 같은 모양으로 도착한다.
+ *   승인  걸린 것이 하나도 없다. 문항 은행으로 올라간다.
+ *   보류  규칙으로는 가릴 수 없는 것(warns)이 남았다. 짚어만 두고 사람에게 넘긴다.
+ *   반려  규칙을 그대로 어겼다(blocks). 사유 코드와 고칠 곳을 적어 되돌린다.
  *
- * 검수 대기가 아닌 문항은 건너뛴다. 이미 결론이 난 것에 기계 소견을 덧붙이면
- * 기록이 어느 시점의 것인지 알 수 없어진다.
+ * ⚠ 승인은 **규칙으로 대조할 수 있는 범위 안에서의 결론**이다. 교과 내용이 실제로
+ *   맞는지와 이 학년 아이가 읽을 수 있는지는 규칙으로 가려지지 않는다. 그래서
+ *   확인이 필요한 것이 하나라도 남으면 승인하지 않고 사람에게 넘기고, 승인한 것도
+ *   검수 기록에 「AI 검수」로 남겨 누가 통과시킨 문항인지 뒤에서 셀 수 있게 한다.
+ *
+ * 검수 대기가 아닌 문항은 건너뛴다. 이미 결론이 난 것에 소견을 덧붙이면 기록이
+ * 어느 시점의 것인지 알 수 없어진다.
  */
 export function runAiAudit(ids: string[]): {
   done: number;
-  clean: number;
-  flagged: number;
+  approved: number;
+  held: number;
   rejected: number;
 } {
   const at = now();
   let done = 0;
-  let clean = 0;
+  let approved = 0;
   let rejected = 0;
 
   const next = read().map((item) => {
     if (!ids.includes(item.id) || item.state !== "submitted") return item;
     const result = auditItem(item);
-    const verdict = auditRejection(result);
+    const rejection = auditRejection(result);
+    const verdict: AiVerdict = rejection ? "reject" : result.warns > 0 ? "hold" : "approve";
     done += 1;
-    if (result.blocks === 0 && result.warns === 0) clean += 1;
 
     const audit: AiAudit = {
       at,
@@ -1509,30 +1521,36 @@ export function runAiAudit(ids: string[]): {
       })),
       blocks: result.blocks,
       warns: result.warns,
-      verdict: verdict ? "reject" : result.warns > 0 ? "flag" : "clean",
-      code: verdict?.code,
-      text: verdict?.text,
+      verdict,
+      code: rejection?.code,
+      text: rejection ? rejection.text : verdict === "approve" ? APPROVE_TEXT : undefined,
     };
 
-    if (!verdict) return { ...item, aiAudit: audit };
+    /* 보류 — 상태를 건드리지 않는다. 규칙 밖의 일이 남았다는 것을 짚어만 두고,
+       결론은 이 문항을 열어 보는 사람이 낸다. */
+    if (verdict === "hold") return { ...item, aiAudit: audit };
 
-    /* 반려 — 사람이 누른 것과 같은 자리에 같은 형식으로 쌓는다. 3단 소견도 채우되
-       걸린 칸만 「걸림」으로 두고 나머지는 확인 안 함(null)으로 남긴다. 규칙 대조에서
-       안 걸렸다는 것과 그 칸이 통과라는 것은 다른 말이다. */
-    rejected += 1;
+    /* 3단 소견. 반려는 걸린 칸만 「걸림」으로 두고 나머지는 확인 안 함(null)으로
+       남긴다 — 한 칸이 걸려 되돌리는 것이라 나머지를 본 것은 아니다. 승인은 셋 다
+       「통과」로 채운다. 결론을 낸 것이므로 통과라고 적지 않으면 그 기록으로는
+       무엇을 보고 승인했는지 알 수 없다. */
     const checks: ReviewCheckResult[] = result.checks.map((c) => {
       const blocked = c.findings.filter((f) => f.tone === "block");
       return {
         id: c.id,
-        ok: blocked.length > 0 ? false : null,
+        ok: verdict === "approve" ? true : blocked.length > 0 ? false : null,
         reason: blocked.find((f) => f.reason)?.reason,
         note: c.findings.map((f) => f.text).join("\n"),
       };
     });
 
+    const text = rejection ? rejection.text : APPROVE_TEXT;
+    if (rejection) rejected += 1;
+    else approved += 1;
+
     return {
       ...item,
-      state: "rejected" as ItemState,
+      state: (rejection ? "rejected" : "approved") as ItemState,
       updatedAt: at,
       aiAudit: audit,
       reviews: [
@@ -1541,10 +1559,10 @@ export function runAiAudit(ids: string[]): {
           at,
           by: AI_REVIEWER,
           round: item.reviews.length + 1,
-          verdict: "reject" as ReviewVerdict,
+          verdict: (rejection ? "reject" : "approve") as ReviewVerdict,
           checks,
-          code: verdict.code,
-          text: verdict.text,
+          code: rejection?.code,
+          text,
           machine: true,
         },
       ],
@@ -1555,16 +1573,16 @@ export function runAiAudit(ids: string[]): {
           at,
           by: AI_REVIEWER,
           role: "ai" as const,
-          kind: "reject" as CommentKind,
-          code: verdict.code,
-          text: verdict.text,
+          kind: (rejection ? "reject" : "approve") as CommentKind,
+          code: rejection?.code,
+          text,
         },
       ],
     };
   });
 
   write(next);
-  return { done, clean, flagged: done - clean, rejected };
+  return { done, approved, held: done - approved - rejected, rejected };
 }
 
 /** 쓰다 만 검수를 문항에 붙여 둔다. 결론이 나기 전까지 상태는 그대로다. */

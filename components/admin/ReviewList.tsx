@@ -115,19 +115,20 @@ export default function ReviewList() {
   /** 닷새 넘게 묵은 것 — 회차 마감이 걸린 일이라 먼저 알린다 */
   const stale = hydrated ? queue.filter((i) => daysWaiting(i) >= 5).length : 0;
 
-  /** AI가 출제한 것만 — 기계가 낸 것을 기계가 먼저 훑는 자리다 */
-  const aiMade = queue.filter((i) => i.origin === "ai");
+  /** AI 검수를 돌릴 대상 — 고른 것이 있으면 그것만, 없으면 대기 전체 */
+  const target = picked.length > 0 ? picked : queue.map((i) => i.id);
 
-  const audit = (ids: string[], label: string) => {
-    if (ids.length === 0) return;
-    const r = runAiAudit(ids);
+  const audit = () => {
+    if (target.length === 0) return;
+    const r = runAiAudit(target);
     setAudited(
-      `${label} ${r.done}건을 훑었습니다 — 걸린 것 없음 ${r.clean}건 · 확인할 것 있음 ${r.flagged}건` +
-        `(그중 규칙 위반으로 반려 ${r.rejected}건). ` +
+      `${r.done}건을 검수했습니다 — 승인 ${r.approved}건 · 반려 ${r.rejected}건 · 사람에게 넘김 ${r.held}건. ` +
         (r.rejected > 0
           ? "반려한 문항에는 사유 코드와 「무엇을 어떻게 고쳐야 하는지」를 적어 출제자의 반려함으로 돌려보냈습니다. "
           : "") +
-        "나머지는 상태를 바꾸지 않고 각 문항의 검수 화면에 「AI가 짚은 것」으로만 붙였습니다.",
+        (r.held > 0
+          ? "규칙으로 가릴 수 없는 것이 남은 문항은 상태를 바꾸지 않고 「AI가 짚은 것」으로 적어 두었습니다 — 그 문항의 결론은 사람이 냅니다."
+          : ""),
     );
     setPicked([]);
   };
@@ -135,7 +136,7 @@ export default function ReviewList() {
   if (!hydrated) {
     return (
       <>
-        <PageHead title="검수 워크벤치" lead={LEAD} />
+        <PageHead title="검수 워크벤치" />
         <p className="py-16 text-center adm-t-sm text-exam-muted">확인 중입니다…</p>
       </>
     );
@@ -143,7 +144,7 @@ export default function ReviewList() {
 
   const columns: Column<ItemDraft>[] = [
     /* 앞의 여섯 열은 출제 워크벤치·문항 은행과 같은 것을 쓴다(itemColumns.tsx).
-       뒤의 둘만 이 화면의 일이다 — AI 사전 검수 결과와 검수 버튼. */
+       뒤의 둘만 이 화면의 일이다 — AI 검수 결과와 검수 버튼. */
     codeCol((i) => `/admin/review/${i.id}`),
     stemCol,
     typeCol,
@@ -158,22 +159,22 @@ export default function ReviewList() {
     }),
     {
       key: "ai",
-      head: "AI 사전 검수",
+      head: "AI 검수",
       nowrap: true,
       cell: (i) => {
         if (!i.aiAudit) return <span className="adm-t-md">아직 안 돌림</span>;
         const { blocks, warns, verdict } = i.aiAudit;
-        if (blocks === 0 && warns === 0) {
-          return <span className="adm-t-md font-bold text-emerald-700">걸린 것 없음</span>;
+        if (verdict === "approve") {
+          return <span className="adm-t-md font-bold text-emerald-700">AI가 승인함</span>;
         }
         return (
           <span className="adm-t-md font-bold text-rose-700">
             {blocks > 0 && `규칙 위반 ${blocks}`}
             {blocks > 0 && warns > 0 && " · "}
             {warns > 0 && `확인 필요 ${warns}`}
-            {verdict === "reject" && (
-              <span className="block font-bold text-violet-800">기계가 반려함</span>
-            )}
+            <span className="block font-bold text-violet-800">
+              {verdict === "reject" ? "AI가 반려함" : "사람에게 넘김"}
+            </span>
           </span>
         );
       },
@@ -197,7 +198,53 @@ export default function ReviewList() {
 
   return (
     <>
-      <PageHead title="검수 워크벤치" lead={LEAD} />
+      {/* 설명 줄을 두지 않는다. 「3단으로 검수합니다」는 검수판을 열면 바로 보이는
+          말이고, 갈래와 AI 검수 단추가 제목과 한 줄에 서면 화면이 곧 설명이 된다. */}
+      <PageHead
+        title="검수 워크벤치"
+        action={
+          <>
+            {/* AI 검수 — 고른 것이 있으면 그것만, 없으면 대기 전체를 본다.
+                갈래를 옮겨도 자리를 지키도록 감추지 않고 눌리지 않게만 둔다. */}
+            <button
+              type="button"
+              onClick={audit}
+              disabled={tab !== "queue" || target.length === 0}
+              className={tab !== "queue" || target.length === 0 ? a.btnDisabled : a.btnGhost}
+            >
+              AI 검수 {picked.length > 0 ? `고른 ${picked.length}건` : `${queue.length}건`}
+            </button>
+
+            {(
+              [
+                { id: "queue", label: "검수 대기", n: queue.length },
+                { id: "mine", label: "내가 검수함", n: mine.length },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTab(t.id);
+                  reset();
+                }}
+                aria-current={tab === t.id ? "true" : undefined}
+                className={tab === t.id ? a.btnPrimary : a.btnGhost}
+              >
+                {t.label} {t.n}건
+              </button>
+            ))}
+          </>
+        }
+      />
+
+      {audited && (
+        <div className="mb-5">
+          <Callout tone="good" title="AI 검수를 마쳤습니다">
+            {audited}
+          </Callout>
+        </div>
+      )}
 
       {mineSubmitted > 0 && (
         <div className="mb-5">
@@ -223,93 +270,6 @@ export default function ReviewList() {
             닷새 넘게 검수를 기다리는 문항이 {stale}건 있습니다. 목록은 오래 기다린 것부터 보여
             줍니다.
           </Callout>
-        </div>
-      )}
-
-      {/* 두 갈래 — 지금 볼 것과 내가 이미 본 것 */}
-      <div className="mb-5 flex flex-wrap gap-2 border-b border-exam-line pb-4">
-        {(
-          [
-            { id: "queue", label: "검수 대기", n: queue.length },
-            { id: "mine", label: "내가 검수함", n: mine.length },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => {
-              setTab(t.id);
-              reset();
-            }}
-            aria-current={tab === t.id ? "true" : undefined}
-            className={tab === t.id ? a.btnPrimary : a.btnGhost}
-          >
-            {t.label} {t.n}건
-          </button>
-        ))}
-      </div>
-
-      {/* ── AI 사전 검수 ──
-          승인 버튼은 여기 두지 않는다. 기계가 규칙 대조로 잡는 것과 이 학년 아이가
-          읽을 수 있는지는 다른 문제라, 기계가 통과시킨 것을 통과로 삼으면 3단 검수가
-          형식이 된다. 반려는 다르다 — 문항을 출제자에게 되돌릴 뿐이고, 규칙을 그대로
-          어긴 것은 근거가 사람이 쓸 때와 같다. 그래서 반려는 하되 왜 반려했는지를
-          사람 검수자와 같은 형식으로 적는다. */}
-      {tab === "queue" && queue.length > 0 && (
-        <div className={`${a.panel} mb-4 p-4`}>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <div className="min-w-0 flex-1">
-              <h2 className={a.cardTitle}>AI 사전 검수</h2>
-              <p className={`${a.bodyText} mt-1`}>
-                규칙으로 볼 수 있는 것을 기계가 먼저 훑습니다 — 단계·형식 매핑, 성취기준 코드, 보기
-                중복, 정답 길이 단서, 편향 소지 낱말. 규칙을 명백히 어긴 것은{" "}
-                <b className="font-bold">사유 코드와 고칠 곳을 적어 반려</b>하고, 나머지는 짚어만
-                둡니다. <b className="font-bold">승인은 하지 않습니다</b> — 사람만 합니다.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  audit(
-                    queue.map((i) => i.id),
-                    "검수 대기 전체",
-                  )
-                }
-                className={a.btnPrimary}
-              >
-                전체 {queue.length}건
-              </button>
-              <button
-                type="button"
-                disabled={picked.length === 0}
-                onClick={() => audit(picked, "고른 문항")}
-                className={picked.length === 0 ? a.btnDisabled : a.btnGhost}
-              >
-                고른 {picked.length}건
-              </button>
-              <button
-                type="button"
-                disabled={aiMade.length === 0}
-                onClick={() =>
-                  audit(
-                    aiMade.map((i) => i.id),
-                    "AI가 출제한 문항",
-                  )
-                }
-                className={aiMade.length === 0 ? a.btnDisabled : a.btnGhost}
-              >
-                AI 출제분 {aiMade.length}건
-              </button>
-            </div>
-          </div>
-
-          {audited && (
-            <div className="mt-4">
-              <Callout tone="good">{audited}</Callout>
-            </div>
-          )}
         </div>
       )}
 
@@ -360,5 +320,3 @@ export default function ReviewList() {
   );
 }
 
-const LEAD =
-  "제출된 문항을 내용·태깅·윤리 3단으로 검수합니다. 문항 ID를 누르면 검수 화면이 열리고, 쓰던 검수는 임시저장됩니다.";

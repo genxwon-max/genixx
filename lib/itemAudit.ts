@@ -8,7 +8,7 @@ import {
 } from "./itemStore";
 
 /**
- * AI 사전 검수 — 검수 3단을 기계가 먼저 한 번 훑는다.
+ * AI 검수 — 검수 3단을 규칙으로 대조한다.
  *
  * ⚠ 이건 검수를 대신하는 것이 아니라 앞에 붙이는 것이다. 승인은 절대 하지 않는다.
  *   AI가 낸 문항을 AI가 승인하는 길이 열리면 사람이 한 번도 안 본 문항이 검사지에
@@ -364,7 +364,7 @@ export function auditRejection(result: AuditResult): { code: RejectCode; text: s
     "규칙으로 대조할 수 있는 것만 본 결과라, 교과 내용이 맞는지와 이 학년 아이가 읽을 수 있는지는 고쳐 올리신 뒤 사람 검수에서 다시 봅니다.";
 
   const text = [
-    `AI 사전 검수에서 규칙 위반 ${blocks.length}건이 확인되어 반려합니다.`,
+    `AI 검수에서 규칙 위반 ${blocks.length}건이 확인되어 반려합니다.`,
     "",
     ...blocks.map((b, i) => line(b.id, b.f, i + 1)),
     "",
