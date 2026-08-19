@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { setSurvey, useExamRecord, useHydrated, type SurveyKey } from "@/lib/examStore";
 import { useSurveyDoc, type SurveyDoc } from "@/lib/surveyStore";
+import { bandFromGrade } from "@/lib/surveyBands";
 import { findById } from "@/lib/roster";
 import { CheckIcon } from "@/components/Icons";
 import { btnDisabled, btnGhost, btnPrimary, eyebrow, input, panel } from "./ui";
@@ -26,13 +27,16 @@ export default function SurveyForm({
 }) {
   const hydrated = useHydrated();
   const record = useExamRecord(studentId);
-  const doc = useSurveyDoc(surveyKey);
+  const student = hydrated ? findById(studentId) : null;
+  /* 학년대마다 설문이 한 벌씩이라, 이 아이의 학년으로 어느 벌인지 고른다.
+     명부를 아직 못 읽은 첫 렌더에는 가장 어린 칸이 잡히고, 읽고 나면 제 벌로
+     바뀐다 — 그 사이에 답을 고를 수는 없으므로(하이드레이션 전) 안전하다. */
+  const doc = useSurveyDoc(surveyKey, bandFromGrade(student?.grade));
   const config = doc.live;
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [text, setText] = useState("");
   const [warn, setWarn] = useState(false);
 
-  const student = hydrated ? findById(studentId) : null;
   const done = record.surveys[surveyKey] === "done";
   const answered = Object.keys(answers).length;
   const complete = answered === config.items.length;

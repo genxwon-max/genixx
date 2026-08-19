@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { SurveyKey } from "./examStore";
 import { surveyKeys } from "./examStore";
+import { surveyBandIds, type SurveyBand } from "./surveyBands";
 import { surveys } from "./survey";
 
 /**
@@ -27,6 +28,13 @@ import { surveys } from "./survey";
  *
  * ⚠ 되돌려도 판 번호는 앞으로만 간다. v3에서 v2 내용으로 돌아가면 그것은 v2가
  *   아니라 v4다. 번호를 되쓰면 「v2 응답」이 두 가지 설문을 가리키게 된다.
+ *
+ * ── 학년대 ──
+ *
+ * 한 갈래(어머니·아버지·교사)가 학년대(초3~4 · 초5~6 · 중1 · 중2~3)마다 한 벌씩
+ * 있다. 초3에게 묻는 말과 중3에게 묻는 말이 같을 수 없어서다. 그래서 저장 단위는
+ * 갈래가 아니라 **갈래+학년대**이고, 그 열쇠가 SurveyDocId(`mother:e34`)다.
+ * 학생 명부의 학년 글자로 학년대를 고르는 일은 lib/surveyBands.ts가 한다.
  */
 
 export type SurveyItem = {
@@ -47,8 +55,18 @@ export type SurveyForm = {
   placeholder: string;
 };
 
+/** 저장 단위 — 갈래와 학년대를 함께 묶은 열쇠 (`mother:e34`) */
+export type SurveyDocId = `${SurveyKey}:${SurveyBand}`;
+
+export const docIdOf = (key: SurveyKey, band: SurveyBand): SurveyDocId => `${key}:${band}`;
+
+export const surveyDocIds: SurveyDocId[] = surveyKeys.flatMap((k) =>
+  surveyBandIds.map((b) => docIdOf(k, b)),
+);
+
 export type SurveyDoc = {
   key: SurveyKey;
+  band: SurveyBand;
   /** 정의서상의 설문 코드 (ASM-05 / ASM-06) */
   code: string;
   live: SurveyForm;
@@ -64,7 +82,8 @@ export type SurveyAction = "publish" | "upload" | "revert" | "discard";
 
 export type SurveyLogEntry = {
   id: string;
-  key: SurveyKey;
+  /** 어느 갈래의 어느 학년대에 일어난 일인가 */
+  docId: SurveyDocId;
   at: string;
   by: string;
   action: SurveyAction;
@@ -96,24 +115,28 @@ export const MAX_UPLOAD_BYTES = 200 * 1024;
 /** 씨앗의 시각은 고정값이다 — 렌더할 때마다 달라지면 서버·브라우저 화면이 어긋난다. */
 const SEED_AT = "2026-03-02 09:40";
 
-function seedForm(key: SurveyKey): SurveyForm {
+function seedForm(key: SurveyKey, band: SurveyBand): SurveyForm {
   const c = surveys[key];
+  /* 네 학년대가 같은 문항으로 시작한다. 무엇이 어떻게 달라야 하는지는 교육 쪽에서
+     정할 일이라 여기서 지어내지 않는다. 관리자가 학년대를 골라 고치면 그때부터
+     갈라지고, 「다른 학년대에도 이 문항 쓰기」로 도로 맞출 수도 있다. */
   return {
     title: c.title,
     who: c.who,
     desc: c.desc,
     note: c.note,
-    items: c.items.map((text, n) => ({ id: `${key}-${n + 1}`, text })),
+    items: c.items.map((text, n) => ({ id: `${key}-${band}-${n + 1}`, text })),
     openLabel: c.openLabel,
     openHint: c.openHint,
     placeholder: c.placeholder,
   };
 }
 
-function seedDoc(key: SurveyKey): SurveyDoc {
-  const form = seedForm(key);
+function seedDoc(key: SurveyKey, band: SurveyBand): SurveyDoc {
+  const form = seedForm(key, band);
   return {
     key,
+    band,
     code: surveys[key].code,
     live: form,
     liveVersion: 1,
@@ -125,10 +148,12 @@ function seedDoc(key: SurveyKey): SurveyDoc {
   };
 }
 
-export type SurveyDocs = Record<SurveyKey, SurveyDoc>;
+export type SurveyDocs = Record<SurveyDocId, SurveyDoc>;
+
+const split = (id: SurveyDocId) => id.split(":") as [SurveyKey, SurveyBand];
 
 const SEED: SurveyDocs = Object.fromEntries(
-  surveyKeys.map((k) => [k, seedDoc(k)]),
+  surveyDocIds.map((id) => [id, seedDoc(...split(id))]),
 ) as SurveyDocs;
 
 /**
@@ -137,16 +162,16 @@ const SEED: SurveyDocs = Object.fromEntries(
  * 넣지 않으면 v2를 발행한 뒤 v1로 돌아갈 길이 없다 — 기록에 없는 판은 되돌릴 수도
  * 없기 때문이다. 「처음부터 있던 것」도 판의 하나로 세어야 이력이 끊기지 않는다.
  */
-const SEED_LOG: SurveyLogEntry[] = surveyKeys.map((k) => ({
-  id: `SV-SEED-${k}`,
-  key: k,
+const SEED_LOG: SurveyLogEntry[] = surveyDocIds.map((id) => ({
+  id: `SV-SEED-${id}`,
+  docId: id,
   at: SEED_AT,
   by: "초기 설정",
   action: "publish" as const,
   version: 1,
   reason: "서비스 시작 시 깔린 첫 판입니다",
   lines: [],
-  snapshot: seedForm(k),
+  snapshot: seedForm(...split(id)),
 }));
 
 const KEY = "genixx.surveys";
@@ -161,12 +186,12 @@ let cacheValue: SurveyDocs = SEED;
 /** 저장된 판에 없는 칸을 씨앗으로 메운다 — 항목이 늘어난 뒤에도 화면이 터지지 않게 */
 function fill(raw: Partial<SurveyDocs> | undefined): SurveyDocs {
   return Object.fromEntries(
-    surveyKeys.map((k) => {
-      const seed = seedDoc(k);
-      const got = raw?.[k];
-      if (!got) return [k, seed];
+    surveyDocIds.map((id) => {
+      const seed = seedDoc(...split(id));
+      const got = raw?.[id];
+      if (!got) return [id, seed];
       return [
-        k,
+        id,
         {
           ...seed,
           ...got,
@@ -220,8 +245,8 @@ export function useSurveyDocs(): SurveyDocs {
   return useSyncExternalStore(subscribe, read, () => SEED);
 }
 
-export function useSurveyDoc(key: SurveyKey): SurveyDoc {
-  return useSurveyDocs()[key];
+export function useSurveyDoc(key: SurveyKey, band: SurveyBand): SurveyDoc {
+  return useSurveyDocs()[docIdOf(key, band)];
 }
 
 export function useSurveyLog(): SurveyLogEntry[] {
@@ -253,50 +278,79 @@ function pushLog(entry: Omit<SurveyLogEntry, "id" | "at">) {
   return full;
 }
 
-function patchDoc(key: SurveyKey, patch: Partial<SurveyDoc>) {
+function patchDoc(id: SurveyDocId, patch: Partial<SurveyDoc>) {
   const docs = read();
-  write({ ...docs, [key]: { ...docs[key], ...patch } });
+  write({ ...docs, [id]: { ...docs[id], ...patch } });
 }
 
 /** 초안만 고친다. 응답자 화면은 발행 전까지 그대로다. */
-export function patchDraft(key: SurveyKey, patch: Partial<SurveyForm>, by: string) {
-  const doc = read()[key];
-  patchDoc(key, {
+export function patchDraft(id: SurveyDocId, patch: Partial<SurveyForm>, by: string) {
+  const doc = read()[id];
+  patchDoc(id, {
     draft: { ...doc.draft, ...patch },
     draftAt: now(),
     draftBy: by,
   });
 }
 
-export function patchDraftItem(key: SurveyKey, itemId: string, text: string, by: string) {
-  const doc = read()[key];
-  patchDraft(
-    key,
-    { items: doc.draft.items.map((i) => (i.id === itemId ? { ...i, text } : i)) },
-    by,
-  );
+export function patchDraftItem(id: SurveyDocId, itemId: string, text: string, by: string) {
+  const doc = read()[id];
+  patchDraft(id, { items: doc.draft.items.map((i) => (i.id === itemId ? { ...i, text } : i)) }, by);
 }
 
-export function addDraftItem(key: SurveyKey, by: string) {
-  const doc = read()[key];
+export function addDraftItem(id: SurveyDocId, by: string) {
+  const doc = read()[id];
   if (doc.draft.items.length >= MAX_ITEMS) return;
-  const item: SurveyItem = { id: `${key}-${Date.now().toString(36)}`, text: "" };
-  patchDraft(key, { items: [...doc.draft.items, item] }, by);
+  const item: SurveyItem = { id: `${id}-${Date.now().toString(36)}`, text: "" };
+  patchDraft(id, { items: [...doc.draft.items, item] }, by);
 }
 
-export function removeDraftItem(key: SurveyKey, itemId: string, by: string) {
-  const doc = read()[key];
-  patchDraft(key, { items: doc.draft.items.filter((i) => i.id !== itemId) }, by);
+export function removeDraftItem(id: SurveyDocId, itemId: string, by: string) {
+  const doc = read()[id];
+  patchDraft(id, { items: doc.draft.items.filter((i) => i.id !== itemId) }, by);
 }
 
 /** 문항 순서 옮기기. 끝에서 더 밀면 아무 일도 일어나지 않는다. */
-export function moveDraftItem(key: SurveyKey, itemId: string, dir: 1 | -1, by: string) {
-  const items = [...read()[key].draft.items];
+export function moveDraftItem(id: SurveyDocId, itemId: string, dir: 1 | -1, by: string) {
+  const items = [...read()[id].draft.items];
   const at = items.findIndex((i) => i.id === itemId);
   const to = at + dir;
   if (at < 0 || to < 0 || to >= items.length) return;
   [items[at], items[to]] = [items[to], items[at]];
-  patchDraft(key, { items }, by);
+  patchDraft(id, { items }, by);
+}
+
+/**
+ * 지금 학년대의 초안 문항을 나머지 세 학년대에 그대로 복사한다.
+ *
+ * 네 벌을 따로 두면 「초3~4만 고치고 나머지를 잊는」 일이 반드시 생긴다. 문항이
+ * 학년대별로 갈릴 이유가 없을 때는 한 번에 맞출 길이 있어야 한다.
+ * 초안에만 넣는다 — 나가는 판은 학년대마다 따로 발행한다.
+ */
+export function copyItemsToOtherBands(id: SurveyDocId, by: string) {
+  const [key] = split(id);
+  const from = read()[id].draft.items;
+  const docs = read();
+  const next = { ...docs };
+  let count = 0;
+  for (const band of surveyBandIds) {
+    const to = docIdOf(key, band);
+    if (to === id) continue;
+    next[to] = {
+      ...docs[to],
+      draft: {
+        ...docs[to].draft,
+        /* 문항 id는 학년대마다 새로 딴다. 같은 id가 두 벌에 있으면 「어느 판의
+           몇 번 문항인가」를 기록에서 가릴 수 없다. */
+        items: from.map((i, n) => ({ id: `${to}-c${n + 1}`, text: i.text })),
+      },
+      draftAt: now(),
+      draftBy: by,
+    };
+    count += 1;
+  }
+  write(next);
+  return count;
 }
 
 /**
@@ -307,21 +361,21 @@ export function moveDraftItem(key: SurveyKey, itemId: string, dir: 1 | -1, by: s
  * 아직 나가지 않은 초안이라도 「어디서 온 문항인지」는 나중에 반드시 묻게 된다.
  */
 export function uploadDraftItems(
-  key: SurveyKey,
+  id: SurveyDocId,
   texts: string[],
   mode: "append" | "replace",
   fileName: string,
   by: string,
 ) {
-  const doc = read()[key];
+  const doc = read()[id];
   const made: SurveyItem[] = texts.map((text, n) => ({
-    id: `${key}-${Date.now().toString(36)}-${n}`,
+    id: `${id}-${Date.now().toString(36)}-${n}`,
     text,
   }));
   const items = (mode === "append" ? [...doc.draft.items, ...made] : made).slice(0, MAX_ITEMS);
-  patchDraft(key, { items }, by);
+  patchDraft(id, { items }, by);
   pushLog({
-    key,
+    docId: id,
     by,
     action: "upload",
     reason: `${fileName} — ${mode === "append" ? "기존 문항 뒤에 붙임" : "기존 문항을 바꿈"}`,
@@ -337,11 +391,11 @@ export function uploadDraftItems(
  * 초안을 내보낸다 — 이 순간부터 응답자가 새 판을 본다.
  * 발행하지 않으면 아무것도 나가지 않으므로, 여기가 이 화면의 유일한 관문이다.
  */
-export function publishDraft(key: SurveyKey, by: string, reason: string) {
-  const doc = read()[key];
+export function publishDraft(id: SurveyDocId, by: string, reason: string) {
+  const doc = read()[id];
   const version = doc.liveVersion + 1;
   const at = now();
-  patchDoc(key, {
+  patchDoc(id, {
     live: doc.draft,
     liveVersion: version,
     publishedAt: at,
@@ -350,7 +404,7 @@ export function publishDraft(key: SurveyKey, by: string, reason: string) {
     draftBy: by,
   });
   return pushLog({
-    key,
+    docId: id,
     by,
     action: "publish",
     version,
@@ -361,12 +415,12 @@ export function publishDraft(key: SurveyKey, by: string, reason: string) {
 }
 
 /** 초안을 버리고 나가고 있는 판으로 되돌린다 */
-export function discardDraft(key: SurveyKey, by: string) {
-  const doc = read()[key];
+export function discardDraft(id: SurveyDocId, by: string) {
+  const doc = read()[id];
   const lines = diffForms(doc.live, doc.draft);
-  patchDoc(key, { draft: doc.live, draftAt: now(), draftBy: by });
+  patchDoc(id, { draft: doc.live, draftAt: now(), draftBy: by });
   pushLog({
-    key,
+    docId: id,
     by,
     action: "discard",
     reason: `발행하지 않은 수정 ${lines.length}곳을 버렸습니다`,
@@ -378,13 +432,13 @@ export function discardDraft(key: SurveyKey, by: string) {
  * 기록에 담긴 옛 판을 다시 내보낸다.
  * 번호는 되쓰지 않고 새로 딴다 — 위 머리말의 ⚠ 참조.
  */
-export function revertTo(key: SurveyKey, entryId: string, by: string, reason: string) {
+export function revertTo(id: SurveyDocId, entryId: string, by: string, reason: string) {
   const entry = readLog().find((e) => e.id === entryId);
   if (!entry?.snapshot) return null;
-  const doc = read()[key];
+  const doc = read()[id];
   const version = doc.liveVersion + 1;
   const at = now();
-  patchDoc(key, {
+  patchDoc(id, {
     live: entry.snapshot,
     liveVersion: version,
     publishedAt: at,
@@ -394,7 +448,7 @@ export function revertTo(key: SurveyKey, entryId: string, by: string, reason: st
     draftBy: by,
   });
   return pushLog({
-    key,
+    docId: id,
     by,
     action: "revert",
     version,

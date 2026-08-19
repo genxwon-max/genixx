@@ -3,15 +3,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { can } from "@/lib/admin";
 import { recordAction, useAdminPrefs } from "@/lib/adminStore";
-import { surveyKeys, useExamStore, type SurveyKey } from "@/lib/examStore";
+import { surveyKeys, useExamStore } from "@/lib/examStore";
+import type { SurveyKey } from "@/lib/examStore";
+import { surveyBands, type SurveyBand } from "@/lib/surveyBands";
 import {
-  actionLabel,
-  addDraftItem,
-  diffForms,
-  discardDraft,
-  draftChanges,
   MAX_ITEMS,
   MAX_UPLOAD_BYTES,
+  actionLabel,
+  addDraftItem,
+  copyItemsToOtherBands,
+  diffForms,
+  discardDraft,
+  docIdOf,
+  draftChanges,
   moveDraftItem,
   parseSurveyFile,
   patchDraft,
@@ -26,24 +30,62 @@ import {
   useSurveyLog,
   type ParsedUpload,
   type SurveyDoc,
+  type SurveyDocId,
   type SurveyForm,
   type SurveyLogEntry,
 } from "@/lib/surveyStore";
+import { fieldShape } from "./DataList";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Callout, Foldable, PageHead, TableCard } from "./Parts";
 import * as a from "./ui";
 
 /**
- * ADM-14 설문 원본.
+ * 설문 원본 (ADM-14).
  *
- * 이 화면이 지키는 것은 하나다 — **고치는 것과 내보내는 것을 갈라 둔다.**
- * 왼쪽에서 아무리 고쳐도 학부모 화면은 그대로이고, 「발행」을 눌러야 바뀐다.
- * 그래야 설문이 도는 중에 문항이 갈리는 일이 없고, 언제 무엇이 바뀌었는지가
- * 판 번호 하나로 정리된다.
+ * 한 설문은 **갈래 × 학년대**로 한 벌씩 있다. 어머니·아버지·지도교사 셋에 초3~4 ·
+ * 초5~6 · 중1 · 중2~3 넷이니 열두 벌이다. 초3에게 묻는 말과 중3에게 묻는 말이 같을
+ * 수 없어서인데, 열두 벌을 늘어놓으면 아무도 관리하지 못한다. 그래서 화면은 언제나
+ * **한 벌만** 보여 준다 — 위에서 갈래와 학년대를 고르면 그 한 벌이 아래에 열린다.
  *
- * 권한도 문항과 같은 방식으로 맞물린다. 고치는 것은 출제 권한(item.write),
- * 내보내는 것은 검수 권한(item.review)이다. 쓴 사람이 스스로 내보내지 못하게
- * 갈라 두는 것이 이 콘솔의 전제다(정의서 9장).
+ * ── 화면을 줄인 규칙 ──
+ *
+ * 1) 한 번에 한 구역만 연다. 문항 · 안내 문구 · 파일로 올리기 · 변경 기록을 접이식
+ *    으로 세로로 이어 두었더니, 하나를 펼칠 때마다 아래 것이 통째로 밀려 내려가
+ *    무엇을 보다 말았는지 잊게 되었다.
+ *
+ *    다만 **모양을 갈래 단추와 같게 두지 않는다.** 알약 단추 세 줄을 위아래로
+ *    포개 두었더니 어느 줄이 무엇을 묻는지 읽히지 않았다. 묻는 것이 둘이므로
+ *    모양도 둘이다 —
+ *
+ *      어느 설문인가   고르는 상자 둘(갈래 · 학년대). 열두 벌을 두 번에 좁힌다.
+ *      무엇을 보는가   밑줄 탭 넷. 고른 설문 안에서 자리를 옮기는 것뿐이라 가볍게.
+ *
+ *    콘솔의 다른 화면은 갈래가 한 겹뿐이라 알약 단추를 쓴다. 여기만 두 겹이라
+ *    윗겹을 상자로 내린 것이지, 모양을 마음대로 바꾼 것이 아니다.
+ * 2) 설명은 적지 않는다. 「발행해야 응답자 화면이 바뀝니다」는 발행 단추를 누를 때
+ *    대화상자가 말한다 — 정작 필요한 자리에서 한 번 말하는 편이 낫다.
+ * 3) 학년대마다 문항이 갈릴 이유가 없을 때가 많으므로 「다른 학년대에도 이 문항
+ *    쓰기」를 둔다. 없으면 「초3~4만 고치고 나머지를 잊는」 일이 반드시 생긴다.
+ *
+ * 초안과 나가는 판을 갈라 두는 것은 그대로다. 한 벌만 두면 오타를 고치는 순간
+ * 답을 쓰고 있던 학부모의 화면이 바뀌고, 그 회차 자료는 반쪽이 된다.
  */
+/** 한 설문에서 볼 수 있는 구역. 한 번에 하나만 연다. */
+type ViewId = "items" | "texts" | "upload" | "log";
+
+const views: { id: ViewId; label: string }[] = [
+  { id: "items", label: "문항" },
+  { id: "texts", label: "안내 문구" },
+  { id: "upload", label: "파일로 올리기" },
+  { id: "log", label: "변경 기록" },
+];
+
 export default function SurveyEditor() {
   const prefs = useAdminPrefs();
   const docs = useSurveyDocs();
@@ -51,249 +93,158 @@ export default function SurveyEditor() {
   const records = useExamStore();
 
   const [key, setKey] = useState<SurveyKey>("mother");
-  const [ask, setAsk] = useState<null | { mode: "publish" } | { mode: "revert"; entry: SurveyLogEntry }>(
-    null,
-  );
+  const [band, setBand] = useState<SurveyBand>("e34");
+  const [view, setView] = useState<ViewId>("items");
+  const [ask, setAsk] = useState<
+    null | { mode: "publish" } | { mode: "revert"; entry: SurveyLogEntry }
+  >(null);
 
-  const doc = docs[key];
+  const docId = docIdOf(key, band);
+  const doc = docs[docId];
   const by = prefs.staffName || "운영자";
   const mayEdit = can(prefs.role, "item.write");
   const mayPublish = can(prefs.role, "item.review");
   const changes = draftChanges(doc);
 
-  /* 어느 판에 대한 응답이 몇 건 들어와 있는지. 판 번호가 없는 옛 응답은 v1로 본다. */
-  const collected = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const rec of Object.values(records)) {
-      if (rec?.surveys?.[key] !== "done") continue;
-      const v = rec.surveyVersion?.[key] ?? 1;
-      map.set(v, (map.get(v) ?? 0) + 1);
-    }
-    return [...map.entries()].sort((x, y) => y[0] - x[0]);
-  }, [records, key]);
-  const answered = collected.reduce((n, [, c]) => n + c, 0);
+  /* 이 갈래로 들어온 응답 수. 학년대까지 갈라 세지 않는다 — 응시 기록에는 학년대가
+     없고, 발행 전에 짚어야 할 것은 「이미 답이 들어와 있다」는 사실 하나다. */
+  const answered = useMemo(
+    () => Object.values(records).filter((r) => r?.surveys?.[key] === "done").length,
+    [records, key],
+  );
 
   const warnings = publishWarnings(doc, answered);
-  const mine = log.filter((e) => e.key === key);
+  const mine = log.filter((e) => e.docId === docId);
+  const bandLabel = surveyBands.find((b) => b.id === band)!.label;
 
   return (
     <>
       <PageHead
         title="설문 원본"
-        lead="학부모·교사 설문의 문항과 안내 문구를 고칩니다. 고친 것은 초안에만 담기고, 발행해야 응답자 화면이 바뀝니다. 발행·되돌리기는 사유와 함께 기록에 남습니다."
+        action={
+          <>
+            {mayEdit && changes.length > 0 && (
+              <button
+                type="button"
+                onClick={() => discardDraft(docId, by)}
+                className={a.btnGhost}
+              >
+                고친 것 버리기
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!mayPublish || changes.length === 0}
+              onClick={() => setAsk({ mode: "publish" })}
+              className={!mayPublish || changes.length === 0 ? a.btnDisabled : a.btnPrimary}
+            >
+              {changes.length === 0 ? "발행할 것 없음" : `v${doc.liveVersion + 1}로 발행하기`}
+            </button>
+          </>
+        }
       />
 
-      {/* 어느 설문을 보고 있는지. 셋을 한 줄에 두고 각각의 상태를 함께 적는다. */}
-      <div className="grid gap-2 sm:grid-cols-3">
-        {surveyKeys.map((k) => {
-          const d = docs[k];
-          const waiting = draftChanges(d).length;
-          const on = k === key;
+      {/* ── 어느 한 벌인가 ── */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className={a.label}>고른 설문</span>
+        <Choose
+          label="설문 갈래"
+          value={key}
+          onChange={(v) => setKey(v as SurveyKey)}
+          width="w-40"
+          options={surveyKeys.map((k) => ({
+            value: k,
+            label: docs[docIdOf(k, band)].live.who,
+          }))}
+        />
+        <Choose
+          label="학년대"
+          value={band}
+          onChange={(v) => setBand(v as SurveyBand)}
+          width="w-48"
+          /* 어느 학년대에 손댄 것이 남아 있는지 열기 전에 보여야 한다 */
+          options={surveyBands.map((b) => {
+            const waiting = draftChanges(docs[docIdOf(key, b.id)]).length;
+            return {
+              value: b.id,
+              label: waiting > 0 ? `${b.label} · 수정 ${waiting}곳` : b.label,
+            };
+          })}
+        />
+      </div>
+
+      {/* ── 그 설문의 무엇을 보는가 ──
+          알약이 아니라 밑줄 탭이다. 위가 「무엇을 고르는가」이고 여기는 「고른 것
+          안에서 어디를 보는가」라, 같은 모양으로 포개면 두 줄이 한 덩어리로 읽힌다. */}
+      <nav aria-label="설문 구역" className="mt-5 flex flex-wrap border-b border-exam-line">
+        {views.map((v) => {
+          const on = v.id === view;
+          const n = v.id === "items" ? doc.draft.items.length : v.id === "log" ? mine.length : null;
           return (
             <button
-              key={k}
+              key={v.id}
               type="button"
-              onClick={() => setKey(k)}
-              aria-pressed={on}
-              className={`rounded-lg border px-4 py-3.5 text-left transition-colors ${
-                on ? "border-brand-900 bg-brand-50" : "border-exam-line bg-white hover:bg-exam-raised"
+              onClick={() => setView(v.id)}
+              aria-current={on ? "page" : undefined}
+              className={`-mb-px min-h-[2.75rem] border-b-2 px-4 py-2.5 adm-t-md transition-colors ${
+                on
+                  ? "border-brand-900 font-black text-brand-800"
+                  : "border-transparent font-bold text-exam-muted hover:text-exam-text"
               }`}
             >
-              <span className="block adm-t-md font-bold text-exam-text">{d.live.title}</span>
-              <span className="mt-1 block adm-t-sm text-exam-muted">
-                {d.code} · 문항 {d.live.items.length}개 · 지금 나가는 판 v{d.liveVersion}
-              </span>
-              <span
-                className={`mt-1 block adm-t-sm font-bold ${
-                  waiting > 0 ? "text-amber-700" : "text-emerald-700"
-                }`}
-              >
-                {waiting > 0 ? `발행 대기 ${waiting}곳` : "발행된 판과 같음"}
-              </span>
+              {v.label}
+              {n !== null && <span className="ml-1.5 tabular-nums">{n}</span>}
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      {/* ── 지금 상태와 발행 (ADM-14-2) ── */}
-      <section id="ADM-14-2" className={`${a.panel} mt-5 scroll-mt-20 p-6`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className={a.cardTitle}>{doc.live.title}</h2>
-            <p className={`${a.hint} mt-1.5`}>
-              지금 나가는 판 <b className="text-exam-text">v{doc.liveVersion}</b> · 발행{" "}
-              {doc.publishedAt} · {doc.publishedBy}
-            </p>
-            <p className={`${a.hint} mt-0.5`}>
-              초안 마지막 수정 {doc.draftAt} · {doc.draftBy}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setAsk({ mode: "publish" })}
-              disabled={changes.length === 0 || !mayPublish}
-              className={changes.length > 0 && mayPublish ? a.btnPrimary : a.btnDisabled}
-            >
-              v{doc.liveVersion + 1}로 발행하기
-            </button>
-            {changes.length > 0 && mayEdit && (
-              <button type="button" onClick={() => discardDraft(key, by)} className={a.btnGhost}>
-                초안 버리기
-              </button>
-            )}
-          </div>
+      {!mayEdit && (
+        <div className="mt-4">
+          <Callout tone="info">보기만 할 수 있습니다. 고치는 것은 출제 권한이 있는 사람이 합니다.</Callout>
         </div>
+      )}
 
-        <div className="mt-5">
-          {changes.length === 0 ? (
-            <Callout tone="good" title="초안과 나가는 판이 같습니다">
-              지금 학부모·교사에게 보이는 설문이 아래 초안 그대로입니다.
-            </Callout>
-          ) : (
-            <Callout tone="warn" title={`아직 발행하지 않은 수정 ${changes.length}곳`}>
-              <ul className="space-y-1">
-                {changes.slice(0, 8).map((line) => (
-                  <li key={line}>· {line}</li>
-                ))}
-                {changes.length > 8 && <li>· 외 {changes.length - 8}곳</li>}
-              </ul>
-              <p className="mt-2 adm-t-sm text-exam-muted">
-                발행하기 전까지 응답자 화면은 v{doc.liveVersion} 그대로입니다.
-              </p>
-            </Callout>
-          )}
-        </div>
-
-        {!mayPublish && (
-          <p className={`${a.hint} mt-4`}>
-            발행은 검수 권한이 있는 사람이 누릅니다. 고쳐 두시면 검수자가 확인하고 내보냅니다.
-          </p>
+      <div className="mt-6">
+        {/* 한 벌을 옮기면 문항 구역을 새로 세운다(key). 「다른 학년대에도 쓰기」를
+            물어보던 중에 학년대를 바꾸면, 엉뚱한 벌의 문항이 넷으로 퍼진다. */}
+        {view === "items" && (
+          <Items key={docId} doc={doc} docId={docId} by={by} mayEdit={mayEdit} />
         )}
-
-        {/* 판별 응답 수 — 문항을 바꾸기 전에 「이미 몇 건이 이 판에 답했는지」를 본다 */}
-        <div className="mt-5 border-t border-exam-line pt-4">
-          <p className={a.label}>들어온 응답</p>
-          {answered === 0 ? (
-            <p className={`${a.hint} mt-1.5`}>아직 이 설문에 들어온 응답이 없습니다.</p>
-          ) : (
-            <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
-              {collected.map(([v, n]) => (
-                <li key={v} className="adm-t-md text-exam-text">
-                  <b>v{v}</b> <span className="tabular-nums">{n}</span>건
-                  {v !== doc.liveVersion && <span className={`${a.hint} ml-1`}>(지난 판)</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
-        <div>
-          {mayEdit ? (
-            <Draft doc={doc} surveyKey={key} by={by} />
-          ) : (
-            <section id="ADM-14-1" className={`${a.panel} scroll-mt-20 p-6`}>
-              <h2 className={a.cardTitle}>초안 (읽기만)</h2>
-              <p className={`${a.bodyText} mt-2`}>
-                지금 역할에는 문항을 고칠 권한(출제)이 없습니다. 아래 미리보기로 내용은 확인하실 수
-                있고, 발행 여부만 판단하시면 됩니다.
-              </p>
-            </section>
-          )}
-        </div>
-
-        <Preview form={doc.draft} dirty={changes.length > 0} />
+        {view === "texts" && <Texts doc={doc} docId={docId} by={by} />}
+        {view === "upload" && <UploadBox key={docId} docId={docId} doc={doc} by={by} />}
+        {view === "log" && (
+          <History
+            entries={mine}
+            liveVersion={doc.liveVersion}
+            mayPublish={mayPublish}
+            onRevert={(entry) => setAsk({ mode: "revert", entry })}
+          />
+        )}
       </div>
 
-      {/* ── 기록 (ADM-14-3) ── */}
-      <div id="ADM-14-3" className="mt-6 scroll-mt-20">
-        <TableCard
-          title={`변경 기록 ${mine.length}건`}
-          caption="발행·되돌리기·파일 올리기가 남습니다. 발행 건은 그때 내보낸 판 전체를 함께 보관해, 언제든 그 판으로 되돌릴 수 있습니다."
-        >
-          {mine.length === 0 ? (
-            <p className={`${a.bodyText} px-5 py-8`}>아직 이 설문을 고친 기록이 없습니다.</p>
-          ) : (
-            <table className={a.table}>
-              <thead>
-                <tr>
-                  <th className={a.th}>시각</th>
-                  <th className={a.th}>사람</th>
-                  <th className={a.th}>한 일</th>
-                  <th className={a.th}>판</th>
-                  <th className={a.th}>사유</th>
-                  <th className={a.th}>달라진 것</th>
-                  <th className={a.th}>할 일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mine.map((e) => (
-                  <tr key={e.id}>
-                    <td className={`${a.td} whitespace-nowrap`}>{e.at}</td>
-                    <td className={a.tdStrongTight}>{e.by}</td>
-                    <td className={a.td}>
-                      <span
-                        className={`${a.badge} ${
-                          e.action === "publish"
-                            ? "text-emerald-700"
-                            : e.action === "revert"
-                              ? "text-amber-700"
-                              : "text-exam-muted"
-                        }`}
-                      >
-                        {actionLabel[e.action]}
-                      </span>
-                    </td>
-                    <td className={a.tdTight}>{e.version ? `v${e.version}` : "초안"}</td>
-                    <td className={`${a.td} min-w-[14rem]`}>{e.reason}</td>
-                    <td className={`${a.td} min-w-[18rem]`}>
-                      {e.lines.length === 0 ? (
-                        "—"
-                      ) : (
-                        <ul className="space-y-0.5">
-                          {e.lines.map((line, n) => (
-                            <li key={`${e.id}-${n}`}>· {line}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </td>
-                    <td className={a.td}>
-                      {e.snapshot && e.version !== doc.liveVersion ? (
-                        <button
-                          type="button"
-                          onClick={() => setAsk({ mode: "revert", entry: e })}
-                          disabled={!mayPublish}
-                          className={mayPublish ? a.btnRowGhost : `${a.btnRowGhost} opacity-50`}
-                        >
-                          이 판으로 되돌리기
-                        </button>
-                      ) : e.version === doc.liveVersion ? (
-                        <span className={a.hint}>지금 나가는 판</span>
-                      ) : (
-                        <span className={a.hint}>—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </TableCard>
-      </div>
+      {/* 판 정보는 맨 아래다. 매번 읽을 값이 아니라 「지금 무엇이 나가고 있더라」를
+          한 번 확인하는 값이라, 일하는 자리 위를 차지할 까닭이 없다. */}
+      <p className={`${a.hint} mt-8 border-t border-exam-line pt-4`}>
+        {doc.code} · {bandLabel} · 지금 나가는 판{" "}
+        <b className="text-exam-text">v{doc.liveVersion}</b> · 발행 {doc.publishedAt} ·{" "}
+        {doc.publishedBy}
+        {changes.length > 0 && (
+          <b className="ml-2 font-bold text-amber-700">발행하지 않은 수정 {changes.length}곳</b>
+        )}
+      </p>
 
       {ask?.mode === "publish" && (
         <ReasonBox
-          title={`v${doc.liveVersion + 1}로 발행합니다`}
-          lead={`누르는 즉시 학부모·교사 화면이 새 판으로 바뀝니다. 이미 답을 쓰고 있던 분은 다음에 열 때부터 새 문항을 봅니다. ${by} 님의 이름과 사유가 기록과 감사 로그에 남습니다.`}
+          title={`${bandLabel} ${doc.live.who} 설문을 v${doc.liveVersion + 1}로 발행합니다`}
+          lead={`누르는 즉시 이 학년대 응답자의 화면이 새 판으로 바뀝니다. 다른 학년대는 그대로입니다. ${by} 님의 이름과 사유가 기록과 감사 로그에 남습니다.`}
           lines={changes}
           warnings={warnings}
           confirmLabel="기록을 남기고 발행"
           onClose={() => setAsk(null)}
           onConfirm={(reason) => {
-            const entry = publishDraft(key, by, reason);
-            recordAction(`${doc.live.title} v${entry.version}`, "설문 발행", reason, by);
+            const entry = publishDraft(docId, by, reason);
+            recordAction(`${bandLabel} ${doc.live.title} v${entry.version}`, "설문 발행", reason, by);
             setAsk(null);
           }}
         />
@@ -308,15 +259,15 @@ export default function SurveyEditor() {
           lines={ask.entry.snapshot ? diffForms(doc.live, ask.entry.snapshot) : []}
           warnings={
             answered > 0
-              ? [`이미 v${doc.liveVersion}로 들어온 응답이 있습니다. 되돌린 뒤의 응답은 다른 판으로 집계됩니다.`]
+              ? [`이미 이 갈래로 들어온 응답이 ${answered}건 있습니다. 되돌린 뒤의 응답은 다른 판으로 집계됩니다.`]
               : []
           }
           confirmLabel="기록을 남기고 되돌리기"
           onClose={() => setAsk(null)}
           onConfirm={(reason) => {
-            const entry = revertTo(key, ask.entry.id, by, reason);
+            const entry = revertTo(docId, ask.entry.id, by, reason);
             if (entry) {
-              recordAction(`${doc.live.title} v${entry.version}`, "설문 되돌리기", reason, by);
+              recordAction(`${bandLabel} ${doc.live.title} v${entry.version}`, "설문 되돌리기", reason, by);
             }
             setAsk(null);
           }}
@@ -326,78 +277,84 @@ export default function SurveyEditor() {
   );
 }
 
-/* ───────────────────────── 초안 편집 ───────────────────────── */
+/**
+ * 열두 벌 중 한 벌을 고르는 상자.
+ *
+ * 단추로 늘어놓으면 갈래 셋 + 학년대 넷으로 일곱 개가 두 줄을 차지하고, 아래
+ * 구역 탭까지 세 줄이 포개진다. 고르는 일은 하루에 몇 번뿐이라 상자로 접어 둔다.
+ */
+function Choose({
+  label,
+  value,
+  options,
+  onChange,
+  width,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+  width: string;
+}) {
+  return (
+    <Select items={options} value={value} onValueChange={(v) => onChange(String(v ?? value))}>
+      <SelectTrigger aria-label={label} className={`${fieldShape} ${width} bg-white`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value} className="adm-field">
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
-function Draft({ doc, surveyKey, by }: { doc: SurveyDoc; surveyKey: SurveyKey; by: string }) {
-  const d = doc.draft;
-  const set = (patch: Partial<SurveyForm>) => patchDraft(surveyKey, patch, by);
+/* ───────────────────────── 문항 ───────────────────────── */
+
+function Items({
+  doc,
+  docId,
+  by,
+  mayEdit,
+}: {
+  doc: SurveyDoc;
+  docId: SurveyDocId;
+  by: string;
+  mayEdit: boolean;
+}) {
+  const [askCopy, setAskCopy] = useState(false);
+  const [copied, setCopied] = useState<number | null>(null);
+  const items = doc.draft.items;
 
   return (
-    <section id="ADM-14-1" className={`${a.panel} scroll-mt-20 p-6`}>
-      <h2 className={a.cardTitle}>초안 고치기</h2>
-      <p className={`${a.hint} mt-1.5`}>
-        여기서 고친 것은 곧바로 저장되지만, 발행 전까지는 응답자에게 나가지 않습니다.
-      </p>
+    <section>
+      <p className={`${a.hint} text-right`}>최대 {MAX_ITEMS}개 · 5점 척도로 답합니다</p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Field label="제목" value={d.title} onChange={(v) => set({ title: v })} />
-        <Field
-          label="응답자"
-          hint="화면에 「응답자 어머니」처럼 적힙니다"
-          value={d.who}
-          onChange={(v) => set({ who: v })}
-        />
-      </div>
-
-      <div className="mt-4">
-        <Field
-          label="안내문"
-          hint="설문 첫머리에 나가는 설명입니다"
-          value={d.desc}
-          onChange={(v) => set({ desc: v })}
-          rows={3}
-        />
-      </div>
-
-      <div className="mt-4">
-        <Field
-          label="고지 문구"
-          hint="응답이 어디에 쓰이는지 알리는 줄입니다. 개인정보 안내와 어긋나지 않게 적어 주세요."
-          value={d.note}
-          onChange={(v) => set({ note: v })}
-          rows={3}
-        />
-      </div>
-
-      {/* ── 문항 ── */}
-      <div className="mt-7 border-t border-exam-line pt-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className={a.label}>
-            문항 <span className="tabular-nums">{d.items.length}</span>개
-          </p>
-          <p className={a.hint}>최대 {MAX_ITEMS}개 · 5점 척도로 답합니다</p>
-        </div>
-
-        <ol className="mt-3 space-y-2.5">
-          {d.items.map((item, n) => (
-            <li key={item.id} className="rounded-md border border-exam-line p-3.5">
-              <div className="flex items-start gap-3">
-                <span className="mt-2.5 w-6 shrink-0 text-right adm-t-md font-bold tabular-nums text-exam-muted">
-                  {n + 1}
-                </span>
-                <textarea
-                  rows={2}
-                  value={item.text}
-                  onChange={(e) => patchDraftItem(surveyKey, item.id, e.target.value, by)}
-                  placeholder="예) 아이는 관심 있는 주제를 만나면 시키지 않아도 오래 파고듭니다."
-                  className={`${a.input} resize-y`}
-                  aria-label={`${n + 1}번 문항`}
-                />
-              </div>
+      <ol className="mt-2 space-y-2.5">
+        {items.map((item, n) => (
+          <li key={item.id} className="rounded-md border border-exam-line bg-white p-3.5">
+            <div className="flex items-start gap-3">
+              <span className="mt-2.5 w-6 shrink-0 text-right adm-t-md font-bold tabular-nums text-exam-muted">
+                {n + 1}
+              </span>
+              <textarea
+                rows={2}
+                value={item.text}
+                disabled={!mayEdit}
+                onChange={(e) => patchDraftItem(docId, item.id, e.target.value, by)}
+                placeholder="예) 아이는 관심 있는 주제를 만나면 시키지 않아도 오래 파고듭니다."
+                className={`${a.input} resize-y`}
+                aria-label={`${n + 1}번 문항`}
+              />
+            </div>
+            {mayEdit && (
               <div className="mt-2 flex flex-wrap gap-2 pl-9">
                 <button
                   type="button"
-                  onClick={() => moveDraftItem(surveyKey, item.id, -1, by)}
+                  onClick={() => moveDraftItem(docId, item.id, -1, by)}
                   disabled={n === 0}
                   className={n === 0 ? `${a.btnRowGhost} opacity-40` : a.btnRowGhost}
                 >
@@ -405,61 +362,113 @@ function Draft({ doc, surveyKey, by }: { doc: SurveyDoc; surveyKey: SurveyKey; b
                 </button>
                 <button
                   type="button"
-                  onClick={() => moveDraftItem(surveyKey, item.id, 1, by)}
-                  disabled={n === d.items.length - 1}
-                  className={
-                    n === d.items.length - 1 ? `${a.btnRowGhost} opacity-40` : a.btnRowGhost
-                  }
+                  onClick={() => moveDraftItem(docId, item.id, 1, by)}
+                  disabled={n === items.length - 1}
+                  className={n === items.length - 1 ? `${a.btnRowGhost} opacity-40` : a.btnRowGhost}
                 >
                   아래로
                 </button>
                 <button
                   type="button"
-                  onClick={() => removeDraftItem(surveyKey, item.id, by)}
+                  onClick={() => removeDraftItem(docId, item.id, by)}
                   className={`${a.btnRowGhost} text-rose-700`}
                 >
                   삭제
                 </button>
               </div>
-            </li>
-          ))}
-        </ol>
+            )}
+          </li>
+        ))}
+      </ol>
 
-        {d.items.length === 0 && (
-          <p className={`${a.bodyText} py-6 text-center`}>문항이 없습니다. 아래에서 더하세요.</p>
-        )}
+      {items.length === 0 && (
+        <p className={`${a.bodyText} py-6 text-center`}>문항이 없습니다. 아래에서 더하세요.</p>
+      )}
 
-        <button
-          type="button"
-          onClick={() => addDraftItem(surveyKey, by)}
-          disabled={d.items.length >= MAX_ITEMS}
-          className={`${d.items.length >= MAX_ITEMS ? a.btnDisabled : a.btnGhost} mt-3`}
-        >
-          + 문항 추가
-        </button>
-      </div>
+      {mayEdit && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => addDraftItem(docId, by)}
+            disabled={items.length >= MAX_ITEMS}
+            className={items.length >= MAX_ITEMS ? a.btnDisabled : a.btnGhost}
+          >
+            + 문항 추가
+          </button>
 
-      {/* ── 파일로 올리기 ── */}
-      <UploadBox surveyKey={surveyKey} doc={doc} by={by} />
+          {askCopy ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCopied(copyItemsToOtherBands(docId, by));
+                setAskCopy(false);
+              }}
+              className={a.btnDanger}
+            >
+              다른 세 학년대의 문항을 정말 이걸로 덮어쓰기
+            </button>
+          ) : (
+            <button type="button" onClick={() => setAskCopy(true)} className={a.btnGhost}>
+              다른 학년대에도 이 문항 쓰기
+            </button>
+          )}
+        </div>
+      )}
 
-      {/* ── 자유서술 칸 ── */}
-      <div className="mt-7 border-t border-exam-line pt-5">
-        <p className={a.label}>자유서술 칸</p>
-        <p className={`${a.hint} mt-1`}>
-          점수로 세지 않는 칸입니다. 리포트의 「발견의 순간」에 표현 그대로 인용됩니다.
+      {askCopy && (
+        <p className="mt-2 adm-t-sm font-bold text-rose-700">
+          다른 세 학년대의 초안 문항이 사라지고 이 {items.length}개로 바뀝니다. 나가는 판은 그대로라,
+          학년대마다 따로 발행해야 응답자에게 나갑니다.
         </p>
+      )}
+
+      {copied !== null && (
+        <div className="mt-3">
+          <Callout tone="good">
+            다른 학년대 {copied}곳의 초안을 이 문항으로 맞췄습니다. 학년대를 골라 확인한 뒤 각각
+            발행하세요.
+          </Callout>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ───────────────────────── 안내 문구 ───────────────────────── */
+
+function Texts({ doc, docId, by }: { doc: SurveyDoc; docId: SurveyDocId; by: string }) {
+  const d = doc.draft;
+  const set = (patch: Partial<SurveyForm>) => patchDraft(docId, patch, by);
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="제목" value={d.title} onChange={(v) => set({ title: v })} />
+        <Field label="응답자" value={d.who} onChange={(v) => set({ who: v })} />
+      </div>
+      <Field label="안내문" value={d.desc} onChange={(v) => set({ desc: v })} rows={3} />
+      <Field
+        label="고지 문구"
+        hint="개인정보 안내와 어긋나지 않게 적어 주세요"
+        value={d.note}
+        onChange={(v) => set({ note: v })}
+        rows={3}
+      />
+      <div className="border-t border-exam-line pt-4">
+        <p className={a.label}>자유서술 칸</p>
+        <p className={`${a.hint} mt-1`}>점수로 세지 않고 리포트에 표현 그대로 인용됩니다.</p>
         <div className="mt-3 grid gap-4">
           <Field label="이름표" value={d.openLabel} onChange={(v) => set({ openLabel: v })} />
           <Field label="도움말" value={d.openHint} onChange={(v) => set({ openHint: v })} rows={2} />
           <Field
-            label="예시글 (빈 칸에 흐리게 뜨는 글)"
+            label="예시글"
             value={d.placeholder}
             onChange={(v) => set({ placeholder: v })}
             rows={2}
           />
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -499,13 +508,13 @@ function Field({
   );
 }
 
+/* ───────────────────────── 파일 올리기 ───────────────────────── */
+
 /**
- * 파일로 문항 올리기.
- *
  * 올리자마자 초안에 밀어 넣지 않는다. 무엇이 읽혔는지 먼저 보여 주고, 붙일지 바꿀지를
  * 그다음에 고르게 한다. 「바꾸기」는 지금 문항을 통째로 버리는 일이라 한 번 더 묻는다.
  */
-function UploadBox({ surveyKey, doc, by }: { surveyKey: SurveyKey; doc: SurveyDoc; by: string }) {
+function UploadBox({ docId, doc, by }: { docId: SurveyDocId; doc: SurveyDoc; by: string }) {
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [got, setGot] = useState<{ name: string; parsed: ParsedUpload } | null>(null);
@@ -531,7 +540,7 @@ function UploadBox({ surveyKey, doc, by }: { surveyKey: SurveyKey; doc: SurveyDo
 
   const put = (mode: "append" | "replace") => {
     if (!got) return;
-    uploadDraftItems(surveyKey, got.parsed.items, mode, got.name, by);
+    uploadDraftItems(docId, got.parsed.items, mode, got.name, by);
     setGot(null);
     setAskReplace(false);
   };
@@ -539,12 +548,11 @@ function UploadBox({ surveyKey, doc, by }: { surveyKey: SurveyKey; doc: SurveyDo
   const over30 = got ? got.parsed.items.length + doc.draft.items.length > MAX_ITEMS : false;
 
   return (
-    <div className="mt-7 border-t border-exam-line pt-5">
-      <p className={a.label}>파일로 문항 올리기</p>
-      <p className={`${a.hint} mt-1 leading-relaxed`}>
+    <div>
+      <p className={`${a.hint} leading-relaxed`}>
         <b className="font-bold text-exam-text">한 줄에 한 문항</b>으로 읽습니다. 줄 앞의 「1.」
-        「-」 같은 번호는 떼어 냅니다. 쉼표로 칸을 나누지 않으므로 문항 안의 쉼표는 그대로
-        남습니다. CSV·TXT·TSV·JSON, {Math.round(MAX_UPLOAD_BYTES / 1024)}KB까지.
+        「-」 같은 번호는 떼어 냅니다. CSV·TXT·TSV·JSON,{" "}
+        {Math.round(MAX_UPLOAD_BYTES / 1024)}KB까지. 지금 고르고 있는 학년대의 초안에만 들어갑니다.
       </p>
 
       <div
@@ -633,91 +641,103 @@ function UploadBox({ surveyKey, doc, by }: { surveyKey: SurveyKey; doc: SurveyDo
               취소
             </button>
           </div>
-          {askReplace && (
-            <p className="mt-2 adm-t-sm font-bold text-rose-700">
-              지금 초안의 문항 {doc.draft.items.length}개가 사라집니다. 되돌릴 수 없습니다.
-            </p>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-/* ───────────────────────── 미리보기 ───────────────────────── */
+/* ───────────────────────── 변경 기록 ───────────────────────── */
 
-const scale = ["전혀 아니다", "아니다", "보통이다", "그렇다", "매우 그렇다"];
+function History({
+  entries,
+  liveVersion,
+  mayPublish,
+  onRevert,
+}: {
+  entries: SurveyLogEntry[];
+  liveVersion: number;
+  mayPublish: boolean;
+  onRevert: (entry: SurveyLogEntry) => void;
+}) {
+  if (entries.length === 0) {
+    return <p className={a.bodyText}>아직 이 설문을 고친 기록이 없습니다.</p>;
+  }
 
-/** 응답자가 보게 될 화면. 누를 수 없는 그림이라 입력 요소를 쓰지 않는다. */
-function Preview({ form, dirty }: { form: SurveyForm; dirty: boolean }) {
   return (
-    <section className={`${a.panel} p-5 xl:sticky xl:top-6 xl:self-start`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className={a.cardTitle}>미리보기</h2>
-        <span className={`${a.badge} ${dirty ? "text-amber-700" : "text-emerald-700"}`}>
-          {dirty ? "발행 전 초안" : "지금 나가는 판"}
-        </span>
-      </div>
-      <p className={`${a.hint} mt-1`}>학부모·교사에게 이렇게 보입니다.</p>
-
-      <div className="mt-4 max-h-[38rem] overflow-y-auto rounded-md border border-exam-line bg-exam-panel p-4">
-        <p className="adm-t-md font-black text-exam-text">{form.title}</p>
-        <p className={`${a.hint} mt-1`}>응답자 {form.who}</p>
-        <p className="mt-2 adm-t-sm leading-relaxed text-exam-muted">{form.desc}</p>
-        <p className="mt-3 rounded border border-exam-line bg-white px-3 py-2.5 adm-t-sm leading-relaxed text-exam-muted">
-          {form.note}
-        </p>
-
-        <ol className="mt-3 space-y-2">
-          {form.items.map((item, n) => (
-            <li key={item.id} className="rounded border border-exam-line bg-white p-3">
-              <p className="adm-t-sm font-medium leading-relaxed text-exam-text">
-                <span className="mr-1.5 font-bold tabular-nums text-exam-muted">{n + 1}.</span>
-                {item.text || <span className="text-rose-700">(빈 문항)</span>}
-              </p>
-              <div className="mt-2 grid grid-cols-5 gap-1" aria-hidden>
-                {scale.map((s, v) => (
-                  <span
-                    key={s}
-                    className="flex flex-col items-center gap-1 rounded border border-exam-line px-1 py-1.5 text-center adm-t-xs leading-tight text-exam-muted"
+    <TableCard
+      title={`판 ${entries.length}건`}
+      caption="발행 건은 그때 내보낸 판 전체를 함께 보관해, 언제든 그 판으로 되돌릴 수 있습니다."
+    >
+      <table className={a.table}>
+        <thead>
+          <tr>
+            <th className={a.th}>시각</th>
+            <th className={a.th}>사람</th>
+            <th className={a.th}>한 일</th>
+            <th className={a.th}>판</th>
+            <th className={a.th}>사유</th>
+            <th className={a.th}>달라진 것</th>
+            <th className={a.th}>할 일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((e) => (
+            <tr key={e.id}>
+              <td className={a.tdTight}>{e.at}</td>
+              <td className={a.tdStrongTight}>{e.by}</td>
+              <td className={a.td}>
+                <span
+                  className={`${a.badge} ${
+                    e.action === "publish"
+                      ? "text-emerald-700"
+                      : e.action === "revert"
+                        ? "text-amber-700"
+                        : "text-exam-muted"
+                  }`}
+                >
+                  {actionLabel[e.action]}
+                </span>
+              </td>
+              <td className={a.tdTight}>{e.version ? `v${e.version}` : "초안"}</td>
+              <td className={`${a.td} min-w-[14rem]`}>{e.reason}</td>
+              <td className={`${a.td} min-w-[18rem]`}>
+                {e.lines.length === 0 ? (
+                  "—"
+                ) : (
+                  <ul className="space-y-0.5">
+                    {e.lines.map((line, n) => (
+                      <li key={`${e.id}-${n}`}>· {line}</li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+              <td className={a.td}>
+                {e.snapshot && e.version !== liveVersion ? (
+                  <button
+                    type="button"
+                    onClick={() => onRevert(e)}
+                    disabled={!mayPublish}
+                    className={mayPublish ? a.btnRowGhost : `${a.btnRowGhost} opacity-50`}
                   >
-                    <span className="flex h-4 w-4 items-center justify-center rounded border border-exam-line tabular-nums">
-                      {v + 1}
-                    </span>
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </li>
+                    이 판으로 되돌리기
+                  </button>
+                ) : e.version === liveVersion ? (
+                  <span className={a.hint}>지금 나가는 판</span>
+                ) : (
+                  <span className={a.hint}>—</span>
+                )}
+              </td>
+            </tr>
           ))}
-        </ol>
-
-        <div className="mt-2 rounded border border-exam-line bg-white p-3">
-          <p className="adm-t-sm font-bold text-exam-text">
-            {form.openLabel}
-            <span className="ml-1.5 rounded border border-exam-line px-1.5 py-0.5 adm-t-xs font-medium text-exam-muted">
-              선택
-            </span>
-          </p>
-          <p className={`${a.hint} mt-1`}>{form.openHint}</p>
-          <p className="mt-2 rounded border border-exam-line px-3 py-3 adm-t-sm text-exam-muted">
-            {form.placeholder}
-          </p>
-        </div>
-      </div>
-    </section>
+        </tbody>
+      </table>
+    </TableCard>
   );
 }
 
 /* ───────────────────────── 사유 받기 ───────────────────────── */
 
-/**
- * 발행·되돌리기 전에 사유를 받는다.
- *
- * 이 콘솔은 개인정보를 열 때도 사유를 받는다. 설문은 아이 한 명이 아니라 그 회차
- * 전체가 답하는 도구라, 왜 바꿨는지가 남지 않으면 뒤에 자료를 읽는 사람이 판 사이의
- * 차이를 해석할 수 없다.
- */
 function ReasonBox({
   title,
   lead,
@@ -797,9 +817,6 @@ function ReasonBox({
           <label htmlFor="survey-reason" className={a.label}>
             왜 바꾸는지 적어 주세요
           </label>
-          <p className={`${a.hint} mt-1`}>
-            예: 3~4학년 보호자가 「파고듭니다」를 어려워한다는 문의가 반복되어 문장을 고침
-          </p>
           <textarea
             id="survey-reason"
             ref={boxRef}

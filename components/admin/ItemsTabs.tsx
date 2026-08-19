@@ -13,15 +13,16 @@ import { usePathname } from "next/navigation";
  *
  * ── 갈래 줄에서 지키는 것 둘 ──
  *
- * 1) **콘솔의 다른 갈래 줄과 같은 모양을 쓴다.** 사용자 갈래(학부모·학생·교사·기관),
- *    검수 갈래(대기·처리됨), 은행 갈래(은행·전체 문항)가 모두 이 모양이다. 여기만
- *    설명이 딸린 카드로 세웠더니 같은 콘솔 안에서 저 혼자 다른 화면이 되었다.
- *    고른 것을 색 하나로만 알리지 않는 것도 그대로 따른다 — 면·글자 굵기가 함께 바뀐다.
+ * 1) **밑줄 탭으로 세운다.** 이 줄은 「어느 화면으로 갈까」를 묻고, 그 아래 목록의
+ *    은행/전체 문항 단추는 「고른 화면 안에서 무엇을 볼까」를 묻는다. 둘 다 알약
+ *    단추면 두 줄이 한 덩어리로 읽혀 어느 쪽이 상위인지 알 수 없다. 바깥 갈래는
+ *    가볍게(밑줄), 안쪽 고르기는 그대로(알약) 둔다 — 설문 원본과 같은 규칙이다.
+ *    색 하나로만 알리지 않는 것은 그대로다: 밑줄·글자 굵기·색이 함께 바뀐다.
  *
  * 2) **줄의 자리가 화면마다 같아야 한다.** 갈래를 눌렀는데 갈래 줄 자체가 위아래로
  *    움직이면, 다음 갈래를 누르려고 눈과 손이 매번 다시 자리를 찾는다. 그래서 세
- *    화면의 머리글(제목·설명·버튼)을 똑같이 두고, 화면마다 다른 설명은 이 줄
- *    **아래**에 적는다. 움직여도 되는 것은 갈래 줄 아래쪽뿐이다.
+ *    화면의 머리글을 똑같이 두고, 화면마다 다른 설명은 이 줄 **아래**에 적는다.
+ *    움직여도 되는 것은 갈래 줄 아래쪽뿐이다.
  */
 const tabs = [
   { href: "/admin/items", label: "문항 목록" },
@@ -33,7 +34,7 @@ export default function ItemsTabs() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="문항 은행 구역" className="mb-6 flex flex-wrap gap-2">
+    <nav aria-label="문항 은행 구역" className="mb-6 flex flex-wrap border-b border-exam-line">
       {tabs.map((t) => {
         /* 문항 상세(/admin/items/IT-2601)도 목록 쪽이다 — 다른 두 주소가 아니면 목록 */
         const here =
@@ -45,10 +46,10 @@ export default function ItemsTabs() {
             key={t.href}
             href={t.href}
             aria-current={here ? "page" : undefined}
-            className={`inline-flex min-h-[3rem] items-center rounded-md border px-5 adm-t-md transition-colors ${
+            className={`-mb-px inline-flex min-h-[2.75rem] items-center border-b-2 px-4 py-2.5 adm-t-md transition-colors ${
               here
-                ? "border-brand-900 bg-brand-900 font-black text-white"
-                : "border-exam-line bg-white font-bold text-exam-text hover:bg-exam-raised"
+                ? "border-brand-900 font-black text-brand-800"
+                : "border-transparent font-bold text-exam-muted hover:text-exam-text"
             }`}
           >
             {t.label}

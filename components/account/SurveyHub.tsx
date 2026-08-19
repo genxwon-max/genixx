@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { useExamStore, useHydrated, surveyKeys } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
-import { useSurveyDocs } from "@/lib/surveyStore";
+import { docIdOf, useSurveyDocs } from "@/lib/surveyStore";
+import { bandFromGrade } from "@/lib/surveyBands";
 import { surveyWindow } from "@/lib/popup";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
@@ -89,7 +90,8 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
                       {surveyKeys.map((key) => {
-                        const cfg = docs[key].live;
+                        /* 설문은 학년대마다 한 벌씩이라, 이 아이의 학년으로 고른다 */
+                        const cfg = docs[docIdOf(key, bandFromGrade(student.grade))].live;
                         const submitted = records[student.id]?.surveys?.[key] === "done";
                         return (
                           <button
