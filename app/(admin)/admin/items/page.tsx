@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Foldable, PageHead } from "@/components/admin/Parts";
 import ItemBank from "@/components/admin/ItemBank";
 import ItemsTabs from "@/components/admin/ItemsTabs";
@@ -29,24 +28,17 @@ const flow = [
  *
  * 문항 목록을 첫 화면으로 둔 것은 여기 오는 열에 아홉이 문항을 찾으러 오기 때문이다.
  *
- * ⚠ 세 화면의 머리글(제목·설명·버튼)은 **글자까지 똑같아야 한다.** 갈래를 눌렀는데
- *   갈래 줄이 위아래로 움직이면 다음 갈래를 누르려고 눈과 손이 매번 자리를 다시
- *   찾는다. 화면마다 다른 설명은 갈래 줄 아래에 적는다.
+ * ⚠ 세 화면의 머리글은 **제목 하나로 똑같이 둔다.** 갈래를 눌렀는데 갈래 줄이
+ *   위아래로 움직이면 다음 갈래를 누르려고 눈과 손이 매번 자리를 다시 찾는다.
+ *   화면마다 다른 설명은 갈래 줄 아래에 적는다.
  */
 export default function ItemsPage() {
   return (
     <>
-      <PageHead
-        title="문항 은행"
-        lead="검수를 지나 확정된 문항이 모이는 자리입니다. 만들고 고치는 일은 출제 워크벤치에서 합니다."
-        action={
-          /* 만드는 길은 하나여야 한다. 은행에도 만들기 버튼을 세워 두면 두 갈래가
-             있는 줄 알게 되므로, 여기서는 그 자리로 보내기만 한다. */
-          <Link href="/admin/authoring" className={a.btnPrimary}>
-            출제 워크벤치에서 새로 만들기 →
-          </Link>
-        }
-      />
+      {/* 제목만 둔다. 여기는 보는 자리라 머리글에 할 일이 없다 — 만드는 길은
+          출제 워크벤치 하나이고, 그 길은 왼쪽 메뉴에 늘 서 있다. 셋이 같은 머리글을
+          쓰므로 갈래를 눌러도 갈래 줄이 움직이지 않는다. */}
+      <PageHead title="문항 은행" />
 
       <PermissionGate need="item.review">
         <ItemsTabs />
