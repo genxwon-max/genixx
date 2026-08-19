@@ -12,17 +12,39 @@ import * as a from "./ui";
 export function PageHead({
   title,
   lead,
+  beside,
   action,
 }: {
   title: string;
-  lead: string;
+  /** 없어도 된다 — 화면을 보면 아는 것을 굳이 적지 않는다 */
+  lead?: string;
+  /**
+   * 제목 바로 오른쪽에 붙는 것.
+   *
+   * 지금 무엇을 보고 있는지를 정하는 고르개 자리다(대시보드의 회차). 화면 오른쪽
+   * 끝으로 보내면 제목과 멀어져서, 저 숫자들이 어느 회차 것인지 눈으로 이어 붙이는
+   * 데 한 번 걸린다. 제목 옆에 조금 띄워 두면 「대시보드 — 3회차」로 한 번에 읽힌다.
+   *
+   * 버튼(action)과 자리를 나눠 쓴다. 버튼은 지금 화면에서 할 일이라 오른쪽 끝이고,
+   * 이쪽은 화면이 무엇을 보고 있는지라 제목 옆이다.
+   */
+  beside?: React.ReactNode;
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+    <div
+      className={`mb-7 flex flex-wrap justify-between gap-4 ${
+        /* 설명이 있으면 두 줄짜리 왼쪽 덩어리에 버튼을 위로 맞추고, 제목뿐이면
+           가운데로 맞춘다. 한 줄짜리 제목에 버튼만 위로 붙으면 버튼이 떠 보인다. */
+        lead ? "items-start" : "items-center"
+      }`}
+    >
       <div className="max-w-3xl">
-        <h1 className={a.pageTitle}>{title}</h1>
-        <p className={`${a.bodyText} mt-2`}>{lead}</p>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <h1 className={a.pageTitle}>{title}</h1>
+          {beside}
+        </div>
+        {lead && <p className={`${a.bodyText} mt-2`}>{lead}</p>}
       </div>
       {action && <div className="flex flex-wrap gap-2">{action}</div>}
     </div>
@@ -100,7 +122,67 @@ export type CountRow = {
   unit?: string;
   note?: string;
   href?: string;
+  /** 숫자에만 얹는 색. 색만으로 알리지 않으므로 note에 까닭을 함께 적는다. */
+  tone?: "good" | "warn";
 };
+
+/** inline로 세울 때 칸을 몇으로 나눌지 — 클래스 이름은 빌드 때 통째로 있어야 한다 */
+const inlineCols: Record<number, string> = {
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-4",
+};
+
+/**
+ * 건수를 한 줄에 나란히.
+ *
+ * 셋 이하이고 이름만으로 뜻이 통하는 숫자에 쓴다. 「승인된 문항 10건」처럼 이름이
+ * 곧 설명인 것에 「검사지에 바로 넣을 수 있습니다」를 덧붙이면, 읽을 것은 셋인데
+ * 화면은 여섯 줄을 쓴다. 설명이 있어야 뜻이 서는 숫자라면 이쪽이 아니라 아래
+ * CountRows를 쓴다 — 여기서는 note를 그리지 않는다.
+ */
+export function CountStrip({ rows }: { rows: CountRow[] }) {
+  return (
+    <ul
+      className={`grid grid-cols-1 divide-y divide-exam-line overflow-hidden rounded-lg border border-exam-line bg-white sm:divide-x sm:divide-y-0 ${
+        inlineCols[rows.length] ?? ""
+      }`}
+    >
+      {rows.map((r) => {
+        const inner = (
+          <>
+            <span className="adm-t-sm font-bold text-exam-text">{r.label}</span>
+            <span
+              className={`ml-auto adm-t-md font-bold tabular-nums ${
+                r.tone === "good"
+                  ? "text-emerald-700"
+                  : r.tone === "warn"
+                    ? "text-amber-700"
+                    : "text-exam-text"
+              }`}
+            >
+              {typeof r.value === "number" ? r.value.toLocaleString("ko-KR") : r.value}
+              {r.unit && <span className="ml-0.5 font-bold text-exam-muted">{r.unit}</span>}
+            </span>
+            {r.href && <span className="adm-t-sm font-bold text-brand-700">→</span>}
+          </>
+        );
+        const shape = "flex min-h-[3.25rem] flex-wrap items-baseline gap-x-2.5 px-4 py-3.5";
+        return (
+          <li key={r.label}>
+            {r.href ? (
+              <Link href={r.href} className={`${shape} transition-colors hover:bg-exam-raised`}>
+                {inner}
+              </Link>
+            ) : (
+              <div className={shape}>{inner}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 /**
  * 건수 줄.
@@ -108,6 +190,9 @@ export type CountRow = {
  * 숫자를 카드로 세우지 않는다. 카드는 한 칸에 하나씩만 담기고, 색으로 급한 것과 안 급한
  * 것을 나누기 시작하면 화면이 알록달록해지는데 정작 눈은 숫자를 세로로 훑지 못한다.
  * 한 줄에 하나씩 눕히고 숫자를 오른쪽 끝에 모으면 위에서 아래로 한 번에 읽힌다.
+ *
+ * 넷 이상이거나 이름만으로는 뜻이 안 서서 설명이 필요할 때 쓴다. 셋 이하이고 이름이
+ * 곧 설명이면 위의 CountStrip으로 한 줄에 나란히 세운다.
  */
 export function CountRows({ rows }: { rows: CountRow[] }) {
   return (
@@ -117,7 +202,15 @@ export function CountRows({ rows }: { rows: CountRow[] }) {
           <>
             <span className="adm-t-md font-bold text-exam-text">{r.label}</span>
             {r.note && <span className="adm-t-sm text-exam-muted">{r.note}</span>}
-            <span className="ml-auto adm-t-md font-bold tabular-nums text-exam-text">
+            <span
+              className={`ml-auto adm-t-md font-bold tabular-nums ${
+                r.tone === "good"
+                  ? "text-emerald-700"
+                  : r.tone === "warn"
+                    ? "text-amber-700"
+                    : "text-exam-text"
+              }`}
+            >
               {typeof r.value === "number" ? r.value.toLocaleString("ko-KR") : r.value}
               {r.unit && <span className="ml-0.5 font-bold text-exam-muted">{r.unit}</span>}
             </span>

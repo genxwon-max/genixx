@@ -22,7 +22,7 @@ import {
   typeCol,
   whenCol,
 } from "./itemColumns";
-import { CountRows } from "./Parts";
+import { CountStrip } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -223,27 +223,28 @@ export default function ItemBank() {
   return (
     <>
       {/* 건수는 목록과 같은 자료에서 센다. 위쪽 숫자만 따로 계산하면 언젠가 어긋나고,
-          어긋난 화면에서는 어느 쪽이 맞는지 아무도 답할 수 없다. */}
+          어긋난 화면에서는 어느 쪽이 맞는지 아무도 답할 수 없다.
+
+          설명은 붙이지 않는다. 「승인된 문항」에 「검사지에 바로 넣을 수 있습니다」를
+          덧붙이면 이름이 이미 한 말을 한 번 더 하는 것이고, 읽을 것 셋에 화면 여섯
+          줄이 든다. 셋을 한 줄에 나란히 세우면 한눈에 들어온다. */}
       <div className="mb-5">
-        <CountRows
+        <CountStrip
           rows={[
             {
               label: "승인된 문항",
               value: items.filter((i) => i.state === "approved").length,
               unit: "건",
-              note: "검사지에 바로 넣을 수 있습니다",
             },
             {
               label: "사용 중지",
               value: items.filter((i) => i.state === "retired").length,
               unit: "건",
-              note: "은행에 그대로 남습니다. 회차에는 넣지 않습니다",
             },
             {
-              label: "검수를 기다리는 문항",
+              label: "검수 대기",
               value: items.filter((i) => i.state === "submitted").length,
               unit: "건",
-              note: "아직 은행에 없습니다 — 검수 워크벤치에 있습니다",
               href: "/admin/review",
             },
           ]}

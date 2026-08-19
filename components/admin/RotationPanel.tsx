@@ -6,7 +6,7 @@ import { useForms, type ExamForm } from "@/lib/formStore";
 import { useItems } from "@/lib/itemStore";
 import { useSecurity } from "@/lib/securityStore";
 import { ItemCode, LevelText, RateText } from "./itemColumns";
-import { Callout, TableCard } from "./Parts";
+import { Callout, CountStrip, TableCard } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -63,20 +63,21 @@ export default function RotationPanel() {
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="확정되어 나간 검사지" value={`${live.length}건`} note="초안은 세지 않습니다" />
-        <Stat
-          label="한 번이라도 나간 문항"
-          value={`${used.length}건`}
-          note={`승인 문항 ${pool.length}건 중`}
-        />
-        <Stat
-          label="쉬어야 하는 문항"
-          value={`${resting.length}건`}
-          note={`앵커를 뺀 문항이 ${settings.maxRuns}회 연달아 나갔습니다`}
-          tone={resting.length > 0 ? "warn" : "good"}
-        />
-      </div>
+      {/* 숫자 셋을 한 줄에 나란히 세운다. 설명은 붙이지 않는다 — 「쉬어야 하는
+          문항」이 무엇인지는 바로 아래 경고와 표 설명이 말한다. 같은 말을 숫자 옆에
+          한 번 더 적으면 읽을 것 셋에 화면 아홉 줄이 든다. */}
+      <CountStrip
+        rows={[
+          { label: "나간 검사지", value: live.length, unit: "건" },
+          { label: `나간 문항 (승인 ${pool.length}건 중)`, value: used.length, unit: "건" },
+          {
+            label: `쉬어야 하는 문항 (${settings.maxRuns}회 연속)`,
+            value: resting.length,
+            unit: "건",
+            tone: resting.length > 0 ? "warn" : undefined,
+          },
+        ]}
+      />
 
       {resting.length > 0 && (
         <div className="mt-5">
@@ -145,23 +146,3 @@ export default function RotationPanel() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  note,
-  tone,
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: "good" | "warn";
-}) {
-  const color = tone === "good" ? "text-emerald-700" : tone === "warn" ? "text-amber-700" : "";
-  return (
-    <div className={`${a.panel} p-4`}>
-      <p className={a.label}>{label}</p>
-      <p className={`${a.metric} mt-1 ${color}`}>{value}</p>
-      <p className={`${a.hint} mt-0.5`}>{note}</p>
-    </div>
-  );
-}

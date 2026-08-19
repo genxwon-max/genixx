@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ANCHOR_RATIO } from "@/lib/blueprint";
 import { roundsOf, useForms } from "@/lib/formStore";
 import { useItems } from "@/lib/itemStore";
-import { Callout } from "./Parts";
+import { Callout, CountStrip } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -46,24 +46,23 @@ export default function AnchorStatus() {
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat
-          label="앵커 문항"
-          value={`${anchors.length}건`}
-          note={`확정 문항 ${confirmed.length}건 중`}
-        />
-        <Stat
-          label="지금 비율"
-          value={`${Math.round(ratio * 100)}%`}
-          note={`목표 ${Math.round(ANCHOR_RATIO * 100)}% · ${target}건`}
-          tone={ratio >= ANCHOR_RATIO ? "good" : "warn"}
-        />
-        <Stat
-          label="앵커로 삼을 수 있는 문항"
-          value={`${candidates.length}건`}
-          note="승인되었고 공개된 적 없는 문항"
-        />
-      </div>
+      {/* 설명 대신 이름 안에 기준을 적는다 — 「지금 비율 36%」만 있으면 그것이
+          넉넉한 것인지 모자란 것인지 알 수가 없다. */}
+      <CountStrip
+        rows={[
+          {
+            label: `앵커 문항 (확정 ${confirmed.length}건 중)`,
+            value: anchors.length,
+            unit: "건",
+          },
+          {
+            label: `지금 비율 (목표 ${Math.round(ANCHOR_RATIO * 100)}%)`,
+            value: `${Math.round(ratio * 100)}%`,
+            tone: ratio >= ANCHOR_RATIO ? "good" : "warn",
+          },
+          { label: "앵커로 삼을 수 있는 문항", value: candidates.length, unit: "건" },
+        ]}
+      />
 
       {ratio < ANCHOR_RATIO && (
         <div className="mt-5">
@@ -128,23 +127,3 @@ export default function AnchorStatus() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  note,
-  tone,
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: "good" | "warn";
-}) {
-  const color = tone === "good" ? "text-emerald-700" : tone === "warn" ? "text-rose-700" : "";
-  return (
-    <div className={`${a.panel} p-4`}>
-      <p className={a.label}>{label}</p>
-      <p className={`${a.metric} mt-1 ${color}`}>{value}</p>
-      <p className={`${a.hint} mt-0.5`}>{note}</p>
-    </div>
-  );
-}
