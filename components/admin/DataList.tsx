@@ -71,6 +71,15 @@ const hideClass = {
 /** 글자 배율을 따라 커지도록 높이를 열어 둔 shadcn 입력 */
 export const fieldShape = "h-auto min-h-[2.75rem] py-2 adm-field";
 
+/**
+ * 쪽 넘김 줄에 곁들이는 작은 상자 — 표 아래는 조회 조건만큼 무겁지 않아야 한다.
+ *
+ * size="sm"과 함께 쓴다. shadcn은 높이를 data-[size=…]:h-9로 박아 두는데, 그건
+ * h-auto보다 우선순위가 높아 그냥 얹으면 지지 않는다. 글자를 1.6배까지 키우는
+ * 콘솔이라 상자 높이는 반드시 열려 있어야 해서 여기서만 !로 못 박는다.
+ */
+const fieldShapeSm = "h-auto! min-h-[2.25rem] py-1 adm-field-sm";
+
 /** 조회 조건 줄에 놓는 선택 상자 — 화면마다 같은 모양으로 쓰기 위해 여기 둔다 */
 export function Picker({
   label,
@@ -216,36 +225,37 @@ export default function DataList<T>({
 
   return (
     <div>
-      {/* ── 조회 조건 ── */}
-      <div className={`${a.panel} mb-4 p-4`}>
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-exam-muted"
-            />
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => onQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label="목록 검색"
-              className={`${fieldShape} pl-10`}
-            />
-          </div>
-
-          {filters && <div className="flex flex-wrap gap-2">{filters}</div>}
-
-          {filtering && (
-            <Button
-              variant="outline"
-              onClick={onReset}
-              className={`${fieldShape} shrink-0 px-5 font-bold`}
-            >
-              조건 지우기
-            </Button>
-          )}
+      {/* ── 조회 조건 ──
+          판으로 한 번 더 감싸지 않는다. 검색 상자와 선택 상자는 저마다 테두리를
+          가진 입력이라, 그것을 다시 흰 판에 담으면 테두리가 두 겹이 되고 표 위에
+          같은 크기의 면이 두 장 선다. 조건 줄이 목록만큼 무거워 보이면 안 된다. */}
+      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-exam-muted"
+          />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label="목록 검색"
+            className={`${fieldShape} bg-white pl-10`}
+          />
         </div>
+
+        {filters && <div className="flex flex-wrap gap-2">{filters}</div>}
+
+        {filtering && (
+          <Button
+            variant="outline"
+            onClick={onReset}
+            className={`${fieldShape} shrink-0 bg-white px-5 font-bold`}
+          >
+            조건 지우기
+          </Button>
+        )}
       </div>
 
       <p className="mb-2.5 adm-t-sm text-exam-muted">
@@ -350,27 +360,35 @@ export default function DataList<T>({
 
       {/* ── 쪽 넘김 ──
           왼쪽에 지금 보고 있는 범위, 오른쪽에 쪽 번호와 페이지당 개수. 개수 상자를
-          오른쪽 끝에 두는 것은 목록을 다 훑고 「더 보자」고 마음먹는 자리가 거기라서다. */}
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          오른쪽 끝에 두는 것은 목록을 다 훑고 「더 보자」고 마음먹는 자리가 거기라서다.
+
+          여기는 글로만 적는다. 표 아래에 44px짜리 버튼이 여덟 개 늘어서면 그 줄이
+          화면의 마무리가 되어, 정작 읽어야 할 표보다 무거워진다. 쪽은 한 번 넘길 때
+          한 번 누르는 자리이지 목록을 보는 내내 눈에 걸릴 자리가 아니다. */}
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="adm-t-sm text-exam-muted">
           {rows.length > 0
             ? `${rows.length.toLocaleString("ko-KR")}${unit} 중 ${start + 1}–${start + shown.length}번째`
             : `0${unit}`}
         </p>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
           <Pager page={current} pages={pages} onGo={setPage} />
           <Select
             items={PAGE_SIZES.map((n) => ({ value: String(n), label: `${n}개씩` }))}
             value={String(size)}
             onValueChange={(v) => setSize(Number(v ?? 20))}
           >
-            <SelectTrigger aria-label="페이지당 개수" className={`${fieldShape} w-[7.5rem]`}>
+            <SelectTrigger
+              size="sm"
+              aria-label="페이지당 개수"
+              className={`${fieldShapeSm} w-[6.5rem] bg-white text-exam-muted`}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {PAGE_SIZES.map((n) => (
-                <SelectItem key={n} value={String(n)} className="adm-field">
+                <SelectItem key={n} value={String(n)} className="adm-field-sm">
                   {n}개씩
                 </SelectItem>
               ))}
@@ -382,56 +400,73 @@ export default function DataList<T>({
   );
 }
 
-/* ───────────────────────── 쪽 번호 ───────────────────────── */
+/* ───────────────────────── 쪽 번호 ─────────────────────────
+
+   버튼이 아니라 글자다. 「처음 이전 1 2 3 다음 마지막」을 상자로 세우지 않고
+   「‹ 1 2 3 4 ›」로만 적는다.
+
+   앞뒤 화살표는 남긴다. 쪽을 한 칸씩 넘기는 것이 가장 잦은 일인데, 번호만 있으면
+   매번 다음 숫자를 눈으로 찾아 겨눠야 한다. 화살표는 늘 같은 자리에 있다.
+
+   창이 잘린 끝에는 첫 쪽·마지막 쪽 번호를 적어 둔다(1 … 6 7 8 … 20). 목록의 양끝은
+   한 번에 가고 싶은 자리이고, 마지막 번호가 곧 몇 쪽짜리 목록인지를 말해 준다.
+
+   화살표는 글자 라벨이 없으므로 aria-label로 이름을 준다 — 이 콘솔은 아이콘만 있는
+   버튼을 두지 않는 것이 규칙이라, 눈에 보이는 글자를 줄인 만큼 읽어 주는 이름은
+   반드시 붙인다. 끝에 닿으면 누를 수 없는 회색 글자로 남겨 자리를 지킨다. */
 
 function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (p: number) => void }) {
+  /* 한 쪽뿐이면 적을 것이 없다. 「‹ 1 ›」도 읽어야 할 글이다. */
+  if (pages <= 1) return null;
+
   const from = Math.max(1, Math.min(page - 2, pages - 4));
   const to = Math.min(pages, from + 4);
-  const nums: number[] = [];
-  for (let i = from; i <= to; i += 1) nums.push(i);
 
-  const shape = "h-auto min-h-[2.75rem] min-w-[2.75rem] px-3 adm-field font-bold";
+  const items: (number | "gap")[] = [];
+  if (from > 1) {
+    items.push(1);
+    if (from > 2) items.push("gap");
+  }
+  for (let i = from; i <= to; i += 1) items.push(i);
+  if (to < pages) {
+    if (to < pages - 1) items.push("gap");
+    items.push(pages);
+  }
+
+  const cell = "rounded px-1.5 py-1 tabular-nums";
+  const link = `${cell} text-exam-muted underline-offset-4 transition-colors hover:text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600`;
+
+  /* 부품이 아니라 그리는 함수다 — 렌더마다 새 컴포넌트를 만들면 상태가 날아간다 */
+  const arrow = (target: number, label: string, mark: string) =>
+    target < 1 || target > pages ? (
+      <span aria-hidden className={`${cell} text-exam-line`}>
+        {mark}
+      </span>
+    ) : (
+      <button type="button" onClick={() => onGo(target)} aria-label={label} className={link}>
+        {mark}
+      </button>
+    );
 
   return (
-    <nav aria-label="쪽 넘김" className="flex flex-wrap items-center gap-1.5">
-      <Button variant="outline" onClick={() => onGo(1)} disabled={page === 1} className={shape}>
-        처음
-      </Button>
-      <Button
-        variant="outline"
-        onClick={() => onGo(page - 1)}
-        disabled={page === 1}
-        className={shape}
-      >
-        이전
-      </Button>
-      {nums.map((n) => (
-        <Button
-          key={n}
-          variant={n === page ? "default" : "outline"}
-          onClick={() => onGo(n)}
-          aria-current={n === page ? "page" : undefined}
-          className={shape}
-        >
-          {n}
-        </Button>
-      ))}
-      <Button
-        variant="outline"
-        onClick={() => onGo(page + 1)}
-        disabled={page === pages}
-        className={shape}
-      >
-        다음
-      </Button>
-      <Button
-        variant="outline"
-        onClick={() => onGo(pages)}
-        disabled={page === pages}
-        className={shape}
-      >
-        마지막
-      </Button>
+    <nav aria-label="쪽 넘김" className="flex flex-wrap items-center gap-x-1.5 adm-t-sm">
+      {arrow(page - 1, "이전 쪽", "‹")}
+      {items.map((it, i) =>
+        it === "gap" ? (
+          <span key={`gap-${i}`} aria-hidden className="px-0.5 text-exam-muted">
+            …
+          </span>
+        ) : it === page ? (
+          <span key={it} aria-current="page" className={`${cell} font-bold text-exam-text`}>
+            {it}
+          </span>
+        ) : (
+          <button key={it} type="button" onClick={() => onGo(it)} className={link}>
+            {it}
+          </button>
+        ),
+      )}
+      {arrow(page + 1, "다음 쪽", "›")}
     </nav>
   );
 }

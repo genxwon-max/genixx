@@ -332,6 +332,12 @@ body {
   line-height: 1.55;
 }
 
+/* 쪽 넘김 줄처럼 표에 곁들이는 자리의 작은 상자. 위와 같은 까닭으로 !important. */
+@utility adm-field-sm {
+  font-size: calc(0.8125rem * var(--adm-zoom, 1)) !important;
+  line-height: 1.5;
+}
+
 @utility adm-num {
   font-size: calc(1.75rem * var(--adm-zoom, 1));
   line-height: 1.2;

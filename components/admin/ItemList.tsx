@@ -22,7 +22,6 @@ import {
   linkBtn,
   stateCol,
   stemCol,
-  talentCol,
   typeCol,
   whenCol,
 } from "./itemColumns";
@@ -115,7 +114,10 @@ export default function ItemList() {
     codeCol((i) => `/admin/authoring/${i.id}`),
     stemCol,
     typeCol,
-    talentCol,
+    /* 재능 축은 여기 두지 않는다. 새 초안은 talent 기본값이 LANG으로 채워져 나가서,
+       아무도 고른 적 없는 「언어-기호 LANG-01」이 고른 것처럼 보인다. 초안이 사는
+       목록은 여기뿐이라 이 문제도 여기만의 것이다. 태그를 견주어 보는 일은 승인된
+       것만 모인 문항 은행에서 한다 — 거기에는 그대로 있다. */
     authorCol,
     whenCol("최근 변경"),
     /* 상태 아래에 「무엇이 남았나」를 적는다 — 목록에서 손볼 양이 바로 읽혀야 한다 */
@@ -129,7 +131,11 @@ export default function ItemList() {
     actionCol("할 일", (i) =>
       linkBtn(
         `/admin/authoring/${i.id}`,
-        i.state === "rejected" ? "고치기" : i.state === "draft" ? "이어서 쓰기" : "열어 보기",
+        i.state === "rejected"
+          ? "수정하기"
+          : i.state === "draft"
+            ? "이어서 작성하기"
+            : "상세보기",
         i.state === "rejected" || i.state === "draft",
       ),
     ),

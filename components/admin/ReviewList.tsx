@@ -184,7 +184,7 @@ export default function ReviewList() {
         <span className="flex flex-col items-start gap-1">
           {linkBtn(
             `/admin/review/${i.id}`,
-            tab === "queue" ? (draft ? "이어서 검수" : "검수하기") : "검수 기록 보기",
+            tab === "queue" ? (draft ? "이어서 검수하기" : "검수하기") : "상세보기",
             tab === "queue",
           )}
           {tab === "queue" && draft && (
