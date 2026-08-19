@@ -183,19 +183,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                           <ul className="mb-2 ml-4 border-l border-white/10 pl-3">
                             {item.children.map((c) => {
                               const href = subHref(item, c);
-                              const here = hash !== "" && href.endsWith(`#${hash}`);
+                              /* 제 주소를 가진 하위 화면은 주소로, 상위 화면 안의
+                                 구역인 것은 #으로 「지금 여기」를 가린다. 둘을 한
+                                 잣대로 보면 주소로 간 항목이 영영 표시되지 않는다. */
+                              const anchor = href.includes("#");
+                              const here = anchor
+                                ? hash !== "" && href.endsWith(`#${hash}`)
+                                : pathname === href && hash === "";
                               return (
                                 <li key={c.id}>
                                   <Link
                                     href={href}
                                     onClick={() => {
                                       setOpen(false);
-                                      setHash(c.id);
+                                      setHash(anchor ? c.id : "");
                                       /* 같은 주소를 다시 누르면 Next는 아무것도 하지
                                          않는다. 구역을 읽다가 위로 올라온 뒤 다시
                                          누른 사람에게는 그것이 고장으로 보이므로,
                                          이미 열려 있는 화면이면 직접 옮겨 준다. */
-                                      document.getElementById(c.id)?.scrollIntoView();
+                                      if (anchor) document.getElementById(c.id)?.scrollIntoView();
                                     }}
                                     aria-current={here ? "location" : undefined}
                                     title={c.desc}

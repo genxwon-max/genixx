@@ -13,7 +13,7 @@ import ExamGuard from "@/components/exam/ExamGuard";
 export default function ExamLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-full flex-col bg-exam-bg text-exam-text">
-      {/* 관리자 화면(ADM-04-4)에서 켜 둔 보호만 적용한다 */}
+      {/* 관리자 화면(ADM-05-3 응시 화면 보호)에서 켜 둔 것만 적용한다 */}
       <ExamGuard />
       {/* 구분선은 inset shadow로 그린다 — border를 쓰면 헤더가 65px이 되어 응시 화면에 1px 스크롤이 생긴다 */}
       <header className="sticky top-0 z-40 h-16 shrink-0 bg-exam-panel shadow-[inset_0_-1px_0_var(--color-exam-line)]">

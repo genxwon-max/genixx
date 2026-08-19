@@ -3,7 +3,10 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * 응시 보안 · 문항 회전 설정 (ADM-04-4).
+ * 응시 화면 보호 (ADM-05-3) · 문항 회전 한계 (ADM-04-4).
+ *
+ * 값 하나를 두 화면이 나눠 본다. 화면 보호 스위치는 응시 조건이라 회차 쪽에서
+ * 켜고 끄고, maxRuns는 문항 노출을 재는 값이라 문항 회전 화면에서 읽는다.
  *
  * 이 파일이 지키려는 태도가 하나 있다 — **막을 수 있는 것과 없는 것을 함께 적는다.**
  *
@@ -60,14 +63,17 @@ export const guardOf = (id: GuardId) => guards.find((g) => g.id === id)!;
    앵커는 회전에서 뺀다. 회차마다 똑같이 들어가야 등화의 기준이 되기 때문이다.
    나머지 문항은 연속으로 나간 횟수가 한계에 닿으면 한 회차 쉬게 한다. */
 
+/*
+ * 응시자별 배정 수(perStudent·shared)는 걷어냈다.
+ *
+ * 값을 저장하고 두 응시자가 겹치는 문항 수를 셈해 보여 주기만 했을 뿐, 실제 응시는
+ * 그 값을 읽지 않았다 — 응시 문항은 lib/examQuestions.ts에 고정으로 들어 있다.
+ * 화면에 있으면 되는 줄 알게 되므로 지웠다. 실제로 배정을 하게 될 때 다시 세운다.
+ */
 export type SecuritySettings = {
   guards: Record<GuardId, boolean>;
   /** 앵커가 아닌 문항이 연달아 나갈 수 있는 회차 수 */
   maxRuns: number;
-  /** 한 응시자에게 배정하는 문항 수 */
-  perStudent: number;
-  /** 그중 모든 응시자에게 똑같이 나가는 수(앵커 자리) */
-  shared: number;
   updatedAt: string;
   updatedBy: string;
 };
@@ -75,8 +81,6 @@ export type SecuritySettings = {
 export const DEFAULTS: SecuritySettings = {
   guards: { copy: true, contextmenu: true, watermark: false },
   maxRuns: 2,
-  perStudent: 10,
-  shared: 3,
   updatedAt: "2026-03-02 09:40",
   updatedBy: "초기 설정",
 };

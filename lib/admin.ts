@@ -284,26 +284,34 @@ export const adminMenu: AdminMenuGroup[] = [
         desc: "승인된 문항의 좌표·태그·버전과 검사지 조립",
         needs: ["item.write", "item.review"],
         badge: "items",
+        /* 하위 넷을 한 페이지에 쌓았더니 화면 열 장이 되었다. 하는 일이 달라
+           목록·조립·회전으로 주소를 갈랐고, 화면 보호는 응시 조건이라 회차 쪽
+           (ADM-05-3)으로 옮겼다. 앵커는 문항이 가진 값 하나라 회전 화면의 한
+           구역으로 남는다 — 지정·해제는 문항 상세에서 한다. */
         children: [
           {
             id: "ADM-04-1",
-            label: "문항 CRUD·버전",
+            label: "문항 목록·버전",
+            href: "/admin/items",
             desc: "좌표·태그·난이도·상태(초안/검수중/승인/폐기) 필터",
-          },
-          {
-            id: "ADM-04-2",
-            label: "앵커 문항",
-            desc: "미공개·장기 재사용 앵커군. 회차 간 등화(equating)의 기준",
           },
           {
             id: "ADM-04-3",
             label: "검사지 조립",
+            href: "/admin/items/forms",
             desc: "AI 추천 조합 + 사람 승인. forms·form_items 스키마",
           },
           {
             id: "ADM-04-4",
-            label: "문항 회전·보안",
-            desc: "응시자별 동적 할당(57중 55), 캡처·드래그 차단, 노출 이력",
+            label: "문항 회전·노출",
+            href: "/admin/items/rotation",
+            desc: "확정된 검사지에서 읽은 노출 이력. 한계에 닿은 문항은 한 회차 쉬게 한다",
+          },
+          {
+            id: "ADM-04-2",
+            label: "앵커 문항",
+            href: "/admin/items/rotation#ADM-04-2",
+            desc: "미공개·장기 재사용 앵커군. 회차 간 등화(equating)의 기준",
           },
         ],
       },
@@ -487,6 +495,14 @@ export const adminMenu: AdminMenuGroup[] = [
             id: "ADM-05-2",
             label: "설정 변경 기록",
             desc: "언제 누가 무엇을 왜 바꿨나. 회차 간 비교의 전제가 되는 표",
+          },
+          {
+            /* 정의서에는 없는 번호다. 문항 은행(ADM-04-4)에 있던 것을 옮기면서
+               땄다 — 바꾸는 것이 문항이 아니라 응시 환경이라 여기가 제자리다. */
+            id: "ADM-05-3",
+            label: "응시 화면 보호",
+            href: "/admin/rounds/security",
+            desc: "복사·오른쪽 단추 차단과 응시자 표시. 막는 것과 못 막는 것을 함께 적는다",
           },
         ],
       },

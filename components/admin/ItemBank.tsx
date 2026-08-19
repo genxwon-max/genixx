@@ -83,6 +83,9 @@ export default function ItemBank() {
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("all");
   const [level, setLevel] = useState("all");
+  /* 앵커는 따로 화면을 두지 않고 여기서 걸러 본다 — 문항이 가진 값 하나이지
+     따로 관리할 목록이 아니다. 지정·해제는 문항 상세에서 한다. */
+  const [anchor, setAnchor] = useState("all");
 
   const bankCount = items.filter((i) => CONFIRMED.includes(i.state)).length;
   const current = views.find((v) => v.id === view)!;
@@ -107,14 +110,17 @@ export default function ItemBank() {
     }
     if (subject !== "all") list = list.filter((i) => i.subject === subject);
     if (level !== "all") list = list.filter((i) => i.level === level);
+    if (anchor !== "all") list = list.filter((i) => (anchor === "on" ? i.anchor : !i.anchor));
     return list;
-  }, [base, query, subject, level]);
+  }, [base, query, subject, level, anchor]);
 
-  const filtering = query.trim() !== "" || subject !== "all" || level !== "all";
+  const filtering =
+    query.trim() !== "" || subject !== "all" || level !== "all" || anchor !== "all";
   const reset = () => {
     setQuery("");
     setSubject("all");
     setLevel("all");
+    setAnchor("all");
   };
 
   const subjectOptions = useMemo(
@@ -207,7 +213,7 @@ export default function ItemBank() {
     stateCol((i) => (i.anchor ? "앵커" : null)),
     actionCol("어디에 있나", (i) =>
       CONFIRMED.includes(i.state) ? (
-        linkBtn(`/admin/items/${i.id}`, "문항 보기")
+        linkBtn(`/admin/items/${i.id}`, "상세보기")
       ) : (
         linkBtn(deskOf(i.state).href, `${deskOf(i.state).label}에서 보기`)
       ),
@@ -306,6 +312,16 @@ export default function ItemBank() {
               value={level}
               onChange={setLevel}
               className="w-full sm:w-44"
+            />
+            <Picker
+              label="앵커 전체"
+              options={[
+                { value: "on", label: "앵커만" },
+                { value: "off", label: "앵커 아닌 것" },
+              ]}
+              value={anchor}
+              onChange={setAnchor}
+              className="w-full sm:w-36"
             />
           </>
         }

@@ -38,9 +38,16 @@ export default function RoundsPage() {
         title="회차 · 응시 현황"
         lead="지금 열려 있는 회차가 어디까지 왔는지 봅니다. 과목은 한 번에 몰아 보지 않고 따로 응시하므로 과목별로 나눠 표시합니다."
         action={
-          <Link href="/admin/rounds#ADM-05-1" className={a.btnPrimary}>
-            시험 설정 바꾸기
-          </Link>
+          <>
+            {/* 응시 조건은 둘이다 — 제한 시간 같은 값과, 화면에서 막는 것.
+                뒤엣것은 문항 은행에 있던 것을 여기로 옮겼다(ADM-05-3). */}
+            <Link href="/admin/rounds/security" className={a.btnGhost}>
+              응시 화면 보호
+            </Link>
+            <Link href="/admin/rounds#ADM-05-1" className={a.btnPrimary}>
+              시험 설정 바꾸기
+            </Link>
+          </>
         }
       />
 

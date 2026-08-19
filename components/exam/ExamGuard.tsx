@@ -6,7 +6,7 @@ import { useHydrated } from "@/lib/examStore";
 import { useSecurity } from "@/lib/securityStore";
 
 /**
- * 응시 화면 보호 — 관리자 화면(ADM-04-4)에서 켜 둔 것만 적용한다.
+ * 응시 화면 보호 — 관리자 화면(ADM-05-3)에서 켜 둔 것만 적용한다.
  *
  * 여기서 하는 일은 전부 「화면 안에서만」 막는 것이다. 스크린샷도, 옆에서 휴대폰으로
  * 찍는 것도 못 막는다. 그래서 관리자 화면에는 막는 것과 못 막는 것을 나란히 적어

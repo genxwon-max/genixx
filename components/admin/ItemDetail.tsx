@@ -10,6 +10,7 @@ import {
   restoreItem,
   retireItem,
   reviewChecks,
+  setAnchor,
   stateLabel,
   stateTone,
   typeLabel,
@@ -27,9 +28,15 @@ import * as a from "./ui";
  * 은행에서 문항 하나를 열어 보는 자리다. **읽는 화면이다** — 고치는 길은 출제
  * 워크벤치 하나여야 하므로 여기에는 입력칸을 두지 않는다.
  *
- * 다만 한 가지 동작은 여기 둔다. 승인된 문항을 회차에서 빼는 「사용 중지」다.
- * 정답률이 한쪽으로 치우쳤는지는 이 화면에서 보이고, 그것을 보고 판단하는 사람과
- * 빼는 사람이 같기 때문이다. 지우지 않고 상태만 바꾸며 까닭을 받는다.
+ * 다만 두 가지 동작은 여기 둔다. 둘 다 이 화면에 있는 것을 보고 정하는 일이다.
+ *
+ *  1) **사용 중지** — 정답률이 한쪽으로 치우쳤는지가 이 화면에서 보이고, 그것을
+ *     보고 판단하는 사람과 빼는 사람이 같다.
+ *  2) **앵커 지정·해제** — 예전에는 은행 안에 표 셋짜리 화면을 따로 두었는데,
+ *     실제로 하는 일은 문항 하나를 두고 「기준으로 삼을까」를 정하는 것뿐이다.
+ *     승인 여부·공개 여부·정답률·검수 이력이 다 모여 있는 여기가 그 자리다.
+ *
+ * 둘 다 지우지 않고 상태만 바꾸며, 까닭을 받아 기록에 남긴다.
  *
  * 검수 이력을 함께 싣는다. 「이 문항이 왜 이렇게 생겼는가」의 답이 거기 있고,
  * 승인 뒤에 문제가 생겼을 때 무엇을 놓쳤는지 되짚을 수 있어야 한다.
@@ -37,7 +44,7 @@ import * as a from "./ui";
 export default function ItemDetail({ id }: { id: string }) {
   const items = useItems();
   const prefs = useAdminPrefs();
-  const [ask, setAsk] = useState<null | "retire" | "restore">(null);
+  const [ask, setAsk] = useState<null | AskMode>(null);
 
   const item = items.find((i) => i.id === id);
 
@@ -56,7 +63,10 @@ export default function ItemDetail({ id }: { id: string }) {
   }
 
   const by = prefs.staffName || "운영자";
-  const mayRetire = can(prefs.role, "item.review");
+  const mayDecide = can(prefs.role, "item.review");
+  /* 앵커는 승인된 문항만, 그리고 밖으로 나간 적 없는 문항만 삼을 수 있다 —
+     답이 알려진 문항은 회차 사이의 잣대가 되지 못한다(lib/itemStore.ts setAnchor). */
+  const mayAnchor = item.state === "approved" && !item.disclosed;
   const band = gradeBands.find((b) => b.id === item.band);
   const sub = subskillsOf(item.talent).find((s) => s.code === item.subskill);
   const odd = item.correctRate !== null && (item.correctRate > 90 || item.correctRate < 40);
@@ -71,12 +81,12 @@ export default function ItemDetail({ id }: { id: string }) {
             <Link href="/admin/items" className={a.btnGhost}>
               ← 문항 은행
             </Link>
-            {item.state === "approved" && mayRetire && (
+            {item.state === "approved" && mayDecide && (
               <button type="button" onClick={() => setAsk("retire")} className={a.btnDanger}>
                 사용 중지하기
               </button>
             )}
-            {item.state === "retired" && mayRetire && (
+            {item.state === "retired" && mayDecide && (
               <button type="button" onClick={() => setAsk("restore")} className={a.btnPrimary}>
                 다시 쓰기
               </button>
@@ -233,8 +243,43 @@ export default function ItemDetail({ id }: { id: string }) {
               v={`${item.level} ${levelSpecs[item.level].name} · ${typeLabel(item.type)}`}
             />
             <Row k="배점 · 난이도" v={`${item.points}점 · b ${item.b}`} />
-            <Row k="앵커" v={item.anchor ? "예 — 회차 간 등화 기준" : "아니오"} />
           </dl>
+
+          {/* 앵커는 값만 적어 두지 않고 여기서 정한다. 은행 목록에서는 「앵커만」
+              으로 걸러 볼 수 있고, 전체가 등화 비율을 채우고 있는지는 문항 회전
+              화면에서 본다. */}
+          <div className="mt-5 border-t border-exam-line pt-4">
+            <p className={a.label}>앵커</p>
+            <p className={`${a.bodyText} mt-1.5`}>
+              {item.anchor
+                ? "회차 간 등화 기준입니다. 여러 회차에 되풀이해 넣고, 사후 공개하지 않습니다."
+                : "등화 기준이 아닙니다. 보통 문항은 되풀이해 나가면 답이 돕니다."}
+            </p>
+            {mayDecide &&
+              (item.anchor ? (
+                <button
+                  type="button"
+                  onClick={() => setAsk("anchorOff")}
+                  className={`${a.btnRowGhost} mt-3`}
+                >
+                  앵커에서 빼기
+                </button>
+              ) : mayAnchor ? (
+                <button
+                  type="button"
+                  onClick={() => setAsk("anchorOn")}
+                  className={`${a.btnRowGhost} mt-3`}
+                >
+                  앵커로 삼기
+                </button>
+              ) : (
+                <p className={`${a.hint} mt-2`}>
+                  {item.disclosed
+                    ? "샘플·설명회 자료로 공개된 적이 있어 앵커로 삼을 수 없습니다."
+                    : "승인된 문항만 앵커로 삼을 수 있습니다."}
+                </p>
+              ))}
+          </div>
         </section>
       </div>
 
@@ -295,17 +340,22 @@ export default function ItemDetail({ id }: { id: string }) {
       </section>
 
       {ask && (
-        <RetireBox
+        <ReasonBox
           mode={ask}
           item={item}
           onClose={() => setAsk(null)}
           onConfirm={(reason) => {
+            const what = `${item.code || item.id} 문항`;
             if (ask === "retire") {
               retireItem(item.id, by, prefs.role, reason);
-              recordAction(`${item.code || item.id} 문항`, "문항 사용 중지", reason, by);
-            } else {
+              recordAction(what, "문항 사용 중지", reason, by);
+            } else if (ask === "restore") {
               restoreItem(item.id, by, prefs.role, reason);
-              recordAction(`${item.code || item.id} 문항`, "문항 다시 씀", reason, by);
+              recordAction(what, "문항 다시 씀", reason, by);
+            } else {
+              const on = ask === "anchorOn";
+              setAnchor(item.id, on, by, prefs.role, reason);
+              recordAction(what, on ? "앵커 지정" : "앵커 해제", reason, by);
             }
             setAsk(null);
           }}
@@ -330,13 +380,52 @@ function Row({ k, v }: { k: string; v: string }) {
  * 문항 하나가 빠지면 그 문항으로 재던 축이 얇아진다. 왜 뺐는지가 남지 않으면 다음
  * 회차를 짜는 사람은 그 자리를 어떻게 메워야 할지 알 수 없다.
  */
-function RetireBox({
+/**
+ * 이 화면에서 내리는 결정 넷. 넷 다 까닭을 받아 기록에 남긴다.
+ *
+ * 문구를 한자리에 모아 둔 것은, 대화상자를 갈래마다 새로 만들면 「10자 이상」 같은
+ * 규칙이 갈래마다 조금씩 달라지기 때문이다. 실제로 앵커 쪽이 따로 있을 때 그랬다.
+ */
+type AskMode = "retire" | "restore" | "anchorOn" | "anchorOff";
+
+const askCopy: Record<
+  AskMode,
+  { title: string; body: string; hint: string; confirm: string; danger?: boolean }
+> = {
+  retire: {
+    title: "이 문항을 회차에서 뺍니다",
+    body: "문항은 지워지지 않고 은행에 남습니다. 다음 검사지 조립부터 후보에서 빠지며, 이미 나간 회차의 판정은 그대로입니다.",
+    hint: "예: 26A 회차 정답률 96% — 변별이 되지 않아 뺍니다. 문항 자체에 오류는 없습니다.",
+    confirm: "사용 중지",
+    danger: true,
+  },
+  restore: {
+    title: "이 문항을 다시 씁니다",
+    body: "다시 승인 상태가 되어 검사지 조립 후보에 오릅니다.",
+    hint: "예: 학년군을 5~6학년으로 바꿔 다시 쓰기로 함",
+    confirm: "다시 쓰기",
+  },
+  anchorOn: {
+    title: "이 문항을 앵커로 삼습니다",
+    body: "앵커는 여러 회차에 되풀이해 넣어 회차 사이의 점수를 견주는 기준이 됩니다. 삼은 뒤에는 샘플·설명회 자료로 공개하지 않습니다.",
+    hint: "예: S1 앵커가 한 건뿐이라 같은 단계에서 하나 더 세웁니다",
+    confirm: "앵커로 삼기",
+  },
+  anchorOff: {
+    title: "이 문항을 앵커에서 뺍니다",
+    body: "빼면 다음 회차부터 이 문항은 등화 기준에서 제외됩니다. 이미 나간 회차의 등화는 그대로입니다.",
+    hint: "예: 2027 개정으로 성취기준이 바뀌어 기준으로 쓸 수 없습니다",
+    confirm: "앵커에서 빼기",
+  },
+};
+
+function ReasonBox({
   mode,
   item,
   onConfirm,
   onClose,
 }: {
-  mode: "retire" | "restore";
+  mode: AskMode;
   item: ItemDraft;
   onConfirm: (reason: string) => void;
   onClose: () => void;
@@ -352,42 +441,34 @@ function RetireBox({
   }, [onClose]);
 
   const short = reason.trim().length < 10;
-  const retire = mode === "retire";
+  const copy = askCopy[mode];
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/50 p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="retire-title"
+      aria-labelledby="ask-title"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border border-exam-line bg-white p-6 sm:p-8">
-        <h2 id="retire-title" className={a.pageTitle}>
-          {retire ? "이 문항을 회차에서 뺍니다" : "이 문항을 다시 씁니다"}
+        <h2 id="ask-title" className={a.pageTitle}>
+          {copy.title}
         </h2>
         <p className={`${a.bodyText} mt-2.5`}>
           {item.code || item.id} · {item.stem}
         </p>
-        <p className={`${a.bodyText} mt-2`}>
-          {retire
-            ? "문항은 지워지지 않고 은행에 남습니다. 다음 검사지 조립부터 후보에서 빠지며, 이미 나간 회차의 판정은 그대로입니다."
-            : "다시 승인 상태가 되어 검사지 조립 후보에 오릅니다."}
-        </p>
+        <p className={`${a.bodyText} mt-2`}>{copy.body}</p>
 
         <div className="mt-5">
-          <label htmlFor="retire-reason" className={a.label}>
+          <label htmlFor="ask-reason" className={a.label}>
             까닭을 적어 주세요
           </label>
-          <p className={`${a.hint} mt-1`}>
-            {retire
-              ? "예: 26A 회차 정답률 96% — 변별이 되지 않아 뺍니다. 문항 자체에 오류는 없습니다."
-              : "예: 학년군을 5~6학년으로 바꿔 다시 쓰기로 함"}
-          </p>
+          <p className={`${a.hint} mt-1`}>{copy.hint}</p>
           <textarea
-            id="retire-reason"
+            id="ask-reason"
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -404,9 +485,9 @@ function RetireBox({
             type="button"
             disabled={short}
             onClick={() => onConfirm(reason.trim())}
-            className={short ? a.btnDisabled : retire ? a.btnDanger : a.btnPrimary}
+            className={short ? a.btnDisabled : copy.danger ? a.btnDanger : a.btnPrimary}
           >
-            기록을 남기고 {retire ? "사용 중지" : "다시 쓰기"}
+            기록을 남기고 {copy.confirm}
           </button>
           <button type="button" onClick={onClose} className={a.btnGhost}>
             그만두기
