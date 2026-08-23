@@ -1,0 +1,306 @@
+/*
+ * /home4 — 공공기관 문법의 네 번째 시안.
+ *
+ * /는 SaaS, /home2는 토스풍, /home3은 잡지다. 이 시안은 정부·공공기관 누리집의
+ * 문법을 가져온다 — 맨 위 얇은 유틸 줄, 상징과 기관명, 가로 한 줄의 큰 메뉴,
+ * 첫 화면의 「안내」 띠와 바로가기 아이콘 줄, 알림판, 회색 띠로 나뉘는 장, 정보가
+ * 많은 푸터. 모서리는 각지고, 선은 1px, 색은 관공서 파랑 하나와 빨강 점 하나.
+ *
+ * 전역 토큰(globals.css)은 쓰지 않는다. 색은 .gov 변수로만 두고 text-(--g-blue)
+ * 꼴로 부른다. 글자 눈금도 여기 .gv-* 클래스로만 쓴다.
+ *
+ * ⚠ 전부 @layer components 안에 둔다 — 레이어 밖의 규칙은 Tailwind 유틸리티를
+ *   명시도와 상관없이 이겨서, 유틸리티로 덧댄 크기·색이 전부 무시된다. (home3.css와
+ *   같은 이유)
+ */
+@layer components {
+  .gov {
+    --g-blue: #0c4da2;
+    --g-blue-2: #083a7a;
+    --g-navy: #0b2a57;
+    --g-tint: #eaf1fb;
+    --g-tint-2: #d9e5f6;
+    --g-line-blue: #b9cdea;
+    --g-bg: #f4f6f9;
+    --g-bg-2: #e9edf2;
+    --g-line: #d9dfe7;
+    --g-line-2: #c5cdd8;
+    --g-ink: #1d2733;
+    --g-ink-2: #4f5b69;
+    /* #6f7b89는 흰 바탕 4.3:1이라 13px 글자에 못 쓴다 — 한 단계 눌렀다(5.2:1) */
+    --g-ink-3: #626e7c;
+    /* 빨강 점 — 접수중·필수·마감 표시에만 */
+    --g-red: #c4271f;
+
+    font-family: var(--font-noto-kr), "Noto Sans KR", system-ui, sans-serif;
+    color: var(--g-ink);
+    background: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── 글자 눈금 ── 제목은 Gothic A1 — 두껍고 각진 고딕 */
+  .gv-head {
+    font-family: var(--font-gothic), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .gv-display {
+    font-family: var(--font-gothic), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.875rem, 1.2rem + 2.8vw, 3.25rem);
+    line-height: 1.22;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+  .gv-h2 {
+    font-family: var(--font-gothic), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.5rem, 1.15rem + 1.4vw, 2.25rem);
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .gv-h3 {
+    font-family: var(--font-gothic), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.375rem);
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
+  }
+  /* 상자·카드 머리글과 FAQ 질문 — 한 치수로 통일한다 */
+  .gv-h4 {
+    font-family: var(--font-gothic), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 700;
+    font-size: 1.0625rem;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+  .gv-num {
+    font-family: var(--font-gothic), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.25rem, 1.6rem + 2.6vw, 3.75rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  .gv-lead {
+    font-size: clamp(1rem, 0.95rem + 0.3vw, 1.1875rem);
+    line-height: 1.7;
+    text-wrap: pretty;
+  }
+  .gv-body {
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    text-wrap: pretty;
+  }
+  .gv-small {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  /* ── 단추 — 각진 사각. 공공 누리집의 단추는 둥글지 않다 ── */
+  .gv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding-inline: 1.5rem;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    transition:
+      background-color 140ms,
+      color 140ms,
+      border-color 140ms;
+  }
+  .gv-btn-blue {
+    background: var(--g-blue);
+    color: #fff;
+  }
+  .gv-btn-blue:hover {
+    background: var(--g-blue-2);
+  }
+  .gv-btn-line {
+    border-color: var(--g-line-2);
+    background: #fff;
+    color: var(--g-ink);
+  }
+  .gv-btn-line:hover {
+    border-color: var(--g-blue);
+    color: var(--g-blue);
+  }
+  .gv-btn-white {
+    background: #fff;
+    color: var(--g-blue-2);
+  }
+  .gv-btn-white:hover {
+    background: var(--g-tint);
+  }
+  .gv-btn-ghost {
+    border-color: rgba(255, 255, 255, 0.7);
+    color: #fff;
+  }
+  .gv-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── 표지 — 「접수중」「안내」「공지」 같은 네모 딱지. 빨강은 접수중, 파랑은 2026 측정에만 ── */
+  .gv-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 1.5rem;
+    padding-inline: 0.5rem;
+    border-radius: 2px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .gv-tag-red {
+    background: var(--g-red);
+    color: #fff;
+  }
+  .gv-tag-blue {
+    background: var(--g-blue);
+    color: #fff;
+  }
+  .gv-tag-gray {
+    background: var(--g-bg-2);
+    color: var(--g-ink-2);
+  }
+  .gv-tag-line {
+    border: 1px solid var(--g-line-2);
+    color: var(--g-ink-2);
+  }
+
+  /* ── 틀 ── */
+  .gv-wrap {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 3vw, 2.5rem);
+  }
+  .gv-band {
+    padding-block: clamp(3.5rem, 6vw, 6rem);
+  }
+  /* 장 제목 — 왼쪽에 파란 세로 막대. 공공 누리집의 h2 관행 */
+  .gv-bar {
+    position: relative;
+    padding-left: 1rem;
+  }
+  .gv-bar::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.2em;
+    bottom: 0.2em;
+    width: 4px;
+    background: var(--g-blue);
+  }
+
+  /* 표 — 줄선 위아래 굵게, 머리 행은 옅은 파랑 */
+  .gv-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-top: 2px solid var(--g-navy);
+  }
+  .gv-table th,
+  .gv-table td {
+    border-bottom: 1px solid var(--g-line);
+    padding: 0.875rem 1rem;
+    text-align: left;
+    vertical-align: top;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  .gv-table th {
+    background: var(--g-tint);
+    color: var(--g-ink);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* 건너뛰기 — 초점이 오면 보인다 */
+  .gv-skip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    transform: translateY(-100%);
+    background: var(--g-navy);
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    font-weight: 700;
+  }
+  .gv-skip:focus {
+    transform: translateY(0);
+  }
+
+  /* 큰 메뉴 — 마우스를 올리거나 초점이 들어오면 전체 갈래가 한 줄로 펼쳐진다 */
+  .gv-mega {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity 120ms,
+      transform 120ms,
+      visibility 0s linear 120ms;
+  }
+  .gv-gnb:hover .gv-mega,
+  .gv-gnb:focus-within .gv-mega {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: 0s;
+  }
+  /* Esc로 닫은 뒤에는 마우스가 올라가 있어도 숨긴다 — 마우스가 떠나면 GovGnb가 지운다 */
+  .gv-gnb[data-dismissed] .gv-mega {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  /* 폰 메뉴 — details 표시 없애기 */
+  .gv-menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .gv-menu summary {
+    list-style: none;
+  }
+  .gv-menu .gv-menu-open {
+    display: none;
+  }
+  .gv-menu[open] .gv-menu-open {
+    display: inline;
+  }
+  .gv-menu[open] .gv-menu-closed {
+    display: none;
+  }
+
+  /* FAQ 여닫이 */
+  .gv-faq summary::-webkit-details-marker {
+    display: none;
+  }
+  .gv-faq summary {
+    list-style: none;
+  }
+  .gv-faq summary::after {
+    content: "";
+    width: 0.625rem;
+    height: 0.625rem;
+    flex: none;
+    border-right: 2px solid var(--g-ink-2);
+    border-bottom: 2px solid var(--g-ink-2);
+    transform: rotate(45deg);
+    transition: transform 160ms;
+    margin-top: -0.25rem;
+  }
+  .gv-faq[open] summary::after {
+    transform: rotate(-135deg);
+    margin-top: 0.25rem;
+  }
+}
