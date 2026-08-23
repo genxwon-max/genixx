@@ -1,0 +1,194 @@
+/*
+ * /home3 — 잡지 문법의 세 번째 시안.
+ *
+ * 앞의 두 시안(/, /home2)은 남색 잉크·고딕·각진 선의 SaaS 문법이다. 이 시안은
+ * 그 반대편에서 시작한다 — 종이색 바탕, 명조 제목, 테라코타 한 색, 둥근 사진.
+ * 학부모에게 「플랫폼」이 아니라 「교육 잡지의 특집 기사」처럼 읽히게 하려는
+ * 것이다.
+ *
+ * 전역 토큰(globals.css의 brand-*)은 쓰지 않는다. 색은 여기 변수로만 두고,
+ * Tailwind에서는 text-(--ink) 꼴로 부른다. 글자 눈금도 여기 클래스로만 쓴다 —
+ * 다른 존의 type-* 눈금과 섞이면 두 시안이 다시 닮아 간다.
+ *
+ * ⚠ 전부 @layer components 안에 둔다. Tailwind v4의 유틸리티는 utilities 레이어에
+ *   있고, 레이어 밖의 규칙은 명시도와 상관없이 레이어 안의 규칙을 이긴다. 한번
+ *   레이어 없이 실었더니 .ed-btn 위에 얹은 h-11·border-(--paper)가 전부 무시돼
+ *   헤더 단추가 첫 화면 단추만큼 커지고 외곽선 단추의 테두리가 사라졌다.
+ */
+@layer components {
+  .ed {
+    --paper: #f6f1e8;
+    --paper-2: #ede5d7;
+    --paper-3: #e3d9c7;
+    --ink: #1c1a16;
+    --ink-2: #5d5850;
+    --line: #d6cbb8;
+    /* 테라코타. #c4502c는 종이 위 4.1:1이라 13~15px 글자에 못 쓴다 — 한 단계 눌렀다 */
+    --accent: #ad4520;
+    --accent-2: #8c3517;
+    --moss: #1e3a2c;
+    --moss-2: #2a4e3c;
+    --moss-line: #3a6550;
+
+    font-family: var(--font-plex), "Noto Sans KR", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ed-serif {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+  }
+
+  /* ── 글자 눈금 ──
+     제목·인용은 balance, 본문은 pretty — 마지막 줄에 한 어절만 남는 고아를 줄인다.
+     keep-all이 걸린 한국어는 어절 단위로만 꺾여 고아가 유독 자주 생긴다. */
+  .ed-display {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+    font-weight: 900;
+    font-size: clamp(2.5rem, 1.5rem + 4.4vw, 5.25rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .ed-h2 {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+    font-weight: 700;
+    font-size: clamp(1.875rem, 1.25rem + 2.6vw, 3.25rem);
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  .ed-h3 {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+    font-weight: 700;
+    font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem);
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
+  }
+  .ed-num {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+    font-weight: 900;
+    font-size: clamp(3.5rem, 2.4rem + 5vw, 7rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    font-variant-numeric: lining-nums;
+  }
+  /* 차례 번호 — 순서가 있는 목록(절차·리포트 차례)에만 쓴다 */
+  .ed-index {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+    font-weight: 900;
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  .ed-quote {
+    font-family: var(--font-serif), "Noto Serif KR", serif;
+    font-weight: 700;
+    font-size: clamp(1.375rem, 1.1rem + 1.3vw, 2.125rem);
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .ed-lead {
+    font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
+    line-height: 1.7;
+    text-wrap: pretty;
+  }
+  .ed-body {
+    font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
+    line-height: 1.78;
+    text-wrap: pretty;
+  }
+  .ed-small {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+  .ed-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  /* ── 단추 — 알약 ── */
+  .ed-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3.25rem;
+    padding-inline: 1.75rem;
+    border-radius: 9999px;
+    border: 1.5px solid transparent;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    transition:
+      background-color 160ms,
+      color 160ms,
+      border-color 160ms,
+      transform 160ms;
+  }
+  .ed-btn:active {
+    transform: translateY(1px);
+  }
+  .ed-btn-accent {
+    background: var(--accent);
+    color: var(--paper);
+  }
+  .ed-btn-accent:hover {
+    background: var(--accent-2);
+  }
+  .ed-btn-ink {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .ed-btn-ink:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .ed-btn-paper {
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .ed-btn-paper:hover {
+    background: var(--paper-2);
+  }
+
+  /* ── 틀 ── */
+  .ed-wrap {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 4vw, 2.5rem);
+  }
+  .ed-band {
+    padding-block: clamp(4rem, 8vw, 8rem);
+  }
+
+  /* 사진 — 따뜻한 종이 톤으로 살짝 눌러 일곱 장이 한 벌로 보이게 한다 */
+  .ed-photo {
+    filter: saturate(0.82) sepia(0.14) contrast(1.02);
+  }
+
+  /* FAQ 여닫이 표시. 대체 텍스트를 비워 두어 낭독기가 「더하기」를 읽지 않게 한다 */
+  .ed-faq summary::-webkit-details-marker {
+    display: none;
+  }
+  .ed-faq summary::after {
+    content: "+" / "";
+    font-family: var(--font-serif), serif;
+    font-size: 1.75rem;
+    line-height: 1;
+    color: var(--accent);
+    transition: transform 200ms;
+  }
+  .ed-faq[open] summary::after {
+    transform: rotate(45deg);
+  }
+}
