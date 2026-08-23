@@ -1,0 +1,423 @@
+/*
+ * /home5 — 「잼 파인더(Gem Finder)」 시안. 캐릭터 잼피(Jempy)와 함께.
+ *
+ * 앞의 넷(/ SaaS, /home2 토스풍, /home3 잡지, /home4 공공기관)과 달리 이 시안은
+ * 아이와 보호자가 함께 보는 **캐릭터 브랜드 화면**이다. 크림색 바탕, 남색 은하수,
+ * 보석 보라·해 노랑·산호 분홍의 점 색, 크게 둥근 모서리, 떠다니는 움직임.
+ *
+ * ───── 이 화면이 따르는 규칙(2026년 소비자 화면의 관행을 토큰으로 고정) ─────
+ *  간격   8pt 격자 — 4·8·12·16·24·32·48·64·96·128 외의 값은 쓰지 않는다.
+ *         장 세로 여백 96(폰 64), 카드 안쪽 24(큰 카드 32), 제목→리드 16, 리드→단추 32.
+ *  폭     본문 틀 1200, 바깥 여백 24(폰 20). 글줄은 한글 36~40자에서 꺾이도록
+ *         본문 최대 폭 34rem(17px 기준).
+ *  글자   1.25 비율 눈금 — 13 · 15 · 16(단추) · 17 · 20 · 24 · 30 · 38 · 48(clamp).
+ *         제목 줄간 1.15~1.25, 본문 1.6~1.7. 제목은 Jua(둥근 손글씨), 본문 Noto Sans KR.
+ *         숫자·영문 표시는 .jm-num(30) 하나로.
+ *  단추   높이 44 / 48 / 56, 가로 안쪽 16 / 24 / 32, 알약. 손가락 표적 최소 44.
+ *         채움 색은 남보라 하나. 한 화면에 채움 단추는 하나 — 헤더 단추는 옅은 단추다.
+ *  모서리 12(작은 칩) · 16(입력·작은 카드) · 24(카드) · 32(큰 판) · 9999(알약).
+ *  그림자 두 단계만 — 카드 휴식 / 카드 들림(hover). 퍼짐은 색을 섞은 남색.
+ *         그림(캐릭터·지도)에는 drop-shadow 한 종류(--j-shadow-art).
+ *  움직임 200ms 이내는 ease-out, 등장은 480ms. 무한 반복은 6초 이상 느리게.
+ *         prefers-reduced-motion이면 전부 끈다.
+ *
+ * ⚠ 전부 @layer components 안에 둔다 — 레이어 밖 규칙은 Tailwind 유틸리티를 이긴다.
+ */
+@layer components {
+  .jem {
+    --j-bg: #fffdf8;
+    --j-bg-2: #fff7e8;
+    --j-soft: #f1efff;
+    --j-soft-2: #e6e3ff;
+    --j-ink: #1f1d4d;
+    --j-ink-2: #4b4a73;
+    --j-ink-3: #6e6d92;
+    --j-line: #e6e3f2;
+    --j-primary: #4f46e5;
+    --j-primary-2: #4338ca;
+    --j-gem: #8b5cf6;
+    --j-gem-2: #c4b5fd;
+    --j-sky: #38bdf8;
+    --j-sun: #fbbf24;
+    --j-coral: #fb7185;
+    --j-mint: #34d399;
+    --j-night: #1a1846;
+    --j-night-2: #2a277a;
+
+    --j-radius-card: 1.5rem;
+    --j-radius-panel: 2rem;
+    --j-shadow: 0 8px 24px -12px rgba(31, 29, 77, 0.25);
+    --j-shadow-up: 0 20px 40px -16px rgba(31, 29, 77, 0.32);
+    --j-shadow-art: drop-shadow(0 24px 32px rgba(31, 29, 77, 0.25));
+
+    font-family: var(--font-noto-kr), "Noto Sans KR", system-ui, sans-serif;
+    color: var(--j-ink);
+    background: var(--j-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── 글자 눈금 ── */
+  .jm-jua {
+    font-family: var(--font-jua), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 400;
+  }
+  .jm-display {
+    font-family: var(--font-jua), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.375rem, 1.5rem + 3.6vw, 3.75rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .jm-h2 {
+    font-family: var(--font-jua), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 400;
+    font-size: clamp(1.875rem, 1.3rem + 2vw, 3rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .jm-h3 {
+    font-family: var(--font-jua), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 400;
+    font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
+  .jm-h4 {
+    font-family: var(--font-jua), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 400;
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+  /* 숫자·영문 표시 — Gem/Jam/Finder, 40, 유형 이름 */
+  .jm-num {
+    font-family: var(--font-jua), var(--font-noto-kr), "Noto Sans KR", sans-serif;
+    font-weight: 400;
+    font-size: 1.875rem;
+    line-height: 1.1;
+  }
+  .jm-lead {
+    font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+    line-height: 1.65;
+    text-wrap: pretty;
+  }
+  .jm-body {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    text-wrap: pretty;
+  }
+  .jm-small {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+  .jm-tiny {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .jm-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2rem;
+    padding-inline: 0.75rem;
+    border-radius: 9999px;
+    background: var(--j-soft);
+    color: var(--j-primary);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  /* ── 단추 — 알약 세 치수 ── */
+  .jm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding-inline: 1.5rem;
+    border-radius: 9999px;
+    border: 1.5px solid transparent;
+    font-weight: 700;
+    font-size: 1rem;
+    white-space: nowrap;
+    transition:
+      transform 160ms ease-out,
+      background-color 160ms,
+      color 160ms,
+      border-color 160ms,
+      box-shadow 160ms;
+  }
+  .jm-btn-lg {
+    height: 3.5rem;
+    padding-inline: 2rem;
+    font-size: 1.0625rem;
+  }
+  .jm-btn-sm {
+    height: 2.75rem;
+    padding-inline: 1rem;
+    font-size: 0.9375rem;
+  }
+  .jm-btn:hover {
+    transform: translateY(-2px);
+  }
+  .jm-btn:active {
+    transform: translateY(0);
+  }
+  .jm-btn-primary {
+    background: var(--j-primary);
+    color: #fff;
+    box-shadow: var(--j-shadow);
+  }
+  .jm-btn-primary:hover {
+    background: var(--j-primary-2);
+  }
+  .jm-btn-soft {
+    background: var(--j-soft);
+    color: var(--j-primary);
+  }
+  .jm-btn-soft:hover {
+    background: var(--j-soft-2);
+  }
+  .jm-btn-white {
+    background: #fff;
+    color: var(--j-ink);
+    border-color: var(--j-line);
+  }
+  .jm-btn-white:hover {
+    border-color: var(--j-gem-2);
+  }
+  .jm-btn-ghost {
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+  }
+  .jm-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── 칩 ── */
+  .jm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--j-line);
+    background: #fff;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* ── 틀 ── */
+  .jm-wrap {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 3vw, 1.5rem);
+  }
+  .jm-band {
+    padding-block: clamp(4rem, 7vw, 6rem);
+  }
+  .jm-card {
+    background: #fff;
+    border: 1px solid var(--j-line);
+    border-radius: var(--j-radius-card);
+    box-shadow: var(--j-shadow);
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out;
+  }
+  .jm-card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--j-shadow-up);
+  }
+
+  /* ── 등장 — IntersectionObserver가 is-in을 붙인다. JS가 없는 환경에서는 그냥 보인다 ── */
+  .jm-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 480ms ease-out,
+      transform 480ms ease-out;
+  }
+  .jm-reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (scripting: none) {
+    .jm-reveal {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* 질감 — 남색 판과 밤하늘에 아주 옅은 노이즈. 평평한 면이 종이처럼 보이게 */
+  .jm-grain {
+    position: relative;
+  }
+  .jm-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.08;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  /* ── 떠다니기·반짝임·깜빡임 ── */
+  @keyframes jm-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-12px);
+    }
+  }
+  @keyframes jm-float-sm {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-3deg);
+    }
+    50% {
+      transform: translateY(-8px) rotate(3deg);
+    }
+  }
+  @keyframes jm-twinkle {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.85);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+  }
+  @keyframes jm-blink {
+    0%,
+    94%,
+    100% {
+      transform: scaleY(1);
+    }
+    97% {
+      transform: scaleY(0.08);
+    }
+  }
+  @keyframes jm-wave {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    30% {
+      transform: rotate(-18deg);
+    }
+    60% {
+      transform: rotate(10deg);
+    }
+  }
+  @keyframes jm-blob {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(16px, -12px) scale(1.06);
+    }
+  }
+  .jm-float {
+    animation: jm-float 6s ease-in-out infinite;
+  }
+  .jm-float-sm {
+    animation: jm-float-sm 7s ease-in-out infinite;
+  }
+  .jm-twinkle {
+    animation: jm-twinkle 3.2s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .jm-eye {
+    animation: jm-blink 6s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  /* 어깨(팔 상자의 왼쪽 아래)를 축으로 흔든다 */
+  .jm-wave {
+    animation: jm-wave 3s ease-in-out infinite;
+    transform-origin: 0% 100%;
+    transform-box: fill-box;
+  }
+  .jm-blob {
+    animation: jm-blob 12s ease-in-out infinite;
+  }
+
+  /* 여닫이 */
+  .jm-faq summary::-webkit-details-marker {
+    display: none;
+  }
+  .jm-faq summary {
+    list-style: none;
+  }
+  .jm-faq summary::after {
+    content: "";
+    width: 2rem;
+    height: 2rem;
+    flex: none;
+    border-radius: 9999px;
+    background: var(--j-soft);
+    background-image:
+      linear-gradient(var(--j-primary), var(--j-primary)),
+      linear-gradient(var(--j-primary), var(--j-primary));
+    background-size:
+      0.75rem 2px,
+      2px 0.75rem;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: transform 200ms ease-out;
+  }
+  .jm-faq[open] summary::after {
+    transform: rotate(45deg);
+  }
+
+  /* 폰 메뉴 */
+  .jm-menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .jm-menu summary {
+    list-style: none;
+  }
+  .jm-menu .jm-menu-open {
+    display: none;
+  }
+  .jm-menu[open] .jm-menu-open {
+    display: inline;
+  }
+  .jm-menu[open] .jm-menu-closed {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .jm-reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    .jm-float,
+    .jm-float-sm,
+    .jm-twinkle,
+    .jm-eye,
+    .jm-wave,
+    .jm-blob {
+      animation: none;
+    }
+    .jm-btn:hover,
+    .jm-card-lift:hover {
+      transform: none;
+    }
+  }
+}
