@@ -129,6 +129,18 @@ type Props<T> = {
   unit?: string;
   emptyText?: string;
   /**
+   * **아무것도 없는** 목록에 적을 다음 걸음.
+   *
+   * 빈 목록에는 두 가지가 있는데 여태 하나로 다뤘다 — 조건에 걸러져 비어 보이는
+   * 것과, 애초에 한 건도 없는 것. 앞엣것은 「조건을 바꿔 보세요」가 맞지만
+   * 뒤엣것에 그 말을 하면 처음 온 사람은 자기가 조건을 잘못 넣은 줄 알고 지우개만
+   * 누르다 만다. 정작 필요한 말은 **이것이 어디서 오는가**이다.
+   *
+   * 그래서 조건이 걸려 있지 않은데 비어 있을 때만 이 자리를 쓴다. 화면마다 앞
+   * 단계가 다르므로 문장과 갈 곳은 부르는 쪽이 준다.
+   */
+  emptyHint?: React.ReactNode;
+  /**
    * 줄 아무 데나 눌러도 상세로 간다.
    *
    * ID 링크만 눌리게 두면 줄마다 그 좁은 글자를 겨냥해야 한다. 목록을 훑다가
@@ -163,6 +175,7 @@ export default function DataList<T>({
   onReset,
   unit = "건",
   emptyText = "조건에 맞는 자료가 없습니다.",
+  emptyHint,
   rowHref,
   select,
 }: Props<T>) {
@@ -317,8 +330,17 @@ export default function DataList<T>({
                   className={`${a.td} py-12 text-center`}
                   colSpan={columns.length + (select ? 1 : 0)}
                 >
-                  <span className="adm-t-md font-bold text-exam-text">{emptyText}</span>
-                  <span className="mt-1 block adm-t-sm">검색어나 조회 조건을 바꿔 보세요.</span>
+                  {/* 걸러서 빈 것과 원래 없는 것을 갈라 말한다 */}
+                  {filtering || !emptyHint ? (
+                    <>
+                      <span className="adm-t-md font-bold text-exam-text">{emptyText}</span>
+                      <span className="mt-1 block adm-t-sm">
+                        검색어나 조회 조건을 바꿔 보세요.
+                      </span>
+                    </>
+                  ) : (
+                    emptyHint
+                  )}
                 </td>
               </tr>
             ) : (

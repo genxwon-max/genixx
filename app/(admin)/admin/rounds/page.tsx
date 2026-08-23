@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { rounds, roundStates } from "@/lib/admin";
+import { currentRound, rounds } from "@/lib/admin";
 import { subjects } from "@/lib/exam";
-import { PageHead, TableCard, Progress, Badge, CountRows } from "@/components/admin/Parts";
+import { PageHead, TableCard, Progress, CountRows } from "@/components/admin/Parts";
 import PermissionGate from "@/components/admin/PermissionGate";
 import RoundSettings from "@/components/admin/RoundSettings";
+import RoundStateBadge from "@/components/admin/RoundStateBadge";
+import RoundsTabs from "@/components/admin/RoundsTabs";
 import * as a from "@/components/admin/ui";
 
 export const metadata = { title: "회차·응시 현황 · GENIXX 관리자" };
@@ -24,26 +26,18 @@ const surveyRows = [
 ];
 
 export default function RoundsPage() {
-  const current = rounds[0];
+  const current = currentRound;
 
   return (
     <>
-      <PageHead
-        title="회차 · 응시 현황"
-        lead="지금 열려 있는 회차가 어디까지 왔는지 봅니다. 과목은 한 번에 몰아 보지 않고 따로 응시하므로 과목별로 나눠 표시합니다."
-        action={
-          <>
-            {/* 응시 조건은 둘이다 — 제한 시간 같은 값과, 화면에서 막는 것.
-                뒤엣것은 문항 은행에 있던 것을 여기로 옮겼다(ADM-05-3). */}
-            <Link href="/admin/rounds/security" className={a.btnGhost}>
-              응시 화면 보호
-            </Link>
-            <Link href="/admin/rounds#ADM-05-1" className={a.btnPrimary}>
-              시험 설정 바꾸기
-            </Link>
-          </>
-        }
-      />
+      {/* 설명 줄도 단추도 두지 않는다. 무엇을 보는 화면인지는 아래 회차 이름과
+          진행률이 이미 말하고, 응시 화면 보호는 갈래 줄로 올라갔다.
+
+          ⚠ 머리글은 회차 편성·응시 화면 보호와 똑같이 둔다 — 갈래를 눌렀는데 갈래
+            줄이 위아래로 움직이면 손이 매번 자리를 다시 찾는다. */}
+      <PageHead title="회차" />
+
+      <RoundsTabs />
 
       <PermissionGate need="round.manage">
         <section className={`${a.panel} p-6`}>
@@ -52,7 +46,7 @@ export default function RoundsPage() {
               <div className="flex flex-wrap items-center gap-3">
                 {/* 구역 제목은 lg. xl은 화면 제목 한 자리에만 쓴다 */}
                 <h2 className={a.cardTitle}>{current.label}</h2>
-                <Badge {...roundStates[current.state]} />
+                <RoundStateBadge id={current.id} />
               </div>
               <p className="mt-1.5 adm-t-md text-exam-muted">
                 {current.period} · 응시 대상 {current.target.toLocaleString("ko-KR")}명
@@ -162,7 +156,7 @@ export default function RoundsPage() {
         </div>
 
         <div className="mt-10">
-          <TableCard title="지난 회차" caption="마감된 회차는 자료를 읽기만 할 수 있습니다.">
+          <TableCard title="회차 목록" caption="마감된 회차는 자료를 읽기만 할 수 있습니다.">
             <table className={a.table}>
               <thead>
                 <tr>
@@ -181,15 +175,17 @@ export default function RoundsPage() {
                     <td className={a.tdStrong}>{r.label}</td>
                     <td className={a.td}>{r.period}</td>
                     <td className={a.td}>
-                      <Badge {...roundStates[r.state]} />
+                      <RoundStateBadge id={r.id} />
                     </td>
                     <td className={a.tdNum}>{r.target.toLocaleString("ko-KR")}</td>
                     <td className={a.tdNum}>{r.submitted.toLocaleString("ko-KR")}</td>
                     <td className={a.tdNum}>{r.published.toLocaleString("ko-KR")}</td>
                     <td className={a.td}>
-                      <button type="button" className={a.btnRowGhost}>
-                        자세히 보기
-                      </button>
+                      {/* 회차를 눌러 가는 자리는 편성판이다. 여는 것도 닫는 것도
+                          거기서 하므로 「자세히 보기」가 갈 곳은 거기뿐이다. */}
+                      <Link href={`/admin/rounds/exam?round=${r.id}`} className={a.btnRowGhost}>
+                        편성 보기
+                      </Link>
                     </td>
                   </tr>
                 ))}

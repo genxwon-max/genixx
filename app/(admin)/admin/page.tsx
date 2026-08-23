@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { rounds } from "@/lib/admin";
+import { currentRound, rounds } from "@/lib/admin";
 import { PageHead, Progress } from "@/components/admin/Parts";
 import MyAlerts from "@/components/admin/MyAlerts";
 import RoundSwitch from "@/components/admin/RoundSwitch";
@@ -52,8 +52,9 @@ export default async function AdminHome({
   searchParams: Promise<{ round?: string }>;
 }) {
   const { round: picked } = await searchParams;
-  /* 없는 회차를 물어 오면 최신 회차를 보여 준다 — 빈 화면보다 낫다 */
-  const round = rounds.find((r) => r.id === picked) ?? rounds[0];
+  /* 없는 회차를 물어 오면 지금 열려 있는 회차를 보여 준다 — 빈 화면보다 낫다.
+     배열 맨 앞을 쓰지 않는 까닭은 lib/admin.ts의 currentRound에 적어 두었다. */
+  const round = rounds.find((r) => r.id === picked) ?? currentRound;
 
   return (
     <>

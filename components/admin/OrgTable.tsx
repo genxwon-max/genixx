@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { contractLabel, orgs, type OrgRow } from "@/lib/admin";
 import DataList, { Picker, type Column } from "./DataList";
-import { Badge, CountStrip } from "./Parts";
+import { Badge, CountStrip, EmptyHint } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -154,6 +154,12 @@ export default function OrgTable() {
         filtering={filtering}
         onReset={reset}
         emptyText="조건에 맞는 기관이 없습니다."
+        emptyHint={
+          <EmptyHint title="등록된 기관이 없습니다">
+            위 「기관 추가하기」로 계약을 맺은 학교·학원을 등록합니다. 기관을 등록하고 응시권을
+            배정해야 그 기관 학생이 응시 화면에 들어갈 수 있습니다.
+          </EmptyHint>
+        }
         filters={
           <>
             <Picker

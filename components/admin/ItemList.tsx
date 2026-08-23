@@ -25,7 +25,7 @@ import {
   typeCol,
   whenCol,
 } from "./itemColumns";
-import { PageHead } from "./Parts";
+import { EmptyHint, PageHead } from "./Parts";
 import * as a from "./ui";
 
 /** 손볼 것이 먼저 보여야 한다 — 반려 → 작성 중 → 검수 대기 → 승인 → 사용 중지 */
@@ -175,6 +175,13 @@ export default function ItemList() {
           filtering={filtering}
           onReset={reset}
           emptyText="찾는 문항이 없습니다."
+          emptyHint={
+            <EmptyHint title="아직 만든 문항이 없습니다">
+              위 「새 문항 등록」으로 첫 문항을 씁니다. 「AI 문항 출제」를 누르면 발주 사양에
+              맞춘 초안을 받아 고쳐 쓸 수 있습니다. 여기서 제출한 문항은 검수를 지나 문항
+              은행으로 갑니다.
+            </EmptyHint>
+          }
           filters={
             <>
               <Picker

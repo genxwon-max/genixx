@@ -6,15 +6,13 @@ import { can, rounds } from "@/lib/admin";
 import { recordAction, useAdminPrefs } from "@/lib/adminStore";
 import { LEVELS, gradeBands, talentOf, type GradeBand } from "@/lib/blueprint";
 import {
-  addFormItem,
+  addFormItems,
   checkForm,
   confirmForm,
   createForm,
   deleteForm,
   formItems,
   formPoints,
-  FORM_SIZE,
-  LEVEL_MIX,
   levelCount,
   levelLabel,
   moveFormItem,
@@ -152,9 +150,11 @@ export default function FormBuilder() {
                   return (
                     <tr key={f.id}>
                       <td className={a.tdStrongTight}>{f.title}</td>
+                      {/* 몇 개여야 한다는 수가 없으므로 담긴 수만 적는다. 「0건」만
+                          붉게 두는 것은 그것이 유일하게 확정을 막는 값이기 때문이다. */}
                       <td className={a.tdNum}>
-                        <span className={picked.length === FORM_SIZE ? undefined : "text-rose-700"}>
-                          {picked.length} / {FORM_SIZE}
+                        <span className={picked.length === 0 ? "text-rose-700" : undefined}>
+                          {picked.length}건
                         </span>
                       </td>
                       <td className={a.tdNum}>{formPoints(picked)}점</td>
@@ -188,11 +188,10 @@ export default function FormBuilder() {
       </div>
 
       {open && (
-        <FormPanel
+        <FormEditor
           form={open}
           items={items}
           by={by}
-          role={prefs.role}
           mayConfirm={mayConfirm}
           onClose={() => setOpenId(null)}
         />
@@ -201,7 +200,13 @@ export default function FormBuilder() {
   );
 }
 
-function FormPanel({
+/**
+ * 한 검사지를 여는 판.
+ *
+ * 회차 편성(ADM-05-4)이 이것을 그대로 가져다 쓴다. 문항을 담고 빼고 순서를 바꾸고
+ * 확정하는 일은 어느 길로 들어와도 같아야 하므로, 판을 두 벌 만들지 않는다.
+ */
+export function FormEditor({
   form,
   items,
   by,
@@ -211,11 +216,13 @@ function FormPanel({
   form: ExamForm;
   items: ItemDraft[];
   by: string;
-  role: string;
   mayConfirm: boolean;
   onClose: () => void;
 }) {
   const [ask, setAsk] = useState<null | "confirm" | "reopen">(null);
+  /* 목록에서 체크한 것 — 담는 순간 비운다 */
+  const [sel, setSel] = useState<string[]>([]);
+  const [q, setQ] = useState("");
 
   const picked = formItems(form, items);
   const findings = checkForm(form, picked);
@@ -233,15 +240,31 @@ function FormPanel({
       !form.itemIds.includes(i.id),
   );
 
+  /* 찾기를 두는 까닭: 은행이 자라면 담을 수 있는 문항이 수백 건이 된다. 그때
+     체크 상자만 있고 찾기가 없으면 스크롤로 문항을 뒤지게 된다. */
+  const needle = q.trim().toLowerCase();
+  const shown = needle
+    ? pool.filter((i) =>
+        [i.code, i.id, i.stem, i.unit, i.level].some((f) =>
+          (f ?? "").toLowerCase().includes(needle),
+        ),
+      )
+    : pool;
+  const allOn = shown.length > 0 && shown.every((i) => sel.includes(i.id));
+  const toggle = (id: string) =>
+    setSel((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
   const suggest = () => {
     const { itemIds, short } = suggestItems(form, items);
     setFormItems(
       form.id,
       itemIds,
       by,
+      /* 「모자란다」고 적지 않는다. 채워야 할 정원이 없으므로 모자란 것이 아니라,
+         제안이 밑그림만큼 뽑으려 했는데 은행에 그만큼이 없었던 것이다. */
       short.length === 0
         ? `조합 제안 ${itemIds.length}문항`
-        : `조합 제안 ${itemIds.length}문항 (모자란 단계 ${short.join(" · ")})`,
+        : `조합 제안 ${itemIds.length}문항 (은행에 없어 못 채운 단계 ${short.join(" · ")})`,
     );
   };
 
@@ -293,22 +316,21 @@ function FormPanel({
 
       {/* 배분 대조 */}
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {LEVELS.map((l) => {
-          const got = byLevel[l];
-          const want = LEVEL_MIX[l];
-          return (
-            <div key={l} className="rounded-md border border-exam-line p-3.5">
-              <p className={a.label}>{levelLabel(l)}</p>
-              <p className={`${a.metric} mt-1 ${got === want ? "" : "text-amber-700"}`}>
-                {got} / {want}
-              </p>
-            </div>
-          );
-        })}
+        {/* 「3/3」처럼 목표치를 붙여 두지 않는다. 몇 개여야 하는 수가 없으므로
+            그 분모는 지키지 않아도 되는 약속이 되고, 그러면 매번 무시하게 된다.
+            비어 있는 층(0건)만 눈에 걸리게 둔다. */}
+        {LEVELS.map((l) => (
+          <div key={l} className="rounded-md border border-exam-line p-3.5">
+            <p className={a.label}>{levelLabel(l)}</p>
+            <p className={`${a.metric} mt-1 ${byLevel[l] === 0 ? "text-amber-700" : ""}`}>
+              {byLevel[l]}건
+            </p>
+          </div>
+        ))}
       </div>
 
       <p className={`${a.hint} mt-3`}>
-        문항 {picked.length}/{FORM_SIZE} · 배점 {formPoints(picked)}점 · 앵커{" "}
+        문항 {picked.length}건 · 배점 {formPoints(picked)}점 · 앵커{" "}
         {picked.filter((i) => i.anchor).length}건
       </p>
 
@@ -344,7 +366,8 @@ function FormPanel({
         <p className={a.label}>담긴 문항 {picked.length}건</p>
         {picked.length === 0 ? (
           <p className={`${a.bodyText} mt-2`}>
-            아직 비어 있습니다. 「AI로 조합 제안받기」를 누르거나 아래에서 하나씩 담으세요.
+            아직 비어 있습니다. 아래 목록에서 넣을 문항을 체크해 담으세요. 몇 개를 담아야
+            한다는 수는 없습니다.
           </p>
         ) : (
           <ol className="mt-2 space-y-2">
@@ -405,44 +428,116 @@ function FormPanel({
         )}
       </div>
 
-      {/* 담을 수 있는 문항 */}
+      {/* ── 담을 수 있는 문항 ──
+          한 건씩 「담기」를 누르던 자리다. 열 문항을 넣으려면 열 번을 누르고 그때마다
+          목록이 다시 그려져, 어디까지 골랐는지 눈이 매번 잃었다. 목록에서 체크해
+          모아 담는 것이 실제로 하는 일이다. */}
       {!locked && (
         <div className="mt-6 border-t border-exam-line pt-5">
-          <p className={a.label}>담을 수 있는 문항 {pool.length}건</p>
-          <p className={`${a.hint} mt-1`}>
-            {form.subject} · {form.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군"}의 승인
-            문항입니다.
-          </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className={a.label}>담을 수 있는 문항 {pool.length}건</p>
+            <p className={a.hint}>
+              {form.subject} · {form.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군"}의 승인
+              문항입니다. 몇 개를 담아야 한다는 수는 없습니다.
+            </p>
+          </div>
+
           {pool.length === 0 ? (
             <p className={`${a.bodyText} mt-2`}>
               더 담을 문항이 없습니다. 출제 워크벤치에서 만들어 검수를 지나야 여기 올라옵니다.
             </p>
           ) : (
-            <ul className="mt-2 space-y-2">
-              {pool.map((i) => (
-                <li
-                  key={i.id}
-                  className="flex flex-wrap items-start gap-3 rounded-md border border-exam-line p-3.5"
+            <>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  aria-label="담을 문항 찾기"
+                  placeholder="문항 번호 · 발문 · 단원 · 단계로 찾기"
+                  className={`${a.input} w-full sm:w-80`}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSel(allOn ? [] : [...new Set([...sel, ...shown.map((i) => i.id)])])
+                  }
+                  disabled={shown.length === 0}
+                  className={shown.length === 0 ? a.btnDisabled : a.btnGhost}
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="adm-t-md font-bold text-exam-text">{i.code || i.id}</span>
-                    <span className={`${a.hint} ml-2`}>
-                      {i.level} · {talentOf(i.talent).name} · {i.points}점
-                      {i.anchor && <span className="ml-1.5 font-bold text-brand-700">앵커</span>}
-                      {i.correctRate !== null && <span className="ml-1.5">정답률 {i.correctRate}%</span>}
-                    </span>
-                    <span className="mt-1 block adm-t-md text-exam-muted">{i.stem}</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => addFormItem(form.id, i.id, by, i.code || i.id)}
-                    className={a.btnRowGhost}
-                  >
-                    담기
-                  </button>
-                </li>
-              ))}
-            </ul>
+                  {allOn ? "고른 것 풀기" : `보이는 ${shown.length}건 모두 고르기`}
+                </button>
+                {/* 담는 단추는 고른 수를 제 이름에 넣는다 — 몇 건이 들어가는지
+                    누르기 전에 보여야 한다 */}
+                <button
+                  type="button"
+                  disabled={sel.length === 0}
+                  onClick={() => {
+                    const codes = pool
+                      .filter((i) => sel.includes(i.id))
+                      .map((i) => i.code || i.id);
+                    addFormItems(
+                      form.id,
+                      sel,
+                      by,
+                      `${codes.length}건 넣음 — ${codes.join(", ")}`,
+                    );
+                    setSel([]);
+                  }}
+                  className={sel.length === 0 ? a.btnDisabled : a.btnPrimary}
+                >
+                  고른 {sel.length}건 담기
+                </button>
+              </div>
+
+              {shown.length === 0 ? (
+                <p className={`${a.bodyText} mt-3`}>찾는 조건에 맞는 문항이 없습니다.</p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {shown.map((i) => {
+                    const on = sel.includes(i.id);
+                    return (
+                      <li key={i.id}>
+                        {/* 줄 전체가 체크 상자다. 작은 네모만 누를 수 있으면 손이
+                            떨리거나 화면이 작을 때 매번 빗나간다. */}
+                        <label
+                          className={`flex cursor-pointer flex-wrap items-start gap-3 rounded-md border p-3.5 transition-colors ${
+                            on
+                              ? "border-brand-900 bg-exam-raised"
+                              : "border-exam-line hover:bg-exam-raised"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() => toggle(i.id)}
+                            className="mt-1 h-4 w-4 shrink-0 accent-brand-900"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="adm-t-md font-bold text-exam-text">
+                              {i.code || i.id}
+                            </span>
+                            <span className={`${a.hint} ml-2`}>
+                              {i.level} · {talentOf(i.talent).name} · {i.points}점
+                              {i.anchor && (
+                                <span className="ml-1.5 font-bold text-brand-700">앵커</span>
+                              )}
+                              {i.disclosed && (
+                                <span className="ml-1.5 font-bold text-rose-700">공개됨</span>
+                              )}
+                              {i.correctRate !== null && (
+                                <span className="ml-1.5">정답률 {i.correctRate}%</span>
+                              )}
+                            </span>
+                            <span className="mt-1 block adm-t-md text-exam-muted">{i.stem}</span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </div>
       )}

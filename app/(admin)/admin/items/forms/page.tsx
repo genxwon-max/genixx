@@ -1,3 +1,4 @@
+import Link from "next/link";
 import FormBuilder from "@/components/admin/FormBuilder";
 import ItemsTabs from "@/components/admin/ItemsTabs";
 import PermissionGate from "@/components/admin/PermissionGate";
@@ -28,7 +29,16 @@ export default function ItemFormsPage() {
 
         <p className={`${a.bodyText} mb-5`}>
           승인된 문항을 골라 한 회차의 검사지를 만듭니다. 기계가 조합을 제안하고 사람이
-          확정합니다.
+          확정합니다.{" "}
+          {/* 같은 판으로 들어오는 문이 둘이다 — 여기는 만든 검사지를 회차와 상관없이
+              모아 보는 자리, 저기는 한 회차에 무엇이 짜였고 무엇이 비었는지 보는
+              자리다. 회차를 여는 것도 저기서 한다. */}
+          <Link
+            href="/admin/rounds/exam"
+            className="font-bold text-brand-700 underline underline-offset-4"
+          >
+            회차별로 무엇이 짜였는지 보기 →
+          </Link>
         </p>
 
         <div id="ADM-04-3" className="scroll-mt-20">

@@ -46,12 +46,18 @@ export type ExamForm = {
   log: FormLogEntry[];
 };
 
-/* ── 한 검사지의 형태 ──
-   과목당 10문항 · 40분(lib/exam.ts). 단계 배분은 발주서 §7의 S1~S4 비율을 따른다.
-   합계 배점은 3×1 + 3×1 + 2×2 + 2×3 = 16점. */
-export const FORM_SIZE = 10;
-
-export const LEVEL_MIX: Record<Level, number> = { S1: 3, S2: 3, S3: 2, S4: 2 };
+/**
+ * ⚠ 한 검사지의 문항 수는 **정해져 있지 않다.**
+ *
+ * 처음에는 10문항으로 못 박고 그 수가 아니면 확정을 막았다. 그런데 회차마다 보는
+ * 것이 다르고(파일럿은 짧게, 정식은 길게), 은행이 얇을 때는 여덟 문항으로라도 열어야
+ * 한다. 수를 기계가 붙들고 있으면 그 판단을 사람이 못 한다.
+ *
+ * 그래서 담는 것은 사람이 목록에서 체크해 넣는 만큼이고, 아래 배분은 **조합 제안이
+ * 쓰는 기본 밑그림**일 뿐이다 — 제안 버튼을 눌렀을 때 몇 개를 뽑아 올지에만 쓰이고,
+ * 확정을 막지 않는다. 합계 배점 3×1 + 3×1 + 2×2 + 2×3 = 16점이 그 밑그림이다.
+ */
+export const SUGGEST_MIX: Record<Level, number> = { S1: 3, S2: 3, S3: 2, S4: 2 };
 
 const KEY = "genixx.forms";
 const EVENT = "genixx:forms-change";
@@ -64,6 +70,51 @@ const EVENT = "genixx:forms-change";
  * 개념 자체가 화면에서 설명되지 않는다.
  */
 const SEED: ExamForm[] = [
+  {
+    /* 지금 열려 있는 회차(2026-3)에 걸린 검사지. 이것이 없으면 회차 편성 화면이
+       「응시 진행중인데 편성한 검사지 0벌」이라는 앞뒤 안 맞는 그림을 낸다.
+
+       앵커 세 건은 2회차 것을 그대로 쓴다 — 회차가 달라도 같은 잣대로 재려고 두는
+       것이 앵커이므로, 회차마다 갈아 끼우면 등화의 기준이 서지 않는다. */
+    id: "FM-26C-KOR34",
+    round: "2026-3",
+    subject: "국어",
+    band: "3-4",
+    title: "2026 파일럿 3회차 · 국어 · 초등 3~4학년군",
+    itemIds: [
+      "IT-2612",
+      "IT-2606",
+      "IT-2607",
+      "IT-2613",
+      "IT-2604",
+      "IT-2614",
+      "IT-2615",
+      "IT-2608",
+      "IT-2616",
+      "IT-2609",
+    ],
+    state: "confirmed",
+    createdAt: "2026-07-20 11:05",
+    createdBy: "한나래",
+    confirmedAt: "2026-07-24 16:20",
+    confirmedBy: "이검수",
+    log: [
+      { at: "2026-07-20 11:05", by: "한나래", action: "create", text: "검사지를 새로 만들었습니다" },
+      { at: "2026-07-20 11:12", by: "한나래", action: "suggest", text: "조합 제안 10문항" },
+      {
+        at: "2026-07-22 14:30",
+        by: "한나래",
+        action: "edit",
+        text: "2회차와 앞 순서가 같아 1·2번을 맞바꿈 — 같은 아이가 두 회차를 보면 첫 문항이 같습니다",
+      },
+      {
+        at: "2026-07-24 16:20",
+        by: "이검수",
+        action: "confirm",
+        text: "앵커 3건이 2회차와 같은 것을 확인했습니다. 은행이 얇아 나머지도 겹치지만 순서를 바꿔 나갑니다.",
+      },
+    ],
+  },
   {
     id: "FM-26B-KOR34",
     round: "2026-2",
@@ -185,10 +236,19 @@ function editable(form: ExamForm | undefined): form is ExamForm {
   return !!form && form.state === "draft";
 }
 
-export function addFormItem(id: string, itemId: string, by: string, code: string) {
+/**
+ * 고른 것을 한 번에 담는다.
+ *
+ * 한 건씩 담는 길만 두었더니, 열 문항을 넣으려면 단추를 열 번 눌러야 했고 그때마다
+ * 목록이 다시 그려져 눈이 자리를 잃었다. 목록에서 체크해 모아 넣는 것이 실제로
+ * 하는 일이다.
+ */
+export function addFormItems(id: string, itemIds: string[], by: string, text: string) {
   const form = read().find((f) => f.id === id);
-  if (!editable(form) || form.itemIds.includes(itemId)) return;
-  patch(id, { itemIds: [...form.itemIds, itemId] }, { by, action: "edit", text: `${code} 넣음` });
+  if (!editable(form)) return;
+  const add = itemIds.filter((x) => !form.itemIds.includes(x));
+  if (add.length === 0) return;
+  patch(id, { itemIds: [...form.itemIds, ...add] }, { by, action: "edit", text });
 }
 
 export function removeFormItem(id: string, itemId: string, by: string, code: string) {
@@ -276,13 +336,6 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
     return out;
   }
 
-  if (picked.length !== FORM_SIZE) {
-    out.push({
-      tone: "block",
-      text: `${FORM_SIZE}문항이어야 하는데 ${picked.length}문항입니다.`,
-    });
-  }
-
   const notApproved = picked.filter((i) => i.state !== "approved");
   if (notApproved.length > 0) {
     out.push({
@@ -311,14 +364,14 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
 
   /* ── 여기부터는 사람이 판단할 것 ── */
 
+  /* 몇 개여야 한다고 말하지 않는다. 다만 **한 단계도 없는 층**은 짚는다 — S1만
+     모아 두면 아는지 모르는지는 재도 어디까지 올라가는지는 못 잰다. */
   const byLevel = levelCount(picked);
-  const off = LEVELS.filter((l) => byLevel[l] !== LEVEL_MIX[l]);
-  if (off.length > 0) {
+  const missing = LEVELS.filter((l) => byLevel[l] === 0);
+  if (missing.length > 0) {
     out.push({
       tone: "warn",
-      text: `단계 배분이 발주 사양과 다릅니다 — ${off
-        .map((l) => `${l} ${byLevel[l]}/${LEVEL_MIX[l]}`)
-        .join(" · ")}`,
+      text: `${missing.join(" · ")} 단계 문항이 하나도 없습니다. 그 층은 이 검사지로 재지 못합니다.`,
     });
   }
 
@@ -353,7 +406,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
   const unit = new Map<string, number>();
   for (const i of picked) if (i.unit) unit.set(i.unit, (unit.get(i.unit) ?? 0) + 1);
   for (const [u, n] of unit) {
-    if (n > FORM_SIZE / 2) {
+    if (n > picked.length / 2) {
       out.push({ tone: "warn", text: `「${u}」 단원이 ${n}건입니다. 한 단원에 몰려 있습니다.` });
     }
   }
@@ -368,6 +421,9 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
  *   적힌 것뿐이라 기계가 확실히 볼 수 있다 — 단계별 개수, 앵커 비율, 단원 쏠림.
  *   「이 문항이 이 학년에 맞는가」는 여기서 알 수 없고 사람이 봐야 한다.
  *
+ *   제안이 뽑는 수(SUGGEST_MIX)는 **밑그림이지 정원이 아니다.** 제안을 받은 뒤에
+ *   빼거나 더 담아도 되고, 제안을 아예 안 쓰고 목록에서 체크해 넣어도 된다.
+ *
  * 같은 단계 안에서는 앵커를 먼저, 그다음 정답률이 한가운데(50%)에 가까운 것을
  * 먼저 고른다. 너무 쉽거나 너무 어려운 문항은 변별에 보태는 것이 적다.
  */
@@ -380,7 +436,7 @@ export function suggestItems(form: ExamForm, items: ItemDraft[]) {
   const short: string[] = [];
 
   for (const level of LEVELS) {
-    const want = LEVEL_MIX[level];
+    const want = SUGGEST_MIX[level];
     const rank = pool
       .filter((i) => i.level === level)
       .sort((x, y) => {

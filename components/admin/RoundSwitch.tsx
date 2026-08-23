@@ -12,6 +12,9 @@ import * as a from "./ui";
  * 고른 회차는 주소에 남긴다(`/admin?round=2026-2`). 화면 안 상태로 들고 있으면
  * 뒤로 가기가 듣지 않고, 「2회차 화면」을 남에게 그대로 보낼 수도 없다.
  *
+ * 회차 편성(ADM-05-4)도 같은 고르개를 쓴다. 돌아갈 주소만 다르므로 base로 받는다 —
+ * 고르개를 두 벌 만들면 화살표 모양이나 끝단 처리가 한쪽에만 고쳐지는 날이 온다.
+ *
  * 상태(응시 진행중·채점중·마감)는 여기 적지 않는다. 회차를 고르는 데 필요한 것은
  * 어느 회차이고 언제였는가뿐이고, 그 회차가 어디까지 갔는지는 바로 아래 진행률이
  * 이미 말한다. 회차 상태를 갈래로 다루는 자리는 회차 현황(ADM-05)이다.
@@ -25,7 +28,7 @@ import * as a from "./ui";
 const arrowShape =
   "inline-flex min-h-[2rem] min-w-[2rem] items-center justify-center rounded-md border adm-t-md font-bold transition-colors";
 
-export default function RoundSwitch({ id }: { id: string }) {
+export default function RoundSwitch({ id, base = "/admin" }: { id: string; base?: string }) {
   const at = Math.max(
     0,
     rounds.findIndex((r) => r.id === id),
@@ -37,7 +40,7 @@ export default function RoundSwitch({ id }: { id: string }) {
   const arrow = (to: (typeof rounds)[number] | undefined, label: string, mark: string) =>
     to ? (
       <Link
-        href={`/admin?round=${to.id}`}
+        href={`${base}?round=${to.id}`}
         aria-label={`${label} — ${to.label}`}
         className={`${arrowShape} border-exam-line bg-white text-exam-text hover:bg-exam-raised`}
       >

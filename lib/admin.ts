@@ -507,6 +507,14 @@ export const adminMenu: AdminMenuGroup[] = [
             desc: "언제 누가 무엇을 왜 바꿨나. 회차 간 비교의 전제가 되는 표",
           },
           {
+            /* 정의서에 없는 번호다. 문항 은행(ADM-04-3)이 만든 검사지가 어느 회차에
+               걸렸는지, 그래서 그 회차를 열어도 되는지를 볼 자리가 없었다. */
+            id: "ADM-05-4",
+            label: "회차 편성",
+            href: "/admin/rounds/exam",
+            desc: "과목×학년군 칸마다 검사지를 걸고 회차를 연다. 초안이 남아 있으면 열지 못한다",
+          },
+          {
             /* 정의서에는 없는 번호다. 문항 은행(ADM-04-4)에 있던 것을 옮기면서
                땄다 — 바꾸는 것이 문항이 아니라 응시 환경이라 여기가 제자리다. */
             id: "ADM-05-3",
@@ -640,6 +648,15 @@ export function findAdminMenu(href: string): AdminMenuItem | null {
 
 /* ───────────────────────── 회차 ───────────────────────── */
 
+/**
+ * 회차가 놓인 자리.
+ *
+ * 「준비중」이 있어야 **아직 열지 않은 회차**를 화면에 세울 수 있다. 이것이 없으면
+ * 회차는 태어나자마자 열려 있는 셈이라, 문항을 편성하고 나서 여는 순서(ADM-05-4)가
+ * 화면에 나타날 자리가 없다.
+ */
+export type RoundState = "draft" | "open" | "grading" | "closed";
+
 export type Round = {
   id: string;
   label: string;
@@ -653,7 +670,7 @@ export type Round = {
    * 숫자라 조용히 틀리면 안 된다.
    */
   closesOn: string;
-  state: "open" | "grading" | "closed";
+  state: RoundState;
   /** 응시 대상 인원 */
   target: number;
   submitted: number;
@@ -668,6 +685,7 @@ export type Round = {
  * 오가는 사람이 같은 회차인지 먼저 의심하게 된다. 말과 색을 여기서 한 번만 정한다.
  */
 export const roundStates = {
+  draft: { label: "준비중", className: "text-brand-700" },
   open: { label: "응시 진행중", className: "text-emerald-700" },
   grading: { label: "채점중", className: "text-amber-700" },
   closed: { label: "마감", className: "text-exam-muted" },
@@ -676,6 +694,19 @@ export const roundStates = {
 /* 최신 회차가 앞에 온다 — 대시보드는 rounds[0]으로 들어오고, 회차 고르개의
    「이전」은 뒤로(오래된 쪽), 「다음」은 앞으로(새 쪽) 간다. */
 export const rounds: Round[] = [
+  {
+    /* 분기마다 한 번이라 4회차는 11월이다. 아직 열지 않았으므로 숫자가 모두 0이고,
+       회차 편성(ADM-05-4)에서 검사지를 짜고 확정해야 열린다. */
+    id: "2026-4",
+    label: "2026 파일럿 4회차",
+    period: "2026.11.01 – 11.30",
+    closesOn: "2026-11-30",
+    state: "draft",
+    target: 0,
+    submitted: 0,
+    graded: 0,
+    published: 0,
+  },
   {
     id: "2026-3",
     label: "2026 파일럿 3회차",
@@ -710,6 +741,17 @@ export const rounds: Round[] = [
     published: 851,
   },
 ];
+
+/**
+ * 지금 회차.
+ *
+ * rounds[0]을 쓰지 않는다. 배열 맨 앞은 **가장 새 회차**이고, 아직 열지 않은 회차가
+ * 앞에 서면 대시보드가 숫자 0인 화면으로 열린다. 사람이 「지금」이라고 부르는 것은
+ * 열려 있는 회차이므로 그것을 먼저 찾고, 없을 때만 가장 새 회차로 물러선다.
+ *
+ * 여기 상태는 씨앗이다. 실제로 열고 닫은 결과는 lib/roundPlanStore.ts가 들고 있다.
+ */
+export const currentRound = rounds.find((r) => r.state === "open") ?? rounds[0];
 
 /* ───────────────────────── 채점·판정 큐 (ADM-06) ───────────────────────── */
 

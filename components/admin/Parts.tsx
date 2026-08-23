@@ -52,6 +52,42 @@ export function PageHead({
 }
 
 /**
+ * 아무것도 없는 목록 한가운데에 세우는 안내.
+ *
+ * 「없습니다」로 끝내지 않는다. 처음 이 콘솔을 여는 사람에게 빈 화면은 **고장인지
+ * 원래 그런 것인지 알 수 없는 자리**이고, 그 자리에서 할 수 있는 일이 없으면
+ * 되돌아 나가는 수밖에 없다. 그래서 세 가지를 적는다 —
+ *
+ *   무엇이 없는가 · 그것이 **어디서 오는가** · 거기로 가는 문
+ *
+ * DataList의 emptyHint로 넘긴다. 조건에 걸러져 비었을 때는 쓰지 않는다(그때는
+ * 「조건을 바꿔 보세요」가 맞는 말이다).
+ */
+export function EmptyHint({
+  title,
+  children,
+  href,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  href?: string;
+  action?: string;
+}) {
+  return (
+    <span className="mx-auto block max-w-md">
+      <span className="block adm-t-md font-bold text-exam-text">{title}</span>
+      <span className={`${a.hint} mt-1.5 block`}>{children}</span>
+      {href && action && (
+        <Link href={href} className={`${a.btnGhost} mt-4`}>
+          {action}
+        </Link>
+      )}
+    </span>
+  );
+}
+
+/**
  * 한 화면 안의 구역 갈래 — 밑줄 탭.
  *
  * 정의서의 하위 화면(EXP-04-1·-2·-3…)을 세로로 이어 붙이면 화면이 대여섯 장이 되고,

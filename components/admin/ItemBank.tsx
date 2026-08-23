@@ -22,7 +22,7 @@ import {
   typeCol,
   whenCol,
 } from "./itemColumns";
-import { CountStrip } from "./Parts";
+import { CountStrip, EmptyHint } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -298,6 +298,27 @@ export default function ItemBank() {
         filtering={filtering}
         onReset={reset}
         emptyText="찾는 문항이 없습니다."
+        emptyHint={
+          view === "bank" ? (
+            <EmptyHint
+              title="은행에 아직 문항이 없습니다"
+              href="/admin/review"
+              action="검수 워크벤치 보기"
+            >
+              검수를 지나 승인된 문항만 여기 모입니다. 출제 워크벤치에서 쓰고 검수에서
+              승인하면 이 자리에 올라오고, 그때부터 회차 검사지에 담을 수 있습니다.
+            </EmptyHint>
+          ) : (
+            <EmptyHint
+              title="아직 문항이 하나도 없습니다"
+              href="/admin/authoring"
+              action="출제 워크벤치 보기"
+            >
+              작성중인 초안까지 포함해 한 건도 없습니다. 문항을 쓰는 자리는 출제 워크벤치
+              하나입니다.
+            </EmptyHint>
+          )
+        }
         filters={
           <>
             <Picker

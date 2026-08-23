@@ -16,7 +16,7 @@ import {
   typeCol,
   whenCol,
 } from "./itemColumns";
-import { PageHead, Callout } from "./Parts";
+import { Callout, EmptyHint, PageHead } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -278,6 +278,22 @@ export default function ReviewList() {
         onReset={reset}
         emptyText={
           tab === "queue" ? "지금 검수할 문항이 없습니다." : "아직 검수한 문항이 없습니다."
+        }
+        emptyHint={
+          tab === "queue" ? (
+            <EmptyHint
+              title="지금 검수할 문항이 없습니다"
+              href="/admin/authoring"
+              action="출제 워크벤치 보기"
+            >
+              출제자가 제출한 문항이 이 줄에 쌓입니다. 여기서 승인해야 문항 은행으로 올라가고,
+              그래야 회차 검사지에 담을 수 있습니다.
+            </EmptyHint>
+          ) : (
+            <EmptyHint title="아직 검수한 문항이 없습니다">
+              「검수 대기」에서 문항을 열어 승인하거나 반려하면 이 자리에 남습니다.
+            </EmptyHint>
+          )
         }
         filters={
           <>

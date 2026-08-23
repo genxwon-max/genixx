@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { approvals, type Approval } from "@/lib/admin";
 import DataList, { Picker, type Column } from "./DataList";
-import { Badge, Callout, CountStrip } from "./Parts";
+import { Badge, Callout, CountStrip, EmptyHint } from "./Parts";
 import * as a from "./ui";
 
 /**
@@ -170,6 +170,12 @@ export default function ApprovalList() {
         filtering={filtering}
         onReset={reset}
         emptyText="조건에 맞는 신청이 없습니다."
+        emptyHint={
+          <EmptyHint title="확인할 신청이 없습니다">
+            교사나 기관이 소속 증빙을 붙여 가입을 신청하면 이 줄에 쌓입니다. 여기서 승인해야
+            그 계정이 담당 학생의 설문 화면에 들어갈 수 있습니다.
+          </EmptyHint>
+        }
         filters={
           <>
             <Picker

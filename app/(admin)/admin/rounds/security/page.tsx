@@ -1,5 +1,5 @@
-import Link from "next/link";
 import PermissionGate from "@/components/admin/PermissionGate";
+import RoundsTabs from "@/components/admin/RoundsTabs";
 import ScreenGuardPanel from "@/components/admin/ScreenGuardPanel";
 import { PageHead } from "@/components/admin/Parts";
 import * as a from "@/components/admin/ui";
@@ -19,17 +19,18 @@ export const metadata = { title: "응시 화면 보호 · GENIXX 관리자" };
 export default function RoundSecurityPage() {
   return (
     <>
-      <PageHead
-        title="응시 화면 보호"
-        lead="응시 화면에서 문항이 밖으로 나가는 것을 늦추는 장치입니다. 켜고 끄면 곧바로 적용되고, 바꾼 까닭이 기록에 남습니다."
-        action={
-          <Link href="/admin/rounds" className={a.btnGhost}>
-            ← 회차 · 응시 현황
-          </Link>
-        }
-      />
+      {/* ⚠ 머리글은 응시 현황·회차 편성과 똑같이 둔다. 화면마다 다른 설명은 갈래
+          줄 아래에 적는다. */}
+      <PageHead title="회차" />
+
+      <RoundsTabs />
 
       <PermissionGate need="round.manage">
+        <p className={`${a.bodyText} mb-5`}>
+          응시 화면에서 문항이 밖으로 나가는 것을 늦추는 장치입니다. 켜고 끄면 곧바로
+          적용되고, 바꾼 까닭이 기록에 남습니다.
+        </p>
+
         <div id="ADM-05-3" className="scroll-mt-20">
           <ScreenGuardPanel />
         </div>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatCode } from "@/lib/roster";
 import DataList, { Picker, type Column } from "./DataList";
-import { Badge, Callout, CountStrip } from "./Parts";
+import { Badge, Callout, CountStrip, EmptyHint } from "./Parts";
 import ReasonDialog from "./ReasonDialog";
 import * as a from "./ui";
 
@@ -287,6 +287,12 @@ export default function StudentTable() {
         filtering={filtering}
         onReset={reset}
         emptyText="조건에 맞는 학생이 없습니다."
+        emptyHint={
+          <EmptyHint title="등록된 학생이 없습니다">
+            보호자가 자녀를 등록하거나 기관이 명부를 올리면 이 줄에 보입니다. 학생은 따로
+            계정을 만들지 않고, 여기서 발급한 여덟 자리 접속코드로 응시합니다.
+          </EmptyHint>
+        }
         filters={
           <>
             <Picker
