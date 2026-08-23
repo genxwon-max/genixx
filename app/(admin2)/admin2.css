@@ -1,0 +1,468 @@
+/*
+ * /admin2 — 밀도 높은 백오피스 콘솔.
+ *
+ * 기존 /admin은 50~60대 운영자를 기준으로 글자 15px·버튼 44px·둥근 모서리로 짰다.
+ * 이 콘솔은 반대편이다. 하루 종일 표를 보는 **슈퍼 관리자 한 사람**을 기준으로,
+ * 흔한 관리 도구(Django admin · AWS 콘솔 · Supabase Studio · Retool)의 관행을 따른다.
+ *
+ * ───── 이 화면이 따르는 규칙 ─────
+ *  글자   11 · 12 · 13 · 14 · 16 · 18 여섯 눈금 + 지표 숫자 22. 본문 13, 표 13, 곁들이는 글 12.
+ *         11px 아래로는 내려가지 않는다 — 기둥 그룹 이름과 키캡을 10px로 두었더니 규격을
+ *         적어 둔 파일 자신이 그 규격을 어기고 있었다.
+ *         숫자·ID·시각은 고정폭(--font-mono)으로. 자릿수가 어긋나면 세로로 못 훑는다.
+ *  줄     표 한 줄 32px, 조밀 모드 28px. 머리 행 30px. 버튼 26/30px. 입력 30px.
+ *  간격   4의 배수. 칸 안쪽 가로 10, 세로 6. 구역 사이 16. 화면 바깥 여백 16.
+ *  모서리 3px 하나. 알약도 큰 곡률도 쓰지 않는다.
+ *  선     1px 실선(#e2e5eb)이 기본. 그림자는 떠 있는 것(드롭다운·대화상자)에만.
+ *  색     회색 열 단계 + 파랑 하나. 상태는 점 + 글자로 적고 면을 칠하지 않는다.
+ *         면을 칠하면 표 한 장에 색 상자가 스무 개 서서 정작 값이 안 읽힌다.
+ *  동작   hover에서만 나타나는 버튼을 두지 않는다. 표 오른쪽 끝에 늘 세워 둔다.
+ *
+ * ⚠ 전부 @layer components 안에 둔다 — 레이어 밖 규칙은 Tailwind 유틸리티를
+ *   명시도와 상관없이 이기므로, 유틸리티로 덧댄 크기·색이 통째로 무시된다.
+ */
+@layer components {
+  .a2 {
+    /* 회색 열 단계 — 파랑이 살짝 섞인 중성색. 순회색은 화면에서 탁해 보인다 */
+    --a2-bg: #f6f7f9;
+    --a2-panel: #ffffff;
+    --a2-raised: #f9fafb;
+    --a2-hover: #f2f4f7;
+    --a2-line: #e2e5eb;
+    --a2-line-2: #cfd4dd;
+    --a2-ink: #14181f;
+    --a2-ink-2: #4a5261;
+    /* 회색 두 단계는 11~13px 본문에 쓰이므로 세 바탕(#fff·#f9fafb·#f6f7f9) 어디서도
+       4.5:1을 넘어야 한다. 처음 잡은 #6b7382·#8a92a1은 회색 바탕에서 4.45·2.92까지
+       떨어져 곁들이는 글이 아니라 값(「미배정」·건수)이 안 읽혔다. 한 단계씩 내렸다. */
+    --a2-ink-3: #656c7a;
+    --a2-ink-4: #6c727e;
+
+    /* 어두운 왼쪽 기둥 — 본문(밝음)과 확실히 갈라 놓는다 */
+    --a2-side: #171b22;
+    --a2-side-2: #1e232c;
+    --a2-side-line: #2b313c;
+    --a2-side-ink: #c3c9d4;
+    --a2-side-ink-2: #7d8592;
+
+    --a2-accent: #2563eb;
+    --a2-accent-2: #1d4ed8;
+    --a2-accent-soft: #eff4ff;
+    --a2-accent-line: #c3d6fd;
+
+    --a2-ok: #15803d;
+    --a2-warn: #b45309;
+    --a2-danger: #b91c1c;
+    --a2-info: #1d4ed8;
+
+    --a2-radius: 3px;
+    --a2-row: 32px;
+    --a2-shadow: 0 6px 16px -6px rgba(16, 22, 33, 0.24), 0 0 0 1px rgba(16, 22, 33, 0.06);
+
+    font-family: var(--font-noto-kr), "Noto Sans KR", system-ui, sans-serif;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--a2-ink);
+    background: var(--a2-bg);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "tnum" 0;
+  }
+
+  /* ── 글자 눈금 ── */
+  .a2-t-xs {
+    font-size: 0.6875rem;
+    line-height: 1.4;
+  }
+  .a2-t-sm {
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+  .a2-t {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .a2-t-md {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .a2-t-lg {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+  /* 화면 제목 — 한 화면에 하나 */
+  .a2-title {
+    font-size: 1.125rem;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  /* 구역 제목 */
+  .a2-h {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    font-weight: 700;
+  }
+  /* 표 위·칸 위에 붙는 이름표. 한글은 대문자 변환이 뜻이 없어 굵기와 색으로만 가른다 */
+  .a2-label {
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    font-weight: 700;
+    color: var(--a2-ink-3);
+  }
+  /* 숫자·ID·시각 */
+  .a2-mono {
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .a2-num {
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  /* 지표 숫자 */
+  .a2-metric {
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 1.375rem;
+    line-height: 1.15;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* ── 면 ── */
+  .a2-panel {
+    background: var(--a2-panel);
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+  }
+  /* 판의 머리 — 제목과 오른쪽 동작 */
+  .a2-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 34px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--a2-line);
+    background: var(--a2-raised);
+  }
+
+  /* ── 버튼 ──
+     아이콘만 있는 버튼은 두지 않는다. 좁으면 글자를 줄이지, 글자를 없애지 않는다. */
+  .a2-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 30px;
+    padding-inline: 10px;
+    border: 1px solid var(--a2-line-2);
+    border-radius: var(--a2-radius);
+    background: var(--a2-panel);
+    color: var(--a2-ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      background-color 100ms,
+      border-color 100ms,
+      color 100ms;
+  }
+  .a2-btn:hover {
+    background: var(--a2-hover);
+    border-color: var(--a2-ink-4);
+  }
+  .a2-btn:disabled,
+  .a2-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    color: var(--a2-ink-4);
+    background: var(--a2-raised);
+    border-color: var(--a2-line);
+  }
+  .a2-btn-sm {
+    height: 26px;
+    padding-inline: 8px;
+    font-size: 0.6875rem;
+  }
+  .a2-btn-primary {
+    background: var(--a2-accent);
+    border-color: var(--a2-accent);
+    color: #fff;
+  }
+  .a2-btn-primary:hover {
+    background: var(--a2-accent-2);
+    border-color: var(--a2-accent-2);
+  }
+  .a2-btn-danger {
+    color: var(--a2-danger);
+    border-color: #e7b9b9;
+  }
+  .a2-btn-danger:hover {
+    background: #fdf2f2;
+    border-color: #d98b8b;
+  }
+
+  /* ── 입력 ── */
+  .a2-input,
+  .a2-select {
+    height: 30px;
+    width: 100%;
+    padding-inline: 8px;
+    border: 1px solid var(--a2-line-2);
+    border-radius: var(--a2-radius);
+    background: var(--a2-panel);
+    color: var(--a2-ink);
+    font-size: 0.75rem;
+    outline: none;
+    transition:
+      border-color 100ms,
+      box-shadow 100ms;
+  }
+  .a2-input::placeholder {
+    color: var(--a2-ink-4);
+  }
+  .a2-input:focus,
+  .a2-select:focus {
+    border-color: var(--a2-accent);
+    box-shadow: 0 0 0 2px var(--a2-accent-soft);
+  }
+  .a2-select {
+    appearance: none;
+    padding-right: 22px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--a2-ink-3) 50%),
+      linear-gradient(135deg, var(--a2-ink-3) 50%, transparent 50%);
+    background-position:
+      calc(100% - 13px) 13px,
+      calc(100% - 9px) 13px;
+    background-size:
+      4px 4px,
+      4px 4px;
+    background-repeat: no-repeat;
+  }
+
+  /* 초점 표시 — 밝은 면과 어두운 면 양쪽에서 보이게 */
+  .a2 :focus-visible {
+    outline: 2px solid var(--a2-accent);
+    outline-offset: 1px;
+    border-radius: var(--a2-radius);
+  }
+
+  /* ── 표 ──
+     머리 행은 스크롤에도 붙어 있고, 줄무늬 대신 1px 선으로만 가른다.
+     줄무늬는 스무 줄이 넘어가면 눈이 어지럽다. */
+  .a2-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.8125rem;
+  }
+  .a2-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    height: 30px;
+    padding: 0 10px;
+    text-align: left;
+    white-space: nowrap;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--a2-ink-3);
+    background: var(--a2-raised);
+    border-bottom: 1px solid var(--a2-line-2);
+  }
+  .a2-table td {
+    height: var(--a2-row);
+    padding: 5px 10px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--a2-line);
+    color: var(--a2-ink-2);
+  }
+  .a2-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .a2-table tbody tr:hover td {
+    background: var(--a2-hover);
+  }
+  /* 값에 해당하는 칸 */
+  .a2-table td.a2-td-key {
+    color: var(--a2-ink);
+    font-weight: 600;
+  }
+  .a2-table td.a2-td-num,
+  .a2-table th.a2-th-num {
+    text-align: right;
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .a2-table th.a2-th-num {
+    font-family: inherit;
+  }
+  /* 쪼개지면 뜻이 상하는 값 — ID·시각·상태 */
+  .a2-nowrap {
+    white-space: nowrap;
+  }
+  /* 좁은 칸에서 넘치는 글은 말줄임. 표 안의 지문·사유에 쓴다 */
+  .a2-clip {
+    max-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* 표를 감싸는 상자 — 가로로만 밀린다 */
+  .a2-table-wrap {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  /* ── 도구 줄 — 표 위의 검색·거르개·동작 ── */
+  .a2-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--a2-line);
+    background: var(--a2-panel);
+  }
+
+  /* ── 상태 — 점 + 글자. 면을 칠하지 않는다 ── */
+  .a2-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .a2-dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  /* 꼬리표 — 분류값(역할·과목·종류)에만. 상태에는 쓰지 않는다 */
+  .a2-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding-inline: 5px;
+    border: 1px solid var(--a2-line-2);
+    border-radius: var(--a2-radius);
+    background: var(--a2-raised);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--a2-ink-2);
+    white-space: nowrap;
+  }
+  .a2-tag-accent {
+    border-color: var(--a2-accent-line);
+    background: var(--a2-accent-soft);
+    color: var(--a2-accent-2);
+  }
+
+  /* 막대 — 진행률. 표 안에서도 한 줄 높이를 넘지 않는다 */
+  .a2-bar {
+    position: relative;
+    height: 4px;
+    width: 100%;
+    min-width: 48px;
+    border-radius: 2px;
+    background: var(--a2-line);
+    overflow: hidden;
+  }
+  .a2-bar > span {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    background: var(--a2-accent);
+  }
+
+  /* ── 왼쪽 기둥 ── */
+  .a2-nav-group {
+    padding: 4px 8px 2px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--a2-side-ink-2);
+  }
+  .a2-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 28px;
+    padding-inline: 8px;
+    border-radius: var(--a2-radius);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--a2-side-ink);
+    transition:
+      background-color 100ms,
+      color 100ms;
+  }
+  .a2-nav-item:hover {
+    background: var(--a2-side-2);
+    color: #fff;
+  }
+  .a2-nav-item[aria-current="page"] {
+    background: var(--a2-side-2);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: inset 2px 0 0 var(--a2-accent);
+  }
+  /* 오른쪽 끝 건수 */
+  .a2-nav-count {
+    margin-left: auto;
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--a2-side-ink-2);
+  }
+  .a2-nav-item[aria-current="page"] .a2-nav-count {
+    color: #fff;
+  }
+
+  /* 키 안내 */
+  .a2-kbd {
+    display: inline-flex;
+    align-items: center;
+    height: 16px;
+    padding-inline: 4px;
+    border: 1px solid var(--a2-line-2);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    background: var(--a2-panel);
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.6875rem;
+    color: var(--a2-ink-3);
+  }
+
+  /* 가는 스크롤막대 — 표가 많아 기본 두께는 자리를 너무 먹는다 */
+  .a2 ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .a2 ::-webkit-scrollbar-thumb {
+    background: #c8cdd6;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+  .a2 ::-webkit-scrollbar-thumb:hover {
+    background: #aab1bd;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  .a2 ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 어두운 기둥 안에서는 스크롤막대도 어둡게 */
+  .a2-side ::-webkit-scrollbar-thumb {
+    background: #39414f;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
