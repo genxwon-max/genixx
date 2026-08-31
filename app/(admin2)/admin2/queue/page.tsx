@@ -59,30 +59,28 @@ export default function Admin2QueuePage() {
             <span>확정 전 {n(queueCounts.cases)}건</span>
           </>
         }
+        /* ① 어느 단계에 몰려 있나 — 왼쪽 기둥의 배지와 같은 값을 쓴다(lib/admin2.ts) */
+        stats={
+          <>
+            <Kpi label="전체 케이스" value={n(gradingQueue.length)} unit="건" sub={`확정 전 ${n(queueCounts.cases)}건`} />
+            <Kpi
+              label={caseStates.ai.label}
+              value={n(byState("ai"))}
+              unit="건"
+              sub={`검토자 미배정 ${n(aiUnassigned)}건`}
+            />
+            <Kpi label={caseStates.review.label} value={n(byState("review"))} unit="건" sub={`검토자 ${n(reviewers)}명`} />
+            <Kpi
+              label={caseStates.conference.label}
+              value={n(byState("conference"))}
+              unit="건"
+              sub={`이 중 신뢰도 75 미만 ${n(conferenceLow)}건`}
+            />
+          </>
+        }
       />
-
-      {/* ① 어느 단계에 몰려 있나 — 왼쪽 기둥의 배지와 같은 값을 쓴다(lib/admin2.ts) */}
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="전체 케이스" value={n(gradingQueue.length)} unit="건" sub={`확정 전 ${n(queueCounts.cases)}건`} />
-        <Kpi
-          label={caseStates.ai.label}
-          value={n(byState("ai"))}
-          unit="건"
-          sub={`검토자 미배정 ${n(aiUnassigned)}건`}
-        />
-        <Kpi label={caseStates.review.label} value={n(byState("review"))} unit="건" sub={`검토자 ${n(reviewers)}명`} />
-        <Kpi
-          label={caseStates.conference.label}
-          value={n(byState("conference"))}
-          unit="건"
-          sub={`이 중 신뢰도 75 미만 ${n(conferenceLow)}건`}
-        />
-      </div>
-
       {/* ② 무엇부터 보나 */}
-      <div className="mt-3">
-        <QueueTable rows={rows} />
-      </div>
+      <QueueTable rows={rows} />
 
       <SeedNote>
         이 화면의 케이스·신뢰도·검토자는 화면 설계를 위한 예시입니다. 실제 판정 결과가 아니며, 붙일 때는 채점 엔진의

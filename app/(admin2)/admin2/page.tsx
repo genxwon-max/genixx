@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { auditLog, caseStates, currentRound, gradingQueue, rounds, roundStates } from "@/lib/admin";
+import { auditLog, caseStates, currentRound, gradingQueue } from "@/lib/admin";
 import { change, conversionRate, lastMonth, thisMonth, totalMembers } from "@/lib/adminMetrics";
-import { caseTone, n, pct, queueCounts, roundTone } from "@/lib/admin2";
-import { Bar, Kpi, PageHead, Panel, SeedNote, Status } from "@/components/admin2/ui";
+import { caseTone, n } from "@/lib/admin2";
+import { Body, Kpi, PageHead, Panel, SeedNote, Status } from "@/components/admin2/ui";
+import TableBox from "@/components/admin2/TableBox";
+import RoundsProgress, { CurrentRoundKpi, CurrentRoundMeta } from "./RoundsProgress";
+import Waiting from "./Waiting";
 
 export const metadata = { title: "대시보드" };
 
@@ -32,32 +35,20 @@ const paidDelta = change(thisMonth.paid, lastMonth.paid);
    서면 진단이 그만큼 벌고 있다는 말로 읽힌다. 기존 콘솔도 같은 이유로 뺐다
    (components/admin/BusinessMetrics.tsx). 그 자리에는 회차 제출률을 세운다. */
 
-/** 지금 손이 가야 하는 것 — 기둥의 숫자와 같은 값을 쓴다(lib/admin2.ts) */
-const waiting = [
-  { label: "판정 대기", value: queueCounts.cases, href: "/admin2/queue", note: "AI 분석 완료 · 검토중 · 회의" },
-  { label: "가입 승인", value: queueCounts.approvals, href: "/admin2/approvals", note: "교사·기관 증빙 확인" },
-  { label: "문항 검수", value: queueCounts.items, href: "/admin2/items", note: "검수 대기" },
-  { label: "답변 대기", value: queueCounts.inquiries, href: "/admin2/inquiries", note: "접수·처리중" },
-  { label: "리포트 발행", value: queueCounts.reports, href: "/admin2/queue", note: "마스터 승인 대기" },
-];
-
 export default function Admin2Home() {
   const recent = auditLog.slice(0, 6);
   /* 확정된 것은 빼고 센다. state !== "published"로 걸렀더니 「확정 전 6건」이라 적어 놓고
      그 여섯 줄 안에 「판정 확정」이 들어 있었다 — 기둥 배지·처리 대기 표와도 어긋났다. */
   const queue = gradingQueue.filter((c) => c.state === "ai" || c.state === "review" || c.state === "conference");
+  /* 미리보기는 여섯 줄까지. No가 세는 것은 「지금 이 표에 서 있는 줄 수」이므로 자리에서
+     slice를 부르지 않고 목록을 먼저 뽑아 둔다 — 전체 건수는 판 머리(meta)가 적는다 */
+  const shownQueue = queue.slice(0, 6);
 
   return (
     <>
       <PageHead
         title="대시보드"
-        meta={
-          <>
-            <span>{currentRound.label}</span>
-            <span aria-hidden>·</span>
-            <span className="a2-mono">{currentRound.period}</span>
-          </>
-        }
+        meta={<CurrentRoundMeta />}
         actions={
           <>
             <Link href="/admin2/rounds" className="a2-btn">
@@ -68,242 +59,162 @@ export default function Admin2Home() {
             </Link>
           </>
         }
+        /* ① 이번 달 */
+        stats={
+          <>
+            <Kpi
+              label={`신규 가입 (${thisMonth.full})`}
+              value={n(thisMonth.signups)}
+              unit="명"
+              delta={signupsDelta}
+              sub={`지난달 ${n(lastMonth.signups)}`}
+            />
+            <Kpi
+              label="유료 전환"
+              value={n(thisMonth.paid)}
+              unit="명"
+              delta={paidDelta}
+              sub={`전환율 ${conversionRate(thisMonth).toFixed(1)}%`}
+            />
+            <CurrentRoundKpi />
+            <Kpi
+              label="누적 회원"
+              value={n(totalMembers)}
+              unit="명"
+              sub="학부모·교사 가입 누계"
+              href="/admin2/members"
+            />
+          </>
+        }
       />
+<Body>
 
-      {/* ① 이번 달 */}
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi
-          label={`신규 가입 (${thisMonth.full})`}
-          value={n(thisMonth.signups)}
-          unit="명"
-          delta={signupsDelta}
-          sub={`지난달 ${n(lastMonth.signups)}`}
-        />
-        <Kpi
-          label="유료 전환"
-          value={n(thisMonth.paid)}
-          unit="명"
-          delta={paidDelta}
-          sub={`전환율 ${conversionRate(thisMonth).toFixed(1)}%`}
-        />
-        <Kpi
-          label="회차 제출률"
-          value={pct(currentRound.submitted, currentRound.target)}
-          unit="%"
-          sub={`${n(currentRound.submitted)} / ${n(currentRound.target)}명`}
-          href="/admin2/rounds"
-        />
-        <Kpi
-          label="누적 회원"
-          value={n(totalMembers)}
-          unit="명"
-          sub="학부모·교사 가입 누계"
-          href="/admin2/members"
-        />
-      </div>
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          {/* ② 회차 진행 — 상태가 브라우저 저장소 값이라 판째로 클라이언트다 */}
+          <RoundsProgress />
 
-      <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        {/* ② 회차 진행 */}
-        <Panel
-          title="회차 진행"
-          flush
-          actions={
-            <Link href="/admin2/rounds" className="a2-btn a2-btn-sm">
-              전체
-            </Link>
-          }
-        >
-          <div className="a2-table-wrap">
-            <table className="a2-table">
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: "10rem" }}>
-                    회차
-                  </th>
-                  <th scope="col" style={{ width: "5rem" }}>
-                    상태
-                  </th>
-                  <th scope="col" className="a2-th-num" style={{ width: "4.5rem" }}>
-                    대상
-                  </th>
-                  <th scope="col" style={{ width: "8rem" }}>
-                    제출
-                  </th>
-                  <th scope="col" style={{ width: "8rem" }}>
-                    판정
-                  </th>
-                  <th scope="col" style={{ width: "8rem" }}>
-                    발행
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rounds.map((r) => (
-                  <tr key={r.id}>
-                    <td className="a2-td-key a2-nowrap">
-                      <Link href="/admin2/rounds" className="hover:text-(--a2-accent) hover:underline">
-                        {r.label}
-                      </Link>
-                    </td>
-                    <td className="a2-nowrap">
-                      <Status tone={roundTone[r.state]}>{roundStates[r.state].label}</Status>
-                    </td>
-                    <td className="a2-td-num">{r.target ? n(r.target) : "—"}</td>
-                    <td className="a2-nowrap">
-                      {r.target ? <Bar value={r.submitted} total={r.target} /> : <span className="text-(--a2-ink-4)">—</span>}
-                    </td>
-                    <td className="a2-nowrap">
-                      {r.submitted ? (
-                        <Bar value={r.graded} total={r.submitted} />
-                      ) : (
-                        <span className="text-(--a2-ink-4)">—</span>
-                      )}
-                    </td>
-                    <td className="a2-nowrap">
-                      {r.submitted ? (
-                        <Bar value={r.published} total={r.submitted} />
-                      ) : (
-                        <span className="text-(--a2-ink-4)">—</span>
-                      )}
-                    </td>
+          {/* ③ 대기 — 문항 한 줄이 브라우저 저장소 값이라 판째로 클라이언트다 */}
+          <Waiting />
+        </div>
+
+        <div className="mt-3 grid gap-3 xl:grid-cols-2">
+          {/* 판정 큐 미리보기 */}
+          <Panel
+            title="판정 큐"
+            meta={`${currentRound.label} · 확정 전 ${queue.length}건`}
+            flush
+            actions={
+              <Link href="/admin2/queue" className="a2-btn a2-btn-sm">
+                전체
+              </Link>
+            }
+          >
+            <TableBox>
+              <table className="a2-table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="a2-th-num" style={{ width: "3rem" }}>
+                      No
+                    </th>
+                    <th scope="col" style={{ width: "7rem" }}>
+                      케이스
+                    </th>
+                    <th scope="col" style={{ width: "6rem" }}>
+                      상태
+                    </th>
+                    <th scope="col" style={{ width: "5rem" }}>
+                      제안 축
+                    </th>
+                    <th scope="col" className="a2-th-num" style={{ width: "4rem" }}>
+                      신뢰도
+                    </th>
+                    <th scope="col">사유</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+                </thead>
+                <tbody>
+                  {shownQueue.map((c, i) => (
+                    <tr key={c.id}>
+                      <td className="a2-td-num a2-nowrap a2-t-sm text-(--a2-ink-3)">{shownQueue.length - i}</td>
+                      <td className="a2-td-key a2-mono a2-nowrap">{c.id}</td>
+                      <td className="a2-nowrap">
+                        <Status tone={caseTone[c.state]}>{caseStates[c.state].label}</Status>
+                      </td>
+                      <td className="a2-nowrap">{c.suggested}</td>
+                      <td className="a2-td-num">
+                        <span style={{ color: c.confidence < 75 ? "var(--a2-danger)" : undefined }}>{c.confidence}</span>
+                      </td>
+                      <td className="a2-clip a2-t-sm" style={{ width: "100%" }}>
+                        {c.flag ?? <span className="text-(--a2-ink-4)">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableBox>
+          </Panel>
 
-        {/* ③ 대기 */}
-        <Panel title="처리 대기" flush meta="사람 손이 필요한 것">
-          <table className="a2-table">
-            <tbody>
-              {waiting.map((w) => (
-                <tr key={w.label}>
-                  <td className="a2-td-key a2-nowrap" style={{ width: "6.5rem" }}>
-                    <Link href={w.href} className="hover:text-(--a2-accent) hover:underline">
-                      {w.label}
-                    </Link>
-                  </td>
-                  <td className="a2-t-xs text-(--a2-ink-4)">{w.note}</td>
-                  <td className="a2-td-num" style={{ width: "3.5rem" }}>
-                    <span className={w.value ? "font-semibold text-(--a2-ink)" : "text-(--a2-ink-4)"}>{w.value}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Panel>
-      </div>
-
-      <div className="mt-3 grid gap-3 xl:grid-cols-2">
-        {/* 판정 큐 미리보기 */}
-        <Panel
-          title="판정 큐"
-          meta={`${currentRound.label} · 확정 전 ${queue.length}건`}
-          flush
-          actions={
-            <Link href="/admin2/queue" className="a2-btn a2-btn-sm">
-              전체
-            </Link>
-          }
-        >
-          <div className="a2-table-wrap">
-            <table className="a2-table">
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: "7rem" }}>
-                    케이스
-                  </th>
-                  <th scope="col" style={{ width: "6rem" }}>
-                    상태
-                  </th>
-                  <th scope="col" style={{ width: "5rem" }}>
-                    제안 축
-                  </th>
-                  <th scope="col" className="a2-th-num" style={{ width: "4rem" }}>
-                    신뢰도
-                  </th>
-                  <th scope="col">사유</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queue.slice(0, 6).map((c) => (
-                  <tr key={c.id}>
-                    <td className="a2-td-key a2-mono a2-nowrap">{c.id}</td>
-                    <td className="a2-nowrap">
-                      <Status tone={caseTone[c.state]}>{caseStates[c.state].label}</Status>
-                    </td>
-                    <td className="a2-nowrap">{c.suggested}</td>
-                    <td className="a2-td-num">
-                      <span style={{ color: c.confidence < 75 ? "var(--a2-danger)" : undefined }}>{c.confidence}</span>
-                    </td>
-                    <td className="a2-clip a2-t-sm" style={{ width: "100%" }}>
-                      {c.flag ?? <span className="text-(--a2-ink-4)">—</span>}
-                    </td>
+          {/* ④ 감사 로그 */}
+          <Panel
+            title="최근 활동"
+            meta="감사 로그"
+            flush
+            actions={
+              <Link href="/admin2/audit" className="a2-btn a2-btn-sm">
+                전체
+              </Link>
+            }
+          >
+            <TableBox>
+              <table className="a2-table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="a2-th-num" style={{ width: "3rem" }}>
+                      No
+                    </th>
+                    <th scope="col" style={{ width: "8.5rem" }}>
+                      시각
+                    </th>
+                    <th scope="col" style={{ width: "4.5rem" }}>
+                      행위자
+                    </th>
+                    <th scope="col" style={{ width: "9rem" }}>
+                      동작
+                    </th>
+                    <th scope="col">대상</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+                </thead>
+                <tbody>
+                  {recent.map((l, i) => (
+                    <tr key={l.id}>
+                      <td className="a2-td-num a2-nowrap a2-t-sm text-(--a2-ink-3)">{recent.length - i}</td>
+                      <td className="a2-mono a2-nowrap a2-t-xs">{l.at.slice(5)}</td>
+                      <td className="a2-td-key a2-nowrap">{l.actor}</td>
+                      <td className="a2-nowrap">
+                        {l.reason && (
+                          <span
+                            aria-label="사유 입력 대상"
+                            title="개인정보 열람 — 사유가 기록됨"
+                            className="a2-dot mr-1.5 inline-block align-middle"
+                            style={{ color: "var(--a2-warn)" }}
+                          />
+                        )}
+                        {l.action}
+                      </td>
+                      <td className="a2-clip a2-t-sm" style={{ width: "100%" }}>
+                        {l.target}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableBox>
+          </Panel>
+        </div>
 
-        {/* ④ 감사 로그 */}
-        <Panel
-          title="최근 활동"
-          meta="감사 로그"
-          flush
-          actions={
-            <Link href="/admin2/audit" className="a2-btn a2-btn-sm">
-              전체
-            </Link>
-          }
-        >
-          <div className="a2-table-wrap">
-            <table className="a2-table">
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: "8.5rem" }}>
-                    시각
-                  </th>
-                  <th scope="col" style={{ width: "4.5rem" }}>
-                    행위자
-                  </th>
-                  <th scope="col" style={{ width: "9rem" }}>
-                    동작
-                  </th>
-                  <th scope="col">대상</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((l) => (
-                  <tr key={l.id}>
-                    <td className="a2-mono a2-nowrap a2-t-xs">{l.at.slice(5)}</td>
-                    <td className="a2-td-key a2-nowrap">{l.actor}</td>
-                    <td className="a2-nowrap">
-                      {l.reason && (
-                        <span
-                          aria-label="사유 입력 대상"
-                          title="개인정보 열람 — 사유가 기록됨"
-                          className="a2-dot mr-1.5 inline-block align-middle"
-                          style={{ color: "var(--a2-warn)" }}
-                        />
-                      )}
-                      {l.action}
-                    </td>
-                    <td className="a2-clip a2-t-sm" style={{ width: "100%" }}>
-                      {l.target}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
-
+</Body>
       <SeedNote>
         이 콘솔의 숫자는 화면 설계를 위한 예시입니다. 실제 집계가 아니며, 붙일 때는 집계 API 응답으로 갈아 끼웁니다.
-        회차 제출률 {pct(currentRound.submitted, currentRound.target)}% 도 같은 예시 값입니다.
+        회차 상태 · 기간과 문항 검수 건수만 이 브라우저에 저장된 값에서 읽습니다.
       </SeedNote>
     </>
   );

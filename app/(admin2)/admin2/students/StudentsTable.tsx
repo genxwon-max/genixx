@@ -1,16 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status } from "@/components/admin2/ui";
-import type { Tone } from "@/lib/admin2";
-import {
-  examStateLabel,
-  userStateLabel,
-  type ExamState,
-  type StudentRow,
-  type UserState,
-} from "@/lib/adminUsers";
+import { examTone, studentAccountTone } from "@/lib/admin2";
+import { examStateLabel, userStateLabel, type ExamState, type StudentRow } from "@/lib/adminUsers";
+import { useStudents } from "@/lib/directoryStore";
 
 /*
  * ADM-02-1의 표. DataTable이 함수 prop(cell·value·match)을 받으므로 클라이언트다.
@@ -32,23 +28,6 @@ import {
 
 /** 진행 순서 — 정렬을 가나다순이 아니라 응시가 진행된 순서로 세우려고 둔다 */
 const EXAM_ORDER: ExamState[] = ["not-started", "in-progress", "submitted", "reported"];
-
-const examTone: Record<ExamState, Tone> = {
-  reported: "ok",
-  submitted: "warn",
-  "in-progress": "info",
-  "not-started": "muted",
-};
-
-/* 계정 상태는 학생 목록에 활성·휴면만 나오지만, 표는 나머지 값이 들어와도 색이
-   비지 않게 다섯을 모두 적어 둔다. 정지·탈퇴는 곧 시험을 막는 값이라 danger. */
-const stateTone: Record<UserState, Tone> = {
-  active: "ok",
-  pending: "warn",
-  dormant: "muted",
-  suspended: "danger",
-  withdrawn: "danger",
-};
 
 /** 초3 → 중1 순. 「중」이 「초」보다 앞서는 가나다순으로는 학년이 뒤집힌다 */
 const gradeRank = (g: string) => (g.startsWith("초") ? 0 : 10) + Number(g.replace(/\D/g, ""));
@@ -131,7 +110,7 @@ const cols: Col<StudentRow>[] = [
     width: "5.5rem",
     nowrap: true,
     value: (s) => userStateLabel[s.state].label,
-    cell: (s) => <Status tone={stateTone[s.state]}>{userStateLabel[s.state].label}</Status>,
+    cell: (s) => <Status tone={studentAccountTone[s.state]}>{userStateLabel[s.state].label}</Status>,
   },
   {
     key: "joinedAt",
@@ -144,20 +123,29 @@ const cols: Col<StudentRow>[] = [
   },
   {
     // hover에서만 나타나는 동작을 두지 않는다(admin2.css 규칙) — 오른쪽 끝에 늘 세워 둔다.
-    // 지금은 자리만이라 value를 주지 않는다: 정렬 화살표가 서면 눌리는 칸으로 읽힌다.
+    // 정렬·검색을 달지 않는다: value가 없으면 머리 행이 눌리는 단추가 되지 않는다.
+    //
+    // 여기 있던 「코드 재발급」은 눌러도 아무 일이 없는 자리만이었다. 상세(ADM-02-1-1)로
+    // 옮겨 실제로 코드를 내게 했다 — 148줄 위에 그런 단추를 세워 두면 눌러 본 사람이
+    // 「재발급됐나?」를 매번 다른 곳에서 확인해야 한다.
     key: "act",
-    head: "동작",
+    head: "관리",
     width: "5.5rem",
     nowrap: true,
-    cell: () => (
-      <button type="button" className="a2-btn a2-btn-sm">
-        코드 재발급
-      </button>
+    cell: (s) => (
+      <Link href={`/admin2/students/${s.id}`} className="a2-btn a2-btn-sm" aria-label={`${s.name} 수정하기`}>
+        수정하기
+      </Link>
     ),
   },
 ];
 
-export default function StudentsTable({ rows }: { rows: StudentRow[] }) {
+export default function StudentsTable() {
+  /* 줄은 씨앗 명부가 아니라 「씨앗 + 고친 것」을 받는다(lib/directoryStore.ts).
+     상세에서 학년을 고치거나 정지해 놓고 돌아왔을 때 목록이 옛 값을 세우고 있으면,
+     눌러서 고친 것을 화면이 안 돌려주는 셈이 되어 고친 것 자체를 못 믿게 된다 */
+  const rows = useStudents();
+
   /* 거르개 값은 데이터에서 뽑는다 — userStateLabel의 다섯 상태를 그대로 세우면
      학생에게는 없는 「승인 대기·정지·탈퇴」가 골라도 늘 0줄인 선택지로 남는다. */
   const filters = useMemo<Filter<StudentRow>[]>(() => {

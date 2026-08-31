@@ -2,6 +2,7 @@
 
 import { maySelfReview, staffRoles } from "@/lib/admin";
 import { queueCounts } from "@/lib/admin2";
+import { useItems } from "@/lib/itemStore";
 import {
   BORDER,
   ICC_TARGET,
@@ -42,6 +43,8 @@ const rubricText = (["full", "partial", "none"] as const)
 const selfReview = staffRoles.filter((r) => maySelfReview(r.id)).map((r) => r.short);
 
 export default function QualityPanel() {
+  const itemsWaiting = useItems().filter((i) => i.state === "submitted").length;
+
   return (
     <Panel title="판정·품질 기준" meta="AI 제안값을 사람에게 넘기는 선">
       <DescList
@@ -100,14 +103,15 @@ export default function QualityPanel() {
             "lib/expertStore.ts",
           ),
           row("자가 검수 허용 역할", selfReview.join(" · "), "lib/admin.ts"),
-          /* 왼쪽 기둥에 서는 숫자가 어떤 규칙으로 세어지는지. 리포트만 고정값(pending)이고
-             나머지 넷은 목록에서 상태로 걸러 센 값이라, 목록이 바뀌면 기둥도 따라 바뀐다. */
+          /* 왼쪽 기둥에 서는 숫자가 어떤 규칙으로 세어지는지. 다섯 다 목록에서 상태로
+             걸러 센 값이라 목록이 바뀌면 기둥도 따라 바뀐다. 문항만 브라우저 저장소에서
+             세므로 이 판이 클라이언트인 김에 여기서 함께 센다. */
           row(
             "대기 건수 집계",
             <>
               판정 <span className="a2-num">{queueCounts.cases}</span> · 승인{" "}
               <span className="a2-num">{queueCounts.approvals}</span> · 문항{" "}
-              <span className="a2-num">{queueCounts.items}</span> · 문의{" "}
+              <span className="a2-num">{itemsWaiting}</span> · 문의{" "}
               <span className="a2-num">{queueCounts.inquiries}</span> · 리포트{" "}
               <span className="a2-num">{queueCounts.reports}</span>
             </>,

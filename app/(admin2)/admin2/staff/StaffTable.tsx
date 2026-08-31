@@ -2,14 +2,13 @@
 
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status, Tag } from "@/components/admin2/ui";
-import { type Tone } from "@/lib/admin2";
+import { accountTone } from "@/lib/admin2";
 import { roleOf, staffRoles } from "@/lib/admin";
 import {
   staffDirectory,
   userStateLabel,
   userStateOptions,
   type StaffMember,
-  type UserState,
 } from "@/lib/adminUsers";
 
 /*
@@ -36,14 +35,6 @@ import {
  *   읽혀 채우라는 요구가 따라온다.
  * · 비밀번호 마지막 변경·접속 IP 칸도 없다. 있으면 좋을 칸이지만 데이터가 없다.
  */
-
-const stateTone: Record<UserState, Tone> = {
-  active: "ok",
-  pending: "warn",
-  dormant: "muted",
-  suspended: "danger",
-  withdrawn: "muted",
-};
 
 /* 상태 선택지는 실제로 등장한 값에서만 뽑는다 — 운영자에는 「승인 대기」도 「탈퇴」도 없다.
    골라도 0줄이 나오는 선택지가 하나라도 있으면 거르개 전체를 못 믿게 된다 */
@@ -117,7 +108,7 @@ const cols: Col<StaffMember>[] = [
     width: "5.5rem",
     nowrap: true,
     value: (r) => userStateLabel[r.state].label,
-    cell: (r) => <Status tone={stateTone[r.state]}>{userStateLabel[r.state].label}</Status>,
+    cell: (r) => <Status tone={accountTone[r.state]}>{userStateLabel[r.state].label}</Status>,
   },
   // 최근 접속: 정렬을 달지 않은 까닭은 파일 머리에 적었다. 값 자체는 휴면 판단에 바로
   // 쓰이므로 본문 색으로 두고, 가입일은 대조용이라 한 단계 흐리게 둔다

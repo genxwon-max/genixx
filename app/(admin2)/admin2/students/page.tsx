@@ -18,6 +18,11 @@ export const metadata = { title: "학생·접속코드" };
  * ⚠ 생년월일 칸을 두지 않는다. 이 저장소는 학생 생년월일을 목록에 두지 않기로 했다 —
  *   개인정보 열람은 사유를 받아 감사 로그에 남기는 별도 흐름이고, 목록을 훑는 일에는
  *   필요한 적이 없다. 접속코드는 그 자체가 이 목록의 값이라 그대로 적는다.
+ *
+ * 지표 다섯 칸은 서버에서 센 값을 그대로 쓴다. 기관 화면과 달리 여기서는 그래도 된다 —
+ * 다섯 칸이 전부 응시 상태이거나 전체·휴면 수인데, 상세(ADM-02-1-1)에서 바꿀 수 있는
+ * 것은 학년·코드·활성/정지/탈퇴뿐이라 이 다섯 중 어느 것도 움직이지 않는다.
+ * 움직이는 값을 지표에 올리게 되면 기관 화면처럼 지표째 클라이언트로 내려야 한다.
  */
 
 const byExam = (s: ExamState) => students.filter((x) => x.exam === s).length;
@@ -32,6 +37,7 @@ export default function Admin2Students() {
   return (
     <>
       <PageHead
+        statCols={5}
         title="학생·접속코드"
         meta={
           <>
@@ -42,31 +48,29 @@ export default function Admin2Students() {
             <span>접속코드 8자리</span>
           </>
         }
+        stats={
+          <>
+            <Kpi label="전체 학생" value={n(total)} unit="명" sub={`휴면 ${n(dormant)} 포함`} />
+            {stages.map((s) => {
+              const v = byExam(s);
+              return (
+                <Kpi
+                  key={s}
+                  label={examStateLabel[s].label}
+                  value={n(v)}
+                  unit="명"
+                  sub={`전체의 ${pct(v, total)}%`}
+                />
+              );
+            })}
+          </>
+        }
       />
-
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <Kpi label="전체 학생" value={n(total)} unit="명" sub={`휴면 ${n(dormant)} 포함`} />
-        {stages.map((s) => {
-          const v = byExam(s);
-          return (
-            <Kpi
-              key={s}
-              label={examStateLabel[s].label}
-              value={n(v)}
-              unit="명"
-              sub={`전체의 ${pct(v, total)}%`}
-            />
-          );
-        })}
-      </div>
-
-      <div className="mt-3">
-        <StudentsTable rows={students} />
-      </div>
+      <StudentsTable />
 
       <SeedNote>
-        이 화면의 학생·보호자·접속코드는 화면 설계를 위한 예시입니다. 실제 응시자가 아니며, 코드 재발급 단추는 아직
-        자리만 잡아 둔 것입니다.
+        이 화면의 학생·보호자·접속코드는 화면 설계를 위한 예시입니다. 실제 응시자가 아니며, 여기서 바꾼 값은 이
+        브라우저에만 남습니다.
       </SeedNote>
     </>
   );

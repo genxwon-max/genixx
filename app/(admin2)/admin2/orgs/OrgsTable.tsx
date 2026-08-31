@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { contractLabel, type OrgRow } from "@/lib/admin";
-import { n, pct, type Tone } from "@/lib/admin2";
+import { contractTone, n, pct } from "@/lib/admin2";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Bar, Status, Tag } from "@/components/admin2/ui";
 
@@ -22,18 +23,10 @@ import { Bar, Status, Tag } from "@/components/admin2/ui";
  *  · 담당자 연락처·기관 주소: 목록에서 훑을 값이 아니고, 원문 연락처는 이 콘솔의
  *    목록 화면에 두지 않는다. 필요하면 상세에서 사유를 남기고 연다.
  *  · 결제·청구 이력: 응시권 배정으로 이미 규모가 읽히고, 금액은 정산 화면의 몫이다.
- *  · 기관 이름에 링크를 걸지 않았다 — 상세 화면이 아직 없다. 죽은 링크를 두면
- *    매번 눌러 보고 아무 일도 안 일어나는 것을 확인하게 된다.
+ *  · 기관 이름에 링크를 걸지 않았다. 상세 화면은 생겼지만(ORG-02-1) 한 줄에서 가는
+ *    길은 오른쪽 끝의 「수정하기」 하나로 둔다 — 이름과 단추 둘 다 같은 곳으로 가면
+ *    회원·학생 목록과 줄에서 손이 가는 자리가 달라진다.
  */
-
-/* 계약 상태 → 점 색. contractLabel의 className(text-emerald-700 …)은 쓰지 않는다 —
-   저쪽은 기존 /admin의 팔레트 색이고, 이 콘솔은 상태에 면·팔레트색을 칠하지 않고
-   Status의 점 하나로만 적는다. 가져오는 것은 label 글자뿐이다. */
-const contractTone: Record<OrgRow["contract"], Tone> = {
-  active: "ok",
-  trial: "warn",
-  expired: "danger",
-};
 
 export default function OrgsTable({ rows, tightAt }: { rows: OrgRow[]; tightAt: number }) {
   const cols = useMemo<Col<OrgRow>[]>(
@@ -139,6 +132,19 @@ export default function OrgsTable({ rows, tightAt }: { rows: OrgRow[]; tightAt: 
         nowrap: true,
         value: (o) => o.until,
         cell: (o) => <span className="a2-mono">{o.until}</span>,
+      },
+      {
+        // 오른쪽 끝의 관리 칸 — 회원·학생 목록과 같은 자리에 같은 말로 세운다.
+        // 정렬·검색을 달지 않는다: value가 없으면 머리 행이 눌리는 단추가 되지 않는다
+        key: "act",
+        head: "관리",
+        width: "5.5rem",
+        nowrap: true,
+        cell: (o) => (
+          <Link href={`/admin2/orgs/${o.id}`} className="a2-btn a2-btn-sm" aria-label={`${o.name} 수정하기`}>
+            수정하기
+          </Link>
+        ),
       },
     ],
     [tightAt],

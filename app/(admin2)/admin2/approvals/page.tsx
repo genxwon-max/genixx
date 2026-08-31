@@ -1,5 +1,5 @@
 import { approvals } from "@/lib/admin";
-import { DescList, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
+import { Body, DescList, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
 
 export const metadata = { title: "가입 승인" };
 
@@ -54,66 +54,68 @@ export default function Admin2Approvals() {
           </>
         }
       />
+<Body>
 
-      <div className="grid gap-2">
-        {approvals.map((a) => (
-          <Panel key={a.id} flush>
-            {/* 판의 머리 — 「무엇을 누가」까지만. Panel의 title은 문자열만 받아 신청 ID를
-                고정폭으로 세울 수 없어서 a2-panel-head를 직접 짠다.
-                칸 순서는 ID → 종류 → 이름 → 소속: 다섯 판을 위아래로 훑을 때 왼쪽 끝이
-                자릿수가 같은 ID로 정렬돼야 「아까 그 건」을 눈으로 되찾는다.
-                버튼은 콘솔의 다른 판과 같이 머리 오른쪽에 둔다. 본문 네 줄이 100px도
-                안 되어 버튼을 아래로 내려도 「읽고 나서 누른다」가 달라지지 않는다. */}
-            <div className="a2-panel-head">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{a.id}</span>
-                <Tag>{kindLabel[a.kind]}</Tag>
-                <h2 className="a2-h truncate">{a.name}</h2>
-                <span className="truncate a2-t-sm text-(--a2-ink-2)">{a.org}</span>
+        <div className="grid gap-2">
+          {approvals.map((a) => (
+            <Panel key={a.id} flush>
+              {/* 판의 머리 — 「무엇을 누가」까지만. Panel의 title은 문자열만 받아 신청 ID를
+                  고정폭으로 세울 수 없어서 a2-panel-head를 직접 짠다.
+                  칸 순서는 ID → 종류 → 이름 → 소속: 다섯 판을 위아래로 훑을 때 왼쪽 끝이
+                  자릿수가 같은 ID로 정렬돼야 「아까 그 건」을 눈으로 되찾는다.
+                  버튼은 콘솔의 다른 판과 같이 머리 오른쪽에 둔다. 본문 네 줄이 100px도
+                  안 되어 버튼을 아래로 내려도 「읽고 나서 누른다」가 달라지지 않는다. */}
+              <div className="a2-panel-head">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{a.id}</span>
+                  <Tag>{kindLabel[a.kind]}</Tag>
+                  <h2 className="a2-h truncate">{a.name}</h2>
+                  <span className="truncate a2-t-sm text-(--a2-ink-2)">{a.org}</span>
+                </div>
+                {/* 아직 붙일 곳이 없어 자리만 세운다. 승인이 주 버튼, 반려는 테두리만 —
+                    둘 다 칠해 두면 어느 쪽이 되돌릴 수 없는 쪽인지 순간에 못 가른다.
+                    판이 다섯이라 같은 글자의 버튼이 열 개 서므로 aria-label에 ID를 붙인다. */}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button type="button" aria-label={`${a.id} 승인`} className="a2-btn a2-btn-sm a2-btn-primary">
+                    승인
+                  </button>
+                  <button type="button" aria-label={`${a.id} 반려`} className="a2-btn a2-btn-sm a2-btn-danger">
+                    반려
+                  </button>
+                </div>
               </div>
-              {/* 아직 붙일 곳이 없어 자리만 세운다. 승인이 주 버튼, 반려는 테두리만 —
-                  둘 다 칠해 두면 어느 쪽이 되돌릴 수 없는 쪽인지 순간에 못 가른다.
-                  판이 다섯이라 같은 글자의 버튼이 열 개 서므로 aria-label에 ID를 붙인다. */}
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button type="button" aria-label={`${a.id} 승인`} className="a2-btn a2-btn-sm a2-btn-primary">
-                  승인
-                </button>
-                <button type="button" aria-label={`${a.id} 반려`} className="a2-btn a2-btn-sm a2-btn-danger">
-                  반려
-                </button>
+
+              {/* 자동 점검을 첫 줄에 올린다. 다섯 판을 훑을 때 머리 바로 아래 같은 자리에서
+                  경고 유무가 잡혀야 어느 건부터 열어 볼지 정해진다.
+                  경고가 없을 때도 줄을 지우지 않고 「이상 없음」을 적는다 — 줄이 비어 있으면
+                  점검을 통과한 건지 점검을 안 돌린 건지 구분되지 않는다.
+                  아래 셋은 읽는 차례대로 신청 내용 → 제출 증빙 → 신청 시각. 시각을 맨 뒤로
+                  민 것은 판단을 바꾸는 값이 아니라 밀린 정도만 알려 주기 때문이다. */}
+              <div className="p-3">
+                <DescList
+                  rows={[
+                    {
+                      k: "자동 점검",
+                      v: a.warning ? (
+                        <>
+                          <Status tone="warn">경고</Status>{" "}
+                          <span className="text-(--a2-ink)">{a.warning}</span>
+                        </>
+                      ) : (
+                        <Status tone="muted">이상 없음</Status>
+                      ),
+                    },
+                    { k: "신청 내용", v: a.detail },
+                    { k: "제출 증빙", v: a.proof },
+                    { k: "신청 시각", v: <span className="a2-mono">{a.requestedAt}</span> },
+                  ]}
+                />
               </div>
-            </div>
+            </Panel>
+          ))}
+        </div>
 
-            {/* 자동 점검을 첫 줄에 올린다. 다섯 판을 훑을 때 머리 바로 아래 같은 자리에서
-                경고 유무가 잡혀야 어느 건부터 열어 볼지 정해진다.
-                경고가 없을 때도 줄을 지우지 않고 「이상 없음」을 적는다 — 줄이 비어 있으면
-                점검을 통과한 건지 점검을 안 돌린 건지 구분되지 않는다.
-                아래 셋은 읽는 차례대로 신청 내용 → 제출 증빙 → 신청 시각. 시각을 맨 뒤로
-                민 것은 판단을 바꾸는 값이 아니라 밀린 정도만 알려 주기 때문이다. */}
-            <div className="p-3">
-              <DescList
-                rows={[
-                  {
-                    k: "자동 점검",
-                    v: a.warning ? (
-                      <>
-                        <Status tone="warn">경고</Status>{" "}
-                        <span className="text-(--a2-ink)">{a.warning}</span>
-                      </>
-                    ) : (
-                      <Status tone="muted">이상 없음</Status>
-                    ),
-                  },
-                  { k: "신청 내용", v: a.detail },
-                  { k: "제출 증빙", v: a.proof },
-                  { k: "신청 시각", v: <span className="a2-mono">{a.requestedAt}</span> },
-                ]}
-              />
-            </div>
-          </Panel>
-        ))}
-      </div>
-
+</Body>
       <SeedNote>
         이 화면의 이름·기관·시각은 화면 설계를 위한 예시입니다. 실제 신청이 아니며, 승인·반려 버튼은 아직 아무 것도
         하지 않습니다.

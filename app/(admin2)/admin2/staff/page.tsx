@@ -2,7 +2,8 @@ import Link from "next/link";
 import { can, permissionIds, staffRoles, type PermissionId } from "@/lib/admin";
 import { staffDirectory } from "@/lib/adminUsers";
 import { n } from "@/lib/admin2";
-import { PageHead, Panel, SeedNote } from "@/components/admin2/ui";
+import { Body, PageHead, Panel, SeedNote } from "@/components/admin2/ui";
+import TableBox from "@/components/admin2/TableBox";
 import StaffTable from "./StaffTable";
 
 export const metadata = { title: "운영자·권한" };
@@ -58,122 +59,124 @@ const inactive = staffDirectory.filter((s) => s.state !== "active").length;
 export default function Admin2StaffPage() {
   return (
     <>
-      <PageHead
-        title="운영자·권한"
-        meta={
-          <>
-            <span>
-              계정 <span className="a2-num text-(--a2-ink-2)">{n(staffDirectory.length)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              최고권한 <span className="a2-num text-(--a2-ink-2)">{n(superCount)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              2단계 미설정 <span className="a2-num text-(--a2-ink-2)">{n(mfaOff)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              정지·휴면 <span className="a2-num text-(--a2-ink-2)">{n(inactive)}</span>
-            </span>
-          </>
-        }
-        actions={
-          /* 이 화면에서 못 하는 일로 나가는 문 하나. 계정을 만졌으면 그 기록이 어디에
-             남는지가 바로 다음 질문이라 감사 로그를 붙였다. 동작하지 않는 「운영자 추가」
-             같은 단추는 두지 않았다 */
-          <Link href="/admin2/audit" className="a2-btn">
-            감사 로그
-          </Link>
-        }
-      />
+    <PageHead
+      title="운영자·권한"
+      meta={
+        <>
+          <span>
+            계정 <span className="a2-num text-(--a2-ink-2)">{n(staffDirectory.length)}</span>
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            최고권한 <span className="a2-num text-(--a2-ink-2)">{n(superCount)}</span>
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            2단계 미설정 <span className="a2-num text-(--a2-ink-2)">{n(mfaOff)}</span>
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            정지·휴면 <span className="a2-num text-(--a2-ink-2)">{n(inactive)}</span>
+          </span>
+        </>
+      }
+      actions={
+        /* 이 화면에서 못 하는 일로 나가는 문 하나. 계정을 만졌으면 그 기록이 어디에
+           남는지가 바로 다음 질문이라 감사 로그를 붙였다. 동작하지 않는 「운영자 추가」
+           같은 단추는 두지 않았다 */
+        <Link href="/admin2/audit" className="a2-btn">
+          감사 로그
+        </Link>
+      }
+    />
 
       {/* ① 누가 들어올 수 있는가 */}
       <StaffTable />
+<Body>
 
-      {/* ② 그 역할은 무엇을 할 수 있는가 —
-          이 화면의 핵심. 슈퍼 관리자가 「출제자가 학생 개인정보를 볼 수 있나」를 확인하러
-          오는 자리다. 세로축을 권한, 가로축을 역할로 잡은 것은 질문이 늘 권한 쪽에서
-          시작하기 때문이다. 역할이 넷뿐이라 가로로 두면 스크롤 없이 한눈에 들어오고,
-          권한 열여덟은 세로로 훑는 편이 빠르다. 뒤집으면 열여덟 칸짜리 가로 표가 된다.
-          권한 순서는 permissionIds에 적힌 차례 그대로 둔다 — 회원 → 학생 → 회차 → 문항 →
-          판정 → 기관·정산 → 콘텐츠·문의 → 감사·계정·시스템 순으로 이미 일이 흐르는
-          차례라, 화면에서 다시 정렬하면 정의서와 대조할 때 줄을 세어야 한다. */}
-      <div id="roles" className="mt-3 scroll-mt-14">
-        <Panel
-          title="역할 × 권한"
-          meta={`권한 ${permissionIds.length} · 역할 ${staffRoles.length} · ● 있음 / − 없음`}
-          flush
-        >
-          <div className="a2-table-wrap">
-            <table className="a2-table">
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: "10.5rem" }}>
-                    권한 ID
-                  </th>
-                  <th scope="col">뜻</th>
-                  {staffRoles.map((role) => (
-                    /* 역할 이름 옆에 가진 권한 수를 늘 세워 둔다. 세로로 ● 개수를 세게
-                       두지 않으려는 것이고, 「관리자 18」은 곧 전권이라는 뜻이 된다 */
-                    <th
-                      key={role.id}
-                      scope="col"
-                      title={role.desc}
-                      className="text-center"
-                      style={{ width: "6.5rem" }}
-                    >
-                      {role.short}{" "}
-                      <span className="a2-num text-(--a2-ink-4)">{role.permissions.length}</span>
+        {/* ② 그 역할은 무엇을 할 수 있는가 —
+            이 화면의 핵심. 슈퍼 관리자가 「출제자가 학생 개인정보를 볼 수 있나」를 확인하러
+            오는 자리다. 세로축을 권한, 가로축을 역할로 잡은 것은 질문이 늘 권한 쪽에서
+            시작하기 때문이다. 역할이 넷뿐이라 가로로 두면 스크롤 없이 한눈에 들어오고,
+            권한 열여덟은 세로로 훑는 편이 빠르다. 뒤집으면 열여덟 칸짜리 가로 표가 된다.
+            권한 순서는 permissionIds에 적힌 차례 그대로 둔다 — 회원 → 학생 → 회차 → 문항 →
+            판정 → 기관·정산 → 콘텐츠·문의 → 감사·계정·시스템 순으로 이미 일이 흐르는
+            차례라, 화면에서 다시 정렬하면 정의서와 대조할 때 줄을 세어야 한다. */}
+        <div id="roles" className="mt-3 scroll-mt-14">
+          <Panel
+            title="역할 × 권한"
+            meta={`권한 ${permissionIds.length} · 역할 ${staffRoles.length} · ● 있음 / − 없음`}
+            flush
+          >
+            <TableBox>
+              <table className="a2-table">
+                <thead>
+                  <tr>
+                    <th scope="col" style={{ width: "10.5rem" }}>
+                      권한 ID
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {permissionIds.map((p) => (
-                  <tr key={p}>
-                    <td className="a2-td-key a2-mono a2-nowrap a2-t-sm">{p}</td>
-                    <td className="a2-t-sm">{permissionLabel[p]}</td>
-                    {staffRoles.map((role) => {
-                      const on = can(role.id, p);
-                      return (
-                        /* ●/− 모양만으로 가르지 않는다. 칸마다 title을 달고 sr-only로
-                           읽을 글자를 함께 둔다 — 이 표는 확대해서 한 칸씩 짚어 보는
-                           일이 잦고, 그때 마우스를 올린 칸이 무슨 뜻인지가 답이다 */
-                        <td
-                          key={role.id}
-                          className="text-center"
-                          title={`${role.short} — ${permissionLabel[p]} ${on ? "있음" : "없음"}`}
-                        >
-                          <span
-                            aria-hidden
-                            className={on ? "text-(--a2-ink)" : "text-(--a2-ink-4)"}
-                          >
-                            {on ? "●" : "−"}
-                          </span>
-                          <span className="sr-only">{on ? "있음" : "없음"}</span>
-                        </td>
-                      );
-                    })}
+                    <th scope="col">뜻</th>
+                    {staffRoles.map((role) => (
+                      /* 역할 이름 옆에 가진 권한 수를 늘 세워 둔다. 세로로 ● 개수를 세게
+                         두지 않으려는 것이고, 「관리자 18」은 곧 전권이라는 뜻이 된다 */
+                      <th
+                        key={role.id}
+                        scope="col"
+                        title={role.desc}
+                        className="text-center"
+                        style={{ width: "6.5rem" }}
+                      >
+                        {role.short}{" "}
+                        <span className="a2-num text-(--a2-ink-4)">{role.permissions.length}</span>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {permissionIds.map((p) => (
+                    <tr key={p}>
+                      <td className="a2-td-key a2-mono a2-nowrap a2-t-sm">{p}</td>
+                      <td className="a2-t-sm">{permissionLabel[p]}</td>
+                      {staffRoles.map((role) => {
+                        const on = can(role.id, p);
+                        return (
+                          /* ●/− 모양만으로 가르지 않는다. 칸마다 title을 달고 sr-only로
+                             읽을 글자를 함께 둔다 — 이 표는 확대해서 한 칸씩 짚어 보는
+                             일이 잦고, 그때 마우스를 올린 칸이 무슨 뜻인지가 답이다 */
+                          <td
+                            key={role.id}
+                            className="text-center"
+                            title={`${role.short} — ${permissionLabel[p]} ${on ? "있음" : "없음"}`}
+                          >
+                            <span
+                              aria-hidden
+                              className={on ? "text-(--a2-ink)" : "text-(--a2-ink-4)"}
+                            >
+                              {on ? "●" : "−"}
+                            </span>
+                            <span className="sr-only">{on ? "있음" : "없음"}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableBox>
 
-          {/* 이 표에서 빈칸 둘은 아직 안 붙인 권한이 아니라 일부러 갈라 둔 칸이다.
-              적어 두지 않으면 다음 사람이 「출제자에게도 검수를 열어 주자」로 읽는다 */}
-          <p className="border-t border-(--a2-line) px-2.5 py-1.5 a2-t-xs text-(--a2-ink-3)">
-            출제자에게 <span className="a2-mono">item.review</span>가, 검수자에게{" "}
-            <span className="a2-mono">item.write</span>가 없는 것은 빠뜨린 것이 아니라 이해충돌을
-            막으려고 맞물려 갈라 둔 칸입니다. 자기가 낸 문항을 자기가 승인하지 못하게 하는 것이
-            이 콘솔의 전제입니다(정의서 9장). 예외는 슈퍼 관리자뿐이고, 그때도 검수 기록에
-            &lsquo;본인 출제 문항 자가 검수&rsquo;로 남습니다.
-          </p>
-        </Panel>
-      </div>
+            {/* 이 표에서 빈칸 둘은 아직 안 붙인 권한이 아니라 일부러 갈라 둔 칸이다.
+                적어 두지 않으면 다음 사람이 「출제자에게도 검수를 열어 주자」로 읽는다 */}
+            <p className="border-t border-(--a2-line) px-2.5 py-1.5 a2-t-xs text-(--a2-ink-3)">
+              출제자에게 <span className="a2-mono">item.review</span>가, 검수자에게{" "}
+              <span className="a2-mono">item.write</span>가 없는 것은 빠뜨린 것이 아니라 이해충돌을
+              막으려고 맞물려 갈라 둔 칸입니다. 자기가 낸 문항을 자기가 승인하지 못하게 하는 것이
+              이 콘솔의 전제입니다(정의서 9장). 예외는 슈퍼 관리자뿐이고, 그때도 검수 기록에
+              &lsquo;본인 출제 문항 자가 검수&rsquo;로 남습니다.
+            </p>
+          </Panel>
+        </div>
 
+</Body>
       <SeedNote>
         운영자 계정·이름·접속 시각은 화면 설계를 위한 예시이며 실존 인물이 아닙니다. 다만 역할 ×
         권한 대조표는 예시가 아니라 <span className="a2-mono">lib/admin.ts</span>의 역할 정의를{" "}

@@ -1110,6 +1110,398 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     comments: [],
     updatedAt: "2026-08-08 10:50",
   },
+  /* ── 수학·과학 승인 문항 (회차 편성용) ──
+     회차 편성판은 과목 × 학년군 여섯 칸인데, 승인된 문항이 국어에만 있으면 나머지
+     다섯 칸은 「승인 문항 0건」으로 서서 편성이라는 일 자체를 화면에서 해 볼 수 없다.
+     수학 S1~S3 · 과학 S1~S4를 승인 상태로 둔다. 수학 S4(3M04-S4-001)와 과학 S1
+     (SCI-4-002)은 일부러 검수 대기로 남겨 두었다 — 검수 화면에서 승인을 눌러 보면
+     그 문항이 편성 후보에 새로 잡히는 것까지 이어서 볼 수 있다.
+
+     성취기준 코드는 위에 이미 쓰인 것만 다시 쓴다. 새 코드를 지어내면 교육과정에
+     없는 코드가 화면에 실적처럼 남는다. */
+  {
+    id: "IT-2617",
+    code: "4M04-S1-002",
+    subject: "수학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "분수",
+    unitNo: "04",
+    standardCode: "[4수01-10]",
+    standardText: "양의 등분할을 통하여 분수를 이해하고 읽고 쓸 수 있다.",
+    tagADetail: "단위분수 표기 식별",
+    talent: "MATH",
+    subskill: "MATH-01",
+    passage: "",
+    stem: "색종이 한 장을 똑같이 셋으로 나누었습니다. 그중 한 조각을 분수로 바르게 나타낸 것은?",
+    choices: ["1/3", "3/1", "1/2", "3/3"],
+    distractorIntent: [
+      "",
+      "분모와 분자를 뒤집어 쓰는 오개념",
+      "등분한 수를 세지 않고 둘로 나눈 것으로 보는 혼동",
+      "전체와 한 조각을 같은 것으로 보는 오개념",
+    ],
+    answer: 0,
+    explain: "정답 ①. 전체를 똑같이 셋으로 나눈 것 중 하나이므로 1/3입니다.",
+    guidance:
+      "분수 표기를 고르는 것까지만 묻습니다. 크기를 견주게 하거나 계산을 요구하면 S1에서 이탈합니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: true,
+    level: "S1",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 81,
+    reviews: [
+      {
+        at: "2026-08-12 10:20",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-one", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-level", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
+        ],
+        text: "표기만 고르게 하여 S1에 맞고, 오답 셋이 각각 다른 오개념을 잡습니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-12 10:20",
+  },
+  {
+    id: "IT-2618",
+    code: "4M04-S2-001",
+    subject: "수학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "분수",
+    unitNo: "04",
+    standardCode: "[4수01-10]",
+    standardText: "양의 등분할을 통하여 분수를 이해하고 읽고 쓸 수 있다.",
+    tagADetail: "등분할 원리 이해",
+    talent: "MATH",
+    subskill: "MATH-01",
+    passage: "",
+    stem: "전체를 똑같이 넷으로 나눈 것 중 하나를 1/4이라고 합니다. 그렇게 말할 수 있는 까닭으로 알맞은 것은?",
+    choices: [
+      "나눈 조각의 크기가 모두 같고 그중 하나이기 때문",
+      "조각이 모두 네 개이기 때문",
+      "숫자 4가 아래에 적히기 때문",
+      "조각 중에서 가장 작은 것이기 때문",
+    ],
+    distractorIntent: [
+      "",
+      "조각 수만 세면 분수가 된다고 보는 오개념",
+      "표기 규칙을 뜻으로 바꿔 아는 오개념",
+      "분수를 「가장 작은 조각」으로 보는 오개념",
+    ],
+    answer: 0,
+    explain:
+      "정답 ①. 분수는 똑같이 나눈 것 중 몇인지를 나타냅니다. 크기가 다르게 나뉘면 조각이 넷이어도 1/4이 아닙니다.",
+    guidance: "까닭을 고르게 해 등분할 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S2",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 63,
+    reviews: [
+      {
+        at: "2026-08-12 10:35",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-explain", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-standard", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-label", note: "" },
+        ],
+        text: "「똑같이」가 조건이라는 것을 오답 ②가 정확히 겨냥합니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-12 10:35",
+  },
+  {
+    id: "IT-2619",
+    code: "4M04-S3-001",
+    subject: "수학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "분수",
+    unitNo: "04",
+    standardCode: "[4수01-12]",
+    standardText: "분모가 같은 분수끼리, 단위분수끼리 크기를 비교할 수 있다.",
+    tagADetail: "같은 분모 크기 비교 수행",
+    talent: "MATH",
+    subskill: "MATH-01",
+    passage: "",
+    stem: "3/7, 5/7, 2/7을 큰 것부터 차례로 쓰시오.",
+    choices: ["", "", "", ""],
+    distractorIntent: [],
+    answer: 0,
+    explain:
+      "정답: 5/7, 3/7, 2/7. 분모가 같으므로 분자가 큰 쪽이 큽니다. 부분점수 — 순서가 하나만 어긋나면 1점.",
+    guidance:
+      "배운 절차를 그대로 수행하게 합니다. 분모가 다른 비교(5~6학년군)는 요구하지 않습니다.",
+    type: "short",
+    shortAnswers: "5/7, 3/7, 2/7 / 5/7 3/7 2/7 / 5/7>3/7>2/7",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S3",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 54,
+    reviews: [
+      {
+        at: "2026-08-12 11:05",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-clear", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-spec", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
+        ],
+        text: "허용 답안에 쉼표·부등호 표기를 함께 등록해 자동채점에서 표기 흔들림을 흡수합니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-12 11:05",
+  },
+  {
+    id: "IT-2620",
+    code: "4S10-S1-001",
+    subject: "과학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "물의 상태 변화",
+    unitNo: "10",
+    standardCode: "[4과10-01]",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    tagADetail: "끓는 동안의 변화 관찰",
+    talent: "NATU",
+    subskill: "NATU-01",
+    passage: "",
+    stem: "물을 계속 끓이는 동안 관찰할 수 있는 것으로 알맞은 것은?",
+    choices: [
+      "물속에서 기포가 생겨 위로 올라간다",
+      "물의 양이 점점 늘어난다",
+      "물의 온도가 끝없이 올라간다",
+      "물이 투명한 얼음으로 변한다",
+    ],
+    distractorIntent: [
+      "",
+      "끓는 동안 물이 는다고 보는 오개념",
+      "끓는 동안에도 온도가 계속 오른다고 보는 오개념",
+      "상태 변화의 방향을 뒤집어 보는 오개념",
+    ],
+    answer: 0,
+    explain: "정답 ①. 끓는 동안 물속에서 기포가 생겨 올라오고, 물의 양은 줄며 온도는 더 오르지 않습니다.",
+    guidance:
+      "탐색적 측정 영역입니다 — 점수 비교 대상이 아님을 메타에 유지합니다. 관찰한 것을 고르는 데까지만 묻습니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: true,
+    level: "S1",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 76,
+    reviews: [
+      {
+        at: "2026-08-13 09:40",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-fact", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-talent", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-region", note: "" },
+        ],
+        text: "끓임 실험은 교실에서 함께 하는 활동이라 가정 환경을 전제하지 않습니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-13 09:40",
+  },
+  {
+    id: "IT-2621",
+    code: "4S10-S2-001",
+    subject: "과학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "물의 상태 변화",
+    unitNo: "10",
+    standardCode: "[4과10-01]",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    tagADetail: "언 물의 부피 변화 인과",
+    talent: "NATU",
+    subskill: "NATU-02",
+    passage: "",
+    stem: "물을 가득 채운 병을 얼렸더니 뚜껑이 밀려 올라왔습니다. 그 까닭으로 알맞은 것은?",
+    choices: [
+      "물이 얼면서 부피가 늘었기 때문",
+      "물이 얼면서 무게가 늘었기 때문",
+      "얼면서 병 속으로 공기가 들어갔기 때문",
+      "병이 차가워져 줄어들었기 때문",
+    ],
+    distractorIntent: [
+      "",
+      "부피와 무게를 같은 것으로 보는 오개념",
+      "상태 변화를 공기가 드는 일로 보는 오개념",
+      "원인을 물이 아닌 병 쪽으로 옮기는 오개념",
+    ],
+    answer: 0,
+    explain: "정답 ①. 물은 얼면 부피가 늘어납니다. 무게는 그대로이고 병 속으로 드나든 것도 없습니다.",
+    guidance:
+      "탐색적 측정 영역입니다 — 점수 비교 대상이 아님을 메타에 유지합니다. 오답 ②는 부피와 무게를 가르는 자리라 반드시 남깁니다.",
+    type: "choice",
+    shortAnswers: "",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S2",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 61,
+    reviews: [
+      {
+        at: "2026-08-13 09:55",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-one", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-level", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
+        ],
+        text: "까닭을 묻고 오답이 오개념을 겨냥하여 S2에 맞습니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-13 09:55",
+  },
+  {
+    id: "IT-2622",
+    code: "4S10-S3-001",
+    subject: "과학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "물의 상태 변화",
+    unitNo: "10",
+    standardCode: "[4과10-01]",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    tagADetail: "같게 할 조건 산출",
+    talent: "NATU",
+    subskill: "NATU-02",
+    passage:
+      "같은 양의 물을 담은 컵 두 개를 하나는 볕이 드는 창가에, 하나는 그늘에 두고 물이 줄어드는 빠르기를 견주려고 합니다.",
+    stem: "이 실험에서 두 컵이 반드시 같아야 하는 조건을 두 가지 쓰시오.",
+    choices: ["", "", "", ""],
+    distractorIntent: [],
+    answer: 0,
+    explain:
+      "다르게 하는 조건은 볕뿐입니다. 물의 양, 컵의 크기와 모양, 물의 처음 온도, 컵 입구의 넓이, 뚜껑을 덮었는지가 같아야 합니다. 부분점수 — 하나만 맞으면 1점.",
+    guidance:
+      "배운 절차(변인 통제)를 실행하게 하는 자리라 S3입니다. 실험 설계의 잘못을 진단하게 하면 S4로 넘어갑니다. 탐색적 측정 영역임을 메타에 유지합니다.",
+    type: "short",
+    shortAnswers: "물의 양, 컵의 크기, 컵의 모양, 물의 처음 온도, 컵 입구의 넓이, 뚜껑",
+    rubric: "",
+    assets: [],
+    version: 1,
+    anchor: true,
+    level: "S3",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 47,
+    reviews: [
+      {
+        at: "2026-08-13 10:20",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-clear", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-level", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-emotion", note: "" },
+        ],
+        text: "허용 답안을 여섯 가지로 넓혀 두어 표현이 달라도 같은 답을 잡습니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-13 10:20",
+  },
+  {
+    id: "IT-2623",
+    code: "4S10-S4-001",
+    subject: "과학",
+    grade: "초등 3~4학년군",
+    band: "3-4",
+    unit: "물의 상태 변화",
+    unitNo: "10",
+    standardCode: "[4과10-01]",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    tagADetail: "보이지 않는 출처 역추론",
+    talent: "NATU",
+    subskill: "NATU-03",
+    passage: "유리컵에 찬물을 담아 책상에 두었더니 잠시 뒤 컵 바깥쪽에 작은 물방울이 맺혔습니다.",
+    stem: "(1) 이 물방울이 어디에서 온 것인지 쓰시오. (2) 컵 안의 물이 새어 나온 것이 아님을 확인할 방법을 한 가지 설계하여, 그 방법으로 왜 확인이 되는지 함께 쓰시오.",
+    choices: ["", "", "", ""],
+    distractorIntent: [],
+    answer: 0,
+    explain:
+      "모범답안 예: (1) 공기 중에 있던 수증기가 차가운 컵에 닿아 물로 변한 것. (2) 컵 겉면을 마른 헝겊으로 닦고 물의 높이를 표시해 둔 뒤 다시 두면, 높이가 그대로인데 겉에 물방울이 다시 맺히므로 새어 나온 것이 아님을 알 수 있음.",
+    guidance:
+      "자연-생태는 탐색적 측정 영역이라 S4도 정답형으로만 냅니다 — 「어느 쪽이 더 좋은가」 같은 가치 판단은 SJT 소관이므로 넣지 않습니다. 점수 비교 대상이 아님을 메타에 유지합니다.",
+    type: "essay",
+    shortAnswers: "",
+    rubric:
+      "출처 설명 1점 + 확인 방법 설계 1점 + 그 방법이 확인이 되는 까닭 1점.\n인정 예: 「겉면을 닦고 물 높이를 표시해 둔 뒤 다시 본다」, 「빈 컵과 찬물 컵을 나란히 두고 견준다」\n불인정 예: 「새지 않는다」(주장만), 「공기 중의 물이다」(확인 방법 없음)",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S4",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: 38,
+    reviews: [
+      {
+        at: "2026-08-14 14:10",
+        by: "이검수",
+        round: 1,
+        verdict: "approve",
+        checks: [
+          { id: "content", ok: true, reason: "c-p-fact", note: "" },
+          { id: "tagging", ok: true, reason: "t-p-level", note: "" },
+          { id: "ethics", ok: true, reason: "e-p-label", note: "" },
+        ],
+        text: "결론이 아니라 확인 방법의 성립을 보는 루브릭이라 S4 정답형입니다. 인정·불인정 예가 함께 적혀 있습니다. 승인합니다.",
+      },
+    ],
+    comments: [],
+    updatedAt: "2026-08-14 14:10",
+  },
 ];
 
 const SEED: ItemDraft[] = SEED_RAW.map(fill);
@@ -1165,11 +1557,25 @@ function read(): ItemDraft[] {
   if (raw === cacheRaw) return cacheValue;
   cacheRaw = raw;
   try {
-    cacheValue = raw ? (JSON.parse(raw) as Partial<ItemDraft>[]).map(fill) : SEED;
+    cacheValue = raw ? mergeSeed((JSON.parse(raw) as Partial<ItemDraft>[]).map(fill)) : SEED;
   } catch {
     cacheValue = SEED;
   }
   return cacheValue;
+}
+
+/**
+ * 저장분에 없는 씨앗을 뒤에 붙인다.
+ *
+ * 씨앗이 늘어나도 브라우저에 남아 있는 옛 저장분이 그 문항을 빠뜨리지 않게 한다.
+ * 회차 편성판이 「수학 승인 문항 0건」으로 서는 것은 대개 은행이 얇아서가 아니라
+ * 저장분이 씨앗보다 오래되어서다. 문항을 지우는 길은 이 저장소에 없으므로(사용
+ * 중지는 상태만 바꾼다), 저장분에 없는 씨앗은 「지운 것」이 아니라 「모르는 것」이다.
+ */
+function mergeSeed(stored: ItemDraft[]): ItemDraft[] {
+  const have = new Set(stored.map((i) => i.id));
+  const missing = SEED.filter((i) => !have.has(i.id));
+  return missing.length > 0 ? [...stored, ...missing] : stored;
 }
 
 function write(next: ItemDraft[]) {

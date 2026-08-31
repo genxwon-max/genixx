@@ -6,16 +6,31 @@
  * 흔한 관리 도구(Django admin · AWS 콘솔 · Supabase Studio · Retool)의 관행을 따른다.
  *
  * ───── 이 화면이 따르는 규칙 ─────
- *  글자   11 · 12 · 13 · 14 · 16 · 18 여섯 눈금 + 지표 숫자 22. 본문 13, 표 13, 곁들이는 글 12.
+ *  글자   11 · 12 · 13 · 14 · 16 · 18 여섯 눈금 + 22. 본문 13, 표 13, 곁들이는 글 12.
+ *         22는 지표 숫자와 가운데 세우는 화면 제목(.a2-title-lg) 둘이 나눠 쓴다 — 제목을
+ *         키우려고 20이나 24를 새로 만들지 않는다. 눈금은 늘리지 않고 나눠 쓴다.
  *         11px 아래로는 내려가지 않는다 — 기둥 그룹 이름과 키캡을 10px로 두었더니 규격을
  *         적어 둔 파일 자신이 그 규격을 어기고 있었다.
  *         숫자·ID·시각은 고정폭(--font-mono)으로. 자릿수가 어긋나면 세로로 못 훑는다.
- *  줄     표 한 줄 32px, 조밀 모드 28px. 머리 행 30px. 버튼 26/30px. 입력 30px.
- *  간격   4의 배수. 칸 안쪽 가로 10, 세로 6. 구역 사이 16. 화면 바깥 여백 16.
+ *  줄     표 한 줄 38px. 머리 행 36px. 버튼 28/32px. 입력 32px.
+ *         처음엔 32/30/26·30이었다. 200줄을 훑는 데는 그쪽이 빠르지만, 이 표를 실제로
+ *         보는 사람이 한 화면에서 마주하는 것은 스물다섯 줄이고 그 스물다섯이 서로 붙어
+ *         한 덩어리로 읽혔다. 값을 세로로 못 훑는 것은 자릿수가 어긋날 때만이 아니라
+ *         줄과 줄 사이가 없을 때도 그렇다. 표의 첫 줄과 마지막 줄에는 위아래로 4px를
+ *         더 준다 — 머리 행과 쪽 넘김 줄에 값이 맞닿아 있던 것이 가장 답답했다.
+ *  간격   4의 배수. 칸 안쪽 가로 12, 세로 8. 구역 사이 16. 화면 바깥 여백 16.
  *  모서리 3px 하나. 알약도 큰 곡률도 쓰지 않는다.
- *  선     1px 실선(#e2e5eb)이 기본. 그림자는 떠 있는 것(드롭다운·대화상자)에만.
- *  색     회색 열 단계 + 파랑 하나. 상태는 점 + 글자로 적고 면을 칠하지 않는다.
- *         면을 칠하면 표 한 장에 색 상자가 스무 개 서서 정작 값이 안 읽힌다.
+ *  선     1px 실선(--a2-line)이 기본. 그림자는 떠 있는 것(드롭다운·대화상자)에만.
+ *  색     파랑이 섞인 회색 열 단계 + 파랑 하나. 순회색을 안 쓰는 것에서 그치지 않고
+ *         바탕·머리 행·hover에 파랑을 한 방울씩 남겨 둔다. 앞선 판은 값 말고는 색이
+ *         한 톨도 없어 화면이 죽어 보인다는 말을 들었다 — 밀도를 지키는 일과 화면이
+ *         꺼져 있는 일은 다르다.
+ *         상태는 여전히 면을 진하게 칠하지 않는다. 대신 옅은 판(--a2-raised) 위에
+ *         **글자 자신을 상태 색으로** 적는다. 색면을 스무 개 세우면 값이 안 읽히고,
+ *         회색 글자만 두면 상태가 안 보인다. 색은 글자가 지고 면은 비워 둔다.
+ *         ⚠ 곁들이는 글 색(--a2-ink-3·-4)은 흰 판·옅은 판·바탕·hover 네 면 어디서도
+ *         4.5:1을 넘어야 한다. 바탕에 파랑을 섞으면 바탕이 어두워지므로 두 색도 같이
+ *         내렸다 — 바탕만 바꾸고 두면 --a2-ink-4가 4.31까지 떨어진다.
  *  동작   hover에서만 나타나는 버튼을 두지 않는다. 표 오른쪽 끝에 늘 세워 둔다.
  *
  * ⚠ 전부 @layer components 안에 둔다 — 레이어 밖 규칙은 Tailwind 유틸리티를
@@ -23,27 +38,40 @@
  */
 @layer components {
   .a2 {
-    /* 회색 열 단계 — 파랑이 살짝 섞인 중성색. 순회색은 화면에서 탁해 보인다 */
-    --a2-bg: #f6f7f9;
+    /* 회색 열 단계 — 파랑을 섞은 중성색. 순회색은 화면에서 탁해 보인다 */
+    --a2-bg: #eef2f8;
     --a2-panel: #ffffff;
-    --a2-raised: #f9fafb;
-    --a2-hover: #f2f4f7;
-    --a2-line: #e2e5eb;
-    --a2-line-2: #cfd4dd;
+    --a2-raised: #f4f7fb;
+    --a2-hover: #eaf1fe;
+    --a2-line: #dfe5ee;
+    --a2-line-2: #c4cddc;
     --a2-ink: #14181f;
     --a2-ink-2: #4a5261;
-    /* 회색 두 단계는 11~13px 본문에 쓰이므로 세 바탕(#fff·#f9fafb·#f6f7f9) 어디서도
-       4.5:1을 넘어야 한다. 처음 잡은 #6b7382·#8a92a1은 회색 바탕에서 4.45·2.92까지
-       떨어져 곁들이는 글이 아니라 값(「미배정」·건수)이 안 읽혔다. 한 단계씩 내렸다. */
-    --a2-ink-3: #656c7a;
-    --a2-ink-4: #6c727e;
+    /* 회색 두 단계는 11~13px 본문에 쓰이므로 네 면(#fff·--a2-raised·--a2-bg·--a2-hover)
+       어디서도 4.5:1을 넘어야 한다. 처음 잡은 #6b7382·#8a92a1은 회색 바탕에서 4.45·2.92까지
+       떨어져 곁들이는 글이 아니라 값(「미배정」·건수)이 안 읽혔다. 바탕에 파랑을 섞으면서
+       바탕이 한 번 더 어두워졌으므로(#f6f7f9 → #eef2f8) 두 색도 같이 내렸다.
+       지금 가장 아슬아슬한 짝은 --a2-bg 위 --a2-ink-4로 4.63이다. */
+    --a2-ink-3: #5b6373;
+    --a2-ink-4: #666d7a;
 
-    /* 어두운 왼쪽 기둥 — 본문(밝음)과 확실히 갈라 놓는다 */
-    --a2-side: #171b22;
-    --a2-side-2: #1e232c;
-    --a2-side-line: #2b313c;
-    --a2-side-ink: #c3c9d4;
-    --a2-side-ink-2: #7d8592;
+    /* 표 머리 행 — 판보다 한 단계 진한 청회색 띠. 머리 행이 첫 줄과 같은 흰색이면
+       스크롤에 붙어 있어도 붙어 있다는 것이 안 보인다. 글자는 전용 색으로 따로 둔다 —
+       --a2-ink-3을 그대로 쓰면 이 띠 위에서 4.5를 못 넘긴다 */
+    --a2-thead: #e6ecf6;
+    --a2-thead-ink: #414b5e;
+
+    /* 어두운 왼쪽 기둥 — 본문(밝음)과 확실히 갈라 놓는다.
+       거의 검정이던 것을 남색 쪽으로 옮겼다. 본문 바탕에 파랑이 섞였는데 기둥만 중성
+       검정으로 남으면 두 면이 다른 화면에서 오려 붙인 것처럼 보인다 */
+    --a2-side: #1a2130;
+    --a2-side-2: #242e42;
+    /* 지금 보고 있는 항목의 면. hover(--a2-side-2)보다 한 단계 더 밝다 — 둘이 같은
+       색이면 「지금 여기」와 「마우스가 얹힌 곳」이 구별되지 않는다 */
+    --a2-side-3: #2f3b52;
+    --a2-side-line: #313c52;
+    --a2-side-ink: #c5cddb;
+    --a2-side-ink-2: #909aad;
 
     --a2-accent: #2563eb;
     --a2-accent-2: #1d4ed8;
@@ -56,7 +84,11 @@
     --a2-info: #1d4ed8;
 
     --a2-radius: 3px;
-    --a2-row: 32px;
+    --a2-row: 38px;
+    /* 머리 행 높이 — 표 안의 정렬 단추가 이 값으로 제 높이를 잡는다(DataTable.tsx).
+       th에만 적어 두고 단추 높이는 px로 박아 두었더니, 줄 높이를 올릴 때마다 눌리는
+       넓이가 칸보다 작아졌다 */
+    --a2-head: 36px;
     --a2-shadow: 0 6px 16px -6px rgba(16, 22, 33, 0.24), 0 0 0 1px rgba(16, 22, 33, 0.06);
 
     font-family: var(--font-noto-kr), "Noto Sans KR", system-ui, sans-serif;
@@ -95,6 +127,17 @@
     line-height: 1.3;
     font-weight: 700;
     letter-spacing: -0.01em;
+  }
+  /* 가운데 세우는 화면 제목.
+     판 하나가 화면을 통째로 덮는 화면(회원)에만 쓴다. 왼쪽 위 18px 제목은 그 옆에 동작
+     단추를 세우려고 그렇게 둔 것인데, 판이 하나뿐이면 그 자리가 판 바깥이 되어 제목만
+     허공에 뜬다. 판 안에 넣고 가운데로 세우면 그 아래 숫자·탭·표가 한 덩어리로 읽힌다.
+     지표 띠가 있는 화면에는 쓰지 않는다 — 띠와 제목이 세로로 두 번 밀어낸다. */
+  .a2-title-lg {
+    font-size: 1.375rem;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   /* 구역 제목 */
   .a2-h {
@@ -142,8 +185,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    min-height: 34px;
-    padding: 6px 10px;
+    min-height: 38px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--a2-line);
     background: var(--a2-raised);
   }
@@ -155,8 +198,8 @@
     align-items: center;
     justify-content: center;
     gap: 5px;
-    height: 30px;
-    padding-inline: 10px;
+    height: 32px;
+    padding-inline: 11px;
     border: 1px solid var(--a2-line-2);
     border-radius: var(--a2-radius);
     background: var(--a2-panel);
@@ -181,8 +224,8 @@
     border-color: var(--a2-line);
   }
   .a2-btn-sm {
-    height: 26px;
-    padding-inline: 8px;
+    height: 28px;
+    padding-inline: 9px;
     font-size: 0.6875rem;
   }
   .a2-btn-primary {
@@ -194,6 +237,20 @@
     background: var(--a2-accent-2);
     border-color: var(--a2-accent-2);
   }
+  /* 어두운 면(상단 바) 위의 단추.
+     흰 판 위의 .a2-btn을 그대로 얹으면 어두운 띠에 흰 상자 셋이 떠서, 정작 그 아래
+     본문의 흰 판보다 먼저 눈에 든다. 기둥의 항목(.a2-nav-item)과 같은 계열로 낮춘다 */
+  .a2-btn-dark {
+    background: var(--a2-side-2);
+    border-color: var(--a2-side-line);
+    color: var(--a2-side-ink);
+  }
+  .a2-btn-dark:hover {
+    background: #2c384f;
+    border-color: #45526c;
+    color: #fff;
+  }
+
   .a2-btn-danger {
     color: var(--a2-danger);
     border-color: #e7b9b9;
@@ -206,9 +263,9 @@
   /* ── 입력 ── */
   .a2-input,
   .a2-select {
-    height: 30px;
+    height: 32px;
     width: 100%;
-    padding-inline: 8px;
+    padding-inline: 9px;
     border: 1px solid var(--a2-line-2);
     border-radius: var(--a2-radius);
     background: var(--a2-panel);
@@ -232,13 +289,88 @@
     padding-right: 22px;
     background-image: linear-gradient(45deg, transparent 50%, var(--a2-ink-3) 50%),
       linear-gradient(135deg, var(--a2-ink-3) 50%, transparent 50%);
+    /* 세로는 center로 둔다. 13px로 박아 두었더니 높이가 다른 select(쪽당 28px)에서만
+       화살표가 위로 2px 올라가 있었다 */
     background-position:
-      calc(100% - 13px) 13px,
-      calc(100% - 9px) 13px;
+      calc(100% - 13px) center,
+      calc(100% - 9px) center;
     background-size:
       4px 4px,
       4px 4px;
     background-repeat: no-repeat;
+  }
+
+  /* 여러 줄 입력 — 한 줄 입력과 같은 테두리·글자 크기에 높이만 다르다.
+     세로로만 늘린다. 가로로 늘리면 오른쪽 판을 밀어 표가 다시 그려진다. */
+  .a2-textarea {
+    display: block;
+    width: 100%;
+    min-height: 64px;
+    padding: 7px 9px;
+    border: 1px solid var(--a2-line-2);
+    border-radius: var(--a2-radius);
+    background: var(--a2-panel);
+    color: var(--a2-ink);
+    font-size: 0.75rem;
+    line-height: 1.55;
+    outline: none;
+    resize: vertical;
+    transition:
+      border-color 100ms,
+      box-shadow 100ms;
+  }
+  .a2-textarea::placeholder {
+    color: var(--a2-ink-4);
+  }
+  .a2-textarea:focus {
+    border-color: var(--a2-accent);
+    box-shadow: 0 0 0 2px var(--a2-accent-soft);
+  }
+  /* 못 고치는 칸 — 지우지 않고 눌러 둔다. 값이 사라지면 무엇이 적혀 있었는지 못 본다 */
+  .a2-input:disabled,
+  .a2-select:disabled,
+  .a2-textarea:disabled {
+    background: var(--a2-raised);
+    color: var(--a2-ink-2);
+    cursor: not-allowed;
+  }
+
+  /* 칸 하나 — 이름표 위, 입력 아래 */
+  .a2-field > .a2-label {
+    display: block;
+    margin-bottom: 3px;
+  }
+  /* 칸 아래 한 줄 — 규칙·경고를 값 바로 밑에 붙인다 */
+  .a2-hint {
+    margin-top: 3px;
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    color: var(--a2-ink-3);
+  }
+
+  /* 짚어 주는 줄 — 막는 것(danger)과 봐 두는 것(warn)을 왼쪽 굵은 선으로만 가른다.
+     면을 진하게 칠하지 않는 것은 표와 같은 까닭이다. 색은 style로 넣는다 */
+  .a2-note {
+    display: flex;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--a2-line);
+    border-left-width: 3px;
+    border-left-color: var(--a2-ink-4);
+    border-radius: var(--a2-radius);
+    background: var(--a2-raised);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--a2-ink-2);
+  }
+
+  /* 체크·라디오 — 밀도에 맞춰 14px로 줄이고 색을 파랑 하나로 맞춘다 */
+  .a2 input[type="checkbox"],
+  .a2 input[type="radio"] {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    accent-color: var(--a2-accent);
   }
 
   /* 초점 표시 — 밝은 면과 어두운 면 양쪽에서 보이게 */
@@ -257,28 +389,38 @@
     border-spacing: 0;
     font-size: 0.8125rem;
   }
+  /* 머리 행은 스크롤에 붙는다.
+     붙는 자리가 화면 꼭대기가 아니라 상단 바 아래(40px)다 — 0으로 두면 어두운 상단 바에
+     가려 붙어 있는 것이 안 보인다. 표 안에 세로 스크롤 상자가 있던 시절에는 그 상자의
+     꼭대기라 0이 맞았지만, 지금은 화면(page)이 굴러가므로 기준이 상단 바다. */
   .a2-table th {
     position: sticky;
-    top: 0;
+    top: 40px;
     z-index: 1;
-    height: 30px;
-    padding: 0 10px;
+    height: var(--a2-head);
+    padding: 0 12px;
     text-align: left;
     white-space: nowrap;
     font-size: 0.6875rem;
     font-weight: 700;
-    color: var(--a2-ink-3);
-    background: var(--a2-raised);
+    color: var(--a2-thead-ink);
+    background: var(--a2-thead);
     border-bottom: 1px solid var(--a2-line-2);
   }
   .a2-table td {
     height: var(--a2-row);
-    padding: 5px 10px;
+    padding: 8px 12px;
     vertical-align: middle;
     border-bottom: 1px solid var(--a2-line);
     color: var(--a2-ink-2);
   }
+  /* 첫 줄·마지막 줄만 위아래로 4px 더. 표는 위로 머리 행에, 아래로 쪽 넘김 줄에
+     맞닿아 있어서 안쪽 줄을 아무리 성글게 해도 양 끝은 계속 끼어 보인다 */
+  .a2-table tbody tr:first-child td {
+    padding-top: 12px;
+  }
   .a2-table tbody tr:last-child td {
+    padding-bottom: 12px;
     border-bottom: 0;
   }
   .a2-table tbody tr:hover td {
@@ -309,10 +451,63 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* 표를 감싸는 상자 — 가로로만 밀린다 */
+  /* 표를 감싸는 상자 — 가로로만 밀린다.
+     ⚠ overflow-x를 켜 두면 브라우저가 overflow-y도 auto로 끌어올리고, 그 순간 이 상자가
+       스크롤 컨테이너가 되어 **머리 행의 sticky가 죽는다**(붙을 기준이 화면이 아니라 이
+       상자가 되는데, 이 상자는 세로로 굴러가지 않는다). 표가 상자보다 넓지 않은 화면에서는
+       가로 스크롤이 필요 없으므로, 그럴 때만 꺼서 머리 행을 화면에 붙인다 — 켜고 끄는 일은
+       DataTable이 표 너비를 재서 한다(.a2-table-fits). */
   .a2-table-wrap {
     overflow-x: auto;
     overscroll-behavior-x: contain;
+  }
+  .a2-table-wrap.a2-table-fits {
+    overflow-x: visible;
+  }
+
+  /* ── 쪽 번호 ──
+     [처음] [이전] 1 2 3 … [다음] [마지막]. 대괄호는 글자로 적는다. 화살표(‹ ›)로 두면
+     좁은 화면에서 [이전]과 [처음]이 같은 모양이 되고, 한글 화면에서 그 둘의 구분은
+     방향이 아니라 말이다.
+
+     단추 꼴을 주지 않는다 — 열두 개가 나란히 서면 테두리 열두 개가 표보다 눈에 띈다.
+     지금 쪽만 파란 알약으로 세운다. 굵기만으로 가르는 원안은 회색 바탕 위에서 두 쪽이
+     같은 무게로 보였다. */
+  .a2-page {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding-inline: 6px;
+    border: 1px solid transparent;
+    border-radius: var(--a2-radius);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--a2-ink-3);
+    white-space: nowrap;
+    transition:
+      background-color 100ms,
+      color 100ms;
+  }
+  /* 번호만 고정폭으로. 자릿수가 늘어도(9 → 10) 줄이 덜컥거리지 않는다 */
+  .a2-page-no {
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .a2-page:hover:not(:disabled) {
+    background: var(--a2-hover);
+    color: var(--a2-ink);
+  }
+  .a2-page[aria-current="page"] {
+    background: var(--a2-accent-soft);
+    border-color: var(--a2-accent-line);
+    color: var(--a2-accent-2);
+    font-weight: 700;
+  }
+  .a2-page:disabled {
+    color: var(--a2-ink-4);
+    cursor: not-allowed;
   }
 
   /* ── 도구 줄 — 표 위의 검색·거르개·동작 ── */
@@ -320,17 +515,25 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
-    padding: 8px 10px;
+    gap: 8px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--a2-line);
     background: var(--a2-panel);
   }
 
-  /* ── 상태 — 점 + 글자. 면을 칠하지 않는다 ── */
+  /* ── 상태 — 점 + 글자. 색은 글자가 지고 면은 비워 둔다 ──
+     옅은 판 위에 얹어 상태 칸이 표에서 한 줄기로 서게 하되, 판에는 상태 색을 섞지
+     않는다. 7%만 섞어 봐도 「활성」(--a2-ok)이 제 바탕 위에서 4.27까지 떨어졌다.
+     면을 --a2-raised로 고정하면 네 색 모두 4.6 위에 남는다. */
   .a2-status {
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    height: 22px;
+    padding-inline: 7px;
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+    background: var(--a2-raised);
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
@@ -347,8 +550,8 @@
   .a2-tag {
     display: inline-flex;
     align-items: center;
-    height: 18px;
-    padding-inline: 5px;
+    height: 20px;
+    padding-inline: 6px;
     border: 1px solid var(--a2-line-2);
     border-radius: var(--a2-radius);
     background: var(--a2-raised);
@@ -361,6 +564,21 @@
     border-color: var(--a2-accent-line);
     background: var(--a2-accent-soft);
     color: var(--a2-accent-2);
+  }
+
+  /* 지표 띠 — 화면 머리 판 안에서 제목 아래에 눕는 한 줄.
+     지표를 판 넉 장으로 세우던 것을 띠 하나로 바꿨다. 판이 넉 장이면 화면에 상자가
+     다섯 개(머리 + 지표 넷) 서는데, 그 다섯이 전부 같은 무게라 어느 것이 이 화면의
+     본체인지 안 읽힌다. 지금은 상자가 하나고 그 안이 가로선으로 나뉜다.
+
+     칸 사이 선은 gap 1px + 바탕색으로 긋는다. 칸마다 border-right를 주면 좁은 화면에서
+     줄바꿈될 때 줄 끝에 선이 남는다. 위쪽 2px 파란 선은 제목과 지표를 가르는 자리다 —
+     1px 회색으로 두었더니 도구 줄·표 머리와 같은 무게가 되어 띠가 안 보였다. */
+  .a2-stats {
+    display: grid;
+    gap: 1px;
+    background: var(--a2-line);
+    border-top: 2px solid var(--a2-accent);
   }
 
   /* 막대 — 진행률. 표 안에서도 한 줄 높이를 넘지 않는다 */
@@ -381,18 +599,68 @@
   }
 
   /* ── 왼쪽 기둥 ── */
+  /* 그룹 머리 — 누르면 아래 항목이 접힌다.
+     글자로만 적힌 이름표였을 때는 열둘이 한 줄에 꿰여 내려가 어디서 그룹이 갈리는지가
+     자간 하나에 걸려 있었다. 누를 수 있는 것이 되면 hover와 삼각형이 그 경계를 그어 준다.
+
+     11px·--a2-side-ink-2로 두었더니 정작 그룹 이름 자체가 안 읽혔다. 12px로 올리고
+     색도 항목과 같은 밝기(--a2-side-ink)로 맞춘다. 그래도 항목과 안 섞이는 것은 굵기(700)와
+     왼쪽의 삼각형 덕이다. 자간(0.06em)은 뺐다 — 한글은 자간을 벌려도 대문자 이름표처럼
+     읽히지 않고 글자만 성글어진다(.a2-label 주석과 같은 까닭). */
   .a2-nav-group {
-    padding: 4px 8px 2px;
-    font-size: 0.6875rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    height: 28px;
+    margin-top: 6px;
+    padding-inline: 8px;
+    border-radius: var(--a2-radius);
+    font-size: 0.75rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--a2-side-ink-2);
+    color: var(--a2-side-ink);
+    transition:
+      background-color 100ms,
+      color 100ms;
   }
+  .a2-nav-group:hover {
+    background: var(--a2-side-2);
+    color: var(--a2-side-ink);
+  }
+  /* 접힘 표시 — 펼치면 아래, 접으면 오른쪽. 두 글자의 폭이 달라 자리를 고정하지 않으면
+     펼칠 때마다 그룹 이름이 1px씩 움직인다 */
+  .a2-nav-caret {
+    display: inline-block;
+    width: 0.75rem;
+    flex: none;
+    text-align: center;
+  }
+  /* 그룹 아래 항목들 — 한 칸 들여 세우고 세로선 하나로 묶는다.
+     들여쓰기가 없을 때는 펼친 항목이 저마다 또 다른 그룹 머리처럼 보였다. 「회원」 그룹
+     아래에 「회원」 항목이 서는 자리에서는 이름까지 같아 더 그랬다.
+
+     항목의 글자를 그룹 이름보다 12px 더 들여 세운다. 처음에는 그룹 **이름의** 글자
+     시작점에 딱 맞췄는데(둘 다 24px), 맞추고 보니 삼각형만 왼쪽으로 튀어나온 평평한
+     목록이 되어 무엇이 무엇에 딸렸는지가 그대로 안 보였다. 한 칸 더 들어가야 한다.
+
+     세로선은 삼각형 한가운데를 지난다(14px = 그룹 좌우 여백 8 + 삼각형 절반 6).
+     선은 흐리게 둔다 — 뜻은 들여쓰기가 이미 지고 있고, 선까지 진하면 열두 항목 옆에
+     막대 넷이 서서 그것이 먼저 눈에 든다.
+
+     지금 보고 있는 항목의 밝은 면도 이 선 뒤에서 시작하므로, 들여쓰기가 한 번 더 보인다. */
+  .a2-nav-list {
+    margin-left: 14px;
+    border-left: 1px solid var(--a2-side-line);
+  }
+  .a2-nav-list .a2-nav-item {
+    padding-left: 21px;
+  }
+
   .a2-nav-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 28px;
+    height: 30px;
     padding-inline: 8px;
     border-radius: var(--a2-radius);
     font-size: 0.75rem;
@@ -406,11 +674,16 @@
     background: var(--a2-side-2);
     color: #fff;
   }
+  /* 지금 보고 있는 화면 — 면만 밝힌다.
+     왼쪽에 2px 파란 선을 세워 두었던 것을 뺐다. 그 선을 빼면서 면 색을 hover와 같은
+     --a2-side-2로 두면 「지금 여기」와 「마우스가 얹힌 곳」이 같은 모양이 되므로, 면을
+     한 단계 더 밝은 --a2-side-3으로 올려 그 일을 대신 시킨다.
+     hover 규칙보다 뒤에 둔다 — 명시도가 같아서 순서가 곧 우선순위이고, 앞에 두면
+     지금 보고 있는 항목에 마우스를 얹는 순간 오히려 어두워진다. */
   .a2-nav-item[aria-current="page"] {
-    background: var(--a2-side-2);
+    background: var(--a2-side-3);
     color: #fff;
     font-weight: 700;
-    box-shadow: inset 2px 0 0 var(--a2-accent);
   }
   /* 오른쪽 끝 건수 */
   .a2-nav-count {
@@ -428,8 +701,8 @@
   .a2-kbd {
     display: inline-flex;
     align-items: center;
-    height: 16px;
-    padding-inline: 4px;
+    height: 18px;
+    padding-inline: 5px;
     border: 1px solid var(--a2-line-2);
     border-bottom-width: 2px;
     border-radius: 3px;

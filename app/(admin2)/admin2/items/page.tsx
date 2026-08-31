@@ -1,111 +1,23 @@
-import { items, itemStates, type ItemRow } from "@/lib/admin";
-import { n, pct } from "@/lib/admin2";
-import { Kpi, PageHead, SeedNote } from "@/components/admin2/ui";
-import ItemsTable from "./ItemsTable";
-import { selfReview, stateRank } from "./order";
+import ItemBank from "./ItemBank";
 
 export const metadata = { title: "문항 은행" };
 
 /*
- * ADM-04 문항 은행 — 문항 한 벌을 상태별로 보는 한 장.
+ * ADM-04 문항 은행 — 문항을 만들고 · 고치고 · 검수하는 자리로 들어가는 목록.
  *
- * 이 화면을 여는 사람이 던지는 질문은 둘이다.
- *   ① 지금 검수가 몇 건 걸려 있나        지표 다섯 칸
- *   ② 그중 무엇부터 보나 · 이 문항 어디 갔나  표 한 장, 검수 대기 먼저
+ * 이 화면은 처음에 lib/admin.ts의 예시 목록(ItemRow)을 그렸다. 서버에서 바로 셀 수
+ * 있어 편했지만, 그 목록에는 **S단계도 학년군도 없다.** 회차 편성이 고르는 것은
+ * 「국어 3·4학년군의 S2 문항」이라, 은행이 그 값을 들고 있지 않으면 편성 화면과
+ * 은행이 서로 다른 문항을 말하게 된다.
  *
- * 지표를 다섯으로 끊은 것은 문항 하나가 지나는 자리가 다섯이기 때문이다(작성중 · 검수
- * 대기 · 승인 · 사용 중지 + 전체). 여섯 번째가 될 뻔한 「수정 요청」은 칸을 따로 세우지
- * 않고 검수 대기 아래에 붙였다 — 둘 다 사람 손이 가야 하는 같은 무리이고, 다섯 칸 띠가
- * 여섯이 되면 1440 폭에서 한 줄에 안 들어와 표 머리가 한 줄만큼 더 밀린다.
+ * 그래서 저장소를 콘솔 전체가 쓰는 것(lib/itemStore.ts)으로 갈아 끼웠다. 기존 /admin의
+ * 출제·검수 워크벤치가 쓰는 바로 그 목록이고, 발주서 Ver.4.1의 문항 카드 7항목을
+ * 그대로 들고 있다. 브라우저 저장소라 서버에서 못 읽으므로 이 파일은 껍데기만 두고
+ * 안을 클라이언트로 내린다.
  *
- * 오른쪽 동작 단추를 두지 않았다. 이 화면에서 실제로 할 수 있는 일(문항 만들기 · 상세
- * 열기)의 화면이 /admin2에 아직 없다. 동작하지 않는 단추를 자리만 잡아 두지 않는다.
- *
- * ⚠ 숫자는 전부 예시다(lib/admin.ts). 화면 맨 아래에 그렇게 적어 둔다.
+ * ⚠ 목록에 보기·정답을 그리지 않는다. 목록에서 정답이 보이면 이 화면 자체가 유출
+ *   경로가 된다 — 정답은 문항 상세에서만 연다.
  */
-
-const byState = (s: ItemRow["state"]) => items.filter((i) => i.state === s).length;
-
-/** 검수자가 아직 안 붙은 문항 — 검수 대기가 안 줄어드는 날 대개 여기가 원인이다 */
-const unassigned = items.filter((i) => i.reviewer === null).length;
-/** 지난 회차에 실제로 나간 문항 — 정답률이 있는 줄이 곧 그것이다 */
-const used = items.filter((i) => i.correctRate !== null).length;
-/** 이해충돌(출제자 = 검수자) 위반 줄. 0이면 머리에 아무 줄도 세우지 않는다 —
- *  늘 서 있는 「위반 0건」은 며칠이면 눈에서 사라져 정작 1이 되어도 안 보인다 */
-const conflicts = items.filter(selfReview).length;
-
-/*
- * 기본 줄 순서 — 손이 가야 하는 상태(검수 대기 → 수정 요청)를 위로 올린다(order.ts).
- * 같은 상태끼리는 문항 ID 오름차순으로 못 박는다. 원본 배열 순서 그대로 두면 데이터를
- * 한 줄 끼워 넣을 때마다 표가 다르게 서서 「아까 그 줄」로 못 돌아간다.
- * DataTable에 기본 정렬 prop이 없으므로 여기서 미리 정렬해 넘긴다.
- */
-const rows = [...items].sort(
-  (a, b) => stateRank(a.state) - stateRank(b.state) || a.id.localeCompare(b.id),
-);
-
 export default function Admin2ItemsPage() {
-  return (
-    <>
-      <PageHead
-        title="문항 은행"
-        meta={
-          <>
-            <span>
-              전체 <span className="a2-num text-(--a2-ink-2)">{n(items.length)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              과목 {new Set(items.map((i) => i.subject)).size} · 재능 축 {new Set(items.map((i) => i.axis)).size}
-            </span>
-            {conflicts > 0 && (
-              <>
-                <span aria-hidden>·</span>
-                <span style={{ color: "var(--a2-danger)" }}>자가 검수 {n(conflicts)}건</span>
-              </>
-            )}
-          </>
-        }
-      />
-
-      {/* ① 어느 상태에 몰려 있나 */}
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <Kpi label="전체 문항" value={n(items.length)} unit="문항" sub={`지난 회차 출제 ${n(used)}건`} />
-        <Kpi
-          label={itemStates.draft.label}
-          value={n(byState("draft"))}
-          unit="문항"
-          sub={`검수자 미배정 ${n(unassigned)}건`}
-        />
-        <Kpi
-          label={itemStates.review.label}
-          value={n(byState("review"))}
-          unit="문항"
-          sub={`${itemStates.revise.label} ${n(byState("revise"))}건`}
-        />
-        <Kpi
-          label={itemStates.approved.label}
-          value={n(byState("approved"))}
-          unit="문항"
-          sub={`전체의 ${pct(byState("approved"), items.length)}%`}
-        />
-        <Kpi
-          label={itemStates.retired.label}
-          value={n(byState("retired"))}
-          unit="문항"
-          sub="회차 편성에서 제외"
-        />
-      </div>
-
-      {/* ② 무엇부터 보나 */}
-      <div className="mt-3">
-        <ItemsTable rows={rows} />
-      </div>
-
-      <SeedNote>
-        이 화면의 문항·출제자·정답률은 화면 설계를 위한 예시입니다. 실제 문항 은행이 아니며, 붙일 때는 문항 API의
-        응답으로 갈아 끼웁니다. 목록에는 보기와 정답을 그리지 않습니다 — 문항 상세에서만 엽니다.
-      </SeedNote>
-    </>
-  );
+  return <ItemBank />;
 }

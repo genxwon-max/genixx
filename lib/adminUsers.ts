@@ -102,7 +102,9 @@ const SCHOOLS = [
   "충북 청주가경초등학교",
 ] as const;
 
-const REGIONS = [
+/** 지역 열둘. 목록의 거르개는 「등장한 지역」만 쓰지만, 상세의 지역 고르개는 이 전부를
+    쓴다 — 아무도 없는 지역으로 이사한 회원을 옮길 자리가 없으면 그 칸은 못 고치는 칸이다 */
+export const REGIONS = [
   "서울 강서",
   "서울 노원",
   "서울 양천",
@@ -119,7 +121,9 @@ const REGIONS = [
 
 const MAILS = ["gmail.com", "naver.com", "daum.net", "kakao.com", "hanmail.net"] as const;
 
-const GRADES = ["초3", "초4", "초5", "초6", "중1"] as const;
+/** 학년 다섯. 목록의 거르개는 「등장한 학년」만 쓰지만, 상세의 학년 고르개는 이 전부를
+    쓴다 — 아무도 없는 학년으로 진급한 학생을 옮길 자리가 없으면 그 칸은 못 고치는 칸이다 */
+export const GRADES = ["초3", "초4", "초5", "초6", "중1"] as const;
 
 /** 아이디 앞 두 글자만 남기고 가린 형태. 실제 이름과 이어지지 않게 따로 뽑는다 */
 const MAIL_HEADS = [
@@ -188,14 +192,21 @@ export type ParentRow = {
   contact: string;
   phone: string;
   region: string;
-  /** 등록한 자녀 수 */
+  /**
+   * 이 계정으로 등록된 학생 수.
+   *
+   * 따로 굴린 난수(1~3)로 두었더니 「자녀 2」인 학부모의 상세 화면에 연결된 학생이
+   * 하나도 없었다. 학생 명부에서 센다 — 같은 것을 두 곳에서 다르게 말하지 않는다.
+   * 0이 나오는 계정이 있는데, 가입만 하고 아직 아이를 등록하지 않은 상태다.
+   */
   kids: number;
   state: UserState;
   joinedAt: string;
   lastSeen: string;
 };
 
-function makeParents(count: number): ParentRow[] {
+/** 자녀 수를 아직 못 세는 단계의 학부모 — 학생 명부가 이 목록을 보고 만들어진다 */
+function makeParents(count: number): Omit<ParentRow, "kids">[] {
   const r = rng(20260817);
   return Array.from({ length: count }, (_, i) => {
     const name = `${pick(r, FAMILY)}${pick(r, GIVEN)}`;
@@ -208,7 +219,6 @@ function makeParents(count: number): ParentRow[] {
       contact: maskedMail(r),
       phone: maskedPhone(r),
       region: pick(r, REGIONS),
-      kids: 1 + Math.floor(r() * 3),
       state,
       joinedAt: dateFrom(Math.floor(r() * 430)),
       lastSeen: dateFrom(320 + Math.floor(r() * 110)),
@@ -216,7 +226,9 @@ function makeParents(count: number): ParentRow[] {
   });
 }
 
-export const parents = makeParents(96);
+/* 학부모 → 학생 → 자녀 수 순서로 만든다. 학생이 학부모를 골라 붙는 구조라 순서를
+   되돌릴 수 없고, 그래서 자녀 수는 학생 명부가 선 뒤에야 셀 수 있다. */
+const parentBase = makeParents(96);
 
 /* ───────────────────────── 학생 ───────────────────────── */
 
@@ -246,10 +258,12 @@ export type StudentRow = {
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-function makeStudents(count: number): StudentRow[] {
+/* 학부모 목록을 인자로 받는다. 모듈 바깥의 parents를 보게 두면 그 상수가 이 함수보다
+   먼저 서 있어야 하는데, 자녀 수를 세려면 반대로 학생이 먼저 서야 한다 */
+function makeStudents(count: number, from: readonly Omit<ParentRow, "kids">[]): StudentRow[] {
   const r = rng(970413);
   return Array.from({ length: count }, (_, i) => {
-    const parent = parents[Math.floor(r() * parents.length)];
+    const parent = from[Math.floor(r() * from.length)];
     const roll = r();
     const exam: ExamState =
       roll > 0.72
@@ -276,7 +290,13 @@ function makeStudents(count: number): StudentRow[] {
   });
 }
 
-export const students = makeStudents(148);
+export const students = makeStudents(148, parentBase);
+
+/** 학생 명부에서 센 자녀 수를 얹어 학부모 명부를 완성한다 */
+export const parents: ParentRow[] = parentBase.map((p) => ({
+  ...p,
+  kids: students.filter((s) => s.guardianId === p.id).length,
+}));
 
 /* ───────────────────────── 교사 ───────────────────────── */
 
@@ -317,6 +337,33 @@ function makeTeachers(count: number): TeacherRow[] {
 
 export const teachers = makeTeachers(52);
 
+/* ───────────────────────── 회원 찾기 ─────────────────────────
+   회원 상세(ADM-02-3)는 주소의 번호 하나만 들고 온다. 그 번호가 학부모인지 교사인지는
+   두 명부를 다 뒤져 봐야 알고, 그 판단을 화면마다 다시 적으면 「M-으로 시작하면 학부모」
+   같은 규칙이 번호 짓는 방식에 몰래 기대게 된다. 여기서 한 번만 찾는다.
+
+   ⚠ 이 함수는 지시자 없는 이 파일에 둔다. lib/directoryStore.ts는 "use client" 파일이라
+     서버 컴포넌트가 그쪽 export를 부르면 값이 아니라 클라이언트 참조가 넘어온다. */
+
+export type MemberKind = "parent" | "teacher";
+
+export const memberKindLabel: Record<MemberKind, string> = {
+  parent: "학부모",
+  teacher: "교사",
+};
+
+export type FoundMember =
+  | { kind: "parent"; row: ParentRow }
+  | { kind: "teacher"; row: TeacherRow };
+
+export function findMember(id: string): FoundMember | null {
+  const p = parents.find((r) => r.id === id);
+  if (p) return { kind: "parent", row: p };
+  const t = teachers.find((r) => r.id === id);
+  if (t) return { kind: "teacher", row: t };
+  return null;
+}
+
 /* ───────────────────────── 기관 ───────────────────────── */
 
 const ORG_KINDS = ["학원", "학교", "교육원", "교육청"] as const;
@@ -356,6 +403,12 @@ function makeOrgs(count: number): OrgRow[] {
 
 /** 운영 화면에서 쓰던 여섯 곳을 앞에 두고 뒤에 생성분을 잇는다 */
 export const orgDirectory: OrgRow[] = [...seedOrgs, ...makeOrgs(28)];
+
+/** 학생 상세(ADM-02-1-1)·기관 상세(ORG-02-1)가 주소의 번호로 한 줄을 찾는다.
+    회원 찾기(findMember)와 같은 까닭으로 지시자 없는 이 파일에 둔다 —
+    lib/directoryStore.ts는 "use client" 파일이라 서버 컴포넌트가 부르지 못한다 */
+export const findStudent = (id: string) => students.find((s) => s.id === id) ?? null;
+export const findOrg = (id: string) => orgDirectory.find((o) => o.id === id) ?? null;
 
 /* ───────────────────────── 운영자 (관리자) ───────────────────────── */
 

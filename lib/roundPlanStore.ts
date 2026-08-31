@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { rounds, type RoundState } from "./admin";
+import { currentRound, rounds, type RoundState } from "./admin";
 import { gradeBands, type GradeBand } from "./blueprint";
 import { formItems, type ExamForm } from "./formStore";
 import type { ItemDraft } from "./itemStore";
@@ -29,20 +29,39 @@ import type { ItemDraft } from "./itemStore";
  *   문항이 조용히 갈라진다.
  */
 
-export type PlanAction = "open" | "close" | "finish" | "reopen";
+export type PlanAction = "open" | "close" | "finish" | "reopen" | "period";
 
 export const planActions: Record<PlanAction, string> = {
   open: "회차 열기",
   close: "응시 마감",
   finish: "회차 종료",
   reopen: "응시 다시 열기",
+  period: "응시 기간 변경",
 };
+
+/**
+ * 회차를 열고 닫는 네 동작.
+ *
+ * 기간 변경을 뺀 갈래다. 앞의 넷은 되돌리기 어려워 「한 번 묻는 대화상자」를 거치지만
+ * 기간은 판 위에서 고쳐 저장하는 값이라 물을 것이 없다. 한 union으로 묶어 두었더니
+ * 대화상자 문구표가 쓰지도 않을 기간 칸을 요구했다.
+ */
+export type PlanGateAction = Exclude<PlanAction, "period">;
 
 export type PlanLog = { at: string; by: string; action: PlanAction; text: string };
 
 export type RoundPlan = {
   round: string;
   state: RoundState;
+  /**
+   * 응시 기간 (YYYY-MM-DD).
+   *
+   * 회차 목록(lib/admin.ts)의 opensOn·closesOn을 시작값으로 받아 여기서 고친다. 상태와
+   * 같은 자리에 두는 까닭은 하나다 — 「언제부터 언제까지 여는가」와 「지금 열려 있는가」는
+   * 한 물음의 앞뒤이고, 두 군데에 적어 두면 기간만 늘리고 마감을 안 푸는 날이 온다.
+   */
+  opensOn: string;
+  closesOn: string;
   openedAt?: string;
   openedBy?: string;
   closedAt?: string;
@@ -53,9 +72,12 @@ export type RoundPlan = {
 export type Plans = Record<string, RoundPlan>;
 
 /* 씨앗은 lib/admin.ts의 회차 목록이다. 상태를 두 군데 적어 두면 한쪽만 고쳐지는
-   날이 반드시 온다 — 여기서는 회차 목록의 상태를 시작값으로만 받아 쓴다. */
+   날이 반드시 온다 — 여기서는 회차 목록의 상태와 기간을 시작값으로만 받아 쓴다. */
 const SEED: Plans = Object.fromEntries(
-  rounds.map((r): [string, RoundPlan] => [r.id, { round: r.id, state: r.state, log: [] }]),
+  rounds.map((r): [string, RoundPlan] => [
+    r.id,
+    { round: r.id, state: r.state, opensOn: r.opensOn, closesOn: r.closesOn, log: [] },
+  ]),
 );
 
 const KEY = "genixx.roundplan";
@@ -96,8 +118,62 @@ export function usePlans(): Plans {
   return useSyncExternalStore(subscribe, read, () => SEED);
 }
 
+/**
+ * 저장분이 없거나 낡았을 때 기대는 바닥값.
+ *
+ * 브라우저에 남아 있는 옛 저장분에는 기간 칸이 없다. 없는 채로 화면에 흘리면 날짜
+ * 입력이 빈 값으로 서고, 저장하는 순간 회차 기간이 지워진다. 회차 목록의 값을 먼저
+ * 깔고 저장분을 그 위에 덮는다.
+ */
+function blankPlan(roundId: string): RoundPlan {
+  const r = rounds.find((x) => x.id === roundId);
+  return {
+    round: roundId,
+    state: r?.state ?? "draft",
+    opensOn: r?.opensOn ?? "",
+    closesOn: r?.closesOn ?? "",
+    log: [],
+  };
+}
+
 export function planOf(plans: Plans, roundId: string): RoundPlan {
-  return plans[roundId] ?? { round: roundId, state: "draft", log: [] };
+  const saved = plans[roundId];
+  return saved ? { ...blankPlan(roundId), ...saved } : blankPlan(roundId);
+}
+
+/**
+ * 사람이 「지금」이라고 부르는 회차.
+ *
+ * 열려 있는 회차이고, 없으면(전부 마감했거나 아직 안 열었으면) 회차 목록이 정한 것으로
+ * 물러선다. 화면마다 이 셈을 따로 적어 두었더니 대시보드 머리는 4회차, 그 아래 제출률은
+ * 3회차를 말하는 일이 생겼다.
+ */
+export function useCurrentRound() {
+  const plans = usePlans();
+  return rounds.find((r) => planOf(plans, r.id).state === "open") ?? currentRound;
+}
+
+/** 사람이 읽는 기간 한 줄 — 회차 목록의 period와 같은 꼴로 적는다 */
+export function periodText(plan: RoundPlan) {
+  if (!plan.opensOn || !plan.closesOn) return "기간 미정";
+  return `${plan.opensOn.replace(/-/g, ".")} – ${plan.closesOn.replace(/-/g, ".")}`;
+}
+
+/**
+ * 기간이 말이 되는가 — 저장 전에 본다.
+ *
+ * 오늘 날짜와 견주지 않는다. 지난 회차의 기간을 뒤늦게 바로잡는 일이 실제로 있고,
+ * 「어제보다 앞이다」로 막으면 그 수정을 화면이 가로막는다. 여기서 보는 것은 두
+ * 값끼리의 앞뒤와 꼴뿐이다.
+ */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function checkPeriod(opensOn: string, closesOn: string): string[] {
+  const out: string[] = [];
+  if (!DATE_RE.test(opensOn)) out.push("시작일을 YYYY-MM-DD로 적어 주세요");
+  if (!DATE_RE.test(closesOn)) out.push("마감일을 YYYY-MM-DD로 적어 주세요");
+  if (out.length === 0 && closesOn < opensOn) out.push("마감일이 시작일보다 앞입니다");
+  return out;
 }
 
 /* ───────────────────────── 편성판 ───────────────────────── */
@@ -169,6 +245,14 @@ export type PlanCheck = { tone: "block" | "warn"; text: string };
 export function openChecks(roundId: string, slots: PlanSlot[], plans: Plans): PlanCheck[] {
   const out: PlanCheck[] = [];
 
+  /* 기간부터 본다. 기간이 비뚤어진 채로 열면 응시 화면이 「오늘은 응시 기간이
+     아닙니다」를 띄우고, 관리자는 회차를 열었는데 아무도 못 들어오는 상태가 된다. */
+  const plan = planOf(plans, roundId);
+  const period = checkPeriod(plan.opensOn, plan.closesOn);
+  if (period.length > 0) {
+    out.push({ tone: "block", text: `응시 기간을 먼저 정해 주세요 — ${period.join(" · ")}` });
+  }
+
   const built = slots.filter((s) => s.form);
   if (built.length === 0) {
     out.push({
@@ -237,6 +321,28 @@ export function closeRound(id: string, by: string, text: string) {
 
 export function finishRound(id: string, by: string, text: string) {
   patch(id, { state: "closed" }, { by, action: "finish", text });
+}
+
+/**
+ * 응시 기간을 고친다.
+ *
+ * 열려 있는 회차의 마감일을 미루는 것(연장)은 실제로 하는 일이라 상태로 막지 않는다.
+ * 대신 무엇을 무엇으로 바꿨는지를 기록에 그대로 적는다 — 기간이 바뀐 회차의 결과를
+ * 뒤에 견줄 때, 「그때 열흘 늘렸다」가 남아 있어야 제출률 차이를 설명할 수 있다.
+ */
+export function setPeriod(id: string, opensOn: string, closesOn: string, by: string, why: string) {
+  if (checkPeriod(opensOn, closesOn).length > 0) return;
+  const before = planOf(read(), id);
+  const changed = [
+    before.opensOn !== opensOn ? `시작 ${before.opensOn || "없음"} → ${opensOn}` : "",
+    before.closesOn !== closesOn ? `마감 ${before.closesOn || "없음"} → ${closesOn}` : "",
+  ].filter(Boolean);
+  if (changed.length === 0) return;
+  patch(
+    id,
+    { opensOn, closesOn },
+    { by, action: "period", text: why ? `${changed.join(" · ")} — ${why}` : changed.join(" · ") },
+  );
 }
 
 /** 마감을 되돌린다 — 마감 시각을 지우되 되돌린 사실은 기록에 남는다 */

@@ -1,7 +1,8 @@
 import { accessReasons, auditLog } from "@/lib/admin";
 import { n } from "@/lib/admin2";
-import { PageHead, Panel, SeedNote, Tag } from "@/components/admin2/ui";
+import { Body, PageHead, Panel, SeedNote, Tag } from "@/components/admin2/ui";
 import AuditTable from "./AuditTable";
+import LocalActions from "./LocalActions";
 
 export const metadata = { title: "감사 로그" };
 
@@ -46,24 +47,29 @@ export default function Admin2AuditPage() {
       />
 
       <AuditTable />
+<Body>
 
-      {/* 표준 사유 목록을 표 아래로 내렸다. 매일 읽는 것이 아니라 「사유 칸의 저 문장은
-          어디서 온 값인가」를 확인할 때만 필요한 대조표라서다.
-          거르개로 만들지 않았다 — 로그의 사유는 표준 문구를 고른 뒤 사건마다 덧붙여
-          적히므로 목록과 글자가 정확히 일치하지 않는다. 그대로 거르개에 세우면 골라도
-          0줄이 나오는 선택지가 생긴다. */}
-      <Panel title="표준 열람 사유" meta="사유 칸에 적히기 전 고르는 값" className="mt-3">
-        <div className="flex flex-wrap gap-1.5">
-          {accessReasons.map((r) => (
-            <Tag key={r}>{r}</Tag>
-          ))}
-        </div>
-        <p className="mt-2 a2-t-xs text-(--a2-ink-4)">
-          학생 개인정보를 열 때 이 중 하나를 고른 뒤 사건별 내용을 덧붙입니다. 사유 없이는 열람 자체가 진행되지
-          않으므로, 위 표에 사유가 빈 줄은 개인정보에 닿지 않은 동작입니다.
-        </p>
-      </Panel>
+        {/* 이 브라우저에서 실제로 누른 동작 — 위 표는 서버 기록의 예시라 움직이지 않는다 */}
+        <LocalActions />
 
+        {/* 표준 사유 목록을 표 아래로 내렸다. 매일 읽는 것이 아니라 「사유 칸의 저 문장은
+            어디서 온 값인가」를 확인할 때만 필요한 대조표라서다.
+            거르개로 만들지 않았다 — 로그의 사유는 표준 문구를 고른 뒤 사건마다 덧붙여
+            적히므로 목록과 글자가 정확히 일치하지 않는다. 그대로 거르개에 세우면 골라도
+            0줄이 나오는 선택지가 생긴다. */}
+        <Panel title="표준 열람 사유" meta="사유 칸에 적히기 전 고르는 값" className="mt-3">
+          <div className="flex flex-wrap gap-1.5">
+            {accessReasons.map((r) => (
+              <Tag key={r}>{r}</Tag>
+            ))}
+          </div>
+          <p className="mt-2 a2-t-xs text-(--a2-ink-4)">
+            학생 개인정보를 열 때 이 중 하나를 고른 뒤 사건별 내용을 덧붙입니다. 사유 없이는 열람 자체가 진행되지
+            않으므로, 위 표에 사유가 빈 줄은 개인정보에 닿지 않은 동작입니다.
+          </p>
+        </Panel>
+
+</Body>
       <SeedNote>
         이 화면의 기록은 화면 설계를 위한 예시입니다. 실제 감사 로그가 아니며, 붙일 때는 고칠 수 없는 저장소(추가만
         되는 기록)에서 읽어 옵니다. 이 콘솔에는 로그를 고치거나 지우는 길이 없습니다.

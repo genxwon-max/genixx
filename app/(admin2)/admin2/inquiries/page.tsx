@@ -55,38 +55,37 @@ export default function Admin2InquiriesPage() {
             <span>응답 목표 24시간</span>
           </>
         }
+        statCols={5}
+        /* ① 얼마나 쌓였나 — 「답변 대기」는 왼쪽 기둥의 배지와 같은 값을 쓴다(lib/admin2.ts).
+           두 자리에서 다른 수가 보이면 둘 다 못 믿게 된다 */
+        stats={
+          <>
+            <Kpi label="전체 문의" value={n(inquiries.length)} unit="건" sub={`답변 대기 ${n(queueCounts.inquiries)}건`} />
+            <Kpi
+              label={inquiryStates.new.label}
+              value={n(byState("new"))}
+              unit="건"
+              sub={`이 중 기관 도입 ${n(newOrg)}건`}
+            />
+            <Kpi
+              label={inquiryStates.working.label}
+              value={n(byState("working"))}
+              unit="건"
+              sub={`이 중 목표 초과 ${n(workingOverdue)}건`}
+            />
+            <Kpi
+              label={inquiryStates.answered.label}
+              value={n(byState("answered"))}
+              unit="건"
+              sub={`전체의 ${pct(byState("answered"), inquiries.length)}%`}
+            />
+            {/* 지표 다섯 중 유일하게 「줄여야 하는」 수라 맨 오른쪽 끝에 따로 세운다 */}
+            <Kpi label="24시간 목표 초과" value={n(overdue)} unit="건" sub="접수 후 24시간 기준" />
+          </>
+        }
       />
-
-      {/* ① 얼마나 쌓였나 — 「답변 대기」는 왼쪽 기둥의 배지와 같은 값을 쓴다(lib/admin2.ts).
-          두 자리에서 다른 수가 보이면 둘 다 못 믿게 된다 */}
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <Kpi label="전체 문의" value={n(inquiries.length)} unit="건" sub={`답변 대기 ${n(queueCounts.inquiries)}건`} />
-        <Kpi
-          label={inquiryStates.new.label}
-          value={n(byState("new"))}
-          unit="건"
-          sub={`이 중 기관 도입 ${n(newOrg)}건`}
-        />
-        <Kpi
-          label={inquiryStates.working.label}
-          value={n(byState("working"))}
-          unit="건"
-          sub={`이 중 목표 초과 ${n(workingOverdue)}건`}
-        />
-        <Kpi
-          label={inquiryStates.answered.label}
-          value={n(byState("answered"))}
-          unit="건"
-          sub={`전체의 ${pct(byState("answered"), inquiries.length)}%`}
-        />
-        {/* 지표 다섯 중 유일하게 「줄여야 하는」 수라 맨 오른쪽 끝에 따로 세운다 */}
-        <Kpi label="24시간 목표 초과" value={n(overdue)} unit="건" sub="접수 후 24시간 기준" />
-      </div>
-
       {/* ② 무엇부터 여나 */}
-      <div className="mt-3">
-        <InquiriesTable />
-      </div>
+      <InquiriesTable />
 
       <SeedNote>
         이 화면의 문의·대기 시간은 화면 설계를 위한 예시입니다. 실제 접수 내역이 아니며, 작성자 이름은 데이터를 만들

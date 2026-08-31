@@ -662,6 +662,14 @@ export type Round = {
   label: string;
   period: string;
   /**
+   * 응시가 열리는 날 (YYYY-MM-DD).
+   *
+   * 아래 closesOn과 짝이다. 사람이 읽는 줄(period)과 기계가 쓰는 값을 갈라 두는 까닭도
+   * 같다 — 회차 편성 화면에서 기간을 고치는 것은 이 두 값이고, period는 그 둘로 다시
+   * 만든다.
+   */
+  opensOn: string;
+  /**
    * 응시가 닫히는 날 (YYYY-MM-DD).
    *
    * period 문자열에서 뽑아 쓰지 않는다. 「2026.08.01 – 08.31」에서 뒤쪽을 잘라
@@ -700,6 +708,7 @@ export const rounds: Round[] = [
     id: "2026-4",
     label: "2026 파일럿 4회차",
     period: "2026.11.01 – 11.30",
+    opensOn: "2026-11-01",
     closesOn: "2026-11-30",
     state: "draft",
     target: 0,
@@ -711,6 +720,7 @@ export const rounds: Round[] = [
     id: "2026-3",
     label: "2026 파일럿 3회차",
     period: "2026.08.01 – 08.31",
+    opensOn: "2026-08-01",
     closesOn: "2026-08-31",
     state: "open",
     target: 1284,
@@ -722,6 +732,7 @@ export const rounds: Round[] = [
     id: "2026-2",
     label: "2026 파일럿 2회차",
     period: "2026.05.01 – 05.31",
+    opensOn: "2026-05-01",
     closesOn: "2026-05-31",
     state: "grading",
     target: 1120,
@@ -733,6 +744,7 @@ export const rounds: Round[] = [
     id: "2026-1",
     label: "2026 파일럿 1회차",
     period: "2026.02.01 – 02.28",
+    opensOn: "2026-02-01",
     closesOn: "2026-02-28",
     state: "closed",
     target: 862,
@@ -1150,7 +1162,19 @@ export const contractLabel: Record<OrgRow["contract"], { label: string; classNam
   expired: { label: "만료", className: "text-rose-600" },
 };
 
-/* ───────────────────────── 문항 (ADM-05) ───────────────────────── */
+/* ───────────────────────── 문항 (ADM-05) ─────────────────────────
+ *
+ * ⚠ 이 목록은 **지금 어느 화면도 읽지 않는다.** 진짜 문항 은행은 lib/itemStore.ts이고
+ *   /admin의 출제·검수 워크벤치와 /admin2의 문항 은행이 그것을 쓴다.
+ *
+ *   여기 ItemRow에는 S단계(S1~S4)도 학년군도 성취기준도 없다. 회차 편성이 고르는 것은
+ *   「국어 3·4학년군의 S2 문항」이라, 이 목록을 화면에 그리면 편성 화면과 은행이 서로
+ *   다른 문항을 말하게 된다. /admin2의 문항 은행이 처음에 이 목록을 그리다가 저쪽으로
+ *   옮겨 간 까닭이 그것이다.
+ *
+ *   지우지 않고 두는 것은 사이트맵의 ADM-04 정의(상태 다섯 · 교차 검수 · 정답률 회수)를
+ *   설명하는 표본이기 때문이다. 화면에 다시 붙일 것이라면 itemStore를 쓴다.
+ */
 
 export type ItemRow = {
   id: string;

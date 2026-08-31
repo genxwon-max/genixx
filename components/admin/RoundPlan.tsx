@@ -16,7 +16,7 @@ import {
   reopenRound,
   slotsOf,
   usePlans,
-  type PlanAction,
+  type PlanGateAction,
   type PlanSlot,
 } from "@/lib/roundPlanStore";
 import { FormEditor } from "./FormBuilder";
@@ -60,7 +60,7 @@ export default function RoundPlan({ roundId }: { roundId: string }) {
   const prefs = useAdminPrefs();
 
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const [ask, setAsk] = useState<PlanAction | null>(null);
+  const [ask, setAsk] = useState<PlanGateAction | null>(null);
 
   const round = rounds.find((r) => r.id === roundId) ?? rounds[0];
   const plan = planOf(plans, round.id);
@@ -123,7 +123,7 @@ export default function RoundPlan({ roundId }: { roundId: string }) {
     go?: () => void;
     href?: string;
     danger?: boolean;
-    also?: { label: string; action: PlanAction };
+    also?: { label: string; action: PlanGateAction };
   };
 
   const next: Next | null =
@@ -465,7 +465,7 @@ function SlotCard({
  * 회차로는 더 시작할 수 없다. 무엇이 일어나는지 문장으로 적고 까닭을 받는다.
  */
 const askCopy: Record<
-  PlanAction,
+  PlanGateAction,
   { title: string; body: string[]; hint: string; confirm: string; danger?: boolean }
 > = {
   open: {
@@ -518,7 +518,7 @@ function PlanAsk({
   onDone,
   onClose,
 }: {
-  action: PlanAction;
+  action: PlanGateAction;
   round: string;
   warns: string[];
   onDone: (text: string) => void;

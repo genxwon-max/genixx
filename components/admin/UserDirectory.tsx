@@ -192,7 +192,10 @@ function ParentList({ onDone }: { onDone: (m: string) => void }) {
             />
             <Picker
               label="자녀 수 전체"
+              /* 0명을 넣어 둔다. 자녀 수를 학생 명부에서 세게 되면서 아직 아이를 등록하지
+                 않은 계정이 생겼는데, 고를 자리가 없으면 그 계정만 「전체」로만 볼 수 있다 */
               options={[
+                { value: "0", label: "0명" },
                 { value: "1", label: "1명" },
                 { value: "2", label: "2명" },
                 { value: "3", label: "3명 이상" },

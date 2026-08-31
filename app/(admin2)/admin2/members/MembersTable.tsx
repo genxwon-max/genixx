@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status } from "@/components/admin2/ui";
-import { n, type Tone } from "@/lib/admin2";
+import { accountTone, n } from "@/lib/admin2";
 import {
-  parents,
-  teachers,
   userStateLabel,
   userStateOptions,
   type ParentRow,
   type TeacherRow,
   type UserState,
 } from "@/lib/adminUsers";
+import { useParents, useTeachers } from "@/lib/directoryStore";
 
 /*
  * ADM-02 회원 — 학부모 명부와 교사 명부.
@@ -30,18 +30,17 @@ import {
  * 걸린다. 지역은 거르개가 따로 있으므로 value를 일부러 빼 두었다 — 지역명이 검색어에
  * 걸리기 시작하면 「강서」로 사람을 찾는 동작이 지역 전체를 끌고 온다.
  *
+ * ── 줄과 상세 ──
+ * 줄은 씨앗 명부가 아니라 lib/directoryStore.ts가 「씨앗 + 고친 것」으로 낸 것을 받는다.
+ * 상세(ADM-02-3)에서 정지해 놓고 돌아왔을 때 그 줄이 아직 「활성」으로 서 있으면,
+ * 눌러서 고친 것을 화면이 안 돌려주는 셈이 되어 고친 것 자체를 못 믿게 된다.
+ * 그래서 거르개 선택지도 고친 값이 섞인 줄에서 뽑는다 — 씨앗에서만 뽑으면 교사를
+ * 탈퇴 처리한 뒤 「탈퇴」로 거를 수가 없다(씨앗 교사에는 탈퇴가 없다).
+ *
  * ── 개인정보 ──
  * 원본 데이터가 이미 가려진 채로 온다(gm****@naver.com · 010-12**-****). 그 이상은
  * 이 화면에서 풀지 않고, 생년월일·주소처럼 가려지지 않은 값은 칸 자체를 만들지 않는다.
  */
-
-const stateTone: Record<UserState, Tone> = {
-  active: "ok",
-  pending: "warn",
-  dormant: "muted",
-  suspended: "danger",
-  withdrawn: "muted",
-};
 
 /* 지역 거르개 목록은 실제로 등장한 지역에서만 뽑는다. 상수 REGIONS를 그대로 쓰면
    아무도 없는 지역이 선택지에 남아 0줄을 보여 준다 */
@@ -56,6 +55,24 @@ function regionOptions(list: readonly { region: string }[]) {
 function stateOptions(list: readonly { state: UserState }[]) {
   const present = new Set(list.map((r) => r.state));
   return userStateOptions.filter((o) => present.has(o.value));
+}
+
+/* 표 오른쪽 끝의 관리 칸 — 두 명부가 같은 자리에 같은 말로 세운다.
+   hover에서만 나타나게 두지 않는다(admin2.css 규칙): 96줄을 훑다가 「이 줄에서 뭘 할 수
+   있더라」를 묻게 되는 순간 목록이 아니라 수수께끼가 된다.
+   정렬·검색을 달지 않는다 — value가 없으면 머리 행이 눌리는 단추가 되지 않는다. */
+function editCol<T extends { id: string; name: string }>(): Col<T> {
+  return {
+    key: "act",
+    head: "관리",
+    width: "5.5rem",
+    nowrap: true,
+    cell: (r) => (
+      <Link href={`/admin2/members/${r.id}`} className="a2-btn a2-btn-sm" aria-label={`${r.name} 수정하기`}>
+        수정하기
+      </Link>
+    ),
+  };
 }
 
 /* ───────────────────────── 학부모 ─────────────────────────
@@ -107,13 +124,15 @@ const parentCols: Col<ParentRow>[] = [
     hide: "sm",
     cell: (r) => <span className="a2-t-sm text-(--a2-ink-2)">{r.region}</span>,
   },
+  // 자녀수는 학생 명부에서 센 값이다(lib/adminUsers.ts). 0인 계정은 가입만 하고
+  // 아직 아이를 등록하지 않은 것이라, 0을 흐리게 눌러 「없음」으로 읽히게 둔다
   {
     key: "kids",
     head: "자녀수",
     width: "4.5rem",
     num: true,
     value: (r) => r.kids,
-    cell: (r) => r.kids,
+    cell: (r) => (r.kids ? r.kids : <span className="text-(--a2-ink-4)">0</span>),
   },
   {
     key: "state",
@@ -121,7 +140,7 @@ const parentCols: Col<ParentRow>[] = [
     width: "6rem",
     nowrap: true,
     value: (r) => userStateLabel[r.state].label,
-    cell: (r) => <Status tone={stateTone[r.state]}>{userStateLabel[r.state].label}</Status>,
+    cell: (r) => <Status tone={accountTone[r.state]}>{userStateLabel[r.state].label}</Status>,
   },
   {
     key: "joinedAt",
@@ -140,12 +159,15 @@ const parentCols: Col<ParentRow>[] = [
     value: (r) => r.lastSeen,
     cell: (r) => <span className="a2-mono a2-t-sm">{r.lastSeen}</span>,
   },
+  editCol<ParentRow>(),
 ];
 
-const parentFilters: Filter<ParentRow>[] = [
-  { id: "state", label: "상태", options: stateOptions(parents), match: (r, v) => r.state === v },
-  { id: "region", label: "지역", options: regionOptions(parents), match: (r, v) => r.region === v },
-];
+function parentFilters(rows: ParentRow[]): Filter<ParentRow>[] {
+  return [
+    { id: "state", label: "상태", options: stateOptions(rows), match: (r, v) => r.state === v },
+    { id: "region", label: "지역", options: regionOptions(rows), match: (r, v) => r.region === v },
+  ];
+}
 
 /* ───────────────────────── 교사 ─────────────────────────
    학부모와 앞뒤(ID·이름·연락처 / 상태·가입일)를 일부러 같은 자리에 둔다. 탭을 오갈 때
@@ -217,7 +239,7 @@ const teacherCols: Col<TeacherRow>[] = [
     width: "6rem",
     nowrap: true,
     value: (r) => userStateLabel[r.state].label,
-    cell: (r) => <Status tone={stateTone[r.state]}>{userStateLabel[r.state].label}</Status>,
+    cell: (r) => <Status tone={accountTone[r.state]}>{userStateLabel[r.state].label}</Status>,
   },
   {
     key: "joinedAt",
@@ -227,20 +249,30 @@ const teacherCols: Col<TeacherRow>[] = [
     value: (r) => r.joinedAt,
     cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.joinedAt}</span>,
   },
+  editCol<TeacherRow>(),
 ];
 
-const teacherFilters: Filter<TeacherRow>[] = [
-  { id: "state", label: "상태", options: stateOptions(teachers), match: (r, v) => r.state === v },
-  { id: "region", label: "지역", options: regionOptions(teachers), match: (r, v) => r.region === v },
-];
-
-const TABS = [
-  { id: "parents" as const, label: "학부모", count: parents.length },
-  { id: "teachers" as const, label: "교사", count: teachers.length },
-];
+function teacherFilters(rows: TeacherRow[]): Filter<TeacherRow>[] {
+  return [
+    { id: "state", label: "상태", options: stateOptions(rows), match: (r, v) => r.state === v },
+    { id: "region", label: "지역", options: regionOptions(rows), match: (r, v) => r.region === v },
+  ];
+}
 
 export default function MembersTable() {
   const [tab, setTab] = useState<"parents" | "teachers">("parents");
+  const parents = useParents();
+  const teachers = useTeachers();
+
+  /* DataTable의 걸러내기가 이 배열을 의존값으로 본다. 렌더마다 새로 만들면 96줄을
+     매번 다시 거르게 되므로 줄이 바뀔 때만 새로 만든다 */
+  const pFilters = useMemo(() => parentFilters(parents), [parents]);
+  const tFilters = useMemo(() => teacherFilters(teachers), [teachers]);
+
+  const TABS = [
+    { id: "parents" as const, label: "학부모", count: parents.length },
+    { id: "teachers" as const, label: "교사", count: teachers.length },
+  ];
 
   return (
     <>
@@ -248,7 +280,11 @@ export default function MembersTable() {
           role="tab"을 붙이지 않았다. 진짜 탭 묶음은 화살표 키로 옮겨 다니는 초점 관리까지
           있어야 약속을 지키는 것이고, 그 없이 이름만 tab을 달면 화살표를 눌러도 안 움직이는
           탭이 된다. 여기서는 누름 상태를 가진 단추 둘(aria-pressed)로 정직하게 적는다 */}
-      <div role="group" aria-label="회원 종류" className="mb-2 flex items-center gap-4 border-b border-(--a2-line)">
+      <div
+        role="group"
+        aria-label="회원 종류"
+        className="flex items-center gap-5 border-b border-(--a2-line) px-3"
+      >
         {TABS.map((t) => {
           const on = tab === t.id;
           return (
@@ -257,14 +293,17 @@ export default function MembersTable() {
               type="button"
               aria-pressed={on}
               onClick={() => setTab(t.id)}
-              className={`-mb-px flex h-8 items-center gap-1.5 border-b-2 a2-t-sm font-bold ${
+              /* 밑줄은 2px 그대로 두고 이름과 줄 수만 색으로 가른다. 고른 탭의 줄 수는
+                 파란 알약으로 세운다 — 둘 다 회색이면 어느 명부를 보고 있는지가 2px
+                 밑줄 하나에만 걸린다 */
+              className={`-mb-px flex h-9 items-center gap-1.5 border-b-2 a2-t-sm font-bold ${
                 on
                   ? "border-(--a2-accent) text-(--a2-ink)"
                   : "border-transparent text-(--a2-ink-3) hover:text-(--a2-ink)"
               }`}
             >
               {t.label}
-              <span className="a2-num a2-t-xs text-(--a2-ink-4)">{n(t.count)}</span>
+              <span className={`a2-tag a2-num ${on ? "a2-tag-accent" : ""}`}>{n(t.count)}</span>
             </button>
           );
         })}
@@ -277,7 +316,7 @@ export default function MembersTable() {
           key="parents"
           rows={parents}
           cols={parentCols}
-          filters={parentFilters}
+          filters={pFilters}
           getKey={(r) => r.id}
           searchHint="이름 · ID · 연락처"
           empty="조건에 맞는 학부모가 없습니다."
@@ -287,7 +326,7 @@ export default function MembersTable() {
           key="teachers"
           rows={teachers}
           cols={teacherCols}
-          filters={teacherFilters}
+          filters={tFilters}
           getKey={(r) => r.id}
           searchHint="이름 · ID · 연락처"
           empty="조건에 맞는 교사가 없습니다."

@@ -10,27 +10,69 @@ import { toneColor, type Tone } from "@/lib/admin2";
  */
 
 /* ── 화면 머리 ──
-   제목 한 줄에 오른쪽 동작을 붙인다. 설명 문단을 기본으로 두지 않는다 — 매일 오는
-   화면에 「여기는 회원을 관리하는 곳입니다」가 붙어 있으면 그 줄만큼 표가 밀린다.
-   대신 meta에 지금 보고 있는 범위(회차·건수·기준 시각)를 적는다. */
+   제목을 가운데 크게 세우고, 그 아래에 지금 보고 있는 범위(회차·건수·기준 시각)를,
+   오른쪽에 나가는 문을 둔다. 설명 문단은 두지 않는다 — 매일 오는 화면에 「여기는
+   회원을 관리하는 곳입니다」가 붙어 있으면 그 줄만큼 표가 밀린다.
+
+   ── 왜 판 안에 넣고 가운데로 세웠나 ──
+   처음에는 회색 바탕 위 왼쪽에 18px 제목을 두고 오른쪽에 단추를 세웠다. 그러면 흰 판은
+   표에서야 시작하므로 제목·숫자·단추 셋이 판 바깥에 흩어져 뜨고, 어디까지가 이 화면인지가
+   안 읽힌다. 제목부터 표까지를 판 하나에 넣으면 그 물음이 사라진다.
+
+   단추는 가운데로 모으지 않는다. 이 콘솔은 줄에서도(수정하기) 판에서도 동작을 오른쪽
+   끝에 세우고, 그것까지 가운데로 가면 「어느 쪽이 이 화면의 동작인가」가 사라진다.
+
+   판 껍데기를 스스로 두르지 않는다. 본문 전체가 이미 판 하나이므로(Shell) 여기서 또
+   두르면 판 안에 판이 서서 1px 선이 두 겹으로 보인다. 이 머리는 그 판의 맨 위 칸이다.
+
+   ── stats ──
+   지표 칸(Kpi)을 넘기면 제목 아래에 띠로 눕는다. 판 넉 장으로 따로 세우지 않는 까닭은
+   admin2.css의 .a2-stats 주석에 적어 두었다. */
+const STAT_COLS = {
+  3: "xl:grid-cols-3",
+  4: "xl:grid-cols-4",
+  5: "xl:grid-cols-5",
+} as const;
+
 export function PageHead({
   title,
   meta,
   actions,
+  stats,
+  statCols = 4,
 }: {
   title: string;
   meta?: React.ReactNode;
   actions?: React.ReactNode;
+  /** 제목 아래에 눕힐 지표 칸(Kpi) 여럿 */
+  stats?: React.ReactNode;
+  statCols?: 3 | 4 | 5;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <h1 className="a2-title">{title}</h1>
-        {meta && <div className="flex flex-wrap items-center gap-x-2 gap-y-1 a2-t-sm text-(--a2-ink-3)">{meta}</div>}
+    <>
+      <div className="border-b border-(--a2-line) px-3 pb-3 pt-5">
+        <h1 className="a2-title-lg text-center">{title}</h1>
+        {meta && (
+          <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 a2-t-sm text-(--a2-ink-3)">
+            {meta}
+          </div>
+        )}
+        {actions && <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">{actions}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-1.5">{actions}</div>}
-    </div>
+      {stats && (
+        <div className={`a2-stats border-b border-(--a2-line) sm:grid-cols-2 ${STAT_COLS[statCols]}`}>
+          {stats}
+        </div>
+      )}
+    </>
   );
+}
+
+/* ── 머리 아래 본문 ──
+   표를 판 끝까지 붙여 내보내는 화면(목록)은 이것을 쓰지 않는다. 판 여럿·칸 여럿을
+   늘어놓는 화면(대시보드·설정·상세)만 이 안쪽 여백을 두른다. */
+export function Body({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return <div className={`p-3 ${className}`}>{children}</div>;
 }
 
 /* ── 판 ── */
@@ -66,12 +108,15 @@ export function Panel({
   );
 }
 
-/* ── 상태 — 점 + 글자. 색만으로 구분하지 않는다 ── */
+/* ── 상태 — 점 + 글자. 색만으로 구분하지 않는다 ──
+   글자를 회색(--a2-ink-2)으로 눌러 두었더니 표에서 상태를 읽는 단서가 6px 점 하나뿐이
+   되었다. 글자도 같은 색으로 적는다 — 점이 사라져도(흑백 인쇄) 글자는 남으므로 색만으로
+   구분하지 않는다는 약속은 그대로다. 면은 admin2.css에서 --a2-raised로 눌러 둔다. */
 export function Status({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   return (
     <span className="a2-status" style={{ color: toneColor[tone] }}>
       <span aria-hidden className="a2-dot" />
-      <span className="text-(--a2-ink-2)">{children}</span>
+      <span>{children}</span>
     </span>
   );
 }
@@ -95,6 +140,9 @@ export function Bar({ value, total, width = "3.5rem" }: { value: number; total: 
 }
 
 /* ── 지표 한 칸 ──
+   판이 아니라 **띠 안의 한 칸**이다(.a2-stats). 제 테두리를 두르지 않고 바탕만 흰색으로
+   깔아, 띠의 1px 틈이 칸 사이 선으로 보이게 한다.
+
    증감은 화살표와 부호를 함께 적는다. 색만 바뀌면 흑백 인쇄와 색약에서 사라진다. */
 export function Kpi({
   label,
@@ -133,9 +181,9 @@ export function Kpi({
     </>
   );
 
-  const cls = "a2-panel block p-3 transition-colors";
+  const cls = "block bg-(--a2-panel) p-3 transition-colors";
   return href ? (
-    <Link href={href} className={`${cls} hover:border-(--a2-line-2) hover:bg-(--a2-raised)`}>
+    <Link href={href} className={`${cls} hover:bg-(--a2-hover)`}>
       {body}
     </Link>
   ) : (
@@ -162,7 +210,7 @@ export function DescList({ rows }: { rows: { k: string; v: React.ReactNode }[] }
    적어 두지 않으면 시연에서 실적으로 읽힌다. */
 export function SeedNote({ children }: { children?: React.ReactNode }) {
   return (
-    <p className="mt-3 a2-t-xs text-(--a2-ink-4)">
+    <p className="border-t border-(--a2-line) bg-(--a2-raised) px-3 py-2 a2-t-xs text-(--a2-ink-4)">
       {children ?? "이 화면의 숫자는 화면 설계를 위한 예시입니다. 실제 집계가 아닙니다."}
     </p>
   );
