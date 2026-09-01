@@ -1,7 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { currentRound, rounds, type RoundState } from "./admin";
+import { useMemo, useSyncExternalStore } from "react";
+import { currentRound, rounds, type Round, type RoundState } from "./admin";
 import { gradeBands, type GradeBand } from "./blueprint";
 import { formItems, type ExamForm } from "./formStore";
 import type { ItemDraft } from "./itemStore";
@@ -50,6 +50,23 @@ export type PlanGateAction = Exclude<PlanAction, "period">;
 
 export type PlanLog = { at: string; by: string; action: PlanAction; text: string };
 
+/**
+ * 회차 공지 한 덩이 — 글과 그림.
+ *
+ * 그림은 data URL로 담는다. 이 콘솔은 파일 서버가 없어서 올릴 데가 없고, 붙일 때는 이
+ * 자리에 업로드 주소가 들어간다. 담기 전에 가로 1200px로 줄인다 — 브라우저 저장소는
+ * 5MB 남짓이라 사진 두 장이면 회차 기록·문항·검사지가 통째로 안 들어간다(NoteImages 참조).
+ */
+export type RoundNote = { text: string; images: string[] };
+
+export const blankNote = (): RoundNote => ({ text: "", images: [] });
+
+/** 옛 저장분은 글만 문자열로 들고 있다 — 읽을 때 한 꼴로 맞춘다 */
+export function noteOf(v: RoundNote | string | undefined): RoundNote {
+  if (!v) return blankNote();
+  return typeof v === "string" ? { text: v, images: [] } : { text: v.text ?? "", images: v.images ?? [] };
+}
+
 export type RoundPlan = {
   round: string;
   state: RoundState;
@@ -66,6 +83,49 @@ export type RoundPlan = {
   openedBy?: string;
   closedAt?: string;
   closedBy?: string;
+/**
+   * 이번 회차가 보는 학년군 — **하나**.
+   *
+   * 과목보다 먼저 정한다. 학년군은 「누구에게 내보내는가」이고 과목은 「무엇을 재는가」라,
+   * 앞엣것이 정해져야 뒤엣것의 문항 재고를 셀 수 있다 — 국어 문항이 열 개 있어도 그것이
+   * 전부 3·4학년군이면 5·6학년군 회차에서는 담을 것이 하나도 없다.
+   *
+   * 한동안 여럿을 담는 배열이었다(bands). 실제 편성은 한 회차가 한 학년군을 본다 —
+   * 3·4학년군과 5·6학년군은 응시 기간도 문항 재고도 따로 굴러가고, 둘을 한 회차에 묶으면
+   * 제출률·판정 진행이 두 학년군의 평균이 되어 어느 쪽이 밀렸는지가 사라진다.
+   *
+   * 없으면 3·4학년군으로 본다(코드에 박힌 회차 넷과 옛 저장분). 없는 것을 「아무 학년군도
+   * 안 본다」로 읽으면 이미 짜 둔 검사지가 화면에서 통째로 사라진다.
+   */
+  band?: GradeBand;
+  /**
+   * 이번 회차에 넣은 평가 과목 — **차례가 곧 응시 차례**다.
+   *
+   * 배열 순서가 그대로 순서다. 따로 order 번호를 두지 않는다 — 번호를 들면 지우고 넣을
+   * 때마다 1,2,4처럼 구멍이 나고, 그 구멍을 메우는 코드가 화면과 저장소 두 군데에 생긴다.
+   *
+   * 없으면 세 과목 전부. 칸(과목 × 학년군)은 이 목록과 bands를 곱해서 만든다(slotsFor).
+   */
+  subjects?: ItemDraft["subject"][];
+  /**
+   * 여기서 만든 회차의 이름·대상.
+   *
+   * 코드에 박힌 회차 넷(lib/admin.ts rounds)은 이 값이 없다. 있으면 그것이 사람이
+   * 만든 회차라는 뜻이고, 목록은 둘을 합쳐 낸다(allRounds).
+   */
+  made?: { label: string; target: number; createdAt: string; createdBy: string };
+  /**
+   * 이 회차에만 붙는 공지와 유의사항.
+   *
+   * 검사 전체의 유의사항(lib/exam.ts)과 다르다. 저쪽은 회차가 바뀌어도 같은 말이고
+   * 이쪽은 「이번 회차는 서술형 첨부 제출을 30분 더 받습니다」처럼 그 회차에서만 참인
+   * 말이다. 한 칸에 담으면 회차마다 검사 전체 유의사항을 다시 적게 된다.
+   *
+   * 회차를 만들 때 적고, 편성 화면에서 고친다 — 만들 때만 적을 수 있으면 오탈자 하나에
+   * 회차를 다시 만들어야 한다.
+   */
+  notice?: RoundNote;
+  caution?: RoundNote;
   log: PlanLog[];
 };
 
@@ -180,6 +240,33 @@ export function checkPeriod(opensOn: string, closesOn: string): string[] {
 
 export const planSubjects: ItemDraft["subject"][] = ["국어", "수학", "과학"];
 
+/** 과목 × 학년군 한 칸의 열쇠. 화면과 저장소가 같은 글자를 써야 칸이 어긋나지 않는다 */
+export const slotKey = (subject: ItemDraft["subject"], band: GradeBand) => `${subject}:${band}`;
+
+/** 새 회차의 기본 학년군 */
+export const defaultBand: GradeBand = gradeBands[0].id;
+
+/** 여섯 칸 전부 — band·subjects가 없는 옛 회차가 보는 값 */
+export const allSlotKeys = planSubjects.flatMap((s) => gradeBands.map((g) => slotKey(s, g.id)));
+
+/** 이 회차가 보는 학년군. 없으면 3·4학년군 */
+export const bandFor = (plan: RoundPlan): GradeBand => plan.band ?? defaultBand;
+
+/** 이 회차에 넣은 과목 — **넣은 차례 그대로**. 없으면 세 과목 전부 */
+export const subjectsFor = (plan: RoundPlan): ItemDraft["subject"][] =>
+  plan.subjects?.length ? plan.subjects.filter((s) => planSubjects.includes(s)) : planSubjects;
+
+/**
+ * 이 회차가 보는 칸 = 과목 × 학년군.
+ *
+ * 과목 차례를 바깥에 둔다. 「국어 3·4 → 국어 5·6 → 수학 3·4 …」로 서야 응시 차례대로
+ * 읽히고, 학년군을 바깥에 두면 같은 과목이 표에서 갈라져 선다.
+ */
+export function slotsFor(plan: RoundPlan): string[] {
+  const band = bandFor(plan);
+  return subjectsFor(plan).map((s) => slotKey(s, band));
+}
+
 export type PlanSlot = {
   /** 과목:학년군 — 화면에서 어느 칸을 열었는지 붙들어 두는 열쇠 */
   key: string;
@@ -206,29 +293,185 @@ export type PlanSlot = {
  * 검사지가 없는 칸도 빼지 않고 낸다. 「없는 것」이 안 보이면 관리자는 짜야 할 칸이
  * 남았다는 사실을 회차를 열려다가 처음 알게 된다.
  */
-export function slotsOf(roundId: string, forms: ExamForm[], items: ItemDraft[]): PlanSlot[] {
-  return planSubjects.flatMap((subject) =>
-    gradeBands.map((g): PlanSlot => {
-      const form =
-        forms.find((f) => f.round === roundId && f.subject === subject && f.band === g.id) ?? null;
-      return {
-        key: `${subject}:${g.id}`,
+export function slotsOf(
+  roundId: string,
+  forms: ExamForm[],
+  items: ItemDraft[],
+  /* 이 회차가 보는 칸. 넘기지 않으면 여섯 칸 전부 — 부르는 쪽이 plan을 안 들고 있을 때다 */
+  only: string[] = allSlotKeys,
+): PlanSlot[] {
+  /* **넘겨받은 차례 그대로** 낸다. 한동안 planSubjects(국어·수학·과학)를 돌면서 걸러 냈는데,
+     그러면 회차에서 정한 과목 차례가 편성판에서 무시된다 — 수학을 첫 과목으로 올려 두고
+     돌아왔더니 국어가 여전히 맨 위였다. 차례를 정하게 해 놓고 그 차례로 안 그리면
+     정하는 일 자체가 뜻을 잃는다. */
+  return only.flatMap((key): PlanSlot[] => {
+    const [subject, band] = key.split(":") as [ItemDraft["subject"], GradeBand];
+    const g = gradeBands.find((x) => x.id === band);
+    if (!g) return [];
+    const form =
+      forms.find((f) => f.round === roundId && f.subject === subject && f.band === band) ?? null;
+    return [
+      {
+        key,
         subject,
-        band: g.id,
+        band,
         label: `${subject} · ${g.label}`,
-        short: `${subject} ${g.id.replace("-", "·")}`,
+        short: `${subject} ${band.replace("-", "·")}`,
         form,
         picked: form ? formItems(form, items) : [],
         pool: items.filter(
           (i) =>
             i.state === "approved" &&
             i.subject === subject &&
-            i.band === g.id &&
+            i.band === band &&
             !form?.itemIds.includes(i.id),
         ).length,
-      };
-    }),
-  );
+      },
+    ];
+  });
+}
+
+/* ───────────────────────── 회차 만들기 ─────────────────────────
+   코드에 박힌 회차 넷(lib/admin.ts rounds)에 여기서 만든 것을 잇는다. 저쪽을 고치지
+   않는 까닭은 그 배열을 아홉 군데가 읽고 있어서다 — 목록을 합치는 자리를 하나로 두고,
+   화면은 그 하나만 부른다. */
+
+/** 코드에 박힌 넷 + 여기서 만든 것. 최신 회차가 앞에 온다 */
+export function allRounds(plans: Plans): Round[] {
+  const made = Object.values(plans)
+    .filter((p) => p.made)
+    .map(
+      (p): Round => ({
+        id: p.round,
+        label: p.made!.label,
+        period: `${p.opensOn.replace(/-/g, ".")} – ${p.closesOn.slice(5).replace("-", ".")}`,
+        opensOn: p.opensOn,
+        closesOn: p.closesOn,
+        state: p.state,
+        target: p.made!.target,
+        /* 아직 아무도 안 본 회차다. 제출·채점·발행을 0이 아닌 값으로 두면 목록의
+           제출률이 만들자마자 채워져 있다 */
+        submitted: 0,
+        graded: 0,
+        published: 0,
+      }),
+    );
+  return [...made, ...rounds].sort((a, b) => b.opensOn.localeCompare(a.opensOn));
+}
+
+export function useRounds(): Round[] {
+  const plans = usePlans();
+  return useMemo(() => allRounds(plans), [plans]);
+}
+
+/** 새 회차 번호 — 만든 해와 그 해에 몇 번째인지로 짓는다 */
+function nextRoundId(plans: Plans, year: string) {
+  const mine = Object.keys(plans).filter((id) => id.startsWith(`${year}-`));
+  const used = new Set([...rounds.map((r) => r.id), ...Object.keys(plans)]);
+  let n = mine.length + rounds.filter((r) => r.id.startsWith(`${year}-`)).length + 1;
+  while (used.has(`${year}-${n}`)) n += 1;
+  return `${year}-${n}`;
+}
+
+/**
+ * 회차를 만든다.
+ *
+ * 준비중으로 들어간다. 만들자마자 여는 길은 두지 않는다 — 검사지가 한 벌도 없는 회차를
+ * 열면 응시자가 빈 시험지를 받는다. 여는 것은 편성 화면의 관문을 지나야 한다.
+ */
+export function createRound(
+  input: {
+    label: string;
+    opensOn: string;
+    closesOn: string;
+    target: number;
+    band: GradeBand;
+    subjects: ItemDraft["subject"][];
+    notice?: RoundNote;
+    caution?: RoundNote;
+  },
+  by: string,
+): string {
+  const cur = read();
+  const id = nextRoundId(cur, input.opensOn.slice(0, 4));
+  const at = now();
+  write({
+    ...cur,
+    [id]: {
+      round: id,
+      state: "draft",
+      opensOn: input.opensOn,
+      closesOn: input.closesOn,
+      band: input.band,
+      subjects: input.subjects,
+      notice: input.notice,
+      caution: input.caution,
+      made: { label: input.label.trim(), target: input.target, createdAt: at, createdBy: by },
+      log: [
+        {
+          at,
+          by,
+          action: "period",
+          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${input.band}학년군`,
+        },
+      ],
+    },
+  });
+  return id;
+}
+
+/**
+ * 회차 공지·유의사항을 고친다.
+ *
+ * 기록을 남기지 않는다. 회차를 열고 닫는 일과 달리 이것은 글을 다듬는 일이고, 오탈자를
+ * 고칠 때마다 회차 기록에 한 줄이 쌓이면 정작 개폐 이력이 그 사이에 묻힌다.
+ */
+export function setRoundNotes(roundId: string, notes: { notice: RoundNote; caution: RoundNote }) {
+  const empty = (v: RoundNote) => !v.text.trim() && v.images.length === 0;
+  const cur = read();
+  const plan = cur[roundId] ?? blankPlan(roundId);
+  write({
+    ...cur,
+    [roundId]: {
+      ...plan,
+      notice: empty(notes.notice) ? undefined : { text: notes.notice.text.trim(), images: notes.notice.images },
+      caution: empty(notes.caution) ? undefined : { text: notes.caution.text.trim(), images: notes.caution.images },
+    },
+  });
+}
+
+/**
+ * 이 회차가 볼 칸을 다시 정한다.
+ *
+ * 이미 문항이 담긴 칸을 끄는 것은 막지 않는다. 대신 그 칸의 검사지는 지우지 않고 그대로
+ * 둔다 — 껐다가 다시 켜면 짜 두었던 것이 돌아와야 하고, 무엇보다 「칸을 껐더니 열 문항이
+ * 사라졌다」는 되돌릴 수 없는 일이다. 화면이 끄기 전에 담긴 수를 알려 준다.
+ */
+export function setRoundPlan(
+  roundId: string,
+  next: { band: GradeBand; subjects: ItemDraft["subject"][] },
+  by: string,
+) {
+  const cur = read();
+  const plan = cur[roundId] ?? blankPlan(roundId);
+  /* 새 기록이 앞에 온다 — 이 파일의 patch()와 같은 차례여야 편성 이력이 뒤섞이지 않는다 */
+  write({
+    ...cur,
+    [roundId]: {
+      ...plan,
+      band: next.band,
+      subjects: next.subjects,
+      log: [
+        {
+          at: now(),
+          by,
+          action: "period" as const,
+          text: `편성을 정했습니다 — ${next.subjects.join(" · ") || "과목 없음"} · ${next.band}학년군`,
+        },
+        ...plan.log,
+      ].slice(0, 40),
+    },
+  });
 }
 
 /* ───────────────────────── 여는 관문 ───────────────────────── */

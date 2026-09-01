@@ -12,6 +12,10 @@ import TableBox from "./TableBox";
  *
  * ── 정한 것 ──
  *  · 검색은 `value`(사람이 보는 글자)를 이어 붙인 한 줄에서 찾는다. 칸마다 검색창을 두지 않는다.
+ *  · 조회 조건은 **검색을 눌러야 걸린다.** 치는 대로 걸리게 두었더니 조건을 둘 이상 걸 때
+ *    글자 하나마다 표가 다시 서서, 두 번째 조건을 고르는 동안 눈앞의 줄이 계속 바뀌었다.
+ *    치고 고르는 값(draft)과 실제로 걸린 값을 갈라 들고, 검색을 누를 때 옮긴다.
+ *    Enter도 같은 일을 한다 — 검색창에 치고 나서 손이 마우스로 가지 않게.
  *  · 정렬은 `sort`가 있으면 그것으로, 없으면 `value`로. **둘을 가른 까닭** — 하나로 쓰면
  *    학년·상태처럼 「보이는 글자 ≠ 세우는 순서」인 칸에서 한쪽이 반드시 깨진다. 실제로
  *    학년 정렬을 위해 숫자를 넣었더니 「초5」를 쳐도 0줄이 나오고 「11」을 치면 화면에
@@ -89,8 +93,12 @@ export default function DataTable<T>({
   toolbarExtra?: React.ReactNode;
   empty?: string;
 }) {
+  /* 실제로 걸린 조건 — 표는 이것만 본다 */
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<Record<string, string>>({});
+  /* 치고 고르는 중인 조건. 검색을 눌러야 위로 옮겨진다 */
+  const [draftQ, setDraftQ] = useState("");
+  const [draftPicked, setDraftPicked] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [asc, setAsc] = useState(true);
   const [page, setPage] = useState(0);
@@ -142,6 +150,28 @@ export default function DataTable<T>({
   const blockAt = Math.floor(at / BLOCK) * BLOCK;
   const block = Array.from({ length: Math.min(BLOCK, pages - blockAt) }, (_, i) => blockAt + i);
 
+  /** 지금 고른 것과 걸린 것이 다른가 — 다르면 검색을 눌러야 한다고 알려 준다 */
+  const dirty =
+    draftQ !== q || filters.some((f) => (draftPicked[f.id] ?? "") !== (picked[f.id] ?? ""));
+  /** 무엇이든 걸려 있는가 — 걸린 것이 있어야 「조건 지우기」를 낸다 */
+  const active = q.trim() !== "" || Object.values(picked).some(Boolean);
+
+  const apply = () => {
+    setQ(draftQ);
+    setPicked(draftPicked);
+    /* 조건이 바뀌면 첫 쪽으로. 3쪽에서 조건을 좁히면 남은 줄이 한 쪽뿐인데 3쪽에
+       머물러 빈 표를 보게 된다 */
+    setPage(0);
+  };
+
+  const clear = () => {
+    setDraftQ("");
+    setDraftPicked({});
+    setQ("");
+    setPicked({});
+    setPage(0);
+  };
+
   const toggleSort = (c: Col<T>) => {
     if (!c.sort && !c.value) return;
     if (sortKey === c.key) setAsc((v) => !v);
@@ -158,12 +188,16 @@ export default function DataTable<T>({
     <div className="overflow-clip">
       {(search || filters.length > 0 || toolbarExtra) && (
         <div className="a2-toolbar">
+          {/* 이 띠가 무엇을 하는 자리인지 이름표로 못 박는다. 없을 때는 검색창과 고르개가
+              표 바로 위에 떠 있어 처음 여는 사람이 표의 머리로 읽었다 */}
+          <span className="a2-label a2-query-label">조회 조건</span>
           {search && (
             <input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(0);
+              value={draftQ}
+              onChange={(e) => setDraftQ(e.target.value)}
+              /* 치고 나서 Enter로 바로 건다. 이것이 없으면 손이 검색 단추까지 갔다 온다 */
+              onKeyDown={(e) => {
+                if (e.key === "Enter") apply();
               }}
               placeholder={searchHint}
               className="a2-input w-[13rem]"
@@ -174,11 +208,8 @@ export default function DataTable<T>({
             <label key={f.id} className="inline-flex items-center gap-1.5">
               <span className="a2-label">{f.label}</span>
               <select
-                value={picked[f.id] ?? ""}
-                onChange={(e) => {
-                  setPicked((p) => ({ ...p, [f.id]: e.target.value }));
-                  setPage(0);
-                }}
+                value={draftPicked[f.id] ?? ""}
+                onChange={(e) => setDraftPicked((v) => ({ ...v, [f.id]: e.target.value }))}
                 className="a2-select w-auto"
               >
                 <option value="">전체</option>
@@ -191,8 +222,20 @@ export default function DataTable<T>({
             </label>
           ))}
 
+          <button type="button" onClick={apply} className="a2-btn a2-btn-sm a2-btn-primary">
+            검색
+          </button>
+
+          {(active || dirty) && (
+            <button type="button" onClick={clear} className="a2-btn a2-btn-sm">
+              조건 지우기
+            </button>
+          )}
+
           {/* 거르개를 걸고 몇 줄이 남았는지가 곧 답일 때가 많다. 11px 흐린 회색으로
-              두었더니 거르개 사이에 묻혀 안 읽혔다 — 숫자만 한 눈금 키워 세운다 */}
+              두었더니 거르개 사이에 묻혀 안 읽혔다 — 숫자만 한 눈금 키워 세운다.
+              이 수는 **걸린 조건**의 결과다. 고르는 중인 값으로 세면 검색을 누르기도 전에
+              줄 수가 바뀌어, 검색이 하는 일이 무엇인지 알 수 없게 된다 */}
           <span className="a2-t-sm text-(--a2-ink-3)">
             <span className="a2-num a2-t text-(--a2-ink)">{shown.length.toLocaleString("ko-KR")}</span>
             {shown.length !== rows.length && (
@@ -201,18 +244,12 @@ export default function DataTable<T>({
             줄
           </span>
 
-          {(q || Object.values(picked).some(Boolean)) && (
-            <button
-              type="button"
-              onClick={() => {
-                setQ("");
-                setPicked({});
-                setPage(0);
-              }}
-              className="a2-btn a2-btn-sm"
-            >
-              조건 지우기
-            </button>
+          {/* 고쳐 놓고 안 누른 사람에게. 이 줄이 없으면 조건을 고쳐 놓고 표가 그대로인 것을
+              고장으로 읽는다 */}
+          {dirty && (
+            <span className="a2-t-xs" style={{ color: "var(--a2-warn)" }}>
+              고친 조건은 검색을 눌러야 걸립니다
+            </span>
           )}
 
           {toolbarExtra && <div className="ml-auto flex items-center gap-1.5">{toolbarExtra}</div>}

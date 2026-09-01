@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Bar, Status } from "@/components/admin2/ui";
-import { rounds, roundStates, type Round, type RoundState } from "@/lib/admin";
+import { roundStates, type Round, type RoundState } from "@/lib/admin";
 import { n, pct, roundTone } from "@/lib/admin2";
 import { useForms } from "@/lib/formStore";
-import { planOf, usePlans } from "@/lib/roundPlanStore";
+import { planOf, usePlans, useRounds } from "@/lib/roundPlanStore";
 
 /**
  * ADM-05 회차 표.
@@ -34,6 +34,8 @@ const stateOptions = (Object.keys(roundStates) as RoundState[]).map((k) => ({
 export default function RoundsTable() {
   const plans = usePlans();
   const forms = useForms();
+  /* 코드에 박힌 넷 + 여기서 만든 회차. 목록이 둘로 갈리면 만든 회차가 표에 안 선다 */
+  const allRounds = useRounds();
 
   /* 거르개는 상태 하나. 씨앗이 아니라 **화면에 그리는 값**으로 거른다 — 「응시
      진행중」을 골랐는데 방금 연 회차가 안 걸리면 거르개가 고장 난 것으로 읽힌다.
@@ -163,17 +165,33 @@ export default function RoundsTable() {
         hide: "md",
         cell: (r) => (r.submitted ? <Bar value={r.published} total={r.submitted} /> : dash),
       },
+      {
+        /* 오른쪽 끝의 관리 칸 — 콘솔의 다른 목록과 같은 자리에 같은 말로 세운다.
+           회차 이름에도 링크가 걸려 있지만 그것은 표를 훑다가 눈에 걸린 이름을 바로
+           누르는 길이고, 이 단추는 「이 줄을 고친다」가 늘 같은 자리에 있게 하는 것이다 */
+        key: "act",
+        head: "관리",
+        width: "5.5rem",
+        nowrap: true,
+        cell: (r) => (
+          <Link href={`/admin2/rounds/${r.id}`} className="a2-btn a2-btn-sm" aria-label={`${r.label} 수정하기`}>
+            수정하기
+          </Link>
+        ),
+      },
     ],
     [plans, forms],
   );
 
   return (
     <DataTable
-      rows={rounds}
+      rows={allRounds}
       cols={cols}
       getKey={(r) => r.id}
       filters={filters}
-      search={false}
+      /* 회차 이름으로 찾는다. 한동안 껐던 것은 넷뿐이라 눈으로 찾는 편이 빨라서인데,
+         여기서 회차를 만들 수 있게 되면서 분기마다 한 줄씩 쌓이는 목록이 되었다 */
+      searchHint="회차 이름"
       empty="조건에 맞는 회차가 없습니다."
       toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">회차 이름을 누르면 편성 화면으로</span>}
     />

@@ -390,12 +390,18 @@
     font-size: 0.8125rem;
   }
   /* 머리 행은 스크롤에 붙는다.
-     붙는 자리가 화면 꼭대기가 아니라 상단 바 아래(40px)다 — 0으로 두면 어두운 상단 바에
-     가려 붙어 있는 것이 안 보인다. 표 안에 세로 스크롤 상자가 있던 시절에는 그 상자의
-     꼭대기라 0이 맞았지만, 지금은 화면(page)이 굴러가므로 기준이 상단 바다. */
+     기본은 0이고, **화면(page)이 스크롤포트일 때만** 상단 바 아래(40px)로 내린다
+     (.a2-table-fits 규칙). 둘을 가른 까닭 —
+
+     sticky의 기준은 「가장 가까운 스크롤 컨테이너」다. 목록 표는 TableBox가 표가 좁을 때
+     가로 스크롤을 꺼 두므로 그 기준이 화면이고, 0으로 두면 어두운 상단 바에 가려 붙은 것이
+     안 보인다. 반대로 가로로 미는 상자 안(좁은 화면의 목록 · 등록 폼 안의 작은 표)에서는
+     기준이 그 상자다. 그 상자는 세로로 굴러가지 않는데 top이 40px이면 머리 행이 상자
+     위에서 40px 내려온 자리로 밀려 **첫 줄을 덮는다** — 회차 생성 폼에서 국어 줄이
+     머리 행 밑으로 사라져서 알았다. */
   .a2-table th {
     position: sticky;
-    top: 40px;
+    top: 0;
     z-index: 1;
     height: var(--a2-head);
     padding: 0 12px;
@@ -464,6 +470,10 @@
   .a2-table-wrap.a2-table-fits {
     overflow-x: visible;
   }
+  /* 가로 스크롤을 끈 상자 = 화면이 스크롤포트다. 이때만 상단 바 아래로 내린다 */
+  .a2-table-wrap.a2-table-fits .a2-table th {
+    top: 40px;
+  }
 
   /* ── 쪽 번호 ──
      [처음] [이전] 1 2 3 … [다음] [마지막]. 대괄호는 글자로 적는다. 화살표(‹ ›)로 두면
@@ -510,7 +520,27 @@
     cursor: not-allowed;
   }
 
-  /* ── 도구 줄 — 표 위의 검색·거르개·동작 ── */
+  /* 표 위 조회 조건 줄 — 검색·거르개.
+     이름표(「조회 조건」)를 왼쪽에 세워 이 띠가 무엇을 하는 자리인지 못 박는다. 세우기 전에는
+     검색창과 고르개가 표 바로 위에 떠 있어, 처음 여는 사람이 그것을 표의 머리로 읽었다.
+     좁은 화면에서는 이름표가 한 줄을 통째로 차지한다 — 열두 글자짜리 고르개 옆에 끼면
+     정작 고르개가 두 줄로 접힌다. */
+  .a2-query-label {
+    flex: none;
+    padding-right: 2px;
+    border-right: 1px solid var(--a2-line);
+    margin-right: 2px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
+  @media (max-width: 640px) {
+    .a2-query-label {
+      flex: 1 0 100%;
+      border-right: 0;
+      margin-right: 0;
+    }
+  }
   .a2-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -519,6 +549,91 @@
     padding: 10px 12px;
     border-bottom: 1px solid var(--a2-line);
     background: var(--a2-panel);
+  }
+
+  /* ── 등록 폼 ──
+     왼쪽에 이름표 칸, 오른쪽에 입력 칸을 두고 가로선으로 줄을 나눈다. 관공서·학원 관리
+     화면이 수십 년째 쓰는 꼴이고, 이 콘솔을 쓸 사람이 이미 그 꼴로 회차를 등록해 왔다.
+
+     판(Panel) 안에 라벨을 위에 얹는 꼴(.a2-field)과 갈라 쓴다. 저쪽은 칸이 두셋일 때,
+     이쪽은 열 줄이 넘을 때다 — 열 줄을 라벨-위-입력으로 쌓으면 세로가 두 배가 되고,
+     무엇이 필수인지 훑기도 어렵다. 이름표를 한 줄에 세워 두면 눈이 왼쪽 기둥만 타고 내려간다.
+
+     이름표 칸 폭은 10.5rem. 이 화면에서 가장 긴 이름표(「주관식 추가 제출」)가 11글자이고,
+     12px 굵은 글씨로 그것이 한 줄에 들어가는 폭이다.
+
+     좁은 화면에서는 위아래로 쌓는다 — 375px에서 10.5rem을 떼고 나면 입력 칸에 남는 것이
+     100px뿐이라 날짜 하나 못 들어간다. */
+  .a2-form {
+    border-top: 1px solid var(--a2-line);
+  }
+  .a2-form-row {
+    display: grid;
+    grid-template-columns: 10.5rem minmax(0, 1fr);
+    border-bottom: 1px solid var(--a2-line);
+  }
+  .a2-form-label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 12px;
+    background: var(--a2-raised);
+    border-right: 1px solid var(--a2-line);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--a2-ink-2);
+  }
+  /* 꼭 채워야 하는 줄. 별표 하나만 두고 「필수」라고 적지 않는다 — 열 줄 옆에 같은 글자가
+     여섯 번 서면 그 글자가 아니라 별표를 보게 된다 */
+  .a2-form-req::after {
+    content: "*";
+    color: var(--a2-danger);
+    font-weight: 700;
+  }
+  .a2-form-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 12px;
+    min-width: 0;
+  }
+  /* 이름표 아래 곁들이는 말은 입력 칸 안에서 줄을 바꿔 선다 */
+  .a2-form-field > .a2-hint {
+    flex: 1 0 100%;
+    margin-top: 0;
+  }
+  @media (max-width: 640px) {
+    .a2-form-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .a2-form-label {
+      border-right: 0;
+      border-bottom: 1px solid var(--a2-line);
+      padding-block: 6px;
+    }
+  }
+
+  /* 라디오·체크 한 벌 — 등록 폼에서만 쓴다. 표 안에는 두지 않는다(줄마다 누를 것이
+     생기면 표를 훑는 일이 고르는 일로 바뀐다) */
+  .a2-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--a2-ink-2);
+    white-space: nowrap;
+  }
+  .a2-choice input {
+    accent-color: var(--a2-accent);
+  }
+  .a2-choice:has(input:checked) {
+    color: var(--a2-ink);
+    font-weight: 700;
+  }
+  /* 고를 수 없는 것은 흐리게. 왜 못 고르는지는 옆 곁들이는 말이 적는다 */
+  .a2-choice:has(input:disabled) {
+    color: var(--a2-ink-4);
   }
 
   /* ── 상태 — 점 + 글자. 색은 글자가 지고 면은 비워 둔다 ──

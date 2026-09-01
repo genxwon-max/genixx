@@ -1,9 +1,9 @@
 import RoundsView from "./RoundsView";
 
-export const metadata = { title: "회차·응시" };
+export const metadata = { title: "평가 회차" };
 
 /*
- * ADM-05 회차·응시.
+ * ADM-05 평가 회차.
  *
  * 회차 상태 · 응시 기간 · 편성은 브라우저 저장소가 들고 있어(lib/roundPlanStore.ts ·
  * lib/formStore.ts) 서버에서 읽으면 씨앗값만 나온다. 이 파일은 문서 제목만 달고 안은

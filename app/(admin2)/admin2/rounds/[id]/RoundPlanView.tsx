@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { rounds, roundStates } from "@/lib/admin";
+import { roundStates } from "@/lib/admin";
 import { formTone, n, roundTone } from "@/lib/admin2";
 import { useAdminPrefs, recordAction } from "@/lib/adminStore";
 import { useForms } from "@/lib/formStore";
@@ -17,12 +17,16 @@ import {
   planOf,
   reopenRound,
   setPeriod,
+  slotsFor,
   slotsOf,
   usePlans,
+  useRounds,
   type PlanGateAction,
 } from "@/lib/roundPlanStore";
 import { Body, DescList, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
+import RoundNotes from "./RoundNotes";
+import SlotPicker from "./SlotPicker";
 import FormSlot from "./FormSlot";
 
 /**
@@ -44,6 +48,7 @@ export default function RoundPlanView({ id }: { id: string }) {
   const forms = useForms();
   const items = useItems();
   const plans = usePlans();
+  const allRounds = useRounds();
   const prefs = useAdminPrefs();
 
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -51,7 +56,7 @@ export default function RoundPlanView({ id }: { id: string }) {
   const [periodWhy, setPeriodWhy] = useState("");
   const [gateWhy, setGateWhy] = useState("");
 
-  const round = rounds.find((r) => r.id === id);
+  const round = allRounds.find((r) => r.id === id);
 
   if (!round) {
     return (
@@ -76,7 +81,7 @@ export default function RoundPlanView({ id }: { id: string }) {
   }
 
   const plan = planOf(plans, round.id);
-  const slots = slotsOf(round.id, forms, items);
+  const slots = slotsOf(round.id, forms, items, slotsFor(plan));
   const checks = openChecks(round.id, slots, plans);
   const blocks = checks.filter((c) => c.tone === "block");
   const warns = checks.filter((c) => c.tone === "warn");
@@ -208,7 +213,7 @@ export default function RoundPlanView({ id }: { id: string }) {
           <div className="grid gap-3 xl:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
             <div className="grid content-start gap-3">
               {/* ① 편성판 — 여섯 칸을 빠짐없이 낸다 */}
-              <Panel title="편성판" meta="과목 × 학년군 여섯 칸" flush>
+              <Panel title="편성판" meta={`이 회차가 보는 ${slots.length}칸`} flush>
                 <TableBox>
                   <table className="a2-table">
                     <thead>
@@ -309,6 +314,15 @@ export default function RoundPlanView({ id }: { id: string }) {
                   아직 담지 않은, 담을 수 있는 문항 수입니다.
                 </p>
               </Panel>
+
+              {/* 이 회차가 볼 칸을 다시 정한다. 편성판 바로 아래에 두는 까닭은,
+                  「비어 있는 칸이 셋이나 남았다」를 본 다음에 드는 물음이 대개 「그 칸을
+                  이번엔 안 보면 안 되나」라서다 */}
+              <SlotPicker plan={plan} locked={plan.state !== "draft"} />
+
+              {/* 공지는 편성 칸 다음에 둔다. 무엇을 낼지 정한 다음에 나오는 물음이
+                  「이번엔 무슨 말을 함께 낼까」라서다 */}
+              <RoundNotes plan={plan} locked={plan.state === "closed"} />
 
               {/* key를 칸 열쇠로 준다. 없으면 국어 칸에서 체크해 둔 문항 목록을 든 채로 수학
                   칸이 열려, 담기를 누르면 다른 과목 문항이 들어간다(확정 대조에서 걸리기는

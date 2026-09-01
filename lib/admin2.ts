@@ -32,10 +32,13 @@ export type Admin2NavItem = {
    * 브라우저 저장소에서만 셀 수 있는 배지.
    *
    * 문항은 lib/itemStore.ts가 localStorage에 들고 있어 서버에서 세지 못한다. 여기
-   * count에 서버에서 센 값을 박아 두면 기둥의 숫자와 문항 은행의 줄 수가 갈린다 —
+   * count에 서버에서 센 값을 박아 두면 기둥의 숫자와 그 화면의 줄 수가 갈린다 —
    * 표시만 하고 값은 껍데기(Shell)가 살아 있는 목록에서 채운다.
+   *
+   *   drafts  작성 중 + 반려됨 — 출제 화면에 서 있는 줄 수
+   *   review  검수 대기 — 검수 화면에 서 있는 줄 수
    */
-  live?: "items";
+  live?: "drafts" | "review";
 };
 
 export type Admin2NavGroup = {
@@ -59,8 +62,11 @@ export const admin2Nav: Admin2NavGroup[] = [
     label: "운영",
     items: [
       { code: "ADM-01", label: "대시보드", href: "/admin2", exact: true },
-      { code: "ADM-05", label: "회차·응시", href: "/admin2/rounds" },
       { code: "EXP-07", label: "판정 큐", href: "/admin2/queue", count: queueCounts.cases },
+      /* 콘텐츠 그룹이 「문항관리」가 되면서 갈 데가 없어진 항목이다. 문의는 문항이 아니라
+         사람이 보내온 것이고, 하는 일은 판정 큐와 같다 — 매일 열어 밀린 것을 처리한다.
+         회원 그룹도 후보였지만 저쪽은 명부(누가 있나)이고 이쪽은 큐(무엇이 밀렸나)다. */
+      { code: "ADM-10", label: "문의", href: "/admin2/inquiries", count: queueCounts.inquiries },
     ],
   },
   {
@@ -74,10 +80,51 @@ export const admin2Nav: Admin2NavGroup[] = [
     ],
   },
   {
-    label: "콘텐츠",
+    /*
+     * 문항을 셋으로 편다 — 쓰는 자리 · 보는 자리 · 쌓인 자리.
+     *
+     * 한동안 문항 상세 한 장에 출제와 검수를 다 넣고 기둥에는 문항 은행만 세웠다. 화면
+     * 수로는 그쪽이 적지만, 기둥에서 「지금 검수할 게 몇 개인가」를 볼 자리가 없어서 은행에
+     * 들어가 상태 거르개를 걸어야 알 수 있었다. 매일 여는 두 가지 일(쓰기·검수)이 목록으로
+     * 서 있지 않으면 그 일이 없는 것처럼 보인다.
+     *
+     * 고치는 자리는 여전히 문항 상세 하나다. 출제·검수 화면은 「무엇부터 여나」만 답하고,
+     * 실제로 채우고 짚는 일은 상세에서 한다 — 워크벤치를 둘로 갈라 같은 문항을 두 화면에서
+     * 다르게 그리는 일은 만들지 않는다.
+     */
+    label: "문항관리",
     items: [
-      { code: "ADM-04", label: "문항 은행", href: "/admin2/items", live: "items" },
-      { code: "ADM-10", label: "문의", href: "/admin2/inquiries", count: queueCounts.inquiries },
+      { code: "EXP-02", label: "문항 출제", href: "/admin2/authoring", live: "drafts" },
+      { code: "EXP-03", label: "문항 검수", href: "/admin2/review", live: "review" },
+      { code: "ADM-04", label: "문항 은행", href: "/admin2/items" },
+    ],
+  },
+  {
+    /*
+     * 한 번의 평가가 나가기까지 손대는 것 셋.
+     *
+     *   평가 회차        언제 여는가 · 어떤 학년군과 과목을 보는가
+     *   평가별 문항관리   회차 × 과목 × 학년군 검사지가 지금 어디까지 짜였는가
+     *
+     * 「평가 과목」 화면은 뺐다. 과목은 회차마다 정하는 값이 되어(회차 생성·편성 화면의
+     * PlanPicker) 따로 볼 목록이 없어졌다 — 과목별 문항 재고는 그 고르는 자리에서 바로
+     * 옆에 서고, 어느 회차에 나가는지는 평가별 문항관리가 이미 답한다.
+     *
+     * 문항관리 **바로 아래**에 둔다. 일이 그 차례로 흐르기 때문이다 — 쓰고(출제) 보고(검수)
+     * 쌓은(은행) 문항을 골라 회차에 담는다. 두 그룹을 떼어 놓으면 그 흐름이 기둥에서 끊긴다.
+     *
+     * 「회차·응시」가 운영 그룹에 있던 것을 여기로 옮겼다. 회차를 여닫는 일은 운영이지만
+     * 그 회차에 무엇을 내보낼지 짜는 일과 같은 화면에서 이어지므로, 두 그룹에 갈라 두면
+     * 편성하다가 기둥을 위아래로 오간다. 옮기면서 이름도 「평가 회차」로 맞췄다 —
+     * 아래 둘이 「평가 …」이고 저것만 「회차」면 셋이 한 갈래로 안 읽힌다.
+     *
+     * ⚠ 두 곳에 같은 화면을 두지 않는다. 운영 그룹에 남겨 두고 여기에도 세우면 같은 회차를
+     *   두 자리에서 열게 되고, 어느 쪽이 진짜인지 묻는 사람이 생긴다.
+     */
+    label: "평가 관리",
+    items: [
+      { code: "ADM-05", label: "평가 회차", href: "/admin2/rounds" },
+      { code: "ADM-04-3", label: "평가별 문항관리", href: "/admin2/forms" },
     ],
   },
   {
