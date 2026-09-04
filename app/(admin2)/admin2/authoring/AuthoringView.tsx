@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { itemTone, n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { addItem, stateLabel, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
+import { addItem, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 import Generator from "./Generator";
@@ -180,11 +180,17 @@ export default function AuthoringView() {
       {
         key: "type",
         head: "유형",
-        width: "4.5rem",
+        /* 세트는 「세트 3문 · 객관식 · 서술형」처럼 길어진다. 4.5rem에 두면 죄다
+           말줄임이 되어 단일인지 세트인지도 안 보인다 */
+        width: "9rem",
         nowrap: true,
         hide: "md",
-        value: (r) => typeLabel(r.type),
-        cell: (r) => typeLabel(r.type),
+        value: (r) => typeTextOf(r),
+        cell: (r) => (
+          <span title={typeTextOf(r)} className="a2-clip">
+            {typeTextOf(r)}
+          </span>
+        ),
       },
       {
         key: "stem",

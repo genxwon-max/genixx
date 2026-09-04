@@ -23,7 +23,6 @@ import {
   stateLabel,
   stateTone,
   submitItem,
-  suggestCode,
   syncTags,
   useItems,
   withdrawItem,
@@ -81,7 +80,11 @@ export default function ItemCard({ id }: { id: string }) {
   const item = items.find((i) => i.id === id);
 
   if (!hydrated) {
-    return <p className="py-16 text-center adm-t-sm text-exam-muted">확인 중입니다…</p>;
+    return (
+      <p className="py-16 text-center adm-t-sm text-exam-muted">
+        확인 중입니다…
+      </p>
+    );
   }
 
   if (!item) {
@@ -89,7 +92,10 @@ export default function ItemCard({ id }: { id: string }) {
       <div className="py-10">
         <Callout tone="warn" title="문항을 찾을 수 없습니다">
           지워졌거나 주소가 잘못되었습니다.{" "}
-          <Link href="/admin/authoring" className="font-bold underline underline-offset-4">
+          <Link
+            href="/admin/authoring"
+            className="font-bold underline underline-offset-4"
+          >
             목록으로 돌아가기
           </Link>
         </Callout>
@@ -115,7 +121,6 @@ export default function ItemCard({ id }: { id: string }) {
   const talent = talents.find((t) => t.id === item.talent)!;
   const sub = subskillOf(item.subskill);
   const std = standardIssue(item);
-  const serial = items.filter((i) => i.level === item.level).length;
 
   return (
     <div className="pb-16">
@@ -128,7 +133,9 @@ export default function ItemCard({ id }: { id: string }) {
           >
             ← 문항 목록
           </Link>
-          <h1 className={`${a.pageTitle} mt-2`}>{item.code || "문항 ID 미정"}</h1>
+          <h1 className={`${a.pageTitle} mt-2`}>
+            {item.code || "문항 ID 미정"}
+          </h1>
           <p className="mt-1.5 adm-t-sm text-exam-muted">
             {item.authorName} · 마지막 저장 {item.updatedAt} · v{item.version}
           </p>
@@ -142,7 +149,9 @@ export default function ItemCard({ id }: { id: string }) {
             <Button
               onClick={() => submitItem(item.id)}
               disabled={!ready}
-              title={ready ? undefined : `${missing.join(" · ")}이(가) 남았습니다`}
+              title={
+                ready ? undefined : `${missing.join(" · ")}이(가) 남았습니다`
+              }
             >
               검수로 제출
             </Button>
@@ -173,14 +182,17 @@ export default function ItemCard({ id }: { id: string }) {
       {mayWrite && !mine && (
         <div className="mb-5">
           <Callout tone="info" title="다른 출제자의 문항입니다">
-            {item.authorName} 위원이 쓴 문항이라 읽기만 됩니다. 고쳐야 한다면 검수 코멘트로 남기거나
-            관리자에게 요청하세요.
+            {item.authorName} 위원이 쓴 문항이라 읽기만 됩니다. 고쳐야 한다면
+            검수 코멘트로 남기거나 관리자에게 요청하세요.
           </Callout>
         </div>
       )}
       {editable && !ready && (
         <div className="mb-5">
-          <Callout tone="warn" title={`제출까지 ${missing.length}칸 남았습니다`}>
+          <Callout
+            tone="warn"
+            title={`제출까지 ${missing.length}칸 남았습니다`}
+          >
             {missing.join(" · ")}
           </Callout>
         </div>
@@ -188,8 +200,8 @@ export default function ItemCard({ id }: { id: string }) {
       {item.state === "submitted" && (
         <div className="mb-5">
           <Callout tone="info" title="검수 중이라 잠겼습니다">
-            검수자가 본 것과 승인되는 것이 달라지면 안 되므로 제출 후에는 고칠 수 없습니다. 고쳐야
-            하면 제출을 회수하세요.
+            검수자가 본 것과 승인되는 것이 달라지면 안 되므로 제출 후에는 고칠
+            수 없습니다. 고쳐야 하면 제출을 회수하세요.
           </Callout>
         </div>
       )}
@@ -210,7 +222,12 @@ export default function ItemCard({ id }: { id: string }) {
                 variant="outline"
                 onClick={() => {
                   if (!reply.trim()) return;
-                  addComment(item.id, prefs.staffName || "출제자", prefs.role, reply.trim());
+                  addComment(
+                    item.id,
+                    prefs.staffName || "출제자",
+                    prefs.role,
+                    reply.trim(),
+                  );
                   setReply("");
                 }}
               >
@@ -248,7 +265,9 @@ export default function ItemCard({ id }: { id: string }) {
             <Field label="교과">
               <select
                 value={item.subject}
-                onChange={(e) => set({ subject: e.target.value as ItemDraft["subject"] })}
+                onChange={(e) =>
+                  set({ subject: e.target.value as ItemDraft["subject"] })
+                }
                 disabled={!editable}
                 className={a.input}
               >
@@ -260,7 +279,9 @@ export default function ItemCard({ id }: { id: string }) {
             <Field label="단원 번호" hint="두 자리">
               <input
                 value={item.unitNo}
-                onChange={(e) => set({ unitNo: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+                onChange={(e) =>
+                  set({ unitNo: e.target.value.replace(/\D/g, "").slice(0, 2) })
+                }
                 disabled={!editable}
                 placeholder="02"
                 className={`${a.input} tabular-nums`}
@@ -278,24 +299,20 @@ export default function ItemCard({ id }: { id: string }) {
           </div>
 
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <Field label="문항 ID" className="flex-1 basis-56">
+            {/* 저장소가 매긴다(lib/itemStore.ts의 withCodes). 손으로 적게 두면 친 값이
+                다음 읽기에서 조용히 덮여 사라진다 */}
+            <Field
+              label="문항 ID"
+              className="flex-1 basis-56"
+              hint="연월일 · 학년 · 과목 · 문제 유형 · 단계 · 일련번호 — 자동으로 매깁니다"
+            >
               <input
                 value={item.code}
-                onChange={(e) => set({ code: e.target.value })}
-                disabled={!editable}
-                placeholder="4K02-S2-001"
+                readOnly
+                disabled
                 className={`${a.input} font-black tabular-nums`}
               />
             </Field>
-            {editable && (
-              <Button
-                variant="outline"
-                onClick={() => set({ code: suggestCode(item, serial) })}
-                title="지금 학년군·교과·단원·단계로 다시 매깁니다"
-              >
-                자동으로 매기기
-              </Button>
-            )}
             <label className="flex min-h-11 items-center gap-2.5 adm-t-sm text-exam-text">
               <input
                 type="checkbox"
@@ -304,7 +321,10 @@ export default function ItemCard({ id }: { id: string }) {
                 disabled={!editable}
                 className="h-5 w-5 accent-[#1b2a6b]"
               />
-              앵커 문항 <span className="text-exam-muted">(전체의 30% · 미공개 재사용)</span>
+              앵커 문항{" "}
+              <span className="text-exam-muted">
+                (전체의 30% · 미공개 재사용)
+              </span>
             </label>
           </div>
         </Section>
@@ -350,13 +370,15 @@ export default function ItemCard({ id }: { id: string }) {
           <p className="mt-3 adm-t-sm text-exam-text">
             <b>{spec.define}</b> — {spec.rule}
           </p>
-          {talent.scopeNote && <p className="mt-2 adm-t-sm text-exam-muted">{talent.scopeNote}</p>}
+          {talent.scopeNote && (
+            <p className="mt-2 adm-t-sm text-exam-muted">{talent.scopeNote}</p>
+          )}
 
           <div className="mt-4">
             <Foldable title="단계를 어떻게 정하는가 — 3문 판별 절차 (§1.2)">
               <p className="adm-t-md leading-relaxed text-exam-muted">
-                동사 해석이 아니라 판별 절차로 정합니다. 소재·난이도·형식은 보지 않고 「학생이
-                무엇을 하는가」만 봅니다.
+                동사 해석이 아니라 판별 절차로 정합니다. 소재·난이도·형식은 보지
+                않고 「학생이 무엇을 하는가」만 봅니다.
               </p>
               <ol className="mt-3 space-y-3">
                 {decisionTree.map((q) => (
@@ -365,12 +387,16 @@ export default function ItemCard({ id }: { id: string }) {
                       {q.q}. {q.ask}
                     </p>
                     <p className="mt-1 adm-t-sm text-exam-muted">
-                      {q.options.map((o) => `${o.label} → ${o.next}`).join("  ·  ")}
+                      {q.options
+                        .map((o) => `${o.label} → ${o.next}`)
+                        .join("  ·  ")}
                     </p>
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">{decisiveRule}</p>
+              <p className="mt-3 adm-t-md leading-relaxed text-exam-muted">
+                {decisiveRule}
+              </p>
               <dl className="mt-4 space-y-2 border-t border-exam-line pt-3">
                 <Def k="허용 조작" v={spec.allow} />
                 <Def k="금지 조작" v={spec.deny} />
@@ -411,8 +437,8 @@ export default function ItemCard({ id }: { id: string }) {
             </Field>
           </div>
           <p className="mt-2 adm-t-sm text-exam-muted">
-            코드·내용은 교육부 고시 원문(NCIC 국가교육과정정보센터) 또는 검정 교과서로 대조하세요.
-            2015 개정 코드 혼용에 주의합니다.
+            코드·내용은 교육부 고시 원문(NCIC 국가교육과정정보센터) 또는 검정
+            교과서로 대조하세요. 2015 개정 코드 혼용에 주의합니다.
           </p>
         </Section>
 
@@ -441,7 +467,9 @@ export default function ItemCard({ id }: { id: string }) {
                   const first = subskillsOf(t)[0].code;
                   // 새 재능이 지금 단계를 못 쓰면 쓸 수 있는 가장 높은 단계로 내린다
                   const scope = talents.find((x) => x.id === t)!.scope;
-                  const lv = scope.includes(item.level) ? item.level : scope[scope.length - 1];
+                  const lv = scope.includes(item.level)
+                    ? item.level
+                    : scope[scope.length - 1];
                   set({ talent: t, subskill: first });
                   if (lv !== item.level) setLevel(item.id, lv);
                 }}
@@ -488,8 +516,8 @@ export default function ItemCard({ id }: { id: string }) {
           <div className="mt-4">
             <Foldable title="부태그 — 두 영역을 불가피하게 걸칠 때만">
               <p className="adm-t-md leading-relaxed text-exam-muted">
-                점수는 주태그에만 귀속됩니다. 판별표로도 결정되지 않으면 임의로 태깅하지 말고
-                출제본부에 질의하세요.
+                점수는 주태그에만 귀속됩니다. 판별표로도 결정되지 않으면 임의로
+                태깅하지 말고 출제본부에 질의하세요.
               </p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <Field label="부태그 재능">
@@ -499,7 +527,10 @@ export default function ItemCard({ id }: { id: string }) {
                       const t = e.target.value as TalentId | "";
                       set(
                         t
-                          ? { subTalent: t, subSubskill: subskillsOf(t)[0].code }
+                          ? {
+                              subTalent: t,
+                              subSubskill: subskillsOf(t)[0].code,
+                            }
                           : { subTalent: undefined, subSubskill: undefined },
                       );
                     }}
@@ -549,7 +580,9 @@ export default function ItemCard({ id }: { id: string }) {
                       <td className={a.tdTight}>{b.ask}</td>
                       <td className={a.td}>
                         {b.rule}
-                        <span className="mt-1 block text-exam-muted">{b.example}</span>
+                        <span className="mt-1 block text-exam-muted">
+                          {b.example}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -560,18 +593,26 @@ export default function ItemCard({ id }: { id: string }) {
         </Section>
 
         {/* ⑤ 문항형식 · 배점 · b모수 */}
-        <Section no="⑤" title="문항형식 · 배점 · b모수" note="단계별 고정 매핑 + 예상 난이도">
-          <p className="adm-t-md font-bold text-exam-text">{formatLine(item.level)}</p>
+        <Section
+          no="⑤"
+          title="문항형식 · 배점 · b모수"
+          note="단계별 고정 매핑 + 예상 난이도"
+        >
+          <p className="adm-t-md font-bold text-exam-text">
+            {formatLine(item.level)}
+          </p>
           <p className="mt-1.5 adm-t-sm text-exam-muted">
-            형식과 배점은 단계에서 따라옵니다. 형식을 먼저 정하고 단계를 끼워 맞추지 않습니다 —
-            판별이 먼저, 형식은 그 결과입니다.
+            형식과 배점은 단계에서 따라옵니다. 형식을 먼저 정하고 단계를 끼워
+            맞추지 않습니다 — 판별이 먼저, 형식은 그 결과입니다.
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <Field label="문제 유형" hint="채점 방식이 갈립니다">
               <select
                 value={item.type}
-                onChange={(e) => set({ type: e.target.value as ItemDraft["type"] })}
+                onChange={(e) =>
+                  set({ type: e.target.value as ItemDraft["type"] })
+                }
                 disabled={!editable}
                 className={a.input}
               >
@@ -582,22 +623,30 @@ export default function ItemCard({ id }: { id: string }) {
                 ))}
               </select>
             </Field>
-            <Field label="배점">
+            {/* 배점과 b모수는 이제 문제(Question)에서 만드는 값이다 — 배점은 단계에서
+                따라오고 b는 넷 중에서 고른다. 세트면 배점은 합, b는 평균이라 문항 쪽에
+                써넣을 수가 없다. 여기서 고칠 수 있게 두면 친 숫자가 다음 저장에서 조용히
+                되돌아가므로, 읽기만 하고 어디서 고치는지를 적어 둔다.
+                (lib/itemStore.ts의 summaryOf) */}
+            <Field label="배점" hint="인지단계에서 따라옵니다 (§1 고정 매핑)">
               <input
                 type="number"
                 value={item.points}
-                onChange={(e) => set({ points: Number(e.target.value) })}
-                disabled={!editable}
+                readOnly
+                disabled
                 className={`${a.input} tabular-nums`}
               />
             </Field>
-            <Field label="예상 난이도 b" hint={`${item.level} 앵커 ${spec.b}`}>
+            <Field
+              label="예상 난이도 b"
+              hint={`${item.level} 앵커 ${spec.b} · 새 콘솔의 문제 상세에서 고릅니다`}
+            >
               <input
                 type="number"
                 step="0.1"
                 value={item.b}
-                onChange={(e) => set({ b: Number(e.target.value) })}
-                disabled={!editable}
+                readOnly
+                disabled
                 className={`${a.input} tabular-nums`}
               />
             </Field>
@@ -605,7 +654,11 @@ export default function ItemCard({ id }: { id: string }) {
         </Section>
 
         {/* ⑥ 문항 / 정답 · 채점 */}
-        <Section no="⑥" title="문항 · 정답 · 채점" note="실제 발문·보기 + 정답·부분점수/루브릭">
+        <Section
+          no="⑥"
+          title="문항 · 정답 · 채점"
+          note="실제 발문·보기 + 정답·부분점수/루브릭"
+        >
           <Field label="지문 · 자료" hint="없으면 비워 둡니다">
             <textarea
               value={item.passage}
@@ -632,7 +685,10 @@ export default function ItemCard({ id }: { id: string }) {
           {item.type === "choice" && (
             <div className="mt-4">
               <p className="adm-t-sm font-bold text-exam-text">
-                보기 <span className="font-normal text-exam-muted">· 정답에 표시하세요</span>
+                보기{" "}
+                <span className="font-normal text-exam-muted">
+                  · 정답에 표시하세요
+                </span>
               </p>
               <ul className="mt-2 space-y-2.5">
                 {item.choices.map((c, n) => (
@@ -668,15 +724,19 @@ export default function ItemCard({ id }: { id: string }) {
                         set({ distractorIntent: next });
                       }}
                       disabled={!editable || item.answer === n}
-                      placeholder={item.answer === n ? "정답입니다" : "이 오답이 잡는 오개념"}
+                      placeholder={
+                        item.answer === n
+                          ? "정답입니다"
+                          : "이 오답이 잡는 오개념"
+                      }
                       className={`${a.input} min-w-0 flex-1 basis-48`}
                     />
                   </li>
                 ))}
               </ul>
               <p className="mt-2 adm-t-sm text-exam-muted">
-                매력적 오답(흔한 오개념)이 없으면 변별도가 죽습니다. 오답마다 어떤 오개념을 잡는지
-                적어 주세요.
+                매력적 오답(흔한 오개념)이 없으면 변별도가 죽습니다. 오답마다
+                어떤 오개념을 잡는지 적어 주세요.
               </p>
             </div>
           )}
@@ -709,7 +769,9 @@ export default function ItemCard({ id }: { id: string }) {
                   onChange={(e) => set({ rubric: e.target.value })}
                   disabled={!editable}
                   rows={5}
-                  placeholder={"판단 1점 + 예시 제시 1점 + 까닭 설명 1점\n인정 예: …\n불인정 예: …"}
+                  placeholder={
+                    "판단 1점 + 예시 제시 1점 + 까닭 설명 1점\n인정 예: …\n불인정 예: …"
+                  }
                   className={a.input}
                 />
               </Field>
@@ -840,7 +902,8 @@ function Preview({ item }: { item: ItemDraft }) {
         )}
 
         {/* 지문 그림만 보여 준다. 원본 시험지 PDF나 엑셀은 아이에게 나가지 않는다. */}
-        {item.assets.filter((f) => f.kind === "image" && f.dataUrl).length > 0 && (
+        {item.assets.filter((f) => f.kind === "image" && f.dataUrl).length >
+          0 && (
           <div className="mb-4 flex flex-wrap gap-2">
             {item.assets
               .filter((f) => f.kind === "image" && f.dataUrl)
@@ -874,7 +937,11 @@ function Preview({ item }: { item: ItemDraft }) {
                     {i + 1}
                   </span>
                   <span className="adm-t-md text-exam-text">
-                    {c || <span className="text-exam-muted">보기를 아직 쓰지 않았습니다</span>}
+                    {c || (
+                      <span className="text-exam-muted">
+                        보기를 아직 쓰지 않았습니다
+                      </span>
+                    )}
                   </span>
                 </span>
               </li>
@@ -954,7 +1021,9 @@ function Def({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex flex-wrap gap-x-3">
       <dt className="w-24 shrink-0 adm-t-sm font-bold text-exam-text">{k}</dt>
-      <dd className="min-w-0 flex-1 adm-t-md leading-relaxed text-exam-muted">{v}</dd>
+      <dd className="min-w-0 flex-1 adm-t-md leading-relaxed text-exam-muted">
+        {v}
+      </dd>
     </div>
   );
 }
@@ -1005,14 +1074,18 @@ function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
 
   /** 클립보드에서 그림만 꺼낸다. 글은 그냥 지나가게 둔다. */
   const paste = (e: React.ClipboardEvent) => {
-    const shots = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+    const shots = Array.from(e.clipboardData.files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
     if (shots.length === 0) return;
     e.preventDefault();
     /* 클립보드 그림은 이름이 image.png로 다 같아서, 목록에서 서로 구별되지 않는다 */
     void take(
       shots.map(
         (f, n) =>
-          new File([f], `붙여넣은 그림 ${item.assets.length + n + 1}.png`, { type: f.type }),
+          new File([f], `붙여넣은 그림 ${item.assets.length + n + 1}.png`, {
+            type: f.type,
+          }),
       ),
     );
   };
@@ -1021,8 +1094,8 @@ function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
     <div>
       <p className="adm-t-sm font-bold text-exam-text">붙임 파일</p>
       <p className="mt-1 adm-t-xs leading-relaxed text-exam-muted">
-        삽화·그림은 색맹·저시력 학생도 풀 수 있게 설계합니다. 색 외에 빗금·형태로도 구별되어야
-        합니다. 한 파일 2MB까지.
+        삽화·그림은 색맹·저시력 학생도 풀 수 있게 설계합니다. 색 외에
+        빗금·형태로도 구별되어야 합니다. 한 파일 2MB까지.
       </p>
 
       {!disabled && (
@@ -1040,14 +1113,17 @@ function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
             void take(e.dataTransfer.files);
           }}
           className={`mt-2 rounded-md border border-dashed p-4 text-center transition-colors focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand-700 ${
-            over ? "border-brand-700 bg-brand-50" : "border-exam-line bg-exam-raised"
+            over
+              ? "border-brand-700 bg-brand-50"
+              : "border-exam-line bg-exam-raised"
           }`}
         >
           <p className="adm-t-sm font-bold text-exam-text">
             {over ? "여기에 놓으세요" : "여기에 파일을 끌어다 놓으세요"}
           </p>
           <p className="mt-1 adm-t-xs text-exam-muted">
-            이 상자를 한 번 누르고 <b className="font-bold">Ctrl+V</b>로 캡처를 붙여넣어도 됩니다
+            이 상자를 한 번 누르고 <b className="font-bold">Ctrl+V</b>로 캡처를
+            붙여넣어도 됩니다
           </p>
           <label className="mt-2.5 inline-block">
             <span className={`${a.btnGhost} cursor-pointer`}>파일 고르기</span>
@@ -1073,8 +1149,14 @@ function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
 
       <AssetView
         assets={item.assets}
-        onRemove={disabled ? undefined : (assetId) => removeAsset(item.id, assetId)}
-        onAlt={disabled ? undefined : (assetId, alt) => patchAsset(item.id, assetId, { alt })}
+        onRemove={
+          disabled ? undefined : (assetId) => removeAsset(item.id, assetId)
+        }
+        onAlt={
+          disabled
+            ? undefined
+            : (assetId, alt) => patchAsset(item.id, assetId, { alt })
+        }
       />
     </div>
   );

@@ -9,7 +9,7 @@ import { useAdminPrefs } from "@/lib/adminStore";
 import {
   addItem,
   stateLabel,
-  typeLabel,
+  typeTextOf,
   useItems,
   type ItemDraft,
   type ItemState,
@@ -106,10 +106,14 @@ const COLS: Col<ItemDraft>[] = [
   {
     key: "type",
     head: "유형",
-    width: "4.5rem",
+    width: "9rem",
     nowrap: true,
     hide: "lg",
-    cell: (r) => <span className="a2-t-sm text-(--a2-ink-2)">{typeLabel(r.type)}</span>,
+    cell: (r) => (
+      <span title={typeTextOf(r)} className="a2-clip a2-t-sm text-(--a2-ink-2)">
+        {typeTextOf(r)}
+      </span>
+    ),
   },
   {
     // 폭을 100%로 두어 남는 자리를 이 칸이 먹고, 넘치면 말줄임한다(a2-clip).

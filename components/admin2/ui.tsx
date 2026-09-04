@@ -258,6 +258,42 @@ export function Kpi({
   );
 }
 
+/* ── 가로 폼 한 줄 — 왼쪽에 이름, 오른쪽에 칸 ──
+ *
+ * 이름표를 칸 위에 얹던 것을 옆으로 돌린다. 위에 얹으면 한 줄이 두 줄을 먹어서, 열 칸이
+ * 넘는 폼은 화면 두 장이 된다. 이름과 값이 같은 눈높이에 서면 훑을 때 눈이 왼쪽 한 줄만
+ * 타고 내려가면 되고, 무엇을 안 채웠는지도 한눈에 보인다.
+ *
+ * 폭은 admin2.css의 .a2-form-row가 잡는다. 좁은 화면(640px 미만)에서는 CSS가 알아서
+ * 위아래로 되돌린다 — 10.5rem을 떼고 나면 입력 칸에 남는 자리가 없다.
+ *
+ * ⚠ 반드시 .a2-form(또는 .a2-form-lg)으로 감싼 안에서 쓴다. 줄 사이 선을 그 클래스가
+ *   맡고 있어서, 밖에 두면 줄 하나가 선 없이 떠 있게 된다.
+ */
+export function FormRow({
+  label,
+  /** 안 채우면 제출이 막히는 칸 — 별표를 붙인다 */
+  req = false,
+  /** 칸 아래 한 줄. 규칙·경고처럼 **읽어야 하는 것**만 적는다 */
+  hint,
+  children,
+}: {
+  label: React.ReactNode;
+  req?: boolean;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="a2-form-row">
+      <div className={`a2-form-label${req ? " a2-form-req" : ""}`}>{label}</div>
+      <div className="a2-form-field">
+        {children}
+        {hint && <span className="a2-hint">{hint}</span>}
+      </div>
+    </div>
+  );
+}
+
 /* ── 값 목록 — 설정·상세에서 이름:값을 세로로 쌓는다 ── */
 export function DescList({ rows }: { rows: { k: string; v: React.ReactNode }[] }) {
   return (

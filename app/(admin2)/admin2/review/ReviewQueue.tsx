@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { n } from "@/lib/admin2";
-import { reviewChecks, stateLabel, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
+import { reviewChecks, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Tab, Tag } from "@/components/admin2/ui";
 
@@ -155,11 +155,15 @@ export default function ReviewQueue() {
       {
         key: "type",
         head: "유형",
-        width: "4.5rem",
+        width: "9rem",
         nowrap: true,
         hide: "lg",
-        value: (r) => typeLabel(r.type),
-        cell: (r) => typeLabel(r.type),
+        value: (r) => typeTextOf(r),
+        cell: (r) => (
+          <span title={typeTextOf(r)} className="a2-clip">
+            {typeTextOf(r)}
+          </span>
+        ),
       },
       {
         key: "stem",

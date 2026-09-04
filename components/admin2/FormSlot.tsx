@@ -18,7 +18,7 @@ import {
   setFormItems,
   suggestItems,
 } from "@/lib/formStore";
-import { itemTypes, typeLabel, type ItemDraft } from "@/lib/itemStore";
+import { itemTypes, typeTextOf, type ItemDraft } from "@/lib/itemStore";
 import type { PlanSlot } from "@/lib/roundPlanStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import TableBox from "@/components/admin2/TableBox";
@@ -96,7 +96,11 @@ const PICK_COLS: Col<ItemDraft>[] = [
     width: "4.5rem",
     nowrap: true,
     hide: "lg",
-    cell: (r) => <span className="a2-t-sm text-(--a2-ink-2)">{typeLabel(r.type)}</span>,
+    cell: (r) => (
+      <span title={typeTextOf(r)} className="a2-clip a2-t-sm text-(--a2-ink-2)">
+        {typeTextOf(r)}
+      </span>
+    ),
   },
   {
     key: "unit",
@@ -366,7 +370,7 @@ export default function FormSlot({
                   </Link>
                 </td>
                 <td className="a2-mono a2-nowrap">{i.level}</td>
-                <td className="a2-nowrap a2-t-sm">{typeLabel(i.type)}</td>
+                <td className="a2-nowrap a2-t-sm">{typeTextOf(i)}</td>
                 <td className="a2-td-num">{i.points}</td>
                 <td className="a2-nowrap">{i.anchor ? <Tag accent>앵커</Tag> : dash}</td>
                 <td className="a2-clip a2-t-sm" style={{ width: "100%" }} title={i.stem}>

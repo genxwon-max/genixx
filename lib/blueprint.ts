@@ -534,7 +534,7 @@ export const ANCHOR_RATIO = 0.3;
 
 /* ───────────────────────── 문항 ID (§3 ①) ───────────────────────── */
 
-const SUBJECT_LETTER: Record<string, string> = { 국어: "K", 수학: "M", 과학: "S" };
+export const SUBJECT_LETTER: Record<string, string> = { 국어: "K", 수학: "M", 과학: "S" };
 
 /**
  * 학년 + 교과 + 단원 - 단계 - 일련번호 (예: 4K02-S2-001)

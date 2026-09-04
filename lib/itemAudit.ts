@@ -1,4 +1,10 @@
-import { checkStandardCode, levelAllowed, levelSpecs, subskillsOf, tagBCoord } from "./blueprint";
+import {
+  checkStandardCode,
+  levelAllowed,
+  levelSpecs,
+  subskillsOf,
+  tagBCoord,
+} from "./blueprint";
 import {
   typeForLevel,
   typeLabel,
@@ -63,7 +69,12 @@ export type AuditResult = {
 /* ── 편향·정서 낱말 ──
    낱말이 있다고 편향인 것은 아니다. 「우리 아파트 앞 놀이터」는 괜찮고 「몇 평
    아파트에 사는지」는 안 된다. 그래서 잡아서 사람에게 넘길 뿐 막지 않는다. */
-const SENSITIVE: { words: string[]; why: string; fix: string; reason: string }[] = [
+const SENSITIVE: {
+  words: string[];
+  why: string;
+  fix: string;
+  reason: string;
+}[] = [
   {
     words: ["아파트", "평수", "용돈", "학원", "과외", "해외여행", "브랜드"],
     why: "가정 형편(SES)이 드러날 수 있는 소재입니다",
@@ -77,7 +88,14 @@ const SENSITIVE: { words: string[]; why: string; fix: string; reason: string }[]
     reason: "e-b-region",
   },
   {
-    words: ["엄마가 요리", "아빠가 회사", "남자는", "여자는", "여자아이", "남자아이"],
+    words: [
+      "엄마가 요리",
+      "아빠가 회사",
+      "남자는",
+      "여자는",
+      "여자아이",
+      "남자아이",
+    ],
     why: "성 역할을 고정하는 표현일 수 있습니다",
     fix: "역할을 성별과 묶지 않는 표현으로 바꿔 주세요.",
     reason: "e-b-gender",
@@ -108,170 +126,221 @@ const HIGHER_ORDER = ["까닭을", "왜 그런지", "설명하시오", "근거�
 const has = (text: string, word: string) => text.includes(word);
 
 export function auditItem(item: ItemDraft): AuditResult {
-  const spec = levelSpecs[item.level];
-  const body = [item.passage, item.stem, ...item.choices, item.explain, item.rubric].join(" ");
+  /* 몇 번 문항인지를 앞에 적는다. 단일 문항이면 붙이지 않는다 — 하나뿐인데 「1번 문항」라고
+     적으면 어딘가 다른 문항이 있는 줄로 읽힌다 */
+  const numbered = (n: number) =>
+    item.form === "set" ? `${n + 1}번 문항 — ` : "";
 
-  /* ── 1차 내용 ── */
+  /* 낱말 훑기는 문항 전체를 한 덩이로 본다. 편향은 지문에 있든 3번 문항의 보기에 있든
+     같은 문항이 지고 가는 것이라, 문항별로 갈라 놓을 까닭이 없다 */
+  const body = [
+    item.passage,
+    ...item.questions.flatMap((q) => [
+      q.stem,
+      ...q.choices,
+      q.explain,
+      q.rubric,
+    ]),
+  ].join(" ");
+
+  /* ── 1차 내용 ──
+   *
+   * 문항마다 돈다. 한동안 납작한 거울(item.stem·item.choices…)만 봤는데, 그건 첫 문항의
+   * 것이라 세트의 2번 이후는 기계가 한 번도 안 본 채로 승인까지 갔다. 보기가 겹치든
+   * 해설이 비었든 걸리지 않았다. */
   const content: Finding[] = [];
 
-  if (!item.explain.trim()) {
-    content.push({
-      tone: "block",
-      text: "해설이 없습니다.",
-      fix: "정답이 왜 답인지, 오답은 왜 아닌지를 해설에 적어 주세요.",
-      code: "content",
-      reason: "c-b-explain",
-    });
-  }
+  for (const [n, q] of item.questions.entries()) {
+    const at = numbered(n);
 
-  if (item.type === "choice") {
-    const filled = item.choices.map((c) => c.trim()).filter(Boolean);
-    const dup = filled.length !== new Set(filled).size;
-    if (dup) {
+    if (!q.explain.trim()) {
       content.push({
         tone: "block",
-        text: "보기 중에 같은 내용이 둘 이상 있습니다.",
-        fix: "겹치는 보기를 하나로 합치고, 빈자리는 다른 오개념을 잡는 보기로 채워 주세요.",
-        code: "answer",
-        reason: "c-b-multi",
-      });
-    }
-
-    const lens = item.choices.map((c) => c.trim().length);
-    const answerLen = lens[item.answer] ?? 0;
-    if (answerLen > 0 && answerLen === Math.max(...lens) && answerLen > Math.min(...lens) * 1.6) {
-      content.push({
-        tone: "warn",
-        text: "정답 보기가 가장 깁니다. 내용을 몰라도 길이로 고를 수 있습니다.",
-        fix: "보기 길이를 서로 비슷하게 맞춰 주세요.",
-        code: "answer",
-        reason: "c-b-distractor",
-      });
-    }
-
-    const missingIntent = item.choices.some(
-      (c, n) => c.trim() && n !== item.answer && !item.distractorIntent[n]?.trim(),
-    );
-    if (missingIntent) {
-      content.push({
-        tone: "block",
-        text: "오답 의도가 적히지 않은 보기가 있습니다.",
-        fix: "오답 보기마다 어떤 오개념을 잡으려는 것인지 한 줄씩 적어 주세요.",
+        text: `${at}해설이 없습니다.`,
+        fix: "정답이 왜 답인지, 오답은 왜 아닌지를 해설에 적어 주세요.",
         code: "content",
-        reason: "c-b-distractor",
+        reason: "c-b-explain",
       });
     }
-  }
 
-  if (item.type === "short") {
-    const answers = item.shortAnswers
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (answers.length === 0) {
-      content.push({
-        tone: "block",
-        text: "허용 답안이 없습니다.",
-        fix: "정답으로 인정할 표기를 쉼표로 나누어 적어 주세요.",
-        code: "answer",
-      });
-    } else if (answers.length === 1) {
+    if (q.type === "choice") {
+      const filled = q.choices.map((c) => c.trim()).filter(Boolean);
+      if (filled.length !== new Set(filled).size) {
+        content.push({
+          tone: "block",
+          text: `${at}보기 중에 같은 내용이 둘 이상 있습니다.`,
+          fix: "겹치는 보기를 하나로 합치고, 빈자리는 다른 오개념을 잡는 보기로 채워 주세요.",
+          code: "answer",
+          reason: "c-b-multi",
+        });
+      }
+
+      const lens = q.choices.map((c) => c.trim().length);
+      const answerLen = lens[q.answer] ?? 0;
+      if (
+        answerLen > 0 &&
+        answerLen === Math.max(...lens) &&
+        answerLen > Math.min(...lens) * 1.6
+      ) {
+        content.push({
+          tone: "warn",
+          text: `${at}정답 보기가 가장 깁니다. 내용을 몰라도 길이로 고를 수 있습니다.`,
+          fix: "보기 길이를 서로 비슷하게 맞춰 주세요.",
+          code: "answer",
+          reason: "c-b-distractor",
+        });
+      }
+
+      const missingIntent = q.choices.some(
+        (c, k) => c.trim() && k !== q.answer && !q.distractorIntent[k]?.trim(),
+      );
+      if (missingIntent) {
+        content.push({
+          tone: "block",
+          text: `${at}오답 의도가 적히지 않은 보기가 있습니다.`,
+          fix: "오답 보기마다 어떤 오개념을 잡으려는 것인지 한 줄씩 적어 주세요.",
+          code: "content",
+          reason: "c-b-distractor",
+        });
+      }
+    }
+
+    if (q.type === "short") {
+      const answers = q.shortAnswers
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (answers.length === 0) {
+        content.push({
+          tone: "block",
+          text: `${at}허용 답안이 없습니다.`,
+          fix: "정답으로 인정할 표기를 쉼표로 나누어 적어 주세요.",
+          code: "answer",
+        });
+      } else if (answers.length === 1) {
+        content.push({
+          tone: "warn",
+          text: `${at}허용 답안이 하나뿐입니다. 띄어쓰기·단위 표기가 달라도 정답이 되도록 넓혀 주세요.`,
+          fix: "띄어쓰기·단위·조사가 다른 표기를 함께 넣어 주세요.",
+          code: "answer",
+        });
+      }
+    }
+
+    /* 학년 이독성 — 길이로만 본다. 어휘가 어려운지는 기계가 알 수 없다. */
+    const longest = q.stem
+      .split(/[.?!]/)
+      .reduce((m, x) => Math.max(m, x.trim().length), 0);
+    if (longest > 60) {
       content.push({
         tone: "warn",
-        text: "허용 답안이 하나뿐입니다. 띄어쓰기·단위 표기가 달라도 정답이 되도록 넓혀 주세요.",
-        fix: "띄어쓰기·단위·조사가 다른 표기를 함께 넣어 주세요.",
-        code: "answer",
+        text: `${at}발문에 ${longest}자짜리 문장이 있습니다. 초등 학년에는 깁니다.`,
+        fix: "한 문장을 두 문장으로 끊어 주세요.",
+        code: "grade",
+        reason: "c-b-grade",
       });
     }
-  }
 
-  /* 학년 이독성 — 길이로만 본다. 어휘가 어려운지는 기계가 알 수 없다. */
-  const longest = item.stem.split(/[.?!]/).reduce((m, s) => Math.max(m, s.trim().length), 0);
-  if (longest > 60) {
-    content.push({
-      tone: "warn",
-      text: `발문에 ${longest}자짜리 문장이 있습니다. 초등 학년에는 깁니다.`,
-      fix: "한 문장을 두 문장으로 끊어 주세요.",
-      code: "grade",
-      reason: "c-b-grade",
-    });
-  }
-
-  if (/않은|아닌|없는|틀린/.test(item.stem) && !/\*\*|「|『/.test(item.stem)) {
-    content.push({
-      tone: "warn",
-      text: "부정 발문인데 강조 표시가 없습니다. 「않은」에 표시를 해 주세요.",
-      fix: "「않은」·「아닌」·「없는」에 낫표나 굵은 글씨로 표시를 해 주세요.",
-      code: "wording",
-      reason: "c-b-vague",
-    });
+    if (/않은|아닌|없는|틀린/.test(q.stem) && !/\*\*|「|『/.test(q.stem)) {
+      content.push({
+        tone: "warn",
+        text: `${at}부정 발문인데 강조 표시가 없습니다. 「않은」에 표시를 해 주세요.`,
+        fix: "「않은」·「아닌」·「없는」에 낫표나 굵은 글씨로 표시를 해 주세요.",
+        code: "wording",
+        reason: "c-b-vague",
+      });
+    }
   }
 
   /* ── 2차 태깅 ── */
   const tagging: Finding[] = [];
 
-  const std = checkStandardCode(item.standardCode, item.band);
-  if (!std.ok) {
-    tagging.push({
-      tone: "block",
-      text: std.why,
-      fix: `${item.band} 학년군의 성취기준 코드로 고쳐 주세요.`,
-      code: "tag",
-      reason: "t-b-standard",
-    });
+  /* ── 태깅은 **문항마다** 본다 ──────────────────────────────────────────
+   *
+   * 문항 쪽 level·points는 세트를 한 줄로 줄인 요약이고(가장 높은 단계 · 배점의 합),
+   * type·talent·subskill은 첫 문항의 것이다. 서로 다른 문항에서 온 값이라 짝지어
+   * 대조하면 거짓말이 나온다 — S1 객관식 + S3 단답형으로 제대로 짠 세트가
+   * 「S3은 단답형이어야 하는데 객관식입니다」로 자동 반려됐다. 어느 문항에도 없는
+   * 잘못이고, 적힌 대로 고치면 1번 문항가 망가진다.
+   *
+   * 배점도 같다. 세트의 합을 「가장 높은 단계 하나의 배점」과 견주면 문항이 둘만
+   * 되어도 무조건 어긋나서, 어떤 세트도 AI 검수를 통과할 수 없었다.
+   *
+   * 그래서 §1 고정 매핑과 Tag B 검사는 문항 한 줄씩 돌린다. 세트면 몇 번 문항인지를
+   * 앞에 적는다 — 제출 전 검사(missingInQuestion)가 「2번 발문」이라고 적는 것과 같다.
+   */
+  for (const [n, q] of item.questions.entries()) {
+    const at = numbered(n);
+    const qSpec = levelSpecs[q.level];
+
+    const qStd = checkStandardCode(q.standardCode, item.band);
+    if (!qStd.ok) {
+      tagging.push({
+        tone: "block",
+        text: `${at}${qStd.why}`,
+        fix: `${item.band} 학년군의 성취기준 코드로 고쳐 주세요.`,
+        code: "tag",
+        reason: "t-b-standard",
+      });
+    }
+
+    if (q.type !== typeForLevel[q.level]) {
+      tagging.push({
+        tone: "block",
+        text: `${at}${q.level}은 ${typeLabel(typeForLevel[q.level])}이어야 하는데 ${typeLabel(q.type)}입니다.`,
+        fix: `형식을 ${typeLabel(typeForLevel[q.level])}으로 바꾸거나, 이 문항가 실제로 재는 단계를 다시 잡아 주세요.`,
+        code: "tag",
+        reason: "t-b-spec",
+      });
+    }
+
+    if (!levelAllowed(q.talent, q.level)) {
+      tagging.push({
+        tone: "block",
+        text: `${at}${tagBCoord(q.talent, q.subskill, q.level)} — 이 축은 ${q.level}을 다루지 않습니다.`,
+        fix: "이 축이 다루는 단계로 낮추거나, 이 단계를 다루는 다른 축으로 옮겨 주세요.",
+        code: "tag",
+        reason: "t-b-level",
+      });
+    }
+
+    if (!subskillsOf(q.talent).some((sk) => sk.code === q.subskill)) {
+      tagging.push({
+        tone: "block",
+        text: `${at}세부 기능이 재능 축에 속하지 않습니다.`,
+        fix: "고른 재능 축 아래에 있는 세부 기능으로 다시 골라 주세요.",
+        code: "tag",
+        reason: "t-b-subskill",
+      });
+    }
+
+    /* 배점은 손으로 고치는 칸이 아니라 단계에서 따라오는 값이다. 어긋났다면 고칠 것은
+       배점이 아니라 단계라, 안내도 그렇게 적는다 */
+    if (q.points !== qSpec.points) {
+      tagging.push({
+        tone: "warn",
+        text: `${at}${q.level}의 배점은 ${qSpec.points}점인데 ${q.points}점입니다.`,
+        fix: "이 문항의 인지단계를 다시 잡아 주세요 — 배점은 단계에서 따라옵니다.",
+        code: "tag",
+        reason: "t-b-spec",
+      });
+    }
+
+    if (!q.standardText.trim()) {
+      tagging.push({
+        tone: "block",
+        text: `${at}성취기준 내용이 비어 있습니다.`,
+        fix: "코드에 해당하는 성취기준 문장을 그대로 옮겨 적어 주세요.",
+        code: "tag",
+        reason: "t-b-standard",
+      });
+    }
   }
 
-  if (item.type !== typeForLevel[item.level]) {
-    tagging.push({
-      tone: "block",
-      text: `${item.level}은 ${typeLabel(typeForLevel[item.level])}이어야 하는데 ${typeLabel(item.type)}입니다.`,
-      fix: `형식을 ${typeLabel(typeForLevel[item.level])}으로 바꾸거나, 이 문항이 실제로 재는 단계를 다시 잡아 주세요.`,
-      code: "tag",
-      reason: "t-b-spec",
-    });
-  }
-
-  if (!levelAllowed(item.talent, item.level)) {
-    tagging.push({
-      tone: "block",
-      text: `${tagBCoord(item.talent, item.subskill, item.level)} — 이 축은 ${item.level}을 다루지 않습니다.`,
-      fix: "이 축이 다루는 단계로 낮추거나, 이 단계를 다루는 다른 축으로 옮겨 주세요.",
-      code: "tag",
-      reason: "t-b-level",
-    });
-  }
-
-  if (!subskillsOf(item.talent).some((s) => s.code === item.subskill)) {
-    tagging.push({
-      tone: "block",
-      text: "세부 기능이 재능 축에 속하지 않습니다.",
-      fix: "고른 재능 축 아래에 있는 세부 기능으로 다시 골라 주세요.",
-      code: "tag",
-      reason: "t-b-subskill",
-    });
-  }
-
-  if (item.points !== spec.points) {
-    tagging.push({
-      tone: "warn",
-      text: `${item.level}의 배점은 ${spec.points}점인데 ${item.points}점입니다.`,
-      fix: `배점을 ${spec.points}점으로 맞춰 주세요.`,
-      code: "tag",
-      reason: "t-b-spec",
-    });
-  }
-
-  if (!item.standardText.trim()) {
-    tagging.push({
-      tone: "block",
-      text: "성취기준 내용이 비어 있습니다.",
-      fix: "코드에 해당하는 성취기준 문장을 그대로 옮겨 적어 주세요.",
-      code: "tag",
-      reason: "t-b-standard",
-    });
-  }
-
-  if ((item.level === "S1" || item.level === "S2") && HIGHER_ORDER.some((w) => has(item.stem, w))) {
+  if (
+    (item.level === "S1" || item.level === "S2") &&
+    HIGHER_ORDER.some((w) => has(item.stem, w))
+  ) {
     tagging.push({
       tone: "warn",
       text: `${item.level} 발문이 까닭·설명을 요구합니다. 한 단계 위 조작이라 단계가 어긋날 수 있습니다.`,
@@ -310,9 +379,21 @@ export function auditItem(item: ItemDraft): AuditResult {
   }
 
   const checks: AuditCheck[] = [
-    { id: "content", findings: content, ok: !content.some((f) => f.tone === "block") },
-    { id: "tagging", findings: tagging, ok: !tagging.some((f) => f.tone === "block") },
-    { id: "ethics", findings: ethics, ok: !ethics.some((f) => f.tone === "block") },
+    {
+      id: "content",
+      findings: content,
+      ok: !content.some((f) => f.tone === "block"),
+    },
+    {
+      id: "tagging",
+      findings: tagging,
+      ok: !tagging.some((f) => f.tone === "block"),
+    },
+    {
+      id: "ethics",
+      findings: ethics,
+      ok: !ethics.some((f) => f.tone === "block"),
+    },
   ];
 
   const all = [...content, ...tagging, ...ethics];
@@ -344,7 +425,9 @@ const line = (id: ReviewCheckId, f: Finding, n: number) =>
  *
  * block이 없으면 null — 반려하지 않는다.
  */
-export function auditRejection(result: AuditResult): { code: RejectCode; text: string } | null {
+export function auditRejection(
+  result: AuditResult,
+): { code: RejectCode; text: string } | null {
   const blocks = result.checks.flatMap((c) =>
     c.findings.filter((f) => f.tone === "block").map((f) => ({ id: c.id, f })),
   );
@@ -359,7 +442,9 @@ export function auditRejection(result: AuditResult): { code: RejectCode; text: s
     (tally.get(b.f.code) ?? 0) > (tally.get(best.f.code) ?? 0) ? b : best,
   ).f.code;
 
-  const warns = result.checks.flatMap((c) => c.findings.filter((f) => f.tone === "warn"));
+  const warns = result.checks.flatMap((c) =>
+    c.findings.filter((f) => f.tone === "warn"),
+  );
   const closing =
     "규칙으로 대조할 수 있는 것만 본 결과라, 교과 내용이 맞는지와 이 학년 아이가 읽을 수 있는지는 고쳐 올리신 뒤 사람 검수에서 다시 봅니다.";
 
