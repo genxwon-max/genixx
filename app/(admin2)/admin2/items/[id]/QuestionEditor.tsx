@@ -577,11 +577,13 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
       </FormRow>
 
       <FormRow label="발문" req>
+        {/* 발문은 대개 한두 문장이다. 지문만큼 열어 두면 화면에서 가장 큰 덩어리가
+            대부분 비어 있는 칸이 된다 — 길게 쓸 일이 있으면 오른쪽 아래로 늘린다 */}
         <BodyEditor
           name={`stem-mode-${q.id}`}
           value={{ mode: q.stemMode, body: q.stem, images: q.stemImages }}
           disabled={disabled}
-          rows={6}
+          rows={3}
           placeholder="다음 중 두 낱말의 뜻이 서로 비슷한 것은?"
           onChange={(patch) =>
             set({
@@ -594,11 +596,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
       </FormRow>
 
       {q.type === "choice" && (
-        <FormRow
-          label="보기 · 정답 · 오답 의도"
-          req
-          hint="오답마다 무엇을 잡는지 적지 않으면 변별이 죽습니다(발주서 §1.1). 정답 칸은 비워 둡니다."
-        >
+        <FormRow label="보기 · 정답 · 오답 의도" req>
           <ul className="grid w-full gap-2">
             {q.choices.map((c, k) => (
               <li
@@ -681,7 +679,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
       )}
 
       {q.type === "ox" && (
-        <FormRow label="정답" req hint="보기는 맞다 · 아니다로 고정입니다.">
+        <FormRow label="정답" req>
           <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
             {OX_CHOICES.map((c, k) => (
               <label key={c} className="a2-choice">
@@ -700,11 +698,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
       )}
 
       {q.type === "short" && (
-        <FormRow
-          label="허용 답안"
-          req
-          hint="쉼표로 나눠 적습니다. 표기 흔들림을 여기서 흡수해야 AI 자동채점이 같은 답을 잡습니다."
-        >
+        <FormRow label="허용 답안" req>
           <input
             className="a2-input a2-input-lg"
             value={q.shortAnswers}
@@ -716,15 +710,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
       )}
 
       {needsRubric(q.type) && (
-        <FormRow
-          label="채점 루브릭"
-          req
-          hint={
-            q.type === "image"
-              ? "그림으로 답하는 문항입니다. 무엇이 그려져 있어야 인정인지를 적지 않으면 채점자마다 다르게 봅니다."
-              : "인정 예 · 불인정 예를 함께 적습니다."
-          }
-        >
+        <FormRow label="채점 루브릭" req>
           <textarea
             className="a2-textarea a2-textarea-lg"
             rows={6}

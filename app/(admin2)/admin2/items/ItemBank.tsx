@@ -4,18 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { LEVELS, gradeBands, levelSpecs } from "@/lib/blueprint";
-import { itemTone, n } from "@/lib/admin2";
+import { n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
 import {
   addItem,
   stateLabel,
+  formTextOf,
   typeTextOf,
   useItems,
   type ItemDraft,
   type ItemState,
 } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
+import { PageHead, Tab, Tag } from "@/components/admin2/ui";
 
 /**
  * ADM-04 문항 은행의 목록판.
@@ -104,9 +105,18 @@ const COLS: Col<ItemDraft>[] = [
     ),
   },
   {
+    key: "form",
+    head: "구성",
+    width: "6.5rem",
+    nowrap: true,
+    value: (r) => formTextOf(r),
+    cell: (r) =>
+      r.form === "set" ? <Tag accent>{formTextOf(r)}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">단일</span>,
+  },
+  {
     key: "type",
     head: "유형",
-    width: "9rem",
+    width: "7rem",
     nowrap: true,
     hide: "lg",
     cell: (r) => (
@@ -129,15 +139,6 @@ const COLS: Col<ItemDraft>[] = [
       ) : (
         <span className="text-(--a2-ink-4)">발문 없음 — 작성 중</span>
       ),
-  },
-  {
-    key: "state",
-    head: "상태",
-    width: "6.5rem",
-    nowrap: true,
-    value: (r) => stateLabel[r.state],
-    sort: (r) => stateRank(r.state),
-    cell: (r) => <Status tone={itemTone[r.state]}>{stateLabel[r.state]}</Status>,
   },
   {
     key: "anchor",

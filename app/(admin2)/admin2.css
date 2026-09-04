@@ -364,8 +364,10 @@
     padding-inline: 11px;
     font-size: 0.875rem;
   }
+  /* 최소 높이는 rows보다 세다. 108px에 두었더니 발문을 3줄로 줄여도 그대로였다 —
+     칸마다 필요한 높이가 다르므로 바닥만 잡고 나머지는 rows에 맡긴다 */
   .a2-textarea-lg {
-    min-height: 108px;
+    min-height: 72px;
     padding: 10px 12px;
     font-size: 0.875rem;
     line-height: 1.65;

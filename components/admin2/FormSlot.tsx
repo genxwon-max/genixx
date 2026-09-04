@@ -18,7 +18,7 @@ import {
   setFormItems,
   suggestItems,
 } from "@/lib/formStore";
-import { itemTypes, typeTextOf, type ItemDraft } from "@/lib/itemStore";
+import { formTextOf, itemTypes, typeTextOf, type ItemDraft } from "@/lib/itemStore";
 import type { PlanSlot } from "@/lib/roundPlanStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import TableBox from "@/components/admin2/TableBox";
@@ -91,9 +91,18 @@ const PICK_COLS: Col<ItemDraft>[] = [
     ),
   },
   {
+    key: "form",
+    head: "구성",
+    width: "6.5rem",
+    nowrap: true,
+    value: (r) => formTextOf(r),
+    cell: (r) =>
+      r.form === "set" ? <Tag accent>{formTextOf(r)}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">단일</span>,
+  },
+  {
     key: "type",
     head: "유형",
-    width: "4.5rem",
+    width: "6rem",
     nowrap: true,
     hide: "lg",
     cell: (r) => (

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { n } from "@/lib/admin2";
-import { reviewChecks, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
+import { formTextOf, reviewChecks, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Tab, Tag } from "@/components/admin2/ui";
 
@@ -153,9 +153,18 @@ export default function ReviewQueue() {
         ),
       },
       {
+        key: "form",
+        head: "구성",
+        width: "6.5rem",
+        nowrap: true,
+        value: (r) => formTextOf(r),
+        cell: (r) =>
+          r.form === "set" ? <Tag accent>{formTextOf(r)}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">단일</span>,
+      },
+      {
         key: "type",
         head: "유형",
-        width: "9rem",
+        width: "7rem",
         nowrap: true,
         hide: "lg",
         value: (r) => typeTextOf(r),

@@ -2421,8 +2421,19 @@ export function typeTextOf(i: ItemDraft) {
   const kinds = [...new Set(i.questions.map((q) => q.type))]
     .map(typeLabel)
     .join(" · ");
-  if (i.form !== "set") return kinds || typeLabel(i.type);
-  return `세트 ${i.questions.length}문 · ${kinds}`;
+  return kinds || typeLabel(i.type);
+}
+
+/**
+ * 목록의 구성 칸 — 단일인가 세트인가, 세트면 몇 문항인가.
+ *
+ * 한동안 유형 칸에 「세트 3문 · 서술형 · OX」로 함께 적었는데, 그러면 그 칸이 두 가지를
+ * 답하느라 어느 쪽도 훑을 수 없다. 세트를 찾을 때는 「세트」만, 형식을 볼 때는 유형만
+ * 보면 되도록 칸을 가른다. 문항 수를 함께 적는 것은 그것이 세트에서 가장 먼저 묻는
+ * 것이기 때문이다 — 회차에 담을 때 몇 칸을 먹는지가 거기서 정해진다.
+ */
+export function formTextOf(i: ItemDraft) {
+  return i.form === "set" ? `세트 ${i.questions.length}문항` : "단일";
 }
 
 /**

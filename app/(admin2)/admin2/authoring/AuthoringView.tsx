@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { itemTone, n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { addItem, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
+import { addItem, formTextOf, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 import Generator from "./Generator";
@@ -178,11 +178,19 @@ export default function AuthoringView() {
         ),
       },
       {
+        key: "form",
+        head: "구성",
+        width: "6.5rem",
+        nowrap: true,
+        value: (r) => formTextOf(r),
+        cell: (r) =>
+          r.form === "set" ? <Tag accent>{formTextOf(r)}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">단일</span>,
+      },
+      {
         key: "type",
         head: "유형",
-        /* 세트는 「세트 3문 · 객관식 · 서술형」처럼 길어진다. 4.5rem에 두면 죄다
-           말줄임이 되어 단일인지 세트인지도 안 보인다 */
-        width: "9rem",
+        /* 세트는 안에 든 유형을 모아 적어 「객관식 · 서술형」처럼 길어진다 */
+        width: "7rem",
         nowrap: true,
         hide: "md",
         value: (r) => typeTextOf(r),
