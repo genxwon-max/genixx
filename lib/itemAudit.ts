@@ -1,10 +1,4 @@
-import {
-  checkStandardCode,
-  levelAllowed,
-  levelSpecs,
-  subskillsOf,
-  tagBCoord,
-} from "./blueprint";
+import { checkStandardCode, levelAllowed, levelSpecs, subskillsOf, tagBCoord } from "./blueprint";
 import {
   typeForLevel,
   typeLabel,
@@ -88,14 +82,7 @@ const SENSITIVE: {
     reason: "e-b-region",
   },
   {
-    words: [
-      "엄마가 요리",
-      "아빠가 회사",
-      "남자는",
-      "여자는",
-      "여자아이",
-      "남자아이",
-    ],
+    words: ["엄마가 요리", "아빠가 회사", "남자는", "여자는", "여자아이", "남자아이"],
     why: "성 역할을 고정하는 표현일 수 있습니다",
     fix: "역할을 성별과 묶지 않는 표현으로 바꿔 주세요.",
     reason: "e-b-gender",
@@ -128,19 +115,13 @@ const has = (text: string, word: string) => text.includes(word);
 export function auditItem(item: ItemDraft): AuditResult {
   /* 몇 번 문항인지를 앞에 적는다. 단일 문항이면 붙이지 않는다 — 하나뿐인데 「1번 문항」라고
      적으면 어딘가 다른 문항이 있는 줄로 읽힌다 */
-  const numbered = (n: number) =>
-    item.form === "set" ? `${n + 1}번 문항 — ` : "";
+  const numbered = (n: number) => (item.form === "set" ? `${n + 1}번 문항 — ` : "");
 
   /* 낱말 훑기는 문항 전체를 한 덩이로 본다. 편향은 지문에 있든 3번 문항의 보기에 있든
      같은 문항이 지고 가는 것이라, 문항별로 갈라 놓을 까닭이 없다 */
   const body = [
     item.passage,
-    ...item.questions.flatMap((q) => [
-      q.stem,
-      ...q.choices,
-      q.explain,
-      q.rubric,
-    ]),
+    ...item.questions.flatMap((q) => [q.stem, ...q.choices, q.explain, q.rubric]),
   ].join(" ");
 
   /* ── 1차 내용 ──
@@ -177,11 +158,7 @@ export function auditItem(item: ItemDraft): AuditResult {
 
       const lens = q.choices.map((c) => c.trim().length);
       const answerLen = lens[q.answer] ?? 0;
-      if (
-        answerLen > 0 &&
-        answerLen === Math.max(...lens) &&
-        answerLen > Math.min(...lens) * 1.6
-      ) {
+      if (answerLen > 0 && answerLen === Math.max(...lens) && answerLen > Math.min(...lens) * 1.6) {
         content.push({
           tone: "warn",
           text: `${at}정답 보기가 가장 깁니다. 내용을 몰라도 길이로 고를 수 있습니다.`,
@@ -228,9 +205,7 @@ export function auditItem(item: ItemDraft): AuditResult {
     }
 
     /* 학년 이독성 — 길이로만 본다. 어휘가 어려운지는 기계가 알 수 없다. */
-    const longest = q.stem
-      .split(/[.?!]/)
-      .reduce((m, x) => Math.max(m, x.trim().length), 0);
+    const longest = q.stem.split(/[.?!]/).reduce((m, x) => Math.max(m, x.trim().length), 0);
     if (longest > 60) {
       content.push({
         tone: "warn",
@@ -337,10 +312,7 @@ export function auditItem(item: ItemDraft): AuditResult {
     }
   }
 
-  if (
-    (item.level === "S1" || item.level === "S2") &&
-    HIGHER_ORDER.some((w) => has(item.stem, w))
-  ) {
+  if ((item.level === "S1" || item.level === "S2") && HIGHER_ORDER.some((w) => has(item.stem, w))) {
     tagging.push({
       tone: "warn",
       text: `${item.level} 발문이 까닭·설명을 요구합니다. 한 단계 위 조작이라 단계가 어긋날 수 있습니다.`,
@@ -425,9 +397,7 @@ const line = (id: ReviewCheckId, f: Finding, n: number) =>
  *
  * block이 없으면 null — 반려하지 않는다.
  */
-export function auditRejection(
-  result: AuditResult,
-): { code: RejectCode; text: string } | null {
+export function auditRejection(result: AuditResult): { code: RejectCode; text: string } | null {
   const blocks = result.checks.flatMap((c) =>
     c.findings.filter((f) => f.tone === "block").map((f) => ({ id: c.id, f })),
   );
@@ -442,9 +412,7 @@ export function auditRejection(
     (tally.get(b.f.code) ?? 0) > (tally.get(best.f.code) ?? 0) ? b : best,
   ).f.code;
 
-  const warns = result.checks.flatMap((c) =>
-    c.findings.filter((f) => f.tone === "warn"),
-  );
+  const warns = result.checks.flatMap((c) => c.findings.filter((f) => f.tone === "warn"));
   const closing =
     "규칙으로 대조할 수 있는 것만 본 결과라, 교과 내용이 맞는지와 이 학년 아이가 읽을 수 있는지는 고쳐 올리신 뒤 사람 검수에서 다시 봅니다.";
 

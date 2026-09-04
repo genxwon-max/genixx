@@ -33,11 +33,7 @@ import {
   type ItemForm,
   type Question,
 } from "@/lib/itemStore";
-import {
-  LeaveDialog,
-  PageSaveBar,
-  useUnsavedGuard,
-} from "@/components/admin2/EditGuard";
+import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
 import {
   Body,
   DescList,
@@ -49,12 +45,7 @@ import {
   Tag,
 } from "@/components/admin2/ui";
 import ReviewPanel from "./ReviewPanel";
-import {
-  BodyEditor,
-  QuestionBodyRows,
-  QuestionList,
-  QuestionTagRows,
-} from "./QuestionEditor";
+import { BodyEditor, QuestionBodyRows, QuestionList, QuestionTagRows } from "./QuestionEditor";
 
 /**
  * ADM-04-1 문항 상세 — 등록 · 수정 · 검수를 한 장에서.
@@ -157,9 +148,8 @@ export default function ItemDetail({ id }: { id: string }) {
         <Body>
           <Panel title="없는 문항">
             <p className="a2-t-sm text-(--a2-ink-2)">
-              <span className="a2-mono">{id}</span> 문항이 이 브라우저의
-              저장소에 없습니다. 다른 기기에서 만든 문항이거나 주소가
-              잘못되었습니다.
+              <span className="a2-mono">{id}</span> 문항이 이 브라우저의 저장소에 없습니다. 다른
+              기기에서 만든 문항이거나 주소가 잘못되었습니다.
             </p>
           </Panel>
         </Body>
@@ -195,9 +185,7 @@ export default function ItemDetail({ id }: { id: string }) {
   /** 세트를 단일로 되돌리면 저장할 때 2번 이후가 떨어진다. 미리 알려 준다 */
   const dropping = view.form === "single" ? qs.length - 1 : 0;
 
-  const saveBar = editable ? (
-    <PageSaveBar dirty={dirty} onSave={save} onCancel={cancel} />
-  ) : null;
+  const saveBar = editable ? <PageSaveBar dirty={dirty} onSave={save} onCancel={cancel} /> : null;
 
   /* 세트가 통째로 함께 쓰는 칸. 단일이면 문항 상세의 분류 판에, 세트면 문항 하나로
      들어간 화면의 분류 판에 선다 — 어느 쪽이든 「이 문항이 어디에 붙나」의 앞머리다.
@@ -209,9 +197,7 @@ export default function ItemDetail({ id }: { id: string }) {
           className="a2-select a2-input-lg"
           value={view.subject}
           disabled={locked}
-          onChange={(e) =>
-            set({ subject: e.target.value as ItemDraft["subject"] })
-          }
+          onChange={(e) => set({ subject: e.target.value as ItemDraft["subject"] })}
         >
           {["국어", "수학", "과학"].map((s) => (
             <option key={s}>{s}</option>
@@ -267,8 +253,8 @@ export default function ItemDetail({ id }: { id: string }) {
         hint={
           willRecode ? (
             <>
-              저장하면 <b className="a2-mono text-(--a2-ink)">{nextPrefix}</b>로
-              시작하는 번호로 다시 매겨집니다.
+              저장하면 <b className="a2-mono text-(--a2-ink)">{nextPrefix}</b>로 시작하는 번호로
+              다시 매겨집니다.
             </>
           ) : (
             "연월일 · 학년 · 과목 · 문항 유형 · 단계 · 일련번호 — 자동으로 매깁니다."
@@ -292,18 +278,13 @@ export default function ItemDetail({ id }: { id: string }) {
         <PageHead
           title={`문항 ${openIndex + 1}`}
           back={
-            <button
-              type="button"
-              className="a2-btn"
-              onClick={() => setOpenQ(null)}
-            >
+            <button type="button" className="a2-btn" onClick={() => setOpenQ(null)}>
               ← 문항 목록
             </button>
           }
           actions={
             <span className="a2-t-xs text-(--a2-ink-4)">
-              <span className="a2-mono">{view.code || "문항 ID 미정"}</span> ·
-              세트 {qs.length}문
+              <span className="a2-mono">{view.code || "문항 ID 미정"}</span> · 세트 {qs.length}문
             </span>
           }
         />
@@ -312,9 +293,8 @@ export default function ItemDetail({ id }: { id: string }) {
             <Panel title="분류" flush>
               <p className="a2-note m-4 mb-0">
                 <span>
-                  과목 · 학년군 · 단원 · 문항 ID는 <b>세트 전체</b>가 함께
-                  씁니다. 여기서 고치면 같은 세트의 다른 문항에도 그대로
-                  걸립니다. 그 아래는 이 문항만의 값입니다.
+                  과목 · 학년군 · 단원 · 문항 ID는 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면
+                  같은 세트의 다른 문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
                 </span>
               </p>
               <div className="a2-form a2-form-lg mt-4">
@@ -360,9 +340,7 @@ export default function ItemDetail({ id }: { id: string }) {
           <>
             <span className="mr-1 flex items-center gap-1.5">
               <span className="a2-t-xs text-(--a2-ink-4)">상태</span>
-              <Status tone={itemTone[view.state]}>
-                {stateLabel[view.state]}
-              </Status>
+              <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status>
             </span>
             {editable && (
               <button
@@ -382,11 +360,7 @@ export default function ItemDetail({ id }: { id: string }) {
               </button>
             )}
             {view.state === "submitted" && (
-              <button
-                type="button"
-                className="a2-btn"
-                onClick={() => withdrawItem(view.id)}
-              >
+              <button type="button" className="a2-btn" onClick={() => withdrawItem(view.id)}>
                 제출 회수
               </button>
             )}
@@ -449,9 +423,7 @@ export default function ItemDetail({ id }: { id: string }) {
                           set({
                             form,
                             questions:
-                              form === "set" && qs.length < 2
-                                ? [...qs, blankQuestion(qs)]
-                                : qs,
+                              form === "set" && qs.length < 2 ? [...qs, blankQuestion(qs)] : qs,
                           });
                         }}
                       />
@@ -460,14 +432,10 @@ export default function ItemDetail({ id }: { id: string }) {
                   ))}
                 </div>
                 {dropping > 0 && (
-                  <p
-                    className="a2-note w-full"
-                    style={{ borderLeftColor: "var(--a2-warn)" }}
-                  >
+                  <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
                     <span>
-                      단일로 두면 저장할 때 2번 이후 문항 <b>{dropping}개</b>가
-                      사라집니다. 되돌리려면 세트를 다시 고르거나 취소를
-                      누르세요.
+                      단일로 두면 저장할 때 2번 이후 문항 <b>{dropping}개</b>가 사라집니다.
+                      되돌리려면 세트를 다시 고르거나 취소를 누르세요.
                     </span>
                   </p>
                 )}
@@ -496,11 +464,7 @@ export default function ItemDetail({ id }: { id: string }) {
           {/* ── ③ 무엇을 읽히고 무엇을 묻나 ──
               단일이면 지문 → 유형 → 발문 → 보기 → 해설이 한 줄기로 이어진다. 세트면
               지문이 곧 「문항들이 함께 읽는 것」이라 목록 바로 위가 제자리다 */}
-          <Panel
-            title="문항"
-            meta={view.form === "set" ? `${qs.length}문항` : undefined}
-            flush
-          >
+          <Panel title="문항" meta={view.form === "set" ? `${qs.length}문항` : undefined} flush>
             <div className="a2-form a2-form-lg">
               <FormRow
                 label={view.form === "set" ? "보기 · 지문" : "지문 · 자료"}
@@ -555,10 +519,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   }}
                 />
                 {qs.length < 2 && (
-                  <p
-                    className="a2-note m-4 mt-0"
-                    style={{ borderLeftColor: "var(--a2-warn)" }}
-                  >
+                  <p className="a2-note m-4 mt-0" style={{ borderLeftColor: "var(--a2-warn)" }}>
                     <span>세트는 문항이 두 개 이상이어야 합니다.</span>
                   </p>
                 )}
@@ -625,10 +586,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   })}
                 </ul>
                 {editable && missing.length > 0 && (
-                  <p
-                    className="a2-note w-full"
-                    style={{ borderLeftColor: "var(--a2-warn)" }}
-                  >
+                  <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
                     <span>제출까지 남은 것 — {missing.join(" · ")}</span>
                   </p>
                 )}
@@ -637,19 +595,12 @@ export default function ItemDetail({ id }: { id: string }) {
           </Panel>
 
           {/* ── 되짚어 보기 ── */}
-          <Panel
-            title="상태"
-            meta={view.origin === "ai" ? "AI가 낸 초안" : "사람이 쓴 문항"}
-          >
+          <Panel title="상태" meta={view.origin === "ai" ? "AI가 낸 초안" : "사람이 쓴 문항"}>
             <DescList
               rows={[
                 {
                   k: "상태",
-                  v: (
-                    <Status tone={itemTone[view.state]}>
-                      {stateLabel[view.state]}
-                    </Status>
-                  ),
+                  v: <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status>,
                 },
                 { k: "출제자", v: `${view.authorName} (${view.author})` },
                 { k: "구성", v: typeTextOf(view) },
@@ -696,13 +647,10 @@ export default function ItemDetail({ id }: { id: string }) {
               ]}
             />
             {view.state === "rejected" && (
-              <p
-                className="a2-note mt-3"
-                style={{ borderLeftColor: "var(--a2-danger)" }}
-              >
+              <p className="a2-note mt-3" style={{ borderLeftColor: "var(--a2-danger)" }}>
                 <span>
-                  반려된 문항입니다. 아래 검수 소견대로 고친 뒤 다시 제출하면
-                  검수 목록으로 돌아갑니다.
+                  반려된 문항입니다. 아래 검수 소견대로 고친 뒤 다시 제출하면 검수 목록으로
+                  돌아갑니다.
                 </span>
               </p>
             )}
@@ -710,9 +658,7 @@ export default function ItemDetail({ id }: { id: string }) {
 
           {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
               짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
-          {view.state === "submitted" && (
-            <ReviewPanel key={view.id} item={item} />
-          )}
+          {view.state === "submitted" && <ReviewPanel key={view.id} item={item} />}
 
           {(view.state === "approved" || view.state === "retired") && (
             <Panel title="승인 뒤 관리" flush>
@@ -731,22 +677,14 @@ export default function ItemDetail({ id }: { id: string }) {
                         <button
                           type="button"
                           className="a2-btn"
-                          disabled={
-                            reason.trim().length < 5 || !!view.disclosed
-                          }
+                          disabled={reason.trim().length < 5 || !!view.disclosed}
                           title={
                             view.disclosed
                               ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다"
                               : undefined
                           }
                           onClick={() => {
-                            setAnchor(
-                              view.id,
-                              !view.anchor,
-                              by,
-                              prefs.role,
-                              reason.trim(),
-                            );
+                            setAnchor(view.id, !view.anchor, by, prefs.role, reason.trim());
                             setReason("");
                           }}
                         >
@@ -782,8 +720,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   {view.retireReason && (
                     <p className="a2-note w-full">
                       <span>
-                        {view.retiredAt} · {view.retiredBy} —{" "}
-                        {view.retireReason}
+                        {view.retiredAt} · {view.retiredBy} — {view.retireReason}
                       </span>
                     </p>
                   )}
@@ -794,9 +731,7 @@ export default function ItemDetail({ id }: { id: string }) {
 
           <Panel title="검수 이력" meta={`${view.reviews.length}회`} flush>
             {view.reviews.length === 0 ? (
-              <p className="p-4 a2-t-sm text-(--a2-ink-4)">
-                아직 검수를 거치지 않았습니다.
-              </p>
+              <p className="p-4 a2-t-sm text-(--a2-ink-4)">아직 검수를 거치지 않았습니다.</p>
             ) : (
               <ul className="divide-y divide-(--a2-line)">
                 {[...view.reviews].reverse().map((r) => (
@@ -810,15 +745,10 @@ export default function ItemDetail({ id }: { id: string }) {
                       <span className="a2-t-sm text-(--a2-ink-2)">
                         {r.round}차 · {r.by}
                       </span>
-                      <span className="a2-mono a2-t-xs text-(--a2-ink-4)">
-                        {r.at}
-                      </span>
+                      <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{r.at}</span>
                       {r.machine && <Tag>기계</Tag>}
                       {r.self && (
-                        <span
-                          className="a2-t-xs font-bold"
-                          style={{ color: "var(--a2-danger)" }}
-                        >
+                        <span className="a2-t-xs font-bold" style={{ color: "var(--a2-danger)" }}>
                           자가 검수
                         </span>
                       )}
@@ -832,18 +762,12 @@ export default function ItemDetail({ id }: { id: string }) {
                             color: c.ok ? "var(--a2-ok)" : "var(--a2-danger)",
                           }}
                         >
-                          {c.id === "content"
-                            ? "내용"
-                            : c.id === "tagging"
-                              ? "태깅"
-                              : "윤리"}{" "}
+                          {c.id === "content" ? "내용" : c.id === "tagging" ? "태깅" : "윤리"}{" "}
                           {c.ok === null ? "—" : c.ok ? "통과" : "걸림"}
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">
-                      {r.text}
-                    </p>
+                    <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
                   </li>
                 ))}
               </ul>
@@ -881,15 +805,9 @@ export default function ItemDetail({ id }: { id: string }) {
                   <li key={`${c.at}-${k}`} className="p-4">
                     <p className="a2-t-xs text-(--a2-ink-4)">
                       <span className="a2-mono">{c.at}</span> · {c.by} ·{" "}
-                      {c.kind === "reject"
-                        ? "반려"
-                        : c.kind === "approve"
-                          ? "승인"
-                          : "메모"}
+                      {c.kind === "reject" ? "반려" : c.kind === "approve" ? "승인" : "메모"}
                     </p>
-                    <p className="whitespace-pre-line a2-t-sm text-(--a2-ink-2)">
-                      {c.text}
-                    </p>
+                    <p className="whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
                   </li>
                 ))}
               </ul>
@@ -904,9 +822,8 @@ export default function ItemDetail({ id }: { id: string }) {
 
       <LeaveDialog guard={guard} />
       <SeedNote>
-        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항
-        API로 갈아 끼웁니다. 발문·지문에 넣은 그림은 파일 서버가 붙기 전까지
-        문항 안에 통째로 들어갑니다.
+        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항 API로 갈아 끼웁니다.
+        발문·지문에 넣은 그림은 파일 서버가 붙기 전까지 문항 안에 통째로 들어갑니다.
       </SeedNote>
     </>
   );

@@ -45,8 +45,7 @@ import { auditItem, auditRejection } from "./itemAudit";
  * 않거나 소재가 낡은 문항을 회차에서 빼는 자리인데, 지우지는 않는다 — 그 문항으로
  * 이미 판정한 아이들의 결과를 나중에 설명할 수 있어야 한다.
  */
-export type ItemState =
-  "draft" | "submitted" | "rejected" | "approved" | "retired";
+export type ItemState = "draft" | "submitted" | "rejected" | "approved" | "retired";
 
 export type ItemOrigin = "human" | "ai";
 
@@ -59,8 +58,7 @@ export type ItemOrigin = "human" | "ai";
  *  · 논술형 — 한 편의 글. 루브릭으로 사람이 채점하고 이중 채점 표본을 둔다.
  *  · 이미지 첨부 — 답을 그림·사진으로 올린다. 손으로 그리고 찍어 올리는 문항이다.
  */
-export type ItemType =
-  "choice" | "ox" | "short" | "descriptive" | "essay" | "image";
+export type ItemType = "choice" | "ox" | "short" | "descriptive" | "essay" | "image";
 
 /* 무엇을 쓰는 유형인지는 위 주석에 적어 두었다. 목록에는 이름만 세운다 — 여섯 개를
    나란히 놓으면 이름이 곧 뜻이고, 줄마다 풀어 쓴 말은 고르는 데 보태는 것이 없었다.
@@ -95,8 +93,7 @@ export const itemTypes: {
   { id: "image", label: "이미지 첨부", letter: "I", scoring: "루브릭 기반 사람 채점" },
 ];
 
-export const typeLabel = (id: ItemType) =>
-  itemTypes.find((t) => t.id === id)?.label ?? id;
+export const typeLabel = (id: ItemType) => itemTypes.find((t) => t.id === id)?.label ?? id;
 
 /**
  * OX의 보기는 고정이다. 출제자가 「맞다」·「아니다」를 매번 타이핑할 이유가 없다.
@@ -122,8 +119,7 @@ export function choicesOf(q: Pick<Question, "type" | "choices">): string[] {
 export const hasChoices = (t: ItemType) => t === "choice" || t === "ox";
 
 /** 채점 루브릭이 있어야 하는 유형인가 — 사람이 채점하는 것들 */
-export const needsRubric = (t: ItemType) =>
-  t === "descriptive" || t === "essay" || t === "image";
+export const needsRubric = (t: ItemType) => t === "descriptive" || t === "essay" || t === "image";
 
 /**
  * 묶음 구성 — 단일이냐 세트냐.
@@ -205,8 +201,7 @@ export const MAX_ASSET_BYTES = 2 * 1024 * 1024;
 export function assetKindOf(file: File): ItemAsset["kind"] | null {
   if (file.type.startsWith("image/")) return "image";
   if (file.type === "application/pdf") return "pdf";
-  if (/sheet|excel|csv/.test(file.type) || /\.(xlsx?|csv)$/i.test(file.name))
-    return "sheet";
+  if (/sheet|excel|csv/.test(file.type) || /\.(xlsx?|csv)$/i.test(file.name)) return "sheet";
   return null;
 }
 
@@ -306,14 +301,7 @@ export type Question = {
 /** 문항에도 있고 문항에도 있는 칸 — 문항 쪽은 요약이다 */
 export type QuestionTags = Pick<
   Question,
-  | "standardCode"
-  | "standardText"
-  | "tagADetail"
-  | "talent"
-  | "subskill"
-  | "level"
-  | "b"
-  | "points"
+  "standardCode" | "standardText" | "tagADetail" | "talent" | "subskill" | "level" | "b" | "points"
 >;
 
 export type ItemDraft = {
@@ -503,8 +491,7 @@ export const rejectCodes = [
 
 export type RejectCode = (typeof rejectCodes)[number]["id"];
 
-export const rejectLabel = (id: RejectCode) =>
-  rejectCodes.find((c) => c.id === id)?.label ?? id;
+export const rejectLabel = (id: RejectCode) => rejectCodes.find((c) => c.id === id)?.label ?? id;
 
 /** 검수 3단 — 정의서 EXP-03-1~3 */
 export const reviewChecks = [
@@ -543,10 +530,7 @@ export type ReviewCheckId = (typeof reviewChecks)[number]["id"];
  */
 export type CheckReason = { id: string; text: string };
 
-export const checkReasons: Record<
-  ReviewCheckId,
-  { pass: CheckReason[]; block: CheckReason[] }
-> = {
+export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: CheckReason[] }> = {
   content: {
     pass: [
       {
@@ -625,11 +609,7 @@ export const checkReasons: Record<
 };
 
 /** 고른 소견을 글로 되돌린다. 통과와 걸림의 목록이 다르므로 ok가 있어야 찾을 수 있다. */
-export function reasonText(
-  id: ReviewCheckId,
-  ok: boolean | null,
-  reason?: string,
-) {
+export function reasonText(id: ReviewCheckId, ok: boolean | null, reason?: string) {
   if (!reason || ok === null) return "";
   const list = ok ? checkReasons[id].pass : checkReasons[id].block;
   return list.find((r) => r.id === reason)?.text ?? "";
@@ -730,10 +710,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "필요보다 즉각 보상을 앞세우는 오개념",
     ],
     answer: 1,
-    explain:
-      "글에 드러난 상황에서 가장 먼저 확인해야 할 것을 고르는 문항입니다.",
-    guidance:
-      "글에 적힌 단서(목줄·이름표 없음)만으로 풀리게 하고, 배경지식을 요구하지 않습니다.",
+    explain: "글에 드러난 상황에서 가장 먼저 확인해야 할 것을 고르는 문항입니다.",
+    guidance: "글에 적힌 단서(목줄·이름표 없음)만으로 풀리게 하고, 배경지식을 요구하지 않습니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -755,8 +733,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unit: "나눗셈",
     unitNo: "01",
     standardCode: "[4수01-05]",
-    standardText:
-      "나눗셈이 이루어지는 실생활 상황을 통하여 나눗셈의 의미를 알 수 있다.",
+    standardText: "나눗셈이 이루어지는 실생활 상황을 통하여 나눗셈의 의미를 알 수 있다.",
     tagADetail: "등분제 상황의 나눗셈 수행",
     talent: "MATH",
     subskill: "MATH-01",
@@ -809,8 +786,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unit: "물의 상태 변화",
     unitNo: "10",
     standardCode: "[4과10-01]",
-    standardText:
-      "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
     tagADetail: "언 물의 부피 변화 확인",
     talent: "NATU",
     subskill: "NATU-01",
@@ -820,8 +796,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     distractorIntent: [],
     answer: 0,
     explain: "물은 얼면 부피가 늘어납니다.",
-    guidance:
-      "탐색적 측정 영역입니다. 점수 비교 대상이 아님을 메타에 유지합니다.",
+    guidance: "탐색적 측정 영역입니다. 점수 비교 대상이 아님을 메타에 유지합니다.",
     type: "short",
     shortAnswers: "늘어난다, 커진다, 증가한다",
     rubric: "",
@@ -1022,8 +997,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     choices: ["", "", "", ""],
     distractorIntent: [],
     answer: 0,
-    explain:
-      "정답 예: 가볍다 / '가방이 가볍다.' 반대말 정확 1점 + 문장 적절 1점.",
+    explain: "정답 예: 가볍다 / '가방이 가볍다.' 반대말 정확 1점 + 문장 적절 1점.",
     guidance:
       "복수 정답을 허용합니다('가볍다' 외 문맥상 반대말). 채점 키에 인정 답안 목록을 등록하고, 문장은 낱말을 올바른 뜻으로 썼는지만 봅니다. 맞춤법 감점은 별도 기준입니다.",
     type: "short",
@@ -1092,18 +1066,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     subskill: "MATH-01",
     passage: "",
     stem: "전체를 똑같이 나눈 그림 중에서 색칠한 부분이 1/2인 것은? (원·사각형 등분 색칠 그림 ①~④ 제시)",
-    choices: [
-      "2등분 1칸 색칠",
-      "3등분 1칸 색칠",
-      "4등분 1칸 색칠",
-      "4등분 3칸 색칠",
-    ],
-    distractorIntent: [
-      "",
-      "등분 수 혼동(1/3)",
-      "등분 수 혼동(1/4)",
-      "색칠 칸 수만 세는 혼동",
-    ],
+    choices: ["2등분 1칸 색칠", "3등분 1칸 색칠", "4등분 1칸 색칠", "4등분 3칸 색칠"],
+    distractorIntent: ["", "등분 수 혼동(1/3)", "등분 수 혼동(1/4)", "색칠 칸 수만 세는 혼동"],
     answer: 0,
     explain: "정답: 2등분 1칸 색칠(또는 4등분 2칸 등 1/2과 같은 양).",
     guidance:
@@ -1195,12 +1159,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     subskill: "LANG-01",
     passage: "",
     stem: "다음 중 두 낱말의 뜻이 서로 비슷한 것은?",
-    choices: [
-      "춥다 — 덥다",
-      "고치다 — 수리하다",
-      "책상 — 의자",
-      "달리다 — 걷다",
-    ],
+    choices: ["춥다 — 덥다", "고치다 — 수리하다", "책상 — 의자", "달리다 — 걷다"],
     distractorIntent: [
       "반대말을 비슷한 말로 보는 혼동",
       "",
@@ -1301,8 +1260,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "맺음말을 중심 문장으로 보는 오개념",
     ],
     answer: 0,
-    explain:
-      "정답 ①. 첫 문장이 주장이고 나머지 세 문장은 그 까닭을 밝히는 뒷받침 문장입니다.",
+    explain: "정답 ①. 첫 문장이 주장이고 나머지 세 문장은 그 까닭을 밝히는 뒷받침 문장입니다.",
     guidance:
       "지문은 네 문장을 넘기지 않습니다. 중심 문장이 문단 첫머리에만 오지 않도록 회차마다 자리를 바꿉니다.",
     type: "choice",
@@ -1340,8 +1298,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     answer: 0,
     explain:
       "'학교 앞 골목이 위험하므로 등교 시간에 차를 막아야 한다'는 뜻이 담기면 정답입니다. 표현은 달라도 됩니다.",
-    guidance:
-      "낱말을 그대로 옮겨 적어도 뜻이 맞으면 인정합니다. 맞춤법은 채점하지 않습니다.",
+    guidance: "낱말을 그대로 옮겨 적어도 뜻이 맞으면 인정합니다. 맞춤법은 채점하지 않습니다.",
     type: "short",
     shortAnswers:
       "등교 시간에 차를 막아야 한다, 학교 앞 골목이 위험해서 차를 막아야 한다, 아침에 차를 막고 걸어 다니게 해야 한다",
@@ -1488,8 +1445,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     answer: 0,
     explain:
       "정답 ①. 분수는 똑같이 나눈 것 중 몇인지를 나타냅니다. 크기가 다르게 나뉘면 조각이 넷이어도 1/4이 아닙니다.",
-    guidance:
-      "까닭을 고르게 해 등분할 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
+    guidance: "까닭을 고르게 해 등분할 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -1577,8 +1533,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unit: "물의 상태 변화",
     unitNo: "10",
     standardCode: "[4과10-01]",
-    standardText:
-      "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
     tagADetail: "끓는 동안의 변화 관찰",
     talent: "NATU",
     subskill: "NATU-01",
@@ -1638,8 +1593,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unit: "물의 상태 변화",
     unitNo: "10",
     standardCode: "[4과10-01]",
-    standardText:
-      "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
     tagADetail: "언 물의 부피 변화 인과",
     talent: "NATU",
     subskill: "NATU-02",
@@ -1699,8 +1653,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unit: "물의 상태 변화",
     unitNo: "10",
     standardCode: "[4과10-01]",
-    standardText:
-      "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
     tagADetail: "같게 할 조건 산출",
     talent: "NATU",
     subskill: "NATU-02",
@@ -1715,8 +1668,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     guidance:
       "배운 절차(변인 통제)를 실행하게 하는 자리라 S3입니다. 실험 설계의 잘못을 진단하게 하면 S4로 넘어갑니다. 탐색적 측정 영역임을 메타에 유지합니다.",
     type: "short",
-    shortAnswers:
-      "물의 양, 컵의 크기, 컵의 모양, 물의 처음 온도, 컵 입구의 넓이, 뚜껑",
+    shortAnswers: "물의 양, 컵의 크기, 컵의 모양, 물의 처음 온도, 컵 입구의 넓이, 뚜껑",
     rubric: "",
     assets: [],
     version: 1,
@@ -1752,13 +1704,11 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unit: "물의 상태 변화",
     unitNo: "10",
     standardCode: "[4과10-01]",
-    standardText:
-      "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
+    standardText: "물이 얼거나 끓을 때의 변화를 관찰하여 상태 변화를 설명할 수 있다.",
     tagADetail: "보이지 않는 출처 역추론",
     talent: "NATU",
     subskill: "NATU-03",
-    passage:
-      "유리컵에 찬물을 담아 책상에 두었더니 잠시 뒤 컵 바깥쪽에 작은 물방울이 맺혔습니다.",
+    passage: "유리컵에 찬물을 담아 책상에 두었더니 잠시 뒤 컵 바깥쪽에 작은 물방울이 맺혔습니다.",
     stem: "(1) 이 물방울이 어디에서 온 것인지 쓰시오. (2) 컵 안의 물이 새어 나온 것이 아님을 확인할 방법을 한 가지 설계하여, 그 방법으로 왜 확인이 되는지 함께 쓰시오.",
     choices: ["", "", "", ""],
     distractorIntent: [],
@@ -1865,9 +1815,7 @@ type Mirrored = Pick<ItemDraft, (typeof MIRRORED)[number]>;
 /* 단계 차례는 blueprint의 LEVELS를 그대로 쓴다. 여기서 배열을 하나 더 세우면 안 된다 —
    SEED가 이 파일 위쪽에서 fill()을 부르는데, 그 시점에 아래쪽 const는 아직 서지 않았다
    (TDZ). import은 본문보다 먼저 서므로 안전하다. */
-export function summaryOf(
-  qs: Question[],
-): Pick<ItemDraft, "level" | "b" | "points"> {
+export function summaryOf(qs: Question[]): Pick<ItemDraft, "level" | "b" | "points"> {
   const level = qs.reduce(
     (hi, q) => (LEVELS.indexOf(q.level) > LEVELS.indexOf(hi) ? q.level : hi),
     qs[0].level,
@@ -1881,19 +1829,13 @@ export function summaryOf(
   const picked = qs.map((q) => q.b).filter((v): v is number => v !== null);
   const b =
     picked.length > 0
-      ? Math.round(
-          (picked.reduce((sum, v) => sum + v, 0) / picked.length) * 100,
-        ) / 100
+      ? Math.round((picked.reduce((sum, v) => sum + v, 0) / picked.length) * 100) / 100
       : levelSpecs[level].b;
   return { level, b, points };
 }
 
 /** 납작한 칸을 문항 하나로 옮긴 것 */
-function questionOf(
-  raw: Partial<ItemDraft>,
-  n: number,
-  tags: QuestionTags,
-): Question {
+function questionOf(raw: Partial<ItemDraft>, n: number, tags: QuestionTags): Question {
   return {
     id: `q${n + 1}`,
     type: (raw.type ?? "choice") as ItemType,
@@ -1917,11 +1859,7 @@ function questionOf(
  * 분류가 문항에만 있던 시절의 저장분은 문항에 그 칸이 없다. 그때는 문항이 이고 있던
  * 값을 그대로 물려준다 — 세트라도 그 시절에는 전부 한 벌뿐이었으므로 틀리지 않는다.
  */
-function fillQuestion(
-  q: Partial<Question>,
-  n: number,
-  tags: QuestionTags,
-): Question {
+function fillQuestion(q: Partial<Question>, n: number, tags: QuestionTags): Question {
   const level = q.level ?? tags.level;
   return {
     id: q.id || `q${n + 1}`,
@@ -2118,9 +2056,7 @@ export function patchItem(id: string, patch: Partial<ItemDraft>) {
   write(
     withCodes(
       read().map((i) =>
-        i.id === id
-          ? syncQuestions({ ...i, ...patch, updatedAt: now() }, patch)
-          : i,
+        i.id === id ? syncQuestions({ ...i, ...patch, updatedAt: now() }, patch) : i,
       ),
     ),
   );
@@ -2206,11 +2142,9 @@ export function checkSpec(spec: GenerateSpec): string[] {
   const total = countOf(spec.counts);
 
   if (total === 0) bad.push("생성할 문항 수를 한 단계 이상 적어 주세요.");
-  if (total > GENERATE_MAX)
-    bad.push(`한 번에 ${GENERATE_MAX}문항까지 뽑을 수 있습니다.`);
+  if (total > GENERATE_MAX) bad.push(`한 번에 ${GENERATE_MAX}문항까지 뽑을 수 있습니다.`);
   if (!spec.unit.trim()) bad.push("단원 이름을 적어 주세요.");
-  if (!/\d/.test(spec.unitNo))
-    bad.push("단원 번호를 숫자로 적어 주세요. 문항 ID에 들어갑니다.");
+  if (!/\d/.test(spec.unitNo)) bad.push("단원 번호를 숫자로 적어 주세요. 문항 ID에 들어갑니다.");
 
   const code = checkStandardCode(spec.standardCode, spec.band);
   if (!code.ok) bad.push(code.why);
@@ -2232,11 +2166,7 @@ const LEVELS_ALL: Level[] = ["S1", "S2", "S3", "S4"];
  * 전부 draft 상태로 들어간다. 만들자마자 검수로 넘기는 길은 두지 않는다 —
  * 그 길이 있으면 사람이 한 번도 안 읽은 문항이 검수 목록에 쌓인다.
  */
-export function generateItems(
-  spec: GenerateSpec,
-  author: string,
-  authorName: string,
-): ItemDraft[] {
+export function generateItems(spec: GenerateSpec, author: string, authorName: string): ItemDraft[] {
   const list = read();
   const made: ItemDraft[] = [];
 
@@ -2285,9 +2215,7 @@ export function generateItems(
           `· 성취기준 — ${spec.standardCode.trim()}의 내용과 아래 성취기준 내용이 맞는가`,
           `· 단계 — ${s.rule}`,
           `· 금지 — ${s.deny}`,
-          n > 1
-            ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것`
-            : "",
+          n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
           spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
         ]
           .filter(Boolean)
@@ -2379,10 +2307,7 @@ export function nextQuestionId(list: Question[]) {
  * 단계와 난이도까지 물려받는 것은 조금 다른 까닭이다 — 세트로 단계를 올릴 생각이면
  * 앞 문항가 어디였는지가 그 자리에서 보여야 무엇을 올릴지 정할 수 있다.
  */
-export function blankQuestion(
-  list: Question[],
-  type: ItemType = "choice",
-): Question {
+export function blankQuestion(list: Question[], type: ItemType = "choice"): Question {
   const prev = list[list.length - 1];
   return fillQuestion({ id: nextQuestionId(list), type }, list.length, {
     standardCode: prev?.standardCode ?? "",
@@ -2411,16 +2336,12 @@ export function blankQuestion(
  */
 export function retypeQuestion(q: Question, type: ItemType): Question {
   if (q.type === type) return q;
-  return type === "ox"
-    ? { ...q, type, answer: Math.min(q.answer, 1) }
-    : { ...q, type };
+  return type === "ox" ? { ...q, type, answer: Math.min(q.answer, 1) } : { ...q, type };
 }
 
 /** 목록의 유형 칸 — 세트는 안에 든 유형을 모아 적는다 */
 export function typeTextOf(i: ItemDraft) {
-  const kinds = [...new Set(i.questions.map((q) => q.type))]
-    .map(typeLabel)
-    .join(" · ");
+  const kinds = [...new Set(i.questions.map((q) => q.type))].map(typeLabel).join(" · ");
   return kinds || typeLabel(i.type);
 }
 
@@ -2461,9 +2382,7 @@ export function syncTags(item: ItemDraft): Pick<ItemDraft, "tagA" | "tagB"> {
      목록에서 「이 세트가 무엇으로 시작하는가」는 답이 되고, 나머지를 대표한다고
      거짓말하지는 않는다. 온전한 것은 문항 목록이 보여 준다. */
   const tail = rest > 0 ? ` 외 ${rest}문` : "";
-  const codes = new Set(
-    item.questions.map((q) => q.standardCode).filter(Boolean),
-  );
+  const codes = new Set(item.questions.map((q) => q.standardCode).filter(Boolean));
   const a =
     rest > 0 && codes.size > 1
       ? `${first.standardCode} 외 ${codes.size - 1}개 성취기준`
@@ -2566,12 +2485,7 @@ export function reviseApproved(id: string): ItemDraft | null {
 }
 
 /** 코멘트만 남긴다 — 상태는 그대로. 반려까지는 아닌데 짚고 넘어갈 것을 적는 자리다. */
-export function addComment(
-  id: string,
-  by: string,
-  role: StaffRoleId,
-  text: string,
-) {
+export function addComment(id: string, by: string, role: StaffRoleId, text: string) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
   patchItem(id, {
@@ -2622,11 +2536,7 @@ export function runAiAudit(ids: string[]): {
     if (!ids.includes(item.id) || item.state !== "submitted") return item;
     const result = auditItem(item);
     const rejection = auditRejection(result);
-    const verdict: AiVerdict = rejection
-      ? "reject"
-      : result.warns > 0
-        ? "hold"
-        : "approve";
+    const verdict: AiVerdict = rejection ? "reject" : result.warns > 0 ? "hold" : "approve";
     done += 1;
 
     const audit: AiAudit = {
@@ -2635,19 +2545,14 @@ export function runAiAudit(ids: string[]): {
         id: c.id,
         ok: c.ok,
         notes: c.findings.map(
-          (f) =>
-            `${f.tone === "block" ? "[규칙 위반] " : "[확인 필요] "}${f.text} → ${f.fix}`,
+          (f) => `${f.tone === "block" ? "[규칙 위반] " : "[확인 필요] "}${f.text} → ${f.fix}`,
         ),
       })),
       blocks: result.blocks,
       warns: result.warns,
       verdict,
       code: rejection?.code,
-      text: rejection
-        ? rejection.text
-        : verdict === "approve"
-          ? APPROVE_TEXT
-          : undefined,
+      text: rejection ? rejection.text : verdict === "approve" ? APPROVE_TEXT : undefined,
     };
 
     /* 보류 — 상태를 건드리지 않는다. 규칙 밖의 일이 남았다는 것을 짚어만 두고,
@@ -2710,10 +2615,7 @@ export function runAiAudit(ids: string[]): {
 }
 
 /** 쓰다 만 검수를 문항에 붙여 둔다. 결론이 나기 전까지 상태는 그대로다. */
-export function saveReviewDraft(
-  id: string,
-  draft: Omit<ReviewDraft, "updatedAt">,
-) {
+export function saveReviewDraft(id: string, draft: Omit<ReviewDraft, "updatedAt">) {
   patchItem(id, { reviewDraft: { ...draft, updatedAt: now() } });
 }
 
@@ -2750,10 +2652,7 @@ export function rejectItem(
       },
     ],
     reviewDraft: undefined,
-    comments: [
-      ...item.comments,
-      { at, by, role: "reviewer", kind: "reject", code, text },
-    ],
+    comments: [...item.comments, { at, by, role: "reviewer", kind: "reject", code, text }],
   });
 }
 
@@ -2784,10 +2683,7 @@ export function approveItem(
       },
     ],
     reviewDraft: undefined,
-    comments: [
-      ...item.comments,
-      { at, by, role: "reviewer", kind: "approve", text },
-    ],
+    comments: [...item.comments, { at, by, role: "reviewer", kind: "approve", text }],
   });
 }
 
@@ -2803,13 +2699,7 @@ export function approveItem(
  * 확정된(승인) 문항만 앵커가 된다. 아직 검수를 안 지난 문항을 등화 기준으로 삼으면
  * 그 회차의 잣대 자체가 검증되지 않은 것이 된다. 공개된 적이 있는 문항도 안 된다.
  */
-export function setAnchor(
-  id: string,
-  on: boolean,
-  by: string,
-  role: StaffRoleId,
-  reason: string,
-) {
+export function setAnchor(id: string, on: boolean, by: string, role: StaffRoleId, reason: string) {
   const item = read().find((i) => i.id === id);
   if (!item) return null;
   if (on && (item.state !== "approved" || item.disclosed)) return null;
@@ -2836,12 +2726,7 @@ export function setAnchor(
  * 있는데 문항이 사라지면 그 판정을 설명할 길이 없어진다. 되돌릴 수도 있어야 해서
  * 까닭을 코멘트로도 남겨 둔다.
  */
-export function retireItem(
-  id: string,
-  by: string,
-  role: StaffRoleId,
-  reason: string,
-) {
+export function retireItem(id: string, by: string, role: StaffRoleId, reason: string) {
   const item = read().find((i) => i.id === id);
   if (!item || item.state !== "approved") return null;
   patchItem(id, {
@@ -2858,12 +2743,7 @@ export function retireItem(
 }
 
 /** 사용 중지한 문항을 다시 쓴다 */
-export function restoreItem(
-  id: string,
-  by: string,
-  role: StaffRoleId,
-  reason: string,
-) {
+export function restoreItem(id: string, by: string, role: StaffRoleId, reason: string) {
   const item = read().find((i) => i.id === id);
   if (!item || item.state !== "retired") return null;
   patchItem(id, {
@@ -2883,11 +2763,7 @@ export function daysWaiting(item: ItemDraft) {
   const submitted = Date.parse(item.updatedAt.slice(0, 10));
   if (Number.isNaN(submitted)) return 0;
   const today = new Date();
-  const midnight = Date.UTC(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  );
+  const midnight = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return Math.max(0, Math.round((midnight - submitted) / 86_400_000));
 }
 
@@ -2899,11 +2775,7 @@ export function attachAsset(id: string, asset: ItemAsset) {
 }
 
 /** 붙임 파일 한 건 고치기 — 지금은 대체 텍스트만 고칠 일이 있다 */
-export function patchAsset(
-  id: string,
-  assetId: string,
-  patch: Partial<ItemAsset>,
-) {
+export function patchAsset(id: string, assetId: string, patch: Partial<ItemAsset>) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
   patchItem(id, {
@@ -2951,9 +2823,7 @@ export function missingFields(i: ItemDraft) {
 
   if (!i.guidance.trim()) out.push("출제자 유의사항");
 
-  const left = submitChecklist.filter(
-    (c) => !c.auto && !i.checks.includes(c.id),
-  ).length;
+  const left = submitChecklist.filter((c) => !c.auto && !i.checks.includes(c.id)).length;
   if (left > 0) out.push(`체크리스트 ${left}항목`);
 
   return out;
@@ -2961,9 +2831,7 @@ export function missingFields(i: ItemDraft) {
 
 /** 발문이 비었는가 — 갈래마다 「비었다」의 뜻이 다르다 */
 export function stemIsEmpty(q: Question) {
-  return q.stemMode === "images"
-    ? q.stemImages.length === 0
-    : q.stem.trim() === "";
+  return q.stemMode === "images" ? q.stemImages.length === 0 : q.stem.trim() === "";
 }
 
 /**
@@ -2986,21 +2854,14 @@ export function stemSummary(q: Question): string {
 
 /** 지문이 비었는가 */
 export function passageIsEmpty(i: ItemDraft) {
-  return i.passageMode === "images"
-    ? i.passageImages.length === 0
-    : i.passage.trim() === "";
+  return i.passageMode === "images" ? i.passageImages.length === 0 : i.passage.trim() === "";
 }
 
 /** 문항 하나에 모자란 것 */
-function missingInQuestion(
-  q: Question,
-  tag: string,
-  band: GradeBand,
-): string[] {
+function missingInQuestion(q: Question, tag: string, band: GradeBand): string[] {
   const out: string[] = [];
 
-  if (!checkStandardCode(q.standardCode, band).ok)
-    out.push(`${tag}성취기준 코드`);
+  if (!checkStandardCode(q.standardCode, band).ok) out.push(`${tag}성취기준 코드`);
   if (!q.standardText.trim()) out.push(`${tag}성취기준 내용`);
   if (!q.tagADetail.trim()) out.push(`${tag}Tag A 세부`);
   if (!levelAllowed(q.talent, q.level)) out.push(`${tag}Tag B 단계 범위`);

@@ -93,9 +93,7 @@ export function BodyEditor({
         try {
           const url = await shrinkImage(file);
           if (dataUrlBytes(url) > IMAGE_MAX_BYTES) {
-            setError(
-              `${file.name}은(는) 줄여도 너무 큽니다. 더 작은 그림으로 올려 주세요.`,
-            );
+            setError(`${file.name}은(는) 줄여도 너무 큽니다. 더 작은 그림으로 올려 주세요.`);
             continue;
           }
           made.push(url);
@@ -141,9 +139,7 @@ export function BodyEditor({
       {mode === "images" ? (
         <div className="mt-3 grid gap-2">
           {images.length === 0 ? (
-            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">
-              아직 올린 그림이 없습니다.
-            </p>
+            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 올린 그림이 없습니다.</p>
           ) : (
             <ul className="grid gap-2">
               {images.map((src, k) => (
@@ -156,11 +152,7 @@ export function BodyEditor({
                   </span>
                   {/* 미리보기라 next/image를 쓰지 않는다 — data URL은 최적화를 못 거친다 */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt=""
-                    className="max-h-48 rounded border border-(--a2-line)"
-                  />
+                  <img src={src} alt="" className="max-h-48 rounded border border-(--a2-line)" />
                   <span className="ml-auto flex shrink-0 gap-1">
                     <button
                       type="button"
@@ -180,9 +172,7 @@ export function BodyEditor({
                       className="a2-btn a2-btn-sm a2-btn-danger"
                       disabled={disabled}
                       aria-label={`그림 ${k + 1} 지우기`}
-                      onClick={() =>
-                        onChange({ images: images.filter((_, n) => n !== k) })
-                      }
+                      onClick={() => onChange({ images: images.filter((_, n) => n !== k) })}
                     >
                       ×
                     </button>
@@ -227,15 +217,10 @@ export function BodyEditor({
       {preview && mode !== "images" && (
         <div className="mt-2 w-full">
           {html.trim() === "" ? (
-            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">
-              아직 채운 것이 없습니다.
-            </p>
+            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 채운 것이 없습니다.</p>
           ) : (
             /* 소독을 거친 값만 넣는다 — renderDetail 안에서 sanitizeHtml을 지난다 */
-            <div
-              className="a2-preview a2-prose"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
+            <div className="a2-preview a2-prose" dangerouslySetInnerHTML={{ __html: html }} />
           )}
         </div>
       )}
@@ -315,12 +300,8 @@ export function QuestionList({
               return (
                 <tr key={q.id}>
                   <td className="a2-td-key a2-nowrap">문항 {k + 1}</td>
-                  <td className="a2-nowrap a2-t-sm text-(--a2-ink-2)">
-                    {typeLabel(q.type)}
-                  </td>
-                  <td className="a2-nowrap a2-mono a2-t-sm text-(--a2-ink-2)">
-                    {q.level}
-                  </td>
+                  <td className="a2-nowrap a2-t-sm text-(--a2-ink-2)">{typeLabel(q.type)}</td>
+                  <td className="a2-nowrap a2-mono a2-t-sm text-(--a2-ink-2)">{q.level}</td>
                   <td className="a2-nowrap a2-mono a2-t-sm text-(--a2-ink-2)">
                     {difficultyPicked(q.b) ? (
                       `b ${q.b}`
@@ -429,11 +410,7 @@ export function QuestionTagRows({ q, band, disabled, onChange }: RowProps) {
       <FormRow
         label="성취기준 코드 (Tag A)"
         req
-        hint={
-          std.ok ? undefined : (
-            <span style={{ color: toneColor.danger }}>{std.why}</span>
-          )
-        }
+        hint={std.ok ? undefined : <span style={{ color: toneColor.danger }}>{std.why}</span>}
       >
         <input
           className="a2-input a2-input-lg a2-mono"
@@ -541,14 +518,11 @@ export function QuestionTagRows({ q, band, disabled, onChange }: RowProps) {
                 onChange={() => set({ b: d.b })}
               />
               {d.label}
-              <span className="a2-mono font-normal text-(--a2-ink-4)">
-                b {d.b}
-              </span>
+              <span className="a2-mono font-normal text-(--a2-ink-4)">b {d.b}</span>
             </label>
           ))}
         </div>
       </FormRow>
-
     </>
   );
 }
@@ -612,9 +586,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
                     onChange={() => set({ answer: k })}
                     aria-label={`${k + 1}번을 정답으로`}
                   />
-                  <span className="a2-mono a2-t-sm text-(--a2-ink-3)">
-                    {k + 1}
-                  </span>
+                  <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{k + 1}</span>
                 </label>
                 <input
                   className="a2-input a2-input-lg"
@@ -623,9 +595,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
                   placeholder={`${k + 1}번 보기`}
                   onChange={(e) =>
                     set({
-                      choices: q.choices.map((x, n) =>
-                        n === k ? e.target.value : x,
-                      ),
+                      choices: q.choices.map((x, n) => (n === k ? e.target.value : x)),
                     })
                   }
                 />
@@ -633,11 +603,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
                   className="a2-input a2-input-lg"
                   value={q.distractorIntent[k] ?? ""}
                   disabled={disabled || q.answer === k}
-                  placeholder={
-                    q.answer === k
-                      ? "정답 — 적지 않습니다"
-                      : "이 오답이 잡는 오개념"
-                  }
+                  placeholder={q.answer === k ? "정답 — 적지 않습니다" : "이 오답이 잡는 오개념"}
                   onChange={(e) => {
                     const next = [...q.distractorIntent];
                     while (next.length < q.choices.length) next.push("");
@@ -664,10 +630,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
               onClick={() =>
                 set({
                   choices: q.choices.slice(0, -1),
-                  distractorIntent: q.distractorIntent.slice(
-                    0,
-                    q.choices.length - 1,
-                  ),
+                  distractorIntent: q.distractorIntent.slice(0, q.choices.length - 1),
                   answer: Math.min(q.answer, q.choices.length - 2),
                 })
               }
@@ -716,9 +679,7 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
             rows={6}
             value={q.rubric}
             disabled={disabled}
-            placeholder={
-              "근거 1점 + 일반화 1점 + 정당화 1점\n인정 예: …\n불인정 예: …"
-            }
+            placeholder={"근거 1점 + 일반화 1점 + 정당화 1점\n인정 예: …\n불인정 예: …"}
             onChange={(e) => set({ rubric: e.target.value })}
           />
         </FormRow>
