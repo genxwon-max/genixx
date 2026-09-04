@@ -71,15 +71,6 @@ export default function NewRoundForm() {
     <>
       <PageHead
         title="회차 생성"
-        meta={
-          <>
-            <span>새 평가 회차를 만듭니다</span>
-            <span aria-hidden>·</span>
-            <span>
-              <span className="a2-form-req" />는 꼭 채워야 하는 칸입니다
-            </span>
-          </>
-        }
         actions={
           <Link href="/admin2/rounds" className="a2-btn">
             평가 회차

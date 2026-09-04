@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { roundStates } from "@/lib/admin";
-import { formTone, n, roundTone } from "@/lib/admin2";
+import { formTone, n } from "@/lib/admin2";
 import { useAdminPrefs, recordAction } from "@/lib/adminStore";
 import { useForms } from "@/lib/formStore";
 import { useItems } from "@/lib/itemStore";
@@ -25,9 +25,11 @@ import {
 } from "@/lib/roundPlanStore";
 import { Body, DescList, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
+/* 검사지를 짜는 조각은 공용으로 옮겼다 — 평가별 문항관리 상세(ADM-04-3)의 과목 탭도
+   같은 것을 그린다. 담는 자리가 둘이면 같은 검사지를 두 화면이 다르게 그린다 */
+import FormSlot from "@/components/admin2/FormSlot";
 import RoundNotes from "./RoundNotes";
 import SlotPicker from "./SlotPicker";
-import FormSlot from "./FormSlot";
 
 /**
  * ADM-05-4 회차 편성 — 이 회차에 무엇이 나가고, 언제 열리고, 지금 열어도 되는가.
@@ -89,7 +91,6 @@ export default function RoundPlanView({ id }: { id: string }) {
   const by = prefs.staffName || "운영자";
   const built = slots.filter((s) => s.form);
   const confirmed = slots.filter((s) => s.form?.state === "confirmed");
-  const going = confirmed.reduce((sum, s) => sum + s.picked.length, 0);
   const slot = slots.find((s) => s.key === openKey) ?? null;
 
   /* ── 기간 ──
@@ -168,19 +169,6 @@ export default function RoundPlanView({ id }: { id: string }) {
       <>
         <PageHead
           title={round.label}
-          meta={
-            <>
-              <Status tone={roundTone[plan.state]}>{roundStates[plan.state].label}</Status>
-              <span aria-hidden>·</span>
-              <span className="a2-mono">
-                {plan.opensOn} – {plan.closesOn}
-              </span>
-              <span aria-hidden>·</span>
-              <span>
-                편성 {confirmed.length}/{built.length || 0}벌 확정 · 나가는 문항 {n(going)}
-              </span>
-            </>
-          }
           actions={
             <>
               <Link href="/admin2/items" className="a2-btn">

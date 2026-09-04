@@ -962,6 +962,16 @@ export const approvals: Approval[] = [
   },
 ];
 
+/**
+ * 신청 하나 찾기 — 상세 화면(ADM-02-2-1)이 주소의 번호로 부른다.
+ *
+ * 이 파일에 두는 까닭은 회원 찾기(adminUsers.findMember)와 같다. 서버 컴포넌트가
+ * "use client" 파일의 export를 부르면 값이 아니라 클라이언트 참조가 넘어온다.
+ */
+export function findApproval(id: string) {
+  return approvals.find((a) => a.id === id) ?? null;
+}
+
 /* ───────────────────────── 회원 (ADM-02-1) ───────────────────────── */
 
 export type MemberRow = {

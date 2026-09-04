@@ -6,9 +6,12 @@
  * 흔한 관리 도구(Django admin · AWS 콘솔 · Supabase Studio · Retool)의 관행을 따른다.
  *
  * ───── 이 화면이 따르는 규칙 ─────
- *  글자   11 · 12 · 13 · 14 · 16 · 18 여섯 눈금 + 22. 본문 13, 표 13, 곁들이는 글 12.
- *         22는 지표 숫자와 가운데 세우는 화면 제목(.a2-title-lg) 둘이 나눠 쓴다 — 제목을
- *         키우려고 20이나 24를 새로 만들지 않는다. 눈금은 늘리지 않고 나눠 쓴다.
+ *  글자   11 · 12 · 13 · 14 · 16 · 18 여섯 눈금 + 22 · 28. 본문 13, 표 13, 곁들이는 글 12.
+ *         22는 지표 숫자(.a2-metric)가 쓰고, 28은 화면 제목(.a2-title-lg) 하나만 쓴다.
+ *         한동안 제목도 22로 지표와 나눠 썼는데, 머리에서 지표 띠를 걷어 내고 탭 줄로
+ *         바꾸고 나니 제목이 그 아래 12·13px 무리와 한 덩어리로 붙어 「지금 어느
+ *         화면인가」가 안 읽혔다. 눈금을 늘리는 대신 나눠 쓴다는 규칙을 여기서 한 번
+ *         푼다 — 화면에 하나뿐이고 늘 같은 자리에 서는 글자라, 이 하나는 따로 세운다.
  *         11px 아래로는 내려가지 않는다 — 기둥 그룹 이름과 키캡을 10px로 두었더니 규격을
  *         적어 둔 파일 자신이 그 규격을 어기고 있었다.
  *         숫자·ID·시각은 고정폭(--font-mono)으로. 자릿수가 어긋나면 세로로 못 훑는다.
@@ -129,13 +132,17 @@
     letter-spacing: -0.01em;
   }
   /* 가운데 세우는 화면 제목.
-     판 하나가 화면을 통째로 덮는 화면(회원)에만 쓴다. 왼쪽 위 18px 제목은 그 옆에 동작
-     단추를 세우려고 그렇게 둔 것인데, 판이 하나뿐이면 그 자리가 판 바깥이 되어 제목만
-     허공에 뜬다. 판 안에 넣고 가운데로 세우면 그 아래 숫자·탭·표가 한 덩어리로 읽힌다.
-     지표 띠가 있는 화면에는 쓰지 않는다 — 띠와 제목이 세로로 두 번 밀어낸다. */
+     판 하나가 화면을 통째로 덮으므로 제목도 그 판 안에서 가운데에 선다. 왼쪽 위 18px
+     제목은 그 옆에 동작 단추를 세우려고 그렇게 둔 것인데, 판이 하나뿐이면 그 자리가 판
+     바깥이 되어 제목만 허공에 뜬다. 판 안에 넣고 가운데로 세우면 그 아래 탭·표가 한
+     덩어리로 읽힌다.
+
+     22px에서 28px로 올렸다. 머리에서 지표 띠를 걷어 내고 탭 줄로 바꾸고 나니 제목 아래가
+     전부 12·13px이 되어, 22px 제목이 그 무리에 붙어 「지금 어느 화면인가」가 한눈에 안
+     들어왔다. 화면에 하나뿐이고 늘 같은 자리에 서는 글자라 눈금을 하나 더 연다. */
   .a2-title-lg {
-    font-size: 1.375rem;
-    line-height: 1.3;
+    font-size: 1.75rem;
+    line-height: 1.25;
     font-weight: 700;
     letter-spacing: -0.02em;
   }
@@ -432,6 +439,18 @@
   .a2-table tbody tr:hover td {
     background: var(--a2-hover);
   }
+  /* 고른 줄 — 체크상자를 세운 표에서만 선다(DataTable의 selection).
+     체크상자 하나에만 기대면 스무 줄 중 무엇을 골랐는지 훑을 수가 없다. 그렇다고 면만
+     칠하면 마우스가 얹힌 줄(--a2-hover)과 두 색이 한 눈금 차이라 구분되지 않는다 —
+     왼쪽 끝에 3px 파란 막대를 함께 세운다. 면은 꼬리표와 같은 파랑을 써서 새 색을
+     만들지 않는다. 마우스가 얹혀도 이 색이 남아야 두 상태가 안 섞인다 */
+  .a2-table tbody tr[data-on="true"] td,
+  .a2-table tbody tr[data-on="true"]:hover td {
+    background: var(--a2-accent-soft);
+  }
+  .a2-table tbody tr[data-on="true"] td:first-child {
+    box-shadow: inset 3px 0 0 var(--a2-accent);
+  }
   /* 값에 해당하는 칸 */
   .a2-table td.a2-td-key {
     color: var(--a2-ink);
@@ -614,6 +633,126 @@
     }
   }
 
+  /* ── 미리보기 서식 ──
+     운영자가 쓴 마크다운·HTML을 그려 보는 상자 안의 글. 파는 화면의 서식은 따로 있고,
+     여기는 「대충 이렇게 보인다」를 확인하는 자리다.
+
+     소독기(lib/richText.ts)가 class와 style을 전부 걷어 내므로, 꾸밈은 이 규칙 하나가
+     통째로 맡는다. 그래서 자식 선택자로 태그마다 못 박아 둔다 — 운영자가 어떤 태그를
+     쓰든 여기 없는 것은 브라우저 기본값으로 서고, 그것도 읽히기는 한다. */
+  .a2-prose {
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: var(--a2-ink);
+    overflow-wrap: anywhere;
+  }
+  .a2-prose > :first-child {
+    margin-top: 0;
+  }
+  .a2-prose > :last-child {
+    margin-bottom: 0;
+  }
+  .a2-prose p {
+    margin-block: 0.5em;
+  }
+  .a2-prose h1,
+  .a2-prose h2,
+  .a2-prose h3,
+  .a2-prose h4 {
+    margin-block: 1em 0.4em;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--a2-ink);
+  }
+  .a2-prose h1 {
+    font-size: 1.125rem;
+  }
+  .a2-prose h2 {
+    font-size: 1rem;
+  }
+  .a2-prose h3 {
+    font-size: 0.875rem;
+  }
+  .a2-prose h4 {
+    font-size: 0.8125rem;
+  }
+  .a2-prose ul,
+  .a2-prose ol {
+    margin-block: 0.5em;
+    padding-inline-start: 1.35em;
+    list-style: revert;
+  }
+  .a2-prose li {
+    margin-block: 0.15em;
+  }
+  .a2-prose blockquote {
+    margin-block: 0.6em;
+    padding: 2px 0 2px 10px;
+    border-inline-start: 3px solid var(--a2-accent-line);
+    color: var(--a2-ink-2);
+  }
+  .a2-prose a {
+    color: var(--a2-accent-2);
+    text-decoration: underline;
+  }
+  .a2-prose img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-block: 0.6em;
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+  }
+  .a2-prose hr {
+    margin-block: 0.9em;
+    border: 0;
+    border-top: 1px solid var(--a2-line);
+  }
+  .a2-prose code {
+    padding: 1px 4px;
+    border-radius: var(--a2-radius);
+    background: var(--a2-raised);
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+  }
+  .a2-prose pre {
+    margin-block: 0.6em;
+    padding: 8px 10px;
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+    background: var(--a2-raised);
+    overflow-x: auto;
+  }
+  .a2-prose pre code {
+    padding: 0;
+    background: none;
+  }
+  .a2-prose table {
+    margin-block: 0.6em;
+    border-collapse: collapse;
+  }
+  .a2-prose th,
+  .a2-prose td {
+    padding: 4px 8px;
+    border: 1px solid var(--a2-line);
+    text-align: left;
+  }
+  .a2-prose th {
+    background: var(--a2-raised);
+    font-weight: 700;
+  }
+
+  /* 미리보기 상자 — 글이 길어지면 여기서 굴린다. 화면 전체가 밀리면 아래 저장 단추가
+     한참 밑으로 내려가고, 고치다가 저장을 못 찾는다 */
+  .a2-preview {
+    max-height: 22rem;
+    padding: 10px 12px;
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+    background: var(--a2-panel);
+    overflow: auto;
+  }
+
   /* 라디오·체크 한 벌 — 등록 폼에서만 쓴다. 표 안에는 두지 않는다(줄마다 누를 것이
      생기면 표를 훑는 일이 고르는 일로 바뀐다) */
   .a2-choice {
@@ -694,6 +833,74 @@
     gap: 1px;
     background: var(--a2-line);
     border-top: 2px solid var(--a2-accent);
+  }
+
+  /* ── 조회 조건 탭 줄 ──
+     화면 머리 아래 한 줄. 상태마다 이름과 개수만 적고, 고른 것에 아래쪽 2px 선을 긋는다.
+
+     처음에는 지표 칸(Kpi)을 그대로 누를 수 있게 만들었다. 칸마다 이름·숫자·설명 석 줄이
+     들어가 다섯 칸이 화면의 절반을 먹었고, 조건을 바꾸려고 훑는 자리치고는 너무 컸다.
+     조건을 고르는 데 필요한 것은 「무엇이 몇 개인가」뿐이라 두 값만 남기고 한 줄로 눕혔다.
+
+     고른 표시는 아래쪽 선이다. 이 줄이 바로 밑의 표를 가리키기 때문이다. 색만으로 가르지
+     않도록 글자도 함께 진해지고 굵어진다.
+
+     role은 tab이 아니라 aria-pressed를 쓴 단추 무리다. ARIA 탭은 tabpanel과 화살표
+     이동까지 갖춰야 제구실을 하는데, 여기서는 표가 그대로 아래 서 있고 Tab 키로 칸
+     사이를 옮기는 것이 자연스럽다. 반쯤 갖춘 탭보다 눌린 상태를 읽어 주는 단추가 낫다. */
+  .a2-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    min-height: 34px;
+    padding-inline: 10px;
+    background: var(--a2-panel);
+  }
+  .a2-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 33px;
+    padding-inline: 8px;
+    border-bottom: 2px solid transparent;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--a2-ink-3);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .a2-tab:hover {
+    color: var(--a2-ink);
+  }
+  .a2-tab[aria-pressed="true"] {
+    border-bottom-color: var(--a2-accent);
+    color: var(--a2-accent-2);
+    font-weight: 700;
+  }
+  .a2-tab:focus-visible {
+    outline: 2px solid var(--a2-accent);
+    outline-offset: -3px;
+  }
+  /* 개수 — 이름 뒤에 붙는 작은 알약. 그냥 숫자로 두면 이름의 일부로 읽힌다 */
+  .a2-tab-n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding-inline: 5px;
+    border-radius: 999px;
+    background: var(--a2-raised);
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--a2-ink-3);
+  }
+  .a2-tab[aria-pressed="true"] .a2-tab-n {
+    background: var(--a2-accent-soft);
+    color: var(--a2-accent-2);
   }
 
   /* 막대 — 진행률. 표 안에서도 한 줄 높이를 넘지 않는다 */

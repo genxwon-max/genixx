@@ -40,6 +40,7 @@ import {
   withdrawItem,
   type ItemDraft,
 } from "@/lib/itemStore";
+import { LeaveDialog, useUnsavedGuard } from "@/components/admin2/EditGuard";
 import { Body, DescList, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
 import ReviewPanel from "./ReviewPanel";
 
@@ -56,9 +57,16 @@ import ReviewPanel from "./ReviewPanel";
  * 바뀌면 그 문항으로 이미 판정한 아이의 결과를 설명할 수 없다. 승인본을 고칠 때는
  * 원본을 두고 새 판을 뜬다.
  *
- * ⚠ 저장은 칸을 떠날 때가 아니라 글자를 칠 때마다 일어난다(patchItem). 저장 단추를
- *   두지 않은 까닭은 하나다 — 문항 하나를 채우는 데 십수 분이 걸리는데, 그 사이에
- *   다른 문항을 열어 보는 일이 실제로 잦다.
+ * 저장은 **저장을 누를 때만** 한다. 한동안 글자를 칠 때마다 저장했는데(문항 하나를
+ * 채우는 데 십수 분이 걸리고 그 사이에 다른 문항을 열어 보는 일이 잦다는 이유였다),
+ * 그 대가가 더 컸다 — 지문을 반쯤 지운 상태가 그대로 저장되고, 잘못 고른 재능 영역을
+ * 되돌리려면 원래 값이 무엇이었는지 기억해 내야 했다.
+ *
+ * 대신 잊는 것은 나가는 길목에서 막는다. 손댄 채로 다른 화면으로 가려 하면 붙잡고
+ * 물어본다(components/admin2/EditGuard.tsx).
+ *
+ * ⚠ 검수로 제출하는 것은 **저장된 문항**을 보낸다. 그래서 손댄 채로는 제출할 수 없게
+ *   막는다 — 화면에 보이는 것과 검수자가 받는 것이 다르면 그 검수는 무의미하다.
  */
 export default function ItemDetail({ id }: { id: string }) {
   const items = useItems();
@@ -67,10 +75,24 @@ export default function ItemDetail({ id }: { id: string }) {
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [memo, setMemo] = useState("");
+  /** 고치는 중인 값. null이면 손대지 않았다는 뜻이다 */
+  const [draft, setDraft] = useState<Partial<ItemDraft> | null>(null);
 
   const item = items.find((i) => i.id === id);
+  /** 화면이 그리는 값 — 저장된 문항 위에 고치는 중인 값을 덮는다 */
+  const view = item && draft ? { ...item, ...draft } : item;
 
-  if (!item) {
+  const dirty = draft !== null;
+  const cancel = () => setDraft(null);
+  /** 표시용 태그(tagA·tagB)는 저장하는 순간 합쳐진 값으로 다시 만든다 */
+  const save = () => {
+    if (!item || !draft) return;
+    patchItem(item.id, { ...draft, ...syncTags({ ...item, ...draft }) });
+    setDraft(null);
+  };
+  const guard = useUnsavedGuard(dirty, save);
+
+  if (!item || !view) {
     return (
       <>
         <PageHead
@@ -93,70 +115,77 @@ export default function ItemDetail({ id }: { id: string }) {
     );
   }
 
-  const editable = item.state === "draft" || item.state === "rejected";
+  const editable = view.state === "draft" || view.state === "rejected";
   const by = prefs.staffName || "운영자";
-  const spec = levelSpecs[item.level];
   const std = standardIssue(item);
   const missing = missingFields(item);
   const ready = missing.length === 0;
-  const shipped = roundsOf(item.id, forms);
-  const talent = talents.find((t) => t.id === item.talent)!;
+  const shipped = roundsOf(view.id, forms);
+  const talent = talents.find((t) => t.id === view.talent)!;
 
-  /** 고친 값을 저장한다. 표시용 태그(tagA·tagB)는 값이 바뀔 때마다 다시 만든다 */
+  /** 고친 값을 초안에 담아 둔다. 저장소로 나가는 것은 save()뿐이다 */
   const set = (patch: Partial<ItemDraft>) => {
     if (!editable) return;
-    const next = { ...item, ...patch };
-    patchItem(item.id, { ...patch, ...syncTags(next) });
+    setDraft((d) => ({ ...(d ?? {}), ...patch }));
   };
 
-  const choiceType = item.type === "choice";
-  const needsRubric = item.type === "descriptive" || item.type === "essay";
+  const choiceType = view.type === "choice";
+  const needsRubric = view.type === "descriptive" || view.type === "essay";
 
   return (
       <>
         <PageHead
-          title={item.code || "문항 ID 미정"}
-          meta={
-            <>
-              <Status tone={itemTone[item.state]}>{stateLabel[item.state]}</Status>
-              <span aria-hidden>·</span>
-              <span>
-                {item.subject} · {item.band} · {item.level} {spec.name} · {typeLabel(item.type)}
-              </span>
-              <span aria-hidden>·</span>
-              <span className="a2-mono">
-                v{item.version} · {item.updatedAt}
-              </span>
-              {item.origin === "ai" && <Tag accent>AI 초안</Tag>}
-            </>
-          }
+          title={view.code || "문항 ID 미정"}
           actions={
             <>
               <Link href="/admin2/items" className="a2-btn">
                 목록
               </Link>
+              {/* 저장은 머리에 둔다. 문항 폼은 판 여럿에 걸쳐 길어서, 판 하나 아래에
+                  저장 줄을 붙이면 그 판만 저장하는 것으로 읽힌다 */}
+              {editable && (
+                <>
+                  <button type="button" className="a2-btn" disabled={!dirty} onClick={cancel}>
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="a2-btn a2-btn-primary"
+                    disabled={!dirty}
+                    onClick={save}
+                  >
+                    저장
+                  </button>
+                </>
+              )}
               {editable && (
                 <button
                   type="button"
-                  className="a2-btn a2-btn-primary"
-                  disabled={!ready}
-                  title={ready ? undefined : `${missing.join(" · ")}이(가) 남았습니다`}
-                  onClick={() => submitItem(item.id)}
+                  className="a2-btn"
+                  disabled={!ready || dirty}
+                  title={
+                    dirty
+                      ? "먼저 저장해 주세요 — 검수자는 저장된 문항을 받습니다"
+                      : ready
+                        ? undefined
+                        : `${missing.join(" · ")}이(가) 남았습니다`
+                  }
+                  onClick={() => submitItem(view.id)}
                 >
                   검수로 제출
                 </button>
               )}
-              {item.state === "submitted" && (
-                <button type="button" className="a2-btn" onClick={() => withdrawItem(item.id)}>
+              {view.state === "submitted" && (
+                <button type="button" className="a2-btn" onClick={() => withdrawItem(view.id)}>
                   제출 회수
                 </button>
               )}
-              {item.state === "approved" && (
+              {view.state === "approved" && (
                 <button
                   type="button"
                   className="a2-btn"
                   onClick={() => {
-                    const next = reviseApproved(item.id);
+                    const next = reviseApproved(view.id);
                     if (next) router.push(`/admin2/items/${next.id}`);
                   }}
                 >
@@ -177,7 +206,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">과목</span>
                     <select
                       className="a2-select"
-                      value={item.subject}
+                      value={view.subject}
                       disabled={!editable}
                       onChange={(e) => set({ subject: e.target.value as ItemDraft["subject"] })}
                     >
@@ -191,7 +220,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">학년군</span>
                     <select
                       className="a2-select"
-                      value={item.band}
+                      value={view.band}
                       disabled={!editable}
                       onChange={(e) => {
                         const band = e.target.value as GradeBand;
@@ -213,7 +242,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">단원</span>
                     <input
                       className="a2-input"
-                      value={item.unit}
+                      value={view.unit}
                       disabled={!editable}
                       onChange={(e) => set({ unit: e.target.value })}
                       placeholder="낱말의 의미 관계"
@@ -224,7 +253,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">단원 번호</span>
                     <input
                       className="a2-input a2-mono"
-                      value={item.unitNo}
+                      value={view.unitNo}
                       disabled={!editable}
                       onChange={(e) => set({ unitNo: e.target.value })}
                       placeholder="02"
@@ -238,18 +267,18 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">인지단계</span>
                     <select
                       className="a2-select"
-                      value={item.level}
+                      value={view.level}
                       disabled={!editable}
-                      onChange={(e) => editable && setLevel(item.id, e.target.value as Level)}
+                      onChange={(e) => editable && setLevel(view.id, e.target.value as Level)}
                     >
                       {LEVELS.map((l) => (
-                        <option key={l} value={l} disabled={!levelAllowed(item.talent, l)}>
+                        <option key={l} value={l} disabled={!levelAllowed(view.talent, l)}>
                           {l} {levelSpecs[l].name}
-                          {levelAllowed(item.talent, l) ? "" : " — 이 축은 출제 불가"}
+                          {levelAllowed(view.talent, l) ? "" : " — 이 축은 출제 불가"}
                         </option>
                       ))}
                     </select>
-                    <span className="a2-hint">{formatLine(item.level)}</span>
+                    <span className="a2-hint">{formatLine(view.level)}</span>
                   </label>
 
                   <div className="a2-field">
@@ -257,7 +286,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <div className="flex gap-1.5">
                       <input
                         className="a2-input a2-mono"
-                        value={item.code}
+                        value={view.code}
                         disabled={!editable}
                         onChange={(e) => set({ code: e.target.value })}
                         placeholder="4K02-S1-001"
@@ -270,7 +299,7 @@ export default function ItemDetail({ id }: { id: string }) {
                           set({
                             code: suggestCode(
                               item,
-                              items.filter((i) => i.subject === item.subject && i.level === item.level).length + 1,
+                              items.filter((i) => i.subject === view.subject && i.level === view.level).length + 1,
                             ),
                           })
                         }
@@ -285,7 +314,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">성취기준 코드 (Tag A)</span>
                     <input
                       className="a2-input a2-mono"
-                      value={item.standardCode}
+                      value={view.standardCode}
                       disabled={!editable}
                       onChange={(e) => set({ standardCode: e.target.value })}
                       placeholder="[4국04-02]"
@@ -300,7 +329,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">성취기준 내용</span>
                     <input
                       className="a2-input"
-                      value={item.standardText}
+                      value={view.standardText}
                       disabled={!editable}
                       onChange={(e) => set({ standardText: e.target.value })}
                       placeholder="낱말과 낱말의 의미 관계를 파악한다."
@@ -311,7 +340,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">Tag A 세부 — 이 문항이 재는 학력을 한 줄로</span>
                     <input
                       className="a2-input"
-                      value={item.tagADetail}
+                      value={view.tagADetail}
                       disabled={!editable}
                       onChange={(e) => set({ tagADetail: e.target.value })}
                       placeholder="비슷한 말 짝 식별"
@@ -322,7 +351,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">재능 축 (Tag B)</span>
                     <select
                       className="a2-select"
-                      value={item.talent}
+                      value={view.talent}
                       disabled={!editable}
                       onChange={(e) => {
                         /* 축을 바꾸면 하위요소는 그 축의 것으로 갈아 끼운다. 그대로 두면
@@ -344,18 +373,18 @@ export default function ItemDetail({ id }: { id: string }) {
                     <span className="a2-label">하위요소</span>
                     <select
                       className="a2-select"
-                      value={item.subskill}
+                      value={view.subskill}
                       disabled={!editable}
                       onChange={(e) => set({ subskill: e.target.value })}
                     >
-                      {subskillsOf(item.talent).map((s) => (
+                      {subskillsOf(view.talent).map((s) => (
                         <option key={s.code} value={s.code}>
                           {s.code} {s.name}
                         </option>
                       ))}
                     </select>
                     <span className="a2-hint">
-                      {subskillOf(item.subskill)?.grid[item.level] ?? "—"}
+                      {subskillOf(view.subskill)?.grid[view.level] ?? "—"}
                     </span>
                   </label>
                 </div>
@@ -368,7 +397,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <textarea
                       className="a2-textarea"
                       rows={3}
-                      value={item.passage}
+                      value={view.passage}
                       disabled={!editable}
                       onChange={(e) => set({ passage: e.target.value })}
                     />
@@ -379,7 +408,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <textarea
                       className="a2-textarea"
                       rows={2}
-                      value={item.stem}
+                      value={view.stem}
                       disabled={!editable}
                       onChange={(e) => set({ stem: e.target.value })}
                       placeholder="다음 중 두 낱말의 뜻이 서로 비슷한 것은?"
@@ -390,13 +419,13 @@ export default function ItemDetail({ id }: { id: string }) {
                     <div className="a2-field">
                       <span className="a2-label">보기 · 정답 · 오답이 잡는 오개념</span>
                       <ul className="mt-1 space-y-1.5">
-                        {item.choices.map((c, k) => (
+                        {view.choices.map((c, k) => (
                           <li key={k} className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1.5">
                             <label className="flex items-center gap-1.5 pl-0.5">
                               <input
                                 type="radio"
                                 name="answer"
-                                checked={item.answer === k}
+                                checked={view.answer === k}
                                 disabled={!editable}
                                 onChange={() => set({ answer: k })}
                                 aria-label={`${k + 1}번을 정답으로`}
@@ -408,21 +437,21 @@ export default function ItemDetail({ id }: { id: string }) {
                               value={c}
                               disabled={!editable}
                               onChange={(e) =>
-                                set({ choices: item.choices.map((x, n) => (n === k ? e.target.value : x)) })
+                                set({ choices: view.choices.map((x, n) => (n === k ? e.target.value : x)) })
                               }
                               placeholder={`${k + 1}번 보기`}
                             />
                             <input
                               className="a2-input"
-                              value={item.distractorIntent[k] ?? ""}
-                              disabled={!editable || item.answer === k}
+                              value={view.distractorIntent[k] ?? ""}
+                              disabled={!editable || view.answer === k}
                               onChange={(e) => {
-                                const next = [...item.distractorIntent];
-                                while (next.length < item.choices.length) next.push("");
+                                const next = [...view.distractorIntent];
+                                while (next.length < view.choices.length) next.push("");
                                 next[k] = e.target.value;
                                 set({ distractorIntent: next });
                               }}
-                              placeholder={item.answer === k ? "정답 — 적지 않습니다" : "이 오답이 잡는 오개념"}
+                              placeholder={view.answer === k ? "정답 — 적지 않습니다" : "이 오답이 잡는 오개념"}
                             />
                           </li>
                         ))}
@@ -433,12 +462,12 @@ export default function ItemDetail({ id }: { id: string }) {
                     </div>
                   )}
 
-                  {item.type === "short" && (
+                  {view.type === "short" && (
                     <label className="a2-field">
                       <span className="a2-label">허용 답안 — 쉼표로 나눠 적습니다</span>
                       <input
                         className="a2-input"
-                        value={item.shortAnswers}
+                        value={view.shortAnswers}
                         disabled={!editable}
                         onChange={(e) => set({ shortAnswers: e.target.value })}
                         placeholder="늘어난다, 커진다, 증가한다"
@@ -453,7 +482,7 @@ export default function ItemDetail({ id }: { id: string }) {
                       <textarea
                         className="a2-textarea"
                         rows={4}
-                        value={item.rubric}
+                        value={view.rubric}
                         disabled={!editable}
                         onChange={(e) => set({ rubric: e.target.value })}
                         placeholder={"근거 1점 + 일반화 1점 + 정당화 1점\n인정 예: …\n불인정 예: …"}
@@ -466,7 +495,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <textarea
                       className="a2-textarea"
                       rows={3}
-                      value={item.explain}
+                      value={view.explain}
                       disabled={!editable}
                       onChange={(e) => set({ explain: e.target.value })}
                       placeholder="정답 ②. 까닭까지 함께 적습니다."
@@ -478,7 +507,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     <textarea
                       className="a2-textarea"
                       rows={3}
-                      value={item.guidance}
+                      value={view.guidance}
                       disabled={!editable}
                       onChange={(e) => set({ guidance: e.target.value })}
                       placeholder="바꾸어 써도 뜻이 통하는지만 봅니다. 쓰임의 차이를 묻기 시작하면 S2로 이탈합니다."
@@ -493,8 +522,8 @@ export default function ItemDetail({ id }: { id: string }) {
                     /* 자동으로 보는 둘은 사람이 켜고 끄지 못한다. 켤 수 있게 두면 코드가
                        틀린 채로 체크만 켜고 제출하는 길이 열린다 */
                     const auto =
-                      c.id === "code" ? std.ok : c.id === "tagb" ? levelAllowed(item.talent, item.level) : null;
-                    const on = c.auto ? !!auto : item.checks.includes(c.id);
+                      c.id === "code" ? std.ok : c.id === "tagb" ? levelAllowed(view.talent, view.level) : null;
+                    const on = c.auto ? !!auto : view.checks.includes(c.id);
                     return (
                       <li key={c.id}>
                         <label className="flex items-start gap-2 py-0.5">
@@ -507,9 +536,9 @@ export default function ItemDetail({ id }: { id: string }) {
                             onChange={() => {
                               if (c.auto) return;
                               set({
-                                checks: item.checks.includes(c.id)
-                                  ? item.checks.filter((x) => x !== c.id)
-                                  : [...item.checks, c.id],
+                                checks: view.checks.includes(c.id)
+                                  ? view.checks.filter((x) => x !== c.id)
+                                  : [...view.checks, c.id],
                               });
                             }}
                           />
@@ -531,27 +560,27 @@ export default function ItemDetail({ id }: { id: string }) {
 
             {/* ── 오른쪽: 상태 · 검수 · 이력 ── */}
             <div className="grid content-start gap-3">
-              <Panel title="상태" meta={item.origin === "ai" ? "AI가 낸 초안" : "사람이 쓴 문항"}>
+              <Panel title="상태" meta={view.origin === "ai" ? "AI가 낸 초안" : "사람이 쓴 문항"}>
                 <DescList
                   rows={[
-                    { k: "상태", v: <Status tone={itemTone[item.state]}>{stateLabel[item.state]}</Status> },
-                    { k: "출제자", v: `${item.authorName} (${item.author})` },
-                    { k: "형식 · 배점", v: `${typeLabel(item.type)} · ${item.points}점 · b≈${item.b}` },
+                    { k: "상태", v: <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status> },
+                    { k: "출제자", v: `${view.authorName} (${view.author})` },
+                    { k: "형식 · 배점", v: `${typeLabel(view.type)} · ${view.points}점 · b≈${view.b}` },
                     {
                       k: "Tag B 좌표",
-                      v: <span className="a2-t-sm">{item.tagB || "—"}</span>,
+                      v: <span className="a2-t-sm">{view.tagB || "—"}</span>,
                     },
                     {
                       k: "앵커",
-                      v: item.anchor ? <Tag accent>앵커</Tag> : <span className="text-(--a2-ink-4)">아님</span>,
+                      v: view.anchor ? <Tag accent>앵커</Tag> : <span className="text-(--a2-ink-4)">아님</span>,
                     },
                     {
                       k: "정답률",
                       v:
-                        item.correctRate == null ? (
+                        view.correctRate == null ? (
                           <span className="text-(--a2-ink-4)">미출제</span>
                         ) : (
-                          <span className="a2-num">{item.correctRate}%</span>
+                          <span className="a2-num">{view.correctRate}%</span>
                         ),
                     },
                     {
@@ -561,17 +590,22 @@ export default function ItemDetail({ id }: { id: string }) {
                   ]}
                 />
 
+                {dirty && (
+                  <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-accent)" }}>
+                    저장하지 않은 변경이 있습니다. 머리의 저장을 눌러야 반영됩니다.
+                  </p>
+                )}
                 {editable && missing.length > 0 && (
                   <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-warn)" }}>
                     제출까지 남은 것 — {missing.join(" · ")}
                   </p>
                 )}
-                {item.state === "rejected" && (
+                {view.state === "rejected" && (
                   <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-danger)" }}>
                     반려된 문항입니다. 아래 검수 소견대로 고친 뒤 다시 제출하면 검수 목록으로 돌아갑니다.
                   </p>
                 )}
-                {item.state === "approved" && (
+                {view.state === "approved" && (
                   <p className="a2-note mt-2">
                     승인된 문항은 잠깁니다. 회차 편성에서 이 문항을 검사지에 담을 수 있습니다.
                   </p>
@@ -580,9 +614,9 @@ export default function ItemDetail({ id }: { id: string }) {
 
               {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
                   짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
-              {item.state === "submitted" && <ReviewPanel key={item.id} item={item} />}
+              {view.state === "submitted" && <ReviewPanel key={view.id} item={item} />}
 
-              {(item.state === "approved" || item.state === "retired") && (
+              {(view.state === "approved" || view.state === "retired") && (
                 <Panel title="승인 뒤 관리" meta="까닭이 기록에 남습니다">
                   <label className="a2-field">
                     <span className="a2-label">까닭</span>
@@ -595,26 +629,26 @@ export default function ItemDetail({ id }: { id: string }) {
                     />
                   </label>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {item.state === "approved" && (
+                    {view.state === "approved" && (
                       <>
                         <button
                           type="button"
                           className="a2-btn"
-                          disabled={reason.trim().length < 5 || !!item.disclosed}
-                          title={item.disclosed ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다" : undefined}
+                          disabled={reason.trim().length < 5 || !!view.disclosed}
+                          title={view.disclosed ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다" : undefined}
                           onClick={() => {
-                            setAnchor(item.id, !item.anchor, by, prefs.role, reason.trim());
+                            setAnchor(view.id, !view.anchor, by, prefs.role, reason.trim());
                             setReason("");
                           }}
                         >
-                          {item.anchor ? "앵커 해제" : "앵커로 지정"}
+                          {view.anchor ? "앵커 해제" : "앵커로 지정"}
                         </button>
                         <button
                           type="button"
                           className="a2-btn a2-btn-danger"
                           disabled={reason.trim().length < 5}
                           onClick={() => {
-                            retireItem(item.id, by, prefs.role, reason.trim());
+                            retireItem(view.id, by, prefs.role, reason.trim());
                             setReason("");
                           }}
                         >
@@ -622,13 +656,13 @@ export default function ItemDetail({ id }: { id: string }) {
                         </button>
                       </>
                     )}
-                    {item.state === "retired" && (
+                    {view.state === "retired" && (
                       <button
                         type="button"
                         className="a2-btn"
                         disabled={reason.trim().length < 5}
                         onClick={() => {
-                          restoreItem(item.id, by, prefs.role, reason.trim());
+                          restoreItem(view.id, by, prefs.role, reason.trim());
                           setReason("");
                         }}
                       >
@@ -636,20 +670,20 @@ export default function ItemDetail({ id }: { id: string }) {
                       </button>
                     )}
                   </div>
-                  {item.retireReason && (
+                  {view.retireReason && (
                     <p className="a2-note mt-2">
-                      {item.retiredAt} · {item.retiredBy} — {item.retireReason}
+                      {view.retiredAt} · {view.retiredBy} — {view.retireReason}
                     </p>
                   )}
                 </Panel>
               )}
 
-              <Panel title="검수 이력" meta={`${item.reviews.length}회`} flush>
-                {item.reviews.length === 0 ? (
+              <Panel title="검수 이력" meta={`${view.reviews.length}회`} flush>
+                {view.reviews.length === 0 ? (
                   <p className="p-3 a2-t-sm text-(--a2-ink-4)">아직 검수를 거치지 않았습니다.</p>
                 ) : (
                   <ul className="divide-y divide-(--a2-line)">
-                    {[...item.reviews].reverse().map((r) => (
+                    {[...view.reviews].reverse().map((r) => (
                       <li key={`${r.at}-${r.round}`} className="p-2.5">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <Status tone={r.verdict === "approve" ? "ok" : "danger"}>
@@ -695,16 +729,16 @@ export default function ItemDetail({ id }: { id: string }) {
                     className="a2-btn"
                     disabled={memo.trim().length < 2}
                     onClick={() => {
-                      addComment(item.id, by, prefs.role, memo.trim());
+                      addComment(view.id, by, prefs.role, memo.trim());
                       setMemo("");
                     }}
                   >
                     메모 남기기
                   </button>
                 </div>
-                {item.comments.length > 0 && (
+                {view.comments.length > 0 && (
                   <ul className="mt-2 divide-y divide-(--a2-line) border-t border-(--a2-line)">
-                    {[...item.comments].reverse().map((c, k) => (
+                    {[...view.comments].reverse().map((c, k) => (
                       <li key={`${c.at}-${k}`} className="py-1.5">
                         <p className="a2-t-xs text-(--a2-ink-4)">
                           <span className="a2-mono">{c.at}</span> · {c.by} ·{" "}
@@ -720,6 +754,7 @@ export default function ItemDetail({ id }: { id: string }) {
           </div>
 
         </Body>
+      <LeaveDialog guard={guard} />
       <SeedNote>
         문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항 API로 갈아 끼웁니다. 형식 ·
         배점 · b모수는 인지단계에서 자동으로 따라오며 손으로 고칠 수 없습니다 — 발주서 §1 고정 매핑입니다.

@@ -6,13 +6,27 @@ import type { SignupTypeId } from "./account";
 /**
  * 가입 진행 상태.
  *
- * 사이트맵이 ACC-01-1(유형) · ACC-01-2(본인확인) · ACC-01-3(약관·동의)를 각각
- * 별도 URL로 정의하고 있어, 한 화면짜리 위저드가 아니라 실제 라우트로 나눈다.
- * 그래서 단계 사이를 넘어다닐 값을 여기에 담아 둔다.
+ * 화면은 둘뿐이다 — 유형을 고르는 /signup/type과 나머지를 한 장에서 받는
+ * /signup/join. 한때는 약관 동의와 본인확인을 각각 별도 주소로 나눈 다단계 흐름이
+ * 함께 있었지만, 같은 가입이 두 길로 갈려 있으면 어느 쪽이 정본인지 알 수 없게 되어
+ * 한 장짜리로 확정했다. 여기 담기는 값은 그 두 화면 사이를 건너가는 것들이다.
  */
 
 export type SignupDraft = {
   type: SignupTypeId | null;
+  /**
+   * 학생이 「만 14세 이상」 갈래를 스스로 골랐는가.
+   *
+   * 유형 선택에서 학생 카드를 누르면 true가 된다. 그 카드에 만 14세 이상이라고 적혀
+   * 있으므로, 누르는 행위 자체가 본인의 신고다. 예전에는 생년월일을 손으로 받아
+   * 화면에서 만 나이를 계산했는데, 그 값은 언제든 아무렇게나 적을 수 있는 숫자였다.
+   *
+   * **판정은 이 값이 하지 않는다.** 뒤따르는 휴대폰 본인인증(PASS)이 돌려주는
+   * 생년월일이 최종 판정이고, 거기서 만 14세 미만으로 확인되면 가입을 멈추고
+   * 법정대리인 동의 경로(/signup/guardian)로 넘긴다. 이 값은 「학생 갈래를 거쳐
+   * 들어왔는가」를 확인하는 문턱일 뿐이다.
+   */
+  selfAgeOk: boolean;
   /** 간편 로그인 제공자. 아이디 가입이면 null */
   provider: string | null;
   name: string;
@@ -33,6 +47,7 @@ export type SignupDraft = {
 
 const EMPTY: SignupDraft = {
   type: null,
+  selfAgeOk: false,
   provider: null,
   name: "",
   phone: "",
@@ -84,25 +99,4 @@ export function patchSignupDraft(patch: Partial<SignupDraft>) {
 export function clearSignupDraft() {
   window.localStorage.removeItem(KEY);
   window.dispatchEvent(new Event(EVENT));
-}
-
-/**
- * 각 단계에 들어가기 전에 앞 단계가 끝났는지 확인한다.
- *
- * 순서는 디자인 원본을 따른다 —
- *   STEP 1 회원 유형 → STEP 2 약관 동의 → STEP 3 본인확인·법정대리인 동의 → STEP 4 완료.
- * 약관을 본인확인보다 앞에 두는 이유는, 동의하지 않을 사람에게서 휴대폰 번호를
- * 먼저 받지 않기 위해서다.
- */
-export function stepGuard(draft: SignupDraft, step: "consent" | "verify" | "done") {
-  if (!draft.type) return { ok: false, back: "/signup/type", why: "회원 유형을 먼저 골라 주세요." };
-  if (step === "consent") return { ok: true, back: "", why: "" };
-
-  if (draft.consents.length === 0)
-    return { ok: false, back: "/signup/consent", why: "약관 동의를 먼저 마쳐 주세요." };
-  if (step === "verify") return { ok: true, back: "", why: "" };
-
-  if (!draft.verified)
-    return { ok: false, back: "/signup/verify", why: "본인확인을 먼저 마쳐 주세요." };
-  return { ok: true, back: "", why: "" };
 }

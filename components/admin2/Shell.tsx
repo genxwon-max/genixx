@@ -8,6 +8,7 @@ import { roleOf } from "@/lib/admin";
 import { adminSignOut, useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { useItems } from "@/lib/itemStore";
+import { usePendingApprovals } from "@/lib/approvalStore";
 import ConsoleGate from "./ConsoleGate";
 import Palette from "./Palette";
 
@@ -40,11 +41,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
      센 값으로 박아 두면 「문항 검수 3」을 눌렀는데 다섯 줄인 화면이 된다.
      껍데기가 클라이언트 컴포넌트이므로 여기서 살아 있는 목록을 세어 넘긴다.
      세는 조건은 각 화면이 목록을 고르는 조건과 같아야 한다 — 출제는 작성 중+반려됨,
-     검수는 검수 대기다(authoring/AuthoringView.tsx · review/ReviewQueue.tsx). */
+     검수는 검수 대기, 가입 승인은 아직 처리하지 않은 신청이다. */
   const items = useItems();
   const live = {
     drafts: items.filter((i) => i.state === "draft" || i.state === "rejected").length,
     review: items.filter((i) => i.state === "submitted").length,
+    approvals: usePendingApprovals(),
   };
   const pathname = usePathname();
   const [open, setOpen] = useState(false);

@@ -206,16 +206,9 @@ const COLS: Col<InquiryRow>[] = [
 
 /* 거르개 차림표는 실제로 등장한 값에서만 뽑는다. 골라도 0줄이 나오는 선택지가 하나라도
    있으면 거르개 전체를 못 믿게 된다 */
+/* 상태와 목표 초과는 머리의 탭이 맡는다(InquiriesView). 같은 조건을 두 군데서 걸면
+   탭에서 「처리중」을 고른 채 거르개에서 「미배정」을 골라 0줄이 나온다 */
 const FILTERS: Filter<InquiryRow>[] = [
-  {
-    id: "state",
-    label: "상태",
-    options: STATE_ORDER.filter((s) => inquiries.some((i) => i.state === s)).map((s) => ({
-      value: s,
-      label: inquiryStates[s].label,
-    })),
-    match: (r, v) => r.state === v,
-  },
   {
     id: "channel",
     label: "채널",
@@ -225,27 +218,22 @@ const FILTERS: Filter<InquiryRow>[] = [
     })),
     match: (r, v) => r.channel === v,
   },
-  {
-    // 「목표 안쪽만」은 두지 않는다. 아무도 찾지 않는 묶음이라 차림표만 길어진다
-    id: "overdue",
-    label: "목표",
-    options: [{ value: "over", label: "초과만" }],
-    match: (r, v) => (v === "over" ? r.overdue : true),
-  },
 ];
 
-export default function InquiriesTable() {
+/** 기본 차례(목표 초과 → 미배정 → 오래 기다린 순)로 세운 목록 — 탭이 이것을 잘라 쓴다 */
+export const inquiryRows = ROWS;
+
+export default function InquiriesTable({ rows, empty }: { rows: InquiryRow[]; empty: string }) {
   return (
     <DataTable
-      rows={ROWS}
+      rows={rows}
       cols={COLS}
       getKey={(r) => r.id}
       filters={FILTERS}
       searchHint="문의 ID · 제목 · 작성자 · 분류"
-      empty="조건에 맞는 문의가 없습니다."
-      // 넘긴 순서가 무엇인지 적어 둔다. 적지 않으면 머리 행의 정렬 화살표가 전부 꺼져
-      // 있는데 줄 차례는 접수순이 아니어서, 표가 고장 난 것처럼 읽힌다
-      toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기본 차례 · 목표 초과 → 미배정 → 오래 기다린 순</span>}
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

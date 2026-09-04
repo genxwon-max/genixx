@@ -4,12 +4,7 @@ import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable"
 import { Status, Tag } from "@/components/admin2/ui";
 import { accountTone } from "@/lib/admin2";
 import { roleOf, staffRoles } from "@/lib/admin";
-import {
-  staffDirectory,
-  userStateLabel,
-  userStateOptions,
-  type StaffMember,
-} from "@/lib/adminUsers";
+import { userStateLabel, type StaffMember } from "@/lib/adminUsers";
 
 /*
  * ADM-03 운영자 목록.
@@ -35,11 +30,6 @@ import {
  *   읽혀 채우라는 요구가 따라온다.
  * · 비밀번호 마지막 변경·접속 IP 칸도 없다. 있으면 좋을 칸이지만 데이터가 없다.
  */
-
-/* 상태 선택지는 실제로 등장한 값에서만 뽑는다 — 운영자에는 「승인 대기」도 「탈퇴」도 없다.
-   골라도 0줄이 나오는 선택지가 하나라도 있으면 거르개 전체를 못 믿게 된다 */
-const presentStates = new Set(staffDirectory.map((s) => s.state));
-const stateOptions = userStateOptions.filter((o) => presentStates.has(o.value));
 
 const cols: Col<StaffMember>[] = [
   {
@@ -150,6 +140,9 @@ const cols: Col<StaffMember>[] = [
 
 /* 거르개 셋. 「2단계 인증」은 켬/끔 두 갈래가 아니라 끈 계정만 남기는 한 갈래로 둔다 —
    켠 계정만 모아 보는 일은 없고, 이 거르개를 여는 이유는 언제나 하나이기 때문이다 */
+/* 계정 상태와 2단계 인증은 머리의 탭이 맡는다(StaffView). 같은 조건을 두 군데서 걸면
+   탭에서 「2단계 미설정」을 고른 채 거르개에서 「켠 계정」을 골라 0줄이 나온다.
+   역할은 넷이라 탭으로 올리지 않고 여기 그대로 둔다 */
 const filters: Filter<StaffMember>[] = [
   {
     id: "role",
@@ -157,19 +150,12 @@ const filters: Filter<StaffMember>[] = [
     options: staffRoles.map((r) => ({ value: r.id, label: r.short })),
     match: (r, v) => r.role === v,
   },
-  { id: "state", label: "상태", options: stateOptions, match: (r, v) => r.state === v },
-  {
-    id: "mfa",
-    label: "2단계 인증",
-    options: [{ value: "off", label: "끈 계정만" }],
-    match: (r, v) => (v === "off" ? !r.mfa : true),
-  },
 ];
 
-export default function StaffTable() {
+export default function StaffTable({ rows, empty }: { rows: StaffMember[]; empty: string }) {
   return (
     <DataTable
-      rows={staffDirectory}
+      rows={rows}
       cols={cols}
       filters={filters}
       getKey={(r) => r.id}
@@ -177,7 +163,9 @@ export default function StaffTable() {
       // 세는 화면에서 마지막 세 줄이 다음 쪽에 숨는 것은 이득이 없다
       pageSize={50}
       searchHint="이름 · 계정 ID · 로그인 아이디"
-      empty="조건에 맞는 운영자가 없습니다."
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

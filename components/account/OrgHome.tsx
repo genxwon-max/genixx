@@ -4,7 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useSession } from "@/lib/authStore";
-import { formatCode, useRoster } from "@/lib/roster";
+import {
+  canSitStudent,
+  formatCode,
+  isUnderConsentAge,
+  requestGuardianConsent,
+  useRoster,
+} from "@/lib/roster";
+import { CONSENT_AGE, guardianConsentInfo, orgApprovalMeans } from "@/lib/account";
+import { createGuardianRequest, latestRequestFor } from "@/lib/guardianRequest";
 import { useHydrated } from "@/lib/examStore";
 import { phaseTone, progressOf } from "@/lib/progress";
 import { themeOf, type Variant } from "@/lib/authVariant";
@@ -20,6 +28,11 @@ import { EmptyChild } from "./AuthArt";
  * 같은 장이 못박은 원칙도 함께 지킨다 — 학생 개인 상세는 학부모 동의 범위 안에서만
  * 보여 주고, 기본 제공은 비식별 집단 통계로 한정한다. 그래서 답안·결과는 열지 않고
  * 과목 제출 수만 표시하며, 최소 인원 미만이면 집단 통계를 내지 않는다.
+ *
+ * 여기에 **보호자 동의 현황**이 한 칸으로 들어간다. 기관은 만 14세 미만 학생의
+ * 동의를 대신할 수 없으므로, 이 화면이 할 수 있는 일은 「지금 몇 명이 어느 상태인가」를
+ * 보여 주고 「동의 요청을 다시 보내는 것」까지다. 동의 버튼은 법정대리인의 화면에만
+ * 있다.
  *
  * 권한은 기관담당자(I)와 교사(T) 둘 다. 승인 전 계정은 여기 서지 못하고 승인 진행
  * 화면(/my/pending)으로 넘어간다.
@@ -73,12 +86,35 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
     );
   }
 
-  const rows = students.map(progressOf);
+  /** 동의가 끝난 학생만 응시 진척에 센다. 나머지는 아직 시험을 볼 수 없다 */
+  const active = students.filter(canSitStudent);
+  const rows = active.map(progressOf);
   const submittedAll = rows.filter((r) => r.submitted >= r.total).length;
   const notStarted = rows.filter((r) => r.phase === "미응시");
   const running = rows.filter((r) => r.phase === "응시중");
   const rate = rows.length ? Math.round((submittedAll / rows.length) * 100) : 0;
   const enoughForStats = rows.length >= MIN_GROUP;
+
+  /* 보호자 동의 현황 */
+  const holding = students.filter((s) => !canSitStudent(s));
+  const waiting = students.filter((s) => s.consent === "waiting");
+  const temp = students.filter((s) => s.consent === "temp");
+  const stopped = students.filter(
+    (s) => s.consent === "declined" || s.consent === "revoked" || s.consent === "expired",
+  );
+
+  const resend = (id: string, name: string, gName?: string, gPhone?: string) => {
+    if (!gPhone) return;
+    createGuardianRequest({
+      guardianName: gName || "보호자",
+      guardianPhone: gPhone,
+      childLabel: name,
+      origin: "org",
+      originName: session?.org ?? "소속 기관",
+      studentId: id,
+    });
+    requestGuardianConsent(id);
+  };
 
   return (
     <>
@@ -90,8 +126,8 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
             {session?.org ?? "소속 기관"}
           </h1>
           <p className={`mt-2 text-[13px] ${t.muted}`}>
-            {config.roundLabel} · 등록 {students.length}명 · 개인 상세는 보호자 동의 범위 안에서만
-            열립니다
+            {config.roundLabel} · 등록 {students.length}명 · 응시 가능 {active.length}명 · 개인
+            상세는 보호자 동의 범위 안에서만 열립니다
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
@@ -108,13 +144,16 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
       <div className="mt-7 grid gap-3 sm:grid-cols-4">
         {[
           { k: "등록 학생", v: `${students.length}명` },
+          { k: "보호자 동의 대기", v: `${waiting.length + temp.length}명` },
           { k: "응시 진행 중", v: `${running.length}명` },
-          { k: "전 과목 제출", v: `${submittedAll}명` },
-          { k: "제출률", v: `${rate}%` },
+          { k: "제출률", v: `${rate}%`, sub: `전 과목 제출 ${submittedAll}명` },
         ].map((s) => (
           <div key={s.k} className={`${t.card} p-5`}>
             <p className={`text-[13px] font-semibold ${t.muted}`}>{s.k}</p>
             <p className="mt-1.5 text-[24px] font-bold tabular-nums">{s.v}</p>
+            {"sub" in s && s.sub ? (
+              <p className={`mt-0.5 text-[12px] ${t.muted}`}>{s.sub}</p>
+            ) : null}
           </div>
         ))}
       </div>
@@ -125,7 +164,8 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
           <p className="mt-6 text-[18px] font-bold">등록된 학생이 없어요.</p>
           <p className={`mx-auto mt-2.5 max-w-md text-[14px] leading-[1.7] ${t.muted}`}>
             명부에 학생을 올리면 접속코드가 발급됩니다. 한 명씩 추가하거나 CSV로 한 번에 올릴 수
-            있습니다. 학생은 따로 가입하지 않습니다.
+            있습니다. 만 {CONSENT_AGE}세 미만 학생은 임시등록으로 올라가고, 법정대리인 동의가
+            확인되어야 응시가 열립니다.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-2.5">
             <Link href="/my/students?tab=one" className={t.btnOutline}>
@@ -138,6 +178,87 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
         </section>
       ) : (
         <>
+          {/* 보호자 동의 현황 — 기관이 할 수 있는 일은 요청을 보내는 것까지다 */}
+          <section className="mt-7">
+            <SectionTitle
+              note="동의 버튼은 법정대리인의 화면에만 있습니다. 기관은 요청을 보내고 상태를 볼 수 있을 뿐, 보호자를 대신해 동의할 수 없습니다."
+              right={
+                <Link href="/my/students" className={t.btnQuiet}>
+                  명부에서 관리
+                </Link>
+              }
+            >
+              보호자 동의 현황
+            </SectionTitle>
+
+            <div className={`${t.card} overflow-hidden`}>
+              {holding.length === 0 ? (
+                <p className={`px-5 py-6 text-[14px] ${t.muted}`}>
+                  동의를 기다리는 학생이 없습니다. 등록된 학생 모두 응시할 수 있는 상태입니다.
+                </p>
+              ) : (
+                <ul className={`divide-y ${divide}`}>
+                  {holding.map((s) => {
+                    const info = guardianConsentInfo[s.consent];
+                    const req = latestRequestFor(s.id);
+                    return (
+                      <li
+                        key={s.id}
+                        className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5"
+                      >
+                        <span className="text-[15px] font-bold">{s.name}</span>
+                        <span className={`text-[13px] ${t.muted}`}>
+                          {isUnderConsentAge(s)
+                            ? `만 ${CONSENT_AGE}세 미만`
+                            : `만 ${CONSENT_AGE}세 이상`}
+                        </span>
+                        <span className={`text-[13px] font-bold ${info.tone}`}>{info.label}</span>
+                        <span className="ml-auto flex flex-wrap items-center gap-2">
+                          {s.guardianPhone ? (
+                            (s.consent === "temp" ||
+                              s.consent === "waiting" ||
+                              s.consent === "expired") && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  resend(s.id, s.name, s.guardianName, s.guardianPhone)
+                                }
+                                className={t.btnQuiet}
+                              >
+                                {s.consent === "temp" ? "동의 요청 발송" : "재발송"}
+                              </button>
+                            )
+                          ) : (
+                            <span className={`text-[12.5px] ${t.muted}`}>
+                              법정대리인 연락처가 없어 요청을 보낼 수 없습니다
+                            </span>
+                          )}
+                          {s.consent === "waiting" && req && (
+                            <a
+                              href={`/consent/guardian?req=${req.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={t.btnQuiet}
+                            >
+                              동의 링크 열기 (시연)
+                            </a>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {stopped.length > 0 && (
+              <p className={`mt-3 text-[13px] leading-[1.7] ${t.muted}`}>
+                동의 거절·철회·만료로 멈춰 있는 학생이 {stopped.length}명 있습니다. 해당 학생의
+                정보는 삭제하거나 비활성 처리해야 하며, 결과 조회도 열리지 않습니다.
+              </p>
+            )}
+          </section>
+
           {/* 미완료자 */}
           <section className="mt-7">
             <SectionTitle
@@ -153,7 +274,9 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
             <div className={`${t.card} overflow-hidden`}>
               {notStarted.length === 0 ? (
                 <p className={`px-5 py-6 text-[14px] ${t.muted}`}>
-                  모든 학생이 응시를 시작했습니다.
+                  {rows.length === 0
+                    ? "아직 응시할 수 있는 학생이 없습니다. 보호자 동의가 확인되면 여기에 나타납니다."
+                    : "모든 학생이 응시를 시작했습니다."}
                 </p>
               ) : (
                 <ul className={`divide-y ${divide}`}>
@@ -236,6 +359,27 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
           </section>
         </>
       )}
+
+      {/* 기관 승인이 뜻하는 것 */}
+      <section className={`${t.cardSoft} mt-8 p-5`}>
+        <h2 className="text-[16px] font-bold">운영진의 기관 승인이 확인한 것</h2>
+        <div className="mt-3 grid gap-5 sm:grid-cols-2">
+          <ul className="flex flex-col gap-1.5">
+            {orgApprovalMeans.yes.map((y) => (
+              <li key={y} className={`text-[13px] leading-[1.7] ${t.muted}`}>
+                ✓ {y}
+              </li>
+            ))}
+          </ul>
+          <ul className="flex flex-col gap-1.5">
+            {orgApprovalMeans.no.map((n) => (
+              <li key={n} className={`text-[13px] leading-[1.7] ${t.muted}`}>
+                ✕ {n}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       {/* 바로가기 */}
       <section className="mt-8">

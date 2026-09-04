@@ -8,33 +8,18 @@ import { Bar, Kpi, Panel, Status } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
 
 /**
- * 대시보드 ② 「회차는 어디까지 왔나」와 머리의 지금 회차 한 줄.
+ * 대시보드 ② 「회차는 어디까지 왔나」.
  *
  * 회차 상태와 기간은 편성 기록(lib/roundPlanStore.ts)이 브라우저에 들고 있다. 서버에서
  * 그리면 씨앗값이 나와, 편성 화면에서 회차를 연 직후 대시보드만 「준비중」이라고 말한다.
- * 대시보드에서 그것이 가장 나쁜 고장이라 이 두 조각만 클라이언트로 내렸다.
+ * 대시보드에서 그것이 가장 나쁜 고장이라 이 조각들만 클라이언트로 내렸다.
+ *
+ * 한동안 화면 제목 아래에도 지금 회차 한 줄(이름·기간·상태)을 붙여 두었다. 그 줄은
+ * 걷어 냈다 — 같은 값이 바로 아래 회차 표에 이미 서 있다.
  *
  * 대상·제출·판정·발행 숫자는 예시 그대로다(lib/admin.ts). 그 값들은 응시와 채점이
  * 붙어야 생기는 것이라 지금 저장소에 없다.
  */
-
-/** 머리에 붙는 지금 회차 */
-export function CurrentRoundMeta() {
-  const plans = usePlans();
-  const r = useCurrentRound();
-  const plan = planOf(plans, r.id);
-  return (
-    <>
-      <span>{r.label}</span>
-      <span aria-hidden>·</span>
-      <span className="a2-mono">
-        {plan.opensOn} – {plan.closesOn}
-      </span>
-      <span aria-hidden>·</span>
-      <Status tone={roundTone[plan.state]}>{roundStates[plan.state].label}</Status>
-    </>
-  );
-}
 
 /**
  * 지표 넉 줄 중 셋째 칸 — 지금 회차의 제출률.

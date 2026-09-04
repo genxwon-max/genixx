@@ -90,56 +90,6 @@ export function Field({
   );
 }
 
-/* ── 진행 단계 (원본 3b~3d의 가로 4칸 바) ── */
-export const signupStepLabels = [
-  "회원 유형 선택",
-  "약관 동의",
-  "본인확인·법정대리인 동의",
-  "가입 완료",
-];
-
-export function StepBar({
-  current,
-  labels = signupStepLabels,
-}: {
-  current: number;
-  labels?: string[];
-}) {
-  return (
-    <ol className="flex flex-col overflow-hidden rounded-[14px] border border-soft-line bg-white sm:flex-row">
-      {labels.map((label, i) => {
-        const done = i < current;
-        const now = i === current;
-        return (
-          <li
-            key={label}
-            aria-current={now ? "step" : undefined}
-            className={`flex flex-1 items-center gap-2.5 border-soft-line px-5 py-4 first:border-l-0 first:border-t-0 sm:border-l ${
-              i > 0 ? "border-t sm:border-t-0" : ""
-            } ${now ? "bg-soft-primary text-white" : done ? "text-soft-primary" : "text-slate-400"}`}
-          >
-            <span
-              aria-hidden
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
-                now
-                  ? "bg-white text-soft-primary"
-                  : done
-                    ? "bg-soft-primary-soft text-soft-primary"
-                    : "border border-soft-line"
-              }`}
-            >
-              {done ? "✓" : i + 1}
-            </span>
-            <span className={`text-[14px] ${now ? "font-bold" : done ? "font-semibold" : ""}`}>
-              {label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 /** 화면 제목 줄 — 왼쪽 제목, 오른쪽 필수항목 안내 */
 export function SectionTitle({
   title,
@@ -154,26 +104,6 @@ export function SectionTitle({
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <h2 className="text-[22px] font-bold tracking-tight text-soft-ink">{title}</h2>
       {note && <p className="text-[13px] text-soft-muted">{note}</p>}
-    </div>
-  );
-}
-
-/** 하단 중앙 고정 버튼 쌍 */
-export function StepFooter({
-  back,
-  children,
-}: {
-  back?: { href: string; label?: string };
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col-reverse justify-center gap-3 border-t border-slate-100 pt-6 sm:flex-row">
-      {back && (
-        <Link href={back.href} className={btnOutline}>
-          {back.label ?? "이전"}
-        </Link>
-      )}
-      {children}
     </div>
   );
 }

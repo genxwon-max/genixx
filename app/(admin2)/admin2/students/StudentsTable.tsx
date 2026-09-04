@@ -4,20 +4,21 @@ import Link from "next/link";
 import { useMemo } from "react";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status } from "@/components/admin2/ui";
-import { examTone, studentAccountTone } from "@/lib/admin2";
-import { examStateLabel, userStateLabel, type ExamState, type StudentRow } from "@/lib/adminUsers";
-import { useStudents } from "@/lib/directoryStore";
+import { studentAccountTone } from "@/lib/admin2";
+import { userStateLabel, type StudentRow } from "@/lib/adminUsers";
 
 /*
  * ADM-02-1의 표. DataTable이 함수 prop(cell·value·match)을 받으므로 클라이언트다.
  *
  * ── 칸 순서를 이렇게 정한 이유 ──
  * 왼쪽 넷(ID · 이름 · 접속코드 · 학교)은 「이 학생이 맞나」를 확인하는 칸이고,
- * 오른쪽 넷(응시 상태 · 계정 상태 · 등록일 · 동작)은 「무엇을 해 줘야 하나」를 정하는
- * 칸이다. 접속코드를 이름 바로 옆에 붙인 것은 전화로 오는 문의가 대부분
- * 「코드가 안 먹는다」이고, 그때 운영자가 눈으로 잇는 것이 이름↔코드 두 값이기 때문이다.
+ * 오른쪽 셋(계정 상태 · 등록일 · 동작)은 「무엇을 해 줘야 하나」를 정하는 칸이다.
+ * 접속코드를 이름 바로 옆에 붙인 것은 전화로 오는 문의가 대부분 「코드가 안 먹는다」이고,
+ * 그때 운영자가 눈으로 잇는 것이 이름↔코드 두 값이기 때문이다.
  *
  * ── 일부러 뺀 것 ──
+ * · 응시 상태 — 위 탭이 이미 그 축으로 목록을 가른다. 탭으로 좁혀 놓고 같은 값을 칸으로
+ *   또 세우면, 148줄이 전부 같은 상태인 표에 그 상태가 148번 적힌다.
  * · 생년월일 — 목록에 두지 않기로 한 값(page.tsx 머리 주석).
  * · 보호자 연락처 — 데이터에 가려진 형태로 있지만, 학생 목록에서 보호자에게 전화할
  *   일은 코드 재발급뿐이고 그것은 보호자 계정(ADM-02)에서 한다. 여기 두면 148줄에
@@ -26,13 +27,8 @@ import { useStudents } from "@/lib/directoryStore";
  *   글자로만 적고 정렬·거르개로 다룬다.
  */
 
-/** 진행 순서 — 정렬을 가나다순이 아니라 응시가 진행된 순서로 세우려고 둔다 */
-const EXAM_ORDER: ExamState[] = ["not-started", "in-progress", "submitted", "reported"];
-
 /** 초3 → 중1 순. 「중」이 「초」보다 앞서는 가나다순으로는 학년이 뒤집힌다 */
 const gradeRank = (g: string) => (g.startsWith("초") ? 0 : 10) + Number(g.replace(/\D/g, ""));
-
-
 
 const cols: Col<StudentRow>[] = [
   {
@@ -96,15 +92,6 @@ const cols: Col<StudentRow>[] = [
     ),
   },
   {
-    key: "exam",
-    head: "응시 상태",
-    width: "6.5rem",
-    nowrap: true,
-    value: (s) => examStateLabel[s.exam].label,
-    sort: (s) => EXAM_ORDER.indexOf(s.exam),
-    cell: (s) => <Status tone={examTone[s.exam]}>{examStateLabel[s.exam].label}</Status>,
-  },
-  {
     key: "state",
     head: "계정 상태",
     width: "5.5rem",
@@ -140,11 +127,10 @@ const cols: Col<StudentRow>[] = [
   },
 ];
 
-export default function StudentsTable() {
-  /* 줄은 씨앗 명부가 아니라 「씨앗 + 고친 것」을 받는다(lib/directoryStore.ts).
-     상세에서 학년을 고치거나 정지해 놓고 돌아왔을 때 목록이 옛 값을 세우고 있으면,
-     눌러서 고친 것을 화면이 안 돌려주는 셈이 되어 고친 것 자체를 못 믿게 된다 */
-  const rows = useStudents();
+/* 줄은 머리(StudentsView)가 탭으로 잘라 넘긴다. 씨앗 명부가 아니라 「씨앗 + 고친 것」이
+   올라오는 것은 그대로다(lib/directoryStore.ts) — 상세에서 학년을 고치거나 정지해 놓고
+   돌아왔을 때 목록이 옛 값을 세우고 있으면, 고친 것 자체를 못 믿게 된다 */
+export default function StudentsTable({ rows, empty }: { rows: StudentRow[]; empty: string }) {
 
   /* 거르개 값은 데이터에서 뽑는다 — userStateLabel의 다섯 상태를 그대로 세우면
      학생에게는 없는 「승인 대기·정지·탈퇴」가 골라도 늘 0줄인 선택지로 남는다. */
@@ -152,13 +138,9 @@ export default function StudentsTable() {
     const grades = [...new Set(rows.map((r) => r.grade))].sort((a, b) => gradeRank(a) - gradeRank(b));
     const states = [...new Set(rows.map((r) => r.state))];
 
+    /* 응시 상태는 머리의 탭이 맡는다(StudentsView). 같은 조건을 두 군데서 걸면
+       탭에서 「미응시」를 고른 채 거르개에서 「제출 완료」를 골라 0줄이 나온다 */
     return [
-      {
-        id: "exam",
-        label: "응시",
-        options: EXAM_ORDER.map((v) => ({ value: v, label: examStateLabel[v].label })),
-        match: (r, v) => r.exam === v,
-      },
       {
         id: "grade",
         label: "학년",
@@ -181,7 +163,9 @@ export default function StudentsTable() {
       getKey={(s) => s.id}
       filters={filters}
       searchHint="이름 · 접속코드 · 학교 · 보호자"
-      empty="조건에 맞는 학생이 없습니다."
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

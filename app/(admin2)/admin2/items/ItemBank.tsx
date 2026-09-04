@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LEVELS, gradeBands, levelSpecs, type Level } from "@/lib/blueprint";
-import { itemTone, n, pct } from "@/lib/admin2";
+import { useMemo, useState } from "react";
+import { LEVELS, gradeBands, levelSpecs } from "@/lib/blueprint";
+import { itemTone, n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
 import {
   addItem,
@@ -14,7 +15,7 @@ import {
   type ItemState,
 } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { Kpi, PageHead, SeedNote, Status, Tag } from "@/components/admin2/ui";
+import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 
 /**
  * ADM-04 문항 은행의 목록판.
@@ -189,13 +190,9 @@ const COLS: Col<ItemDraft>[] = [
   },
 ];
 
+/* 상태는 머리의 탭이 맡는다. 같은 조건을 두 군데서 걸면 탭에서 「승인됨」을 고른 채
+   거르개에서 「작성 중」을 골라 0줄이 나오고, 어느 쪽이 이겼는지 화면에 안 적힌다 */
 const FILTERS: Filter<ItemDraft>[] = [
-  {
-    id: "state",
-    label: "상태",
-    options: STATE_ORDER.map((s) => ({ value: s, label: stateLabel[s] })),
-    match: (r, v) => r.state === v,
-  },
   {
     id: "subject",
     label: "과목",
@@ -216,43 +213,62 @@ const FILTERS: Filter<ItemDraft>[] = [
   },
 ];
 
+type TabId = "all" | ItemState | "conflict";
+
 export default function ItemBank() {
   const items = useItems();
   const prefs = useAdminPrefs();
   const router = useRouter();
-
-  const by = (s: ItemState) => items.filter((i) => i.state === s).length;
-  const approved = items.filter((i) => i.state === "approved");
-  const anchors = approved.filter((i) => i.anchor).length;
-  const conflicts = items.filter(selfReviewed).length;
+  const [tab, setTab] = useState<TabId>("all");
 
   /* 기본 줄 순서 — 손이 가야 하는 상태를 위로. 같은 상태끼리는 코드 오름차순으로 못
      박는다. 저장소 배열 순서 그대로 두면 문항을 하나 만들 때마다 표가 다르게 서서
      「아까 그 줄」로 못 돌아간다. DataTable에 기본 정렬 prop이 없으므로 여기서 세운다. */
-  const rows = [...items].sort(
-    (a, b) => stateRank(a.state) - stateRank(b.state) || (a.code || a.id).localeCompare(b.code || b.id),
+  const sorted = useMemo(
+    () =>
+      [...items].sort(
+        (a, b) =>
+          stateRank(a.state) - stateRank(b.state) ||
+          (a.code || a.id).localeCompare(b.code || b.id),
+      ),
+    [items],
   );
+
+  /**
+   * 탭 하나가 곧 하나의 목록이다.
+   *
+   * 상태 다섯을 STATE_ORDER 차례(검수 대기 → 반려됨 → 작성 중 → 승인됨 → 폐기) 그대로
+   * 세운다. 이 차례가 곧 손이 가야 하는 정도라, 가나다순으로 흐트러뜨리지 않는다.
+   *
+   * 맨 끝의 「자가 검수」만 상태가 아니다. 자기가 낸 문항을 자기가 승인한 줄이라 이
+   * 콘솔이 이해충돌로 보는 것이고(정의서 9장), 0이 아니면 그날 바로 봐야 하는 묶음이다.
+   */
+  const tabs = useMemo(
+    () => [
+      { id: "all" as TabId, label: "전체", rows: sorted, empty: "조건에 맞는 문항이 없습니다." },
+      ...STATE_ORDER.map((s) => ({
+        id: s as TabId,
+        label: stateLabel[s],
+        rows: sorted.filter((i) => i.state === s),
+        empty: `${stateLabel[s]} 문항이 없습니다.`,
+      })),
+      {
+        id: "conflict" as TabId,
+        label: "자가 검수",
+        rows: sorted.filter(selfReviewed),
+        empty: "자기가 낸 문항을 자기가 승인한 줄이 없습니다.",
+      },
+    ],
+    [sorted],
+  );
+
+  const current = tabs.find((t) => t.id === tab) ?? tabs[0];
+  const rows = current.rows;
 
   return (
     <>
       <PageHead
-        statCols={5}
         title="문항 은행"
-        meta={
-          <>
-            <span>
-              전체 <span className="a2-num text-(--a2-ink-2)">{n(items.length)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>승인 {n(approved.length)} · 앵커 {n(anchors)}</span>
-            {conflicts > 0 && (
-              <>
-                <span aria-hidden>·</span>
-                <span style={{ color: "var(--a2-danger)" }}>자가 검수 {n(conflicts)}건</span>
-              </>
-            )}
-          </>
-        }
         actions={
           <>
             <Link href="/admin2/rounds" className="a2-btn">
@@ -272,78 +288,31 @@ export default function ItemBank() {
             </button>
           </>
         }
-        /* ① 어느 상태에 몰려 있나 */
-        stats={
-          <>
-            <Kpi
-              label="전체 문항"
-              value={n(items.length)}
-              unit="문항"
-              sub={`지난 회차 출제 ${n(items.filter((i) => i.correctRate !== null).length)}건`}
-            />
-            <Kpi label={stateLabel.draft} value={n(by("draft"))} unit="문항" sub="아직 제출 전" />
-            <Kpi
-              label={stateLabel.submitted}
-              value={n(by("submitted"))}
-              unit="문항"
-              sub={`${stateLabel.rejected} ${n(by("rejected"))}건`}
-            />
-            <Kpi
-              label={stateLabel.approved}
-              value={n(approved.length)}
-              unit="문항"
-              sub={`전체의 ${pct(approved.length, items.length)}% · 앵커 ${n(anchors)}`}
-            />
-            <Kpi
-              label={stateLabel.retired}
-              value={n(by("retired"))}
-              unit="문항"
-              sub="회차 편성에서 제외"
-            />
-          </>
-        }
+        /* ① 어느 상태에 몰려 있나 — 누르면 그 상태만 남는다 */
+        tabsLabel="상태별 조회 조건"
+        tabs={tabs.map((t) => (
+          <Tab
+            key={t.id}
+            label={t.label}
+            count={n(t.rows.length)}
+            active={tab === t.id}
+            onClick={() => setTab(t.id)}
+          />
+        ))}
       />
 
-      {/* ② 회차에 넣을 것이 단계마다 얼마나 있나. 지표 띠와 표 사이에 눕는 한 줄이라
-          판을 따로 두르지 않고 가로선으로만 가른다 */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-(--a2-line) px-3 py-2">
-      <span className="a2-label">편성 가능(승인)</span>
-      {LEVELS.map((l: Level) => {
-        const c = approved.filter((i) => i.level === l).length;
-        return (
-          <span key={l} className="inline-flex items-baseline gap-1.5">
-            <span className="a2-mono a2-t-sm font-semibold text-(--a2-ink-2)">{l}</span>
-            <span className="a2-t-xs text-(--a2-ink-4)">{levelSpecs[l].name}</span>
-            <span
-              className="a2-num a2-t-sm"
-              style={{ color: c === 0 ? "var(--a2-danger)" : "var(--a2-ink)" }}
-            >
-              {c}
-            </span>
-          </span>
-        );
-      })}
-      <span className="a2-t-xs text-(--a2-ink-4)">
-        {/* 0인 단계는 붉게 적는다. 그 층은 이번 회차에 아예 재지 못한다는 뜻이다 */}
-        한 단계가 0이면 그 층은 이번 회차에 재지 못합니다.
-      </span>
-      </div>
-
-      {/* ③ 무엇부터 보나 */}
+      {/* ② 무엇부터 보나. 탭을 바꾸면 표를 새로 세운다 — 걸어 둔 검색어·거르개는
+          그 목록에 맞춰 다시 고르는 것이 맞다 */}
       <DataTable
+        key={tab}
         rows={rows}
         cols={COLS}
         getKey={(r) => r.id}
         filters={FILTERS}
         searchHint="문항 ID · 발문 · 단원 · 출제자"
-        empty="조건에 맞는 문항이 없습니다."
-        toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기본 정렬 · 검수 대기 먼저</span>}
+        empty={current.empty}
+        showCount={false}
       />
-
-      <SeedNote>
-        이 화면의 문항은 화면 설계를 위한 예시이며 브라우저에만 저장됩니다(lib/itemStore.ts). 목록에는 보기와 정답을
-        그리지 않습니다 — 문항 상세에서만 엽니다.
-      </SeedNote>
     </>
   );
 }

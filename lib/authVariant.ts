@@ -6,8 +6,9 @@
  *  v2 「둥글둥글」 — clipo.ai 계열. 알약 버튼, 넉넉한 라운드(12~16px), 밝은 파랑,
  *                 선을 옅게 쓰고 여백으로 구분한다.
  *
- * 화면 로직은 하나만 두고 껍데기만 갈아끼운다. 두 시안을 비교한 뒤 하나를 고르면
- * 이 파일과 변형 라우트(/login1·/login2 등)를 지우고 정본으로 승격하면 된다.
+ * 화면 로직은 하나만 두고 껍데기만 갈아끼운다. 로그인·회원가입은 이미 v2로 확정해
+ * 변형 라우트를 지웠고, 지금 두 시안이 함께 남아 있는 곳은 /my1·/mypage1·/org1 계열뿐이다.
+ * 그쪽도 하나로 정해지면 이 파일과 변형 라우트를 함께 지우고 정본으로 승격하면 된다.
  */
 
 export type Variant = 1 | 2;
@@ -15,10 +16,8 @@ export type Variant = 1 | 2;
 export type AuthTheme = {
   id: Variant;
   label: string;
-  /** 다른 시안으로 건너뛰는 경로 접미사 */
+  /** 다른 시안으로 건너뛸 때 쓰는 짝 */
   other: Variant;
-  loginHref: string;
-  signupHref: string;
 
   page: string;
   column: string;
@@ -66,8 +65,6 @@ const v1: AuthTheme = {
   id: 1,
   label: "전문가",
   other: 2,
-  loginHref: "/login1",
-  signupHref: "/signup1",
 
   page: "bg-acc-bg text-acc-ink",
   column: "mx-auto w-full max-w-[27.5rem]",
@@ -113,8 +110,6 @@ const v2: AuthTheme = {
   id: 2,
   label: "둥글둥글",
   other: 1,
-  loginHref: "/login2",
-  signupHref: "/signup2",
 
   page: "bg-[#eef3fe] text-soft-ink",
   column: "mx-auto w-full max-w-[28.5rem]",

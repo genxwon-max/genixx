@@ -1,11 +1,22 @@
 import Link from "next/link";
 import Logo from "./Logo";
+import PolicyBar from "./PolicyBar";
 import { company } from "@/lib/site";
-import { legalLinks, menu } from "@/lib/nav";
+import { menu } from "@/lib/nav";
 
+/**
+ * 공개 존 푸터.
+ *
+ * 맨 위에 정책 띠를 눕히고 그 아래로 갈래별 링크와 회사 정보를 쌓는다. 예전에는
+ * 정책·법적 고지를 다른 갈래와 같은 모양의 칸으로 세웠는데, 그러면 「이용약관」이
+ * 「샘플 리포트」와 같은 무게로 읽힌다. 계정 존 푸터와 같은 띠를 쓰므로 두 존을
+ * 오가도 정책으로 가는 길이 늘 같은 자리에 있다.
+ */
 export default function Footer() {
   return (
     <footer className="mt-auto border-t border-brand-100 bg-brand-50/60">
+      <PolicyBar tone="site" />
+
       <div className="container-x grid gap-10 py-12 lg:grid-cols-[300px_1fr] lg:gap-14 lg:py-16">
         <div>
           <Logo />
@@ -50,7 +61,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="container-x grid gap-8 border-t border-brand-100 py-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="container-x grid gap-8 border-t border-brand-100 py-10 sm:grid-cols-2 lg:grid-cols-3">
         {menu.slice(4).map((group) => (
           <div key={group.id}>
             <h2 className="type-h4 font-bold text-slate-900">{group.label}</h2>
@@ -68,22 +79,6 @@ export default function Footer() {
             </ul>
           </div>
         ))}
-
-        <div>
-          <h2 className="type-h4 font-bold text-slate-900">정책·법적 고지</h2>
-          <ul className="mt-4 space-y-2.5">
-            {legalLinks.map((l) => (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  className="type-meta text-slate-600 transition-colors hover:text-brand-700"
-                >
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
 
         <div>
           <h2 className="type-h4 font-bold text-slate-900">고객지원</h2>

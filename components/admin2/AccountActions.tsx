@@ -26,6 +26,11 @@ import { Panel, Status } from "./ui";
  * ⚠ 삭제는 줄을 목록에서 지우지 않는다. 상태를 탈퇴로 바꾸고 그대로 세워 둔다.
  *   사유 문구가 「파기 절차로 넘어갑니다」이지 「지금 사라집니다」가 아니고, 무엇보다
  *   목록에서 사라지면 방금 무엇을 했는지 확인할 자리가 없어진다.
+ *
+ * 두 모양을 낸다 — 판(AccountActions)과 화면 머리에 눕는 한 줄(AccountStateBar).
+ * 회원 상세는 계정 상태를 제목 옆에 세운다. 이 화면에서 사람이 제일 먼저 확인하는 것이
+ * 「이 계정이 살아 있는가」라서, 그 답이 판 하나를 열어 봐야 나오면 늦다. 확인 절차와
+ * 사유 목록은 두 모양이 같은 조각을 쓴다 — 같은 일이 자리에 따라 달라지지 않도록.
  */
 
 /** 동작이 끝난 뒤의 상태 */
@@ -34,6 +39,169 @@ const RESULT: Record<UserActionKind, UserState> = {
   restore: "active",
   delete: "withdrawn",
 };
+
+/** 정지·해제·삭제 확인 — 판에서도 창에서도 같은 것을 그린다 */
+function ActionConfirm({
+  kind,
+  name,
+  id,
+  onDone,
+  onCancel,
+}: {
+  kind: UserActionKind;
+  name: string;
+  id: string;
+  onDone: (next: UserState, verb: string, reason: string) => void;
+  onCancel: () => void;
+}) {
+  const spec = userActions[kind];
+  const [picked, setPicked] = useState(spec.reasons[0]);
+  const [detail, setDetail] = useState("");
+  const reason = detail.trim() ? `${picked} — ${detail.trim()}` : picked;
+
+  return (
+    <>
+      <p className="a2-h">
+        {name} · <span className="a2-mono font-normal">{id}</span> 계정을 {spec.verb}합니다
+      </p>
+      <ul className="mt-1.5 grid gap-0.5 a2-t-sm text-(--a2-ink-2)">
+        {spec.effects.map((e) => (
+          <li key={e} className="flex gap-1.5">
+            <span aria-hidden className="text-(--a2-ink-4)">
+              ·
+            </span>
+            {e}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-3 grid gap-2">
+        <label className="a2-field block">
+          <span className="a2-label">사유 (그대로 두셔도 됩니다)</span>
+          <select className="a2-select" value={picked} onChange={(e) => setPicked(e.target.value)}>
+            {spec.reasons.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="a2-field block">
+          <span className="a2-label">덧붙일 말 (선택)</span>
+          <input
+            className="a2-input"
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
+            placeholder="적지 않으셔도 됩니다"
+          />
+        </label>
+      </div>
+
+      <p className="a2-hint mt-2">
+        기록에는 이렇게 남습니다 — <b className="text-(--a2-ink)">{reason}</b>
+      </p>
+
+      {/* 위에 적은 effects 세 줄을 되풀이하지 않는다. 처음에 「되돌릴 수 없습니다.
+          잠시 막아 두려는 것이라면 정지를 쓰세요」로 적었더니 같은 문장이 한 화면에
+          두 번 서서, 두 번째 것이 새 경고가 아니라 메아리로 읽혔다 */}
+      {spec.danger && (
+        <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-danger)" }}>
+          <span>한 번 더 확인해 주세요.</span>
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          className={spec.danger ? "a2-btn a2-btn-danger" : "a2-btn a2-btn-primary"}
+          onClick={() => onDone(RESULT[kind], spec.verb, reason)}
+        >
+          네, {spec.verb}합니다
+        </button>
+        <button type="button" className="a2-btn" onClick={onCancel}>
+          취소
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * 화면 머리에 눕는 한 줄 — 상태 배지 + 정지/해제 + 삭제.
+ * 확인은 창으로 띄운다. 머리띠 안에서 펼치면 그만큼 아래 내용이 통째로 밀린다.
+ */
+export function AccountStateBar({
+  name,
+  id,
+  state,
+  tone,
+  onAct,
+}: {
+  name: string;
+  id: string;
+  state: UserState;
+  tone: Tone;
+  onAct: (next: UserState, verb: string, reason: string) => void;
+}) {
+  const [acting, setActing] = useState<UserActionKind | null>(null);
+  const off = state === "dormant" || state === "suspended";
+  const gone = state === "withdrawn";
+
+  return (
+    <>
+      <span className="mr-1 flex items-center gap-1.5">
+        <span className="a2-t-xs text-(--a2-ink-4)">계정 상태</span>
+        <Status tone={tone}>{userStateLabel[state].label}</Status>
+      </span>
+
+      {gone ? (
+        <span className="a2-t-xs text-(--a2-ink-4)">삭제 처리되어 더 고칠 수 없습니다</span>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="a2-btn"
+            onClick={() => setActing(off ? "restore" : "suspend")}
+          >
+            {off ? "활성" : "비활성"}
+          </button>
+          <button
+            type="button"
+            className="a2-btn a2-btn-danger"
+            onClick={() => setActing("delete")}
+          >
+            삭제
+          </button>
+        </>
+      )}
+
+      {acting && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
+          onClick={() => setActing(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="a2-panel w-full max-w-[26rem] p-5 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ActionConfirm
+              kind={acting}
+              name={name}
+              id={id}
+              onCancel={() => setActing(null)}
+              onDone={(next, verb, reason) => {
+                onAct(next, verb, reason);
+                setActing(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function AccountActions({
   name,
@@ -56,21 +224,10 @@ export default function AccountActions({
   onAct: (next: UserState, verb: string, reason: string) => void;
 }) {
   const [acting, setActing] = useState<UserActionKind | null>(null);
-  const [picked, setPicked] = useState("");
-  const [detail, setDetail] = useState("");
 
   /* 정지 중·휴면이면 다음 동작은 「해제」다. 기존 콘솔의 갈래를 그대로 따른다 */
   const off = state === "dormant" || state === "suspended";
   const gone = state === "withdrawn";
-
-  const open = (kind: UserActionKind) => {
-    setActing(kind);
-    setPicked(userActions[kind].reasons[0]);
-    setDetail("");
-  };
-
-  const spec = acting ? userActions[acting] : null;
-  const reason = detail.trim() ? `${picked} — ${detail.trim()}` : picked;
 
   return (
     <Panel title="계정 상태" meta={changed ? "이 브라우저에서 바꾼 값" : "명부의 값"}>
@@ -102,7 +259,11 @@ export default function AccountActions({
       ) : (
         <>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <button type="button" className="a2-btn" onClick={() => open(off ? "restore" : "suspend")}>
+            <button
+              type="button"
+              className="a2-btn"
+              onClick={() => setActing(off ? "restore" : "suspend")}
+            >
               {off ? "정지 해제" : "정지"}
             </button>
             <button type="button" className="a2-btn a2-btn-danger" onClick={() => open("delete")}>
@@ -116,72 +277,18 @@ export default function AccountActions({
       )}
 
       {/* 확인 — 창을 띄우지 않고 단추 바로 아래에서 펼친다 */}
-      {spec && acting && (
+      {acting && (
         <div className="mt-3 border-t border-(--a2-line) pt-3">
-          <p className="a2-h">
-            {name} · <span className="a2-mono font-normal">{id}</span> 계정을 {spec.verb}합니다
-          </p>
-          <ul className="mt-1.5 grid gap-0.5 a2-t-sm text-(--a2-ink-2)">
-            {spec.effects.map((e) => (
-              <li key={e} className="flex gap-1.5">
-                <span aria-hidden className="text-(--a2-ink-4)">
-                  ·
-                </span>
-                {e}
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-3 grid gap-2">
-            <label className="a2-field block">
-              <span className="a2-label">사유 (그대로 두셔도 됩니다)</span>
-              <select className="a2-select" value={picked} onChange={(e) => setPicked(e.target.value)}>
-                {spec.reasons.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="a2-field block">
-              <span className="a2-label">덧붙일 말 (선택)</span>
-              <input
-                className="a2-input"
-                value={detail}
-                onChange={(e) => setDetail(e.target.value)}
-                placeholder="적지 않으셔도 됩니다"
-              />
-            </label>
-          </div>
-
-          <p className="a2-hint mt-2">
-            기록에는 이렇게 남습니다 — <b className="text-(--a2-ink)">{reason}</b>
-          </p>
-
-          {/* 위에 적은 effects 세 줄을 되풀이하지 않는다. 처음에 「되돌릴 수 없습니다.
-              잠시 막아 두려는 것이라면 정지를 쓰세요」로 적었더니 같은 문장이 한 화면에
-              두 번 서서, 두 번째 것이 새 경고가 아니라 메아리로 읽혔다 */}
-          {spec.danger && (
-            <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-danger)" }}>
-              <span>한 번 더 확인해 주세요.</span>
-            </p>
-          )}
-
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              className={spec.danger ? "a2-btn a2-btn-danger" : "a2-btn a2-btn-primary"}
-              onClick={() => {
-                onAct(RESULT[acting], spec.verb, reason);
-                setActing(null);
-              }}
-            >
-              네, {spec.verb}합니다
-            </button>
-            <button type="button" className="a2-btn" onClick={() => setActing(null)}>
-              취소
-            </button>
-          </div>
+          <ActionConfirm
+            kind={acting}
+            name={name}
+            id={id}
+            onCancel={() => setActing(null)}
+            onDone={(next, verb, reason) => {
+              onAct(next, verb, reason);
+              setActing(null);
+            }}
+          />
         </div>
       )}
     </Panel>

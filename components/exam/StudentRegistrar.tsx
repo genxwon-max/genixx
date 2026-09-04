@@ -5,14 +5,29 @@ import {
   addStudents,
   clearRoster,
   formatCode,
+  isUnderConsentAge,
   parseRoster,
   removeStudent,
   reissueCode,
+  requestGuardianConsent,
+  revokeGuardianConsent,
   toCsv,
   useRoster,
   type NewStudent,
   type Owner,
+  type Student,
 } from "@/lib/roster";
+import {
+  ageFromBirth,
+  CONSENT_AGE,
+  consentCollectionModes,
+  delegatedConsentConditions,
+  guardianConsentInfo,
+  orgHiddenStudentFields,
+  orgPowers,
+  orgVisibleStudentFields,
+} from "@/lib/account";
+import { createGuardianRequest, latestRequestFor, maskPhone } from "@/lib/guardianRequest";
 import { subjects } from "@/lib/exam";
 import {
   submittedCount,
@@ -49,12 +64,13 @@ const emptyForm: NewStudent = {
   grade: "",
   klass: "",
   guardianPhone: "",
+  guardianName: "",
 };
 
-const SAMPLE = `이름,생년월일,학교,학년,반
-김하늘,20160312,목동초등학교,초등 4학년,A반
-박서준,20160925,목동초등학교,초등 4학년,A반
-이지우,20170104,신정초등학교,초등 3학년,B반`;
+const SAMPLE = `이름,생년월일,학교,학년,반,법정대리인 연락처,법정대리인 성명
+김하늘,20160312,목동초등학교,초등 4학년,A반,01012345678,김보호
+박서준,20160925,목동초등학교,초등 4학년,A반,01098761234,박보호
+이지우,20170104,신정초등학교,초등 3학년,B반,,`;
 
 export default function StudentRegistrar({
   mode,
@@ -94,6 +110,10 @@ export default function StudentRegistrar({
   const isDirector = mode === "director";
   const noun = "학생";
 
+  /** 지금 입력 중인 생년월일의 만 나이 — 등록 전에 갈래를 보여 주려고 미리 센다 */
+  const formAge = ageFromBirth(form.birth.replace(/\D/g, ""));
+  const formUnderAge = formAge !== null && formAge < CONSENT_AGE;
+
   const addOne = () => {
     if (!form.name.trim()) return setFormError("이름을 입력해 주세요.");
     if (form.birth.replace(/\D/g, "").length !== 8)
@@ -102,7 +122,34 @@ export default function StudentRegistrar({
     const [created] = addStudents([form], mode, ownerName);
     setForm(emptyForm);
     setFormError(null);
-    setFlash(`${created.name} ${noun} 등록 완료 · 접속코드 ${formatCode(created.code)}`);
+    setFlash(
+      formUnderAge
+        ? `${created.name} ${noun} 임시등록 완료 · 법정대리인 동의를 받아야 응시가 열립니다`
+        : `${created.name} ${noun} 등록 완료 · 접속코드 ${formatCode(created.code)}`,
+    );
+  };
+
+  /**
+   * 법정대리인에게 동의 링크를 보낸다.
+   *
+   * 기관이 할 수 있는 것은 여기까지다. 동의 버튼은 법정대리인이 자기 화면에서 누른다.
+   * 이 컴포넌트 어디에도 「대신 동의」에 해당하는 동작을 두지 않는다.
+   */
+  const sendConsent = (s: Student) => {
+    if (!s.guardianPhone) {
+      setFlash("법정대리인 연락처가 없어 요청을 보낼 수 없습니다. 연락처를 먼저 받아 주세요.");
+      return;
+    }
+    createGuardianRequest({
+      guardianName: s.guardianName || "보호자",
+      guardianPhone: s.guardianPhone,
+      childLabel: s.name,
+      origin: "org",
+      originName: ownerName,
+      studentId: s.id,
+    });
+    requestGuardianConsent(s.id);
+    setFlash(`${s.name} 학생의 법정대리인에게 동의 링크를 보냈습니다.`);
   };
 
   const runPreview = (text: string) => {
@@ -256,25 +303,80 @@ export default function StudentRegistrar({
                     className={`mt-2 ${input}`}
                   />
                 </div>
+                {isDirector && (
+                  <div>
+                    <label htmlFor="r-klass" className={fieldLabel}>
+                      반 <span className="font-normal text-soft-muted">(선택)</span>
+                    </label>
+                    <input
+                      id="r-klass"
+                      value={form.klass ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, klass: e.target.value }))}
+                      placeholder="A반"
+                      className={`mt-2 ${input}`}
+                    />
+                  </div>
+                )}
                 <div>
-                  <label htmlFor="r-extra" className={fieldLabel}>
-                    {isDirector ? "반" : "보호자 연락처"}
+                  <label htmlFor="r-gname" className={fieldLabel}>
+                    법정대리인 성명{" "}
+                    {formUnderAge ? (
+                      <span className="text-rose-600">*</span>
+                    ) : (
+                      <span className="font-normal text-soft-muted">(선택)</span>
+                    )}
                   </label>
                   <input
-                    id="r-extra"
-                    value={isDirector ? (form.klass ?? "") : (form.guardianPhone ?? "")}
-                    onChange={(e) =>
-                      setForm((f) =>
-                        isDirector
-                          ? { ...f, klass: e.target.value }
-                          : { ...f, guardianPhone: e.target.value },
-                      )
-                    }
-                    placeholder={isDirector ? "A반" : "010-1234-5678"}
+                    id="r-gname"
+                    value={form.guardianName ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, guardianName: e.target.value }))}
+                    placeholder="김보호"
+                    className={`mt-2 ${input}`}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="r-gphone" className={fieldLabel}>
+                    법정대리인 연락처{" "}
+                    {formUnderAge ? (
+                      <span className="text-rose-600">*</span>
+                    ) : (
+                      <span className="font-normal text-soft-muted">(선택)</span>
+                    )}
+                  </label>
+                  <input
+                    id="r-gphone"
+                    value={form.guardianPhone ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, guardianPhone: e.target.value }))}
+                    placeholder="010-1234-5678"
                     className={`mt-2 ${input}`}
                   />
                 </div>
               </div>
+
+              {/* 생년월일을 넣는 순간 갈래가 보인다 — 등록 전에 알 수 있어야 한다 */}
+              {formAge !== null && (
+                <p
+                  className={`mt-4 rounded border px-4 py-3 text-[13px] leading-relaxed ${
+                    formUnderAge
+                      ? "border-amber-300 bg-amber-50 text-amber-800"
+                      : "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  }`}
+                >
+                  만 {formAge}세 ·{" "}
+                  {formUnderAge ? (
+                    <>
+                      만 {CONSENT_AGE}세 미만입니다. 등록하면 <b>임시등록</b> 상태가 되고, 법정대리인
+                      동의가 확인되어야 응시가 열립니다. 동의 요청을 보내려면 법정대리인 성명과
+                      연락처가 필요합니다.
+                    </>
+                  ) : (
+                    <>
+                      만 {CONSENT_AGE}세 이상입니다. 학생 본인 동의로 갈음되므로 등록 즉시 응시할 수
+                      있습니다.
+                    </>
+                  )}
+                </p>
+              )}
 
               {formError && (
                 <p role="alert" className="mt-4 text-[13px] font-medium text-rose-600">
@@ -321,10 +423,11 @@ export default function StudentRegistrar({
                 엑셀에서 복사한 내용을 그대로 붙여넣어도 됩니다
               </label>
               <p className="mt-1.5 text-[12px] text-soft-muted">
-                열 순서: 이름, 생년월일(8자리), 학교, 학년,{" "}
-                {isDirector ? "반" : "보호자 연락처"} · 쉼표 / 탭 / 세미콜론 모두 인식하며 머리글
-                행은 자동으로 건너뜁니다. 반드시 있어야 하는 것은 이름과 생년월일뿐이라, 학교·학년
-                칸은 비워 두셔도 됩니다.
+                열 순서: 이름, 생년월일(8자리), 학교, 학년, 반, 법정대리인 연락처, 법정대리인
+                성명 · 쉼표 / 탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다. 반드시
+                있어야 하는 것은 이름과 생년월일뿐이라 나머지 칸은 비워 두셔도 됩니다. 다만 만{" "}
+                {CONSENT_AGE}세 미만 학생은 법정대리인 연락처가 있어야 동의 요청을 보낼 수 있어,
+                비어 있으면 「임시등록」에 머뭅니다.
               </p>
               <textarea
                 id="bulk"
@@ -379,7 +482,7 @@ export default function StudentRegistrar({
       {/* 명부 */}
       <section className="mt-9">
         <SectionTitle
-          note="접속코드와 생년월일을 함께 알려주면 학생이 바로 응시할 수 있습니다. 코드가 유출되면 재발급하세요."
+          note="만 14세 이상 학생은 접속코드와 생년월일만으로 바로 응시합니다. 만 14세 미만은 법정대리인 동의가 확인되어야 응시가 열립니다. 보호자의 연락처는 끝 네 자리만 표시하며, 본인확인 결과값과 동의 증빙 원본은 기관 화면에 싣지 않습니다."
           right={
             mine.length > 0 ? (
               <button
@@ -403,10 +506,10 @@ export default function StudentRegistrar({
               <tr>
                 <th className={th}>번호</th>
                 <th className={th}>이름</th>
-                <th className={th}>생년월일</th>
-                <th className={th}>학교</th>
-                <th className={th}>학년</th>
-                <th className={th}>{isDirector ? "반" : "보호자 연락처"}</th>
+                <th className={th}>학년{isDirector ? " · 반" : ""}</th>
+                <th className={th}>연령 구분</th>
+                <th className={th}>법정대리인</th>
+                <th className={th}>보호자 동의</th>
                 <th className={th}>접속코드</th>
                 <th className={th}>응시 진행</th>
                 <th className={th}>{isDirector ? "지도교사 관찰 설문" : "학부모 설문"}</th>
@@ -416,7 +519,7 @@ export default function StudentRegistrar({
             <tbody>
               {!hydrated || mine.length === 0 ? (
                 <tr>
-                  <td className={`${td} py-10`} colSpan={9}>
+                  <td className={`${td} py-10`} colSpan={10}>
                     등록된 {noun}이 없습니다. 위에서 추가해 주세요.
                   </td>
                 </tr>
@@ -425,23 +528,48 @@ export default function StudentRegistrar({
                   const rec = records[s.id];
                   const done = rec ? submittedCount(rec) : 0;
                   const myKeys: SurveyKey[] = isDirector ? ["teacher"] : ["mother", "father"];
+                  const under = isUnderConsentAge(s);
+                  const info = guardianConsentInfo[s.consent];
+                  const req = latestRequestFor(s.id);
                   return (
                     <tr key={s.id}>
                       <td className={`${td} tabular-nums`}>{i + 1}</td>
                       <td className={tdStrong}>{s.name}</td>
-                      <td className={`${td} tabular-nums`}>{s.birth}</td>
-                      <td className={td}>{s.school || "-"}</td>
-                      <td className={td}>{s.grade || "-"}</td>
-                      <td className={td}>{(isDirector ? s.klass : s.guardianPhone) || "-"}</td>
+                      <td className={td}>
+                        {[s.grade, isDirector ? s.klass : null].filter(Boolean).join(" · ") || "-"}
+                      </td>
+                      <td className={td}>
+                        <span className={under ? "font-bold text-amber-700" : "text-soft-muted"}>
+                          {under ? `만 ${CONSENT_AGE}세 미만` : `만 ${CONSENT_AGE}세 이상`}
+                        </span>
+                      </td>
+                      <td className={td}>
+                        {s.guardianName || s.guardianPhone ? (
+                          <span className="text-[12px] leading-tight text-soft-muted">
+                            {s.guardianName || "성명 미입력"}
+                            <br />
+                            {s.guardianPhone ? maskPhone(s.guardianPhone) : "연락처 미입력"}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className={td}>
+                        <span className={`text-[12px] font-bold ${info.tone}`}>{info.label}</span>
+                      </td>
                       <td className={`${tdStrong} tabular-nums tracking-wide`}>
                         {formatCode(s.code)}
                       </td>
                       <td className={`${td} tabular-nums`}>
-                        <span
-                          className={done === subjects.length ? "font-bold text-emerald-700" : ""}
-                        >
-                          {done} / {subjects.length}
-                        </span>
+                        {info.canSit ? (
+                          <span
+                            className={done === subjects.length ? "font-bold text-emerald-700" : ""}
+                          >
+                            {done} / {subjects.length}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] font-bold text-soft-muted">응시 불가</span>
+                        )}
                       </td>
                       <td className={td}>
                         <div className="flex flex-col items-center gap-1.5">
@@ -474,20 +602,57 @@ export default function StudentRegistrar({
                         </div>
                       </td>
                       <td className={td}>
-                        <div className="flex justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => reissueCode(s.id)}
-                            className={btnSmGhost}
-                          >
-                            코드 재발급
-                          </button>
+                        <div className="flex flex-wrap justify-center gap-1.5">
+                          {(s.consent === "temp" ||
+                            s.consent === "waiting" ||
+                            s.consent === "expired") && (
+                            <button
+                              type="button"
+                              onClick={() => sendConsent(s)}
+                              className={btnSm}
+                            >
+                              {s.consent === "temp" ? "동의 요청 발송" : "동의 요청 재발송"}
+                            </button>
+                          )}
+                          {s.consent === "waiting" && req && (
+                            <a
+                              href={`/consent/guardian?req=${req.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={btnSmGhost}
+                            >
+                              동의 링크 열기 (시연)
+                            </a>
+                          )}
+                          {info.canSit && (
+                            <button
+                              type="button"
+                              onClick={() => reissueCode(s.id)}
+                              className={btnSmGhost}
+                            >
+                              코드 재발급
+                            </button>
+                          )}
+                          {s.consent === "granted" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`${s.name} 학생의 보호자 동의를 철회 처리할까요?`))
+                                  revokeGuardianConsent(s.id);
+                              }}
+                              className={btnSmGhost}
+                            >
+                              동의 철회 반영
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => removeStudent(s.id)}
                             className="inline-flex items-center rounded border border-rose-300 bg-white px-3 py-1.5 text-[12px] font-bold text-rose-600 transition-colors hover:bg-rose-50"
                           >
-                            삭제
+                            {s.consent === "temp" || s.consent === "waiting"
+                              ? "임시등록 취소"
+                              : "삭제"}
                           </button>
                         </div>
                       </td>
@@ -526,10 +691,101 @@ export default function StudentRegistrar({
         </div>
       </section>
 
+      {isDirector && (
+        <section className="mt-9">
+          <SectionTitle note="기관 승인은 기관의 실재와 담당자의 권한을 확인하는 것입니다. 승인을 받아도 학생의 법정대리인 지위가 생기지는 않습니다.">
+            기관이 할 수 있는 것과 할 수 없는 것
+          </SectionTitle>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className={`p-6 ${panel}`}>
+              <p className="text-[14px] font-bold text-emerald-700">할 수 있는 것</p>
+              <ul className="mt-3 space-y-1.5">
+                {orgPowers.can.map((c) => (
+                  <li key={c} className="text-[13px] leading-relaxed text-soft-muted">
+                    · {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className={`p-6 ${panel}`}>
+              <p className="text-[14px] font-bold text-rose-600">할 수 없는 것</p>
+              <ul className="mt-3 space-y-1.5">
+                {orgPowers.cannot.map((c) => (
+                  <li key={c} className="text-[13px] leading-relaxed text-soft-muted">
+                    · {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {isDirector && (
+        <section className="mt-9">
+          <SectionTitle note="세 방식은 법률관계가 다릅니다. 한 시스템 안에서 섞으면 위탁받은 범위를 넘어 데이터를 쓰게 되기 쉬워, 도입 시 어느 방식인지 먼저 정합니다.">
+            보호자 동의를 모으는 방식
+          </SectionTitle>
+          <div className="grid gap-3">
+            {consentCollectionModes.map((m) => (
+              <div key={m.id} className={`p-5 ${panel}`}>
+                <p className="flex flex-wrap items-center gap-2 text-[14px] font-bold text-soft-ink">
+                  {m.label}
+                  {m.default && (
+                    <span className="rounded-full bg-soft-primary-soft px-2.5 py-0.5 text-[11px] font-bold text-soft-primary">
+                      기본
+                    </span>
+                  )}
+                </p>
+                <p className="mt-1 text-[12px] font-semibold text-soft-muted">{m.who}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{m.detail}</p>
+                {m.id === "delegated" && (
+                  <ul className="mt-3 space-y-1 border-t border-soft-line pt-3">
+                    {delegatedConsentConditions.map((c) => (
+                      <li key={c} className="text-[12.5px] leading-relaxed text-soft-muted">
+                        · {c}
+                      </li>
+                    ))}
+                    <li className="text-[12.5px] leading-relaxed text-rose-600">
+                      · 담당자가 「보호자 동의 받음」에 체크만 하는 방식은 이 조건을 하나도 만족하지
+                      못합니다.
+                    </li>
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className={`mt-5 grid gap-5 p-6 md:grid-cols-2 ${panel}`}>
+            <div>
+              <p className="text-[14px] font-bold text-soft-ink">기관 화면에 보이는 항목</p>
+              <ul className="mt-3 space-y-1.5">
+                {orgVisibleStudentFields.map((f) => (
+                  <li key={f} className="text-[13px] leading-relaxed text-soft-muted">
+                    · {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-[14px] font-bold text-soft-ink">기관 화면에 싣지 않는 항목</p>
+              <ul className="mt-3 space-y-1.5">
+                {orgHiddenStudentFields.map((f) => (
+                  <li key={f} className="text-[13px] leading-relaxed text-soft-muted">
+                    · {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
+
       <p className="mt-6 text-[12px] leading-relaxed text-soft-muted">
-        학생에게는 <b className="text-soft-ink">접속코드와 생년월일</b>만 전달하면 됩니다. 학생은
-        학생 로그인 화면에서 코드를 입력해 바로 응시할 수 있고, 보호자도 같은 코드로 들어와 설문만
-        진행할 수 있습니다.
+        만 {CONSENT_AGE}세 이상 학생에게는 <b className="text-soft-ink">접속코드와 생년월일</b>만
+        전달하면 됩니다. 만 {CONSENT_AGE}세 미만 학생은 법정대리인이 동의 링크에서 직접 동의하셔야
+        응시가 열립니다. 기관 화면에는 <b className="text-soft-ink">보호자 대신 동의하기 버튼이
+        없습니다.</b>
         {isDirector
           ? " 지도교사 관찰 설문은 위 명부에서 학생별로 바로 입력할 수 있습니다."
           : " 학부모 설문은 위 목록에서 학생별로 어머니·아버지가 각각 입력합니다."}

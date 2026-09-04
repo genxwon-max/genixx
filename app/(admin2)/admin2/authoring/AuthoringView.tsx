@@ -6,9 +6,9 @@ import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { itemTone, n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { addItem, missingFields, rejectLabel, stateLabel, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
+import { addItem, stateLabel, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { Kpi, PageHead, SeedNote, Status, Tag } from "@/components/admin2/ui";
+import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 import Generator from "./Generator";
 
 /**
@@ -19,6 +19,21 @@ import Generator from "./Generator";
  * 때문이다: 열어서 채우고 제출한다. 반려됨이 위로 오는 것은 그쪽이 이미 한 번 검수를
  * 지나온 것이라 무엇을 고쳐야 하는지가 적혀 있어서다.
  *
+ * ── 머리 아래는 읽는 띠가 아니라 **누르는 탭 줄**이다 ──
+ * 처음에는 지표 칸 다섯 장(반려됨·작성 중·AI 초안·검수 대기·한 번에 생성)을 대시보드로
+ * 세워 두었다. 「반려됨 1」을 보고 나서 그 하나를 찾으러 아래 거르개로 다시 내려가야 했고,
+ * 칸마다 이름·숫자·설명 석 줄이 들어가 다섯 칸이 화면 절반을 먹었다. 조건을 고르는 데
+ * 필요한 것은 「무엇이 몇 개인가」뿐이라, 두 값만 남긴 탭 줄 하나로 눕혔다.
+ * 누르면 아래 표가 그 상태만 남는다.
+ *
+ * 그래서 상태·출처는 표 위 거르개에서 뺐다. 같은 조건을 두 군데서 걸 수 있으면 띠에서
+ * 「반려됨」을 고른 채 거르개에서 「작성 중」을 고르는 순간 0줄이 나오고, 사람은 어느 쪽이
+ * 이겼는지 모른다. 띠가 상태를 맡고, 거르개는 과목처럼 상태와 겹치지 않는 것만 맡는다.
+ *
+ * 「검수 대기」 칸만 성격이 다르다 — 내 손을 떠난 것이라 작성 중·반려됨과 같은 목록에
+ * 섞지 않고, 그 탭에서만 따로 세운다. 그 줄에서는 이어 쓸 수 없으므로 관리 단추도
+ * 검수판으로 가는 문으로 바뀐다.
+ *
  * 고치는 자리는 여기가 아니라 문항 상세(ADM-04-1)다. 목록에서 바로 고치게 하면 지문·보기·
  * 정답·채점 기준이 한 줄에 들어가지 않고, 무엇보다 제출 전 체크리스트를 짚는 자리가 사라진다.
  *
@@ -26,34 +41,23 @@ import Generator from "./Generator";
  * 목록에 초안이 쌓이는 것을 같은 화면에서 본다.
  */
 
-const dash = <span className="text-(--a2-ink-4)">—</span>;
-
-/**
- * 왜 돌아왔는지.
- *
- * 두 군데를 본다. 검수판을 거친 반려는 검수 기록(reviews)에 사유 코드로 남고, 그 앞
- * 시절의 문항은 반려 메모(comments · kind reject)만 들고 있다. 기록을 먼저 보고 없으면
- * 메모로 내려간다 — 한쪽만 보면 「반려됨인데 사유 없음」인 줄이 생기고, 그 줄을 여는
- * 사람은 무엇을 고쳐야 하는지 모른 채 상세까지 들어가야 한다.
- *
- * 회차별로 쌓이므로 둘 다 맨 뒤엣것을 읽는다. 앞엣것을 읽으면 이미 고친 지적을 다시
- * 보여 주게 된다.
- */
-function whyBack(i: ItemDraft) {
-  const last = [...i.reviews].reverse().find((r) => r.verdict !== "approve");
-  if (last?.code) return rejectLabel(last.code);
-  const memo = [...i.comments].reverse().find((c) => c.kind === "reject");
-  return memo?.code ? rejectLabel(memo.code) : (memo?.text ?? "사유 없음");
-}
-
 /** 반려됨이 먼저. 이미 검수를 지나와 무엇을 고칠지가 적힌 줄이라 손이 먼저 가야 한다 */
 const STATE_ORDER: Record<string, number> = { rejected: 0, draft: 1 };
+
+/**
+ * 지표 띠의 칸 = 조회 조건.
+ *
+ * 「전체」를 맨 앞에 둔다. 조건을 걸었다가 푸는 자리가 없으면 다시 누를 것을 찾아
+ * 새로고침하게 된다.
+ */
+type TabId = "all" | "rejected" | "draft" | "ai" | "submitted";
 
 export default function AuthoringView() {
   const items = useItems();
   const prefs = useAdminPrefs();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<TabId>("all");
 
   const mine = useMemo(
     () =>
@@ -66,12 +70,69 @@ export default function AuthoringView() {
     [items],
   );
 
+  /* 내 손을 떠난 것 — 검수 대기 탭에서만 선다. 최근에 넘긴 것이 위로 온다 */
+  const submitted = useMemo(
+    () =>
+      items
+        .filter((i) => i.state === "submitted")
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [items],
+  );
+
   const drafts = mine.filter((i) => i.state === "draft").length;
   const rejected = mine.filter((i) => i.state === "rejected").length;
-  const waiting = items.filter((i) => i.state === "submitted").length;
   const byAi = mine.filter((i) => i.origin === "ai").length;
-  /* 제출까지 남은 칸이 없는 것 — 열어서 체크리스트만 짚으면 넘어가는 줄이다 */
-  const ready = mine.filter((i) => i.state === "draft" && missingFields(i).length === 0).length;
+
+  /**
+   * 탭 하나가 곧 하나의 목록이다. 이름·개수·빈 목록 문구를 한자리에 적어 둔다 —
+   * 흩어 두면 탭을 늘릴 때 어느 하나를 빠뜨린다.
+   *
+   * 탭마다 설명을 달지 않는다. 조건을 고르는 데 필요한 것은 「무엇이 몇 개인가」뿐이고,
+   * 나머지는 목록 자체가 말한다.
+   */
+  const tabs = useMemo(
+    () => [
+      {
+        id: "all" as const,
+        label: "전체",
+        count: mine.length,
+        rows: mine,
+        empty: "쓰는 중인 문항이 없습니다. 새 문항을 만들거나 AI로 생성해 보세요.",
+      },
+      {
+        id: "rejected" as const,
+        label: stateLabel.rejected,
+        count: rejected,
+        rows: mine.filter((i) => i.state === "rejected"),
+        empty: "검수에서 돌아온 문항이 없습니다.",
+      },
+      {
+        id: "draft" as const,
+        label: stateLabel.draft,
+        count: drafts,
+        rows: mine.filter((i) => i.state === "draft"),
+        empty: "작성 중인 문항이 없습니다.",
+      },
+      {
+        id: "ai" as const,
+        label: "AI 초안",
+        count: byAi,
+        rows: mine.filter((i) => i.origin === "ai"),
+        empty: "AI로 만든 초안이 없습니다. 위의 「AI로 생성」으로 만들 수 있습니다.",
+      },
+      {
+        id: "submitted" as const,
+        label: stateLabel.submitted,
+        count: submitted.length,
+        rows: submitted,
+        empty: "검수로 넘긴 문항이 없습니다.",
+      },
+    ],
+    [mine, submitted, rejected, drafts, byAi],
+  );
+
+  const current = tabs.find((t) => t.id === tab) ?? tabs[0];
+  const rows = current.rows;
 
   const cols = useMemo<Col<ItemDraft>[]>(
     () => [
@@ -137,111 +198,95 @@ export default function AuthoringView() {
         ),
       },
       {
-        /* 반려됨은 왜 돌아왔는지가 이 줄에서 가장 급한 값이다. 작성 중에는 그 자리에
-           「제출까지 남은 것」을 세운다 — 둘 다 「지금 뭘 해야 하나」의 답이다 */
-        key: "todo",
-        head: "할 일",
-        width: "13rem",
-        clip: true,
-        value: (r) =>
-          r.state === "rejected" ? whyBack(r) : missingFields(r).join(" · ") || "제출만 남음",
-        cell: (r) => {
-          if (r.state === "rejected") {
-            return (
-              <span className="a2-t-sm" style={{ color: "var(--a2-danger)" }} title={whyBack(r)}>
-                {whyBack(r)}
-              </span>
-            );
-          }
-          const missing = missingFields(r);
-          return missing.length === 0 ? (
-            <span className="a2-t-sm" style={{ color: "var(--a2-ok)" }}>
-              제출만 남음
-            </span>
-          ) : (
-            <span className="a2-t-sm text-(--a2-ink-3)" title={missing.join(" · ")}>
-              {missing.join(" · ")}
-            </span>
-          );
-        },
-      },
-      {
-        key: "origin",
-        head: "출처",
+        /* 난이도 b — 단계(S1~S4)가 「무엇을 재는가」라면 b는 「얼마나 어려운가」다.
+           둘은 같이 움직이지만 같지 않다. 같은 S2 안에서도 b가 -1.2와 0.4면 검사지에
+           나란히 담을 수 없다. 음수가 쉬운 쪽이므로 정렬은 값 그대로 둔다 */
+        key: "b",
+        head: "난이도",
         width: "5rem",
+        num: true,
         nowrap: true,
-        hide: "lg",
-        value: (r) => (r.origin === "ai" ? "AI 초안" : "사람"),
-        cell: (r) => (r.origin === "ai" ? <Tag accent>AI 초안</Tag> : dash),
+        value: (r) => r.b,
+        cell: (r) => <span className="a2-num a2-t-sm">{r.b.toFixed(1)}</span>,
       },
       {
-        key: "updatedAt",
-        head: "고친 때",
+        key: "author",
+        head: "출제자",
+        width: "6rem",
+        nowrap: true,
+        hide: "md",
+        value: (r) => r.authorName,
+        cell: (r) => (
+          <span className="a2-t-sm text-(--a2-ink-2)" title={r.author}>
+            {r.authorName}
+          </span>
+        ),
+      },
+      {
+        key: "createdAt",
+        head: "등록일",
         width: "8rem",
         nowrap: true,
         hide: "md",
-        value: (r) => r.updatedAt,
-        cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.updatedAt}</span>,
+        value: (r) => r.createdAt,
+        cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.createdAt}</span>,
       },
       {
         key: "act",
         head: "관리",
-        width: "5.5rem",
+        width: "6.5rem",
         nowrap: true,
-        cell: (r) => (
-          <Link href={`/admin2/items/${r.id}`} className="a2-btn a2-btn-sm" aria-label={`${r.code || r.id} 이어 쓰기`}>
-            이어 쓰기
-          </Link>
-        ),
+        cell: (r) =>
+          /* 넘긴 문항은 여기서 고칠 수 없다. 이어 쓰기 단추를 그대로 두면 눌러 놓고
+             왜 안 고쳐지는지 상세까지 들어가 확인하게 된다 */
+          r.state === "submitted" ? (
+            <Link
+              href="/admin2/review"
+              className="a2-btn a2-btn-sm"
+              aria-label={`${r.code || r.id} 검수판에서 보기`}
+            >
+              검수판에서
+            </Link>
+          ) : (
+            <Link
+              href={`/admin2/items/${r.id}`}
+              className="a2-btn a2-btn-sm"
+              aria-label={`${r.code || r.id} 수정하기`}
+            >
+              수정하기
+            </Link>
+          ),
       },
     ],
     [],
   );
 
+  /* 상태와 출처는 위 지표 띠가 맡는다. 같은 조건을 두 군데서 걸면 서로 부딪친다 —
+     화면 머리 주석 참고. 여기에는 띠와 겹치지 않는 것만 남긴다 */
   const filters = useMemo<Filter<ItemDraft>[]>(
     () => [
       {
-        id: "state",
-        label: "상태",
-        options: [
-          { value: "rejected", label: stateLabel.rejected },
-          { value: "draft", label: stateLabel.draft },
-        ],
-        match: (r, v) => r.state === v,
-      },
-      {
         id: "subject",
         label: "과목",
-        options: [...new Set(mine.map((i) => i.subject))].map((v) => ({ value: v, label: v })),
+        options: [...new Set(rows.map((i) => i.subject))].map((v) => ({ value: v, label: v })),
         match: (r, v) => r.subject === v,
       },
       {
-        id: "origin",
-        label: "출처",
-        options: [
-          { value: "ai", label: "AI 초안" },
-          { value: "human", label: "사람" },
-        ],
-        match: (r, v) => (v === "ai" ? r.origin === "ai" : r.origin !== "ai"),
+        id: "level",
+        label: "단계",
+        options: [...new Set(rows.map((i) => i.level))]
+          .sort()
+          .map((v) => ({ value: v, label: `${v} · ${levelSpecs[v].name}` })),
+        match: (r, v) => r.level === v,
       },
     ],
-    [mine],
+    [rows],
   );
 
   return (
     <>
       <PageHead
         title="문항 출제"
-        statCols={5}
-        meta={
-          <>
-            <span>
-              쓰는 중 <span className="a2-num text-(--a2-ink-2)">{n(mine.length)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>발주서 §1 고정 매핑 · §9 제출 전 체크리스트</span>
-          </>
-        }
         actions={
           <>
             <Link href="/admin2/items" className="a2-btn">
@@ -264,21 +309,16 @@ export default function AuthoringView() {
             </button>
           </>
         }
-        stats={
-          <>
-            <Kpi label={stateLabel.rejected} value={n(rejected)} unit="문항" sub="검수에서 돌아온 것 — 먼저 본다" />
-            <Kpi label={stateLabel.draft} value={n(drafts)} unit="문항" sub={`이 중 제출만 남은 것 ${n(ready)}`} />
-            <Kpi label="AI 초안" value={n(byAi)} unit="문항" sub="사람이 아직 안 읽은 것이 섞여 있다" />
-            <Kpi
-              label={stateLabel.submitted}
-              value={n(waiting)}
-              unit="문항"
-              sub="넘겨 놓은 것"
-              href="/admin2/review"
-            />
-            <Kpi label="한 번에 생성" value={n(20)} unit="문항" sub="초안이 스물을 넘으면 손볼 수 없다" />
-          </>
-        }
+        tabsLabel="상태별 조회 조건"
+        tabs={tabs.map((t) => (
+          <Tab
+            key={t.id}
+            label={t.label}
+            count={n(t.count)}
+            active={tab === t.id}
+            onClick={() => setTab(t.id)}
+          />
+        ))}
       />
 
       {open && (
@@ -293,20 +333,20 @@ export default function AuthoringView() {
         />
       )}
 
+      {/* 탭을 바꾸면 표를 새로 세운다 — 검색어와 거르개는 그 목록에 맞춰 다시 고르는
+          것이 맞다. 「반려됨에서 수학만」을 걸어 둔 채 검수 대기로 넘어가면, 걸린 조건은
+          위에 그대로 적혀 있는데 왜 0줄인지는 안 적혀 있다 */}
+      {/* 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄의 「1–3 / 3」이 이미 같은 수를 적는다 */}
       <DataTable
-        rows={mine}
+        key={tab}
+        rows={rows}
         cols={cols}
         filters={filters}
         getKey={(r) => r.id}
         searchHint="문항 ID · 발문 · 단원"
-        empty="쓰는 중인 문항이 없습니다. 새 문항을 만들거나 AI로 생성해 보세요."
-        toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기본 차례 · 반려됨 먼저</span>}
+        empty={current.empty}
+        showCount={false}
       />
-
-      <SeedNote>
-        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). AI 생성은 미리 써 둔 본에서 꺼내는 것이며, 붙일 때 생성
-        모델 호출로 갈아 끼웁니다.
-      </SeedNote>
     </>
   );
 }

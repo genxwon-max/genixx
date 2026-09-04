@@ -240,6 +240,17 @@ export type ItemDraft = {
    * 기록에서 가장 중요한 값이라 자리를 갈라 둔다.
    */
   aiAudit?: AiAudit;
+  /**
+   * 문항을 만든 때.
+   *
+   * updatedAt과 갈라 둔다. 목록에서 「언제 들어온 문항인가」를 묻는 것과 「마지막으로
+   * 손댄 게 언제인가」를 묻는 것은 다른 질문이고, 한 칸으로 합치면 오래전에 만들어 두고
+   * 어제 오타 하나 고친 문항이 어제 만든 문항처럼 맨 위에 선다.
+   *
+   * 옛 저장분과 씨앗에는 이 값이 없다. 채워 넣을 때 updatedAt을 쓴다 — 만든 뒤 한 번도
+   * 안 고친 문항에는 정확하고, 고친 문항에는 「그 이전」이라는 뜻으로 읽어도 틀리지 않다.
+   */
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -1548,6 +1559,7 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
     reviews: raw.reviews ?? [],
     assets: raw.assets ?? [],
     correctRate: raw.correctRate ?? null,
+    createdAt: raw.createdAt ?? raw.updatedAt ?? "",
   };
 }
 

@@ -38,7 +38,7 @@ export type Admin2NavItem = {
    *   drafts  작성 중 + 반려됨 — 출제 화면에 서 있는 줄 수
    *   review  검수 대기 — 검수 화면에 서 있는 줄 수
    */
-  live?: "drafts" | "review";
+  live?: "drafts" | "review" | "approvals";
 };
 
 export type Admin2NavGroup = {
@@ -76,7 +76,9 @@ export const admin2Nav: Admin2NavGroup[] = [
       { code: "ADM-02-1", label: "학생·접속코드", href: "/admin2/students" },
       /* ADM-07은 사이트맵에서 「심리측정 분석」이다(lib/admin.ts). 기관은 ORG-02 */
       { code: "ORG-02", label: "기관", href: "/admin2/orgs" },
-      { code: "ADM-02-2", label: "가입 승인", href: "/admin2/approvals", count: queueCounts.approvals },
+      /* 처리한 신청은 브라우저 저장소에만 남아(lib/approvalStore.ts) 서버에서 셀 수
+         없다. 서버 값으로 박아 두면 다섯 건을 다 처리하고도 기둥은 계속 5라고 말한다 */
+      { code: "ADM-02-2", label: "가입 승인", href: "/admin2/approvals", live: "approvals" },
     ],
   },
   {
@@ -104,7 +106,7 @@ export const admin2Nav: Admin2NavGroup[] = [
      * 한 번의 평가가 나가기까지 손대는 것 셋.
      *
      *   평가 회차        언제 여는가 · 어떤 학년군과 과목을 보는가
-     *   평가별 문항관리   회차 × 과목 × 학년군 검사지가 지금 어디까지 짜였는가
+     *   평가별 문항관리   회차마다 과목별 검사지가 어디까지 짜였는가 · 문항을 담는 자리
      *
      * 「평가 과목」 화면은 뺐다. 과목은 회차마다 정하는 값이 되어(회차 생성·편성 화면의
      * PlanPicker) 따로 볼 목록이 없어졌다 — 과목별 문항 재고는 그 고르는 자리에서 바로
@@ -125,6 +127,27 @@ export const admin2Nav: Admin2NavGroup[] = [
     items: [
       { code: "ADM-05", label: "평가 회차", href: "/admin2/rounds" },
       { code: "ADM-04-3", label: "평가별 문항관리", href: "/admin2/forms" },
+    ],
+  },
+  {
+    /*
+     * 파는 것과 들어온 돈, 둘.
+     *
+     *   상품 관리   무엇을 얼마에 파는가 — 등록하고 고치는 자리
+     *   결제 내역   그래서 얼마가 들어왔는가 — 읽기만 하는 자리
+     *
+     * 둘을 한 그룹에 둔 것은 언제나 같이 열리기 때문이다. 매출이 꺾이면 어느 상품이
+     * 꺾였는지를 묻고, 상품 값을 고치면 그 뒤로 매출이 어떻게 되었는지를 묻는다.
+     *
+     * 결제는 이 콘솔에서 **읽기만 한다.** 승인·취소·환불은 결제대행사에서 일어나고
+     * 여기로는 결과만 넘어온다 — 그래서 결제 화면에는 줄마다 누를 것이 없다. 항목 이름을
+     * 「결제 관리」가 아니라 「결제 내역」으로 둔 까닭도 그것이다. 그룹 이름과 같은 글자가
+     * 그 안에 또 서면 기둥에서 어느 쪽을 눌러야 하는지 한 박자 멈추기도 한다.
+     */
+    label: "결제 관리",
+    items: [
+      { code: "PAY-01", label: "상품 관리", href: "/admin2/products" },
+      { code: "PAY-02", label: "결제 내역", href: "/admin2/payments" },
     ],
   },
   {
@@ -238,6 +261,19 @@ export const studentAccountTone: Record<UserState, Tone> = {
  * lib/admin.ts contractLabel의 className(text-emerald-700 …)은 쓰지 않는다 — 저쪽은
  * 기존 /admin의 팔레트 색이다. 가져오는 것은 label 글자뿐이고 색은 이 콘솔의 넷에서 고른다.
  */
+/**
+ * 가입 신청 처리 상태 → 색조.
+ *
+ * 대기가 경고색인 까닭은 「아직 안 한 일」이기 때문이다. 회색으로 두면 목록에서 처리한
+ * 건과 안 한 건이 같은 무게로 읽힌다. 반려는 빨강이되 사고가 아니라 결론이므로 계정
+ * 정지와 같은 색조를 쓴다 — 되돌리지 않는 결정이라는 점이 같다.
+ */
+export const approvalTone: Record<"pending" | "approved" | "rejected", Tone> = {
+  pending: "warn",
+  approved: "ok",
+  rejected: "danger",
+};
+
 export const contractTone: Record<OrgRow["contract"], Tone> = {
   active: "ok",
   trial: "warn",

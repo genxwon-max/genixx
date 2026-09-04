@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
-import { n, pct } from "@/lib/admin2";
+import { n } from "@/lib/admin2";
 import { reviewChecks, stateLabel, typeLabel, useItems, type ItemDraft } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { Kpi, PageHead, SeedNote, Tag } from "@/components/admin2/ui";
+import { PageHead, Tab, Tag } from "@/components/admin2/ui";
 
 /**
  * EXP-03 문항 검수 — 넘어온 것만 세운다.
@@ -18,6 +18,15 @@ import { Kpi, PageHead, SeedNote, Tag } from "@/components/admin2/ui";
  * 그래서 이 화면이 답해야 하는 것은 「무엇부터 여나」뿐이다. 오래 기다린 것이 위로 온다 —
  * 넘긴 사람은 검수를 기다리는 동안 다음 문항을 못 쓰고, 회차 편성은 승인된 문항에서만
  * 고를 수 있다.
+ *
+ * ── 머리는 지표 띠가 아니라 탭 줄이다 ──
+ * 숫자 다섯을 읽기만 하는 띠로 두었을 때는, 「짚는 중 2」를 보고 나서 그 둘을 찾으러
+ * 아래 거르개로 내려가야 했다. 지금은 숫자가 곧 조회 조건이다 — 누르면 표가 그 묶음만
+ * 남는다. 그래서 표의 출처 거르개도 걷었다. 같은 조건을 두 군데서 걸면 서로 부딪친다.
+ *
+ * 승인됨·반려됨 탭은 이미 판정이 끝난 것이라 검수할 수 없다. 그 줄에서는 관리 단추도
+ * 「검수하기」가 아니라 「문항 열기」로 바뀐다 — 누를 수 없는 일을 같은 글자로 세워 두면
+ * 눌러 놓고 왜 안 되는지 상세까지 들어가 확인하게 된다.
  *
  * ⚠ 쓰다 만 검수(reviewDraft)가 있는 줄을 따로 표시한다. 그 줄은 누군가 이미 열어서 짚기
  *   시작한 것이라, 모르고 다시 열면 짚어 둔 것을 덮어쓴다.
@@ -35,8 +44,11 @@ function progressOf(i: ItemDraft) {
   return i.reviewDraft?.checks.filter((c) => c.ok !== null).length ?? 0;
 }
 
+type TabId = "waiting" | "started" | "ai" | "approved" | "rejected";
+
 export default function ReviewQueue() {
   const items = useItems();
+  const [tab, setTab] = useState<TabId>("waiting");
 
   /* 오래 기다린 것이 위로. 넘긴 시각을 따로 들고 있지 않으므로 마지막으로 고친 때를
      쓴다 — 제출이 곧 마지막 손질이라 실제로 같은 값이다 */
@@ -48,11 +60,54 @@ export default function ReviewQueue() {
     [items],
   );
 
-  const approved = items.filter((i) => i.state === "approved").length;
-  const rejected = items.filter((i) => i.state === "rejected").length;
-  const started = waiting.filter((i) => i.reviewDraft).length;
-  const fromAi = waiting.filter((i) => i.origin === "ai").length;
-  const judged = approved + rejected;
+  /* 판정이 끝난 것 — 최근에 판정한 것이 위로. 검수하러 온 사람이 「방금 내가 넘긴 것」을
+     되짚는 자리라, 오래된 것부터 세우는 대기 목록과 차례가 반대다 */
+  const judgedRows = useMemo(
+    () =>
+      items
+        .filter((i) => i.state === "approved" || i.state === "rejected")
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [items],
+  );
+
+  const tabs = useMemo(
+    () => [
+      {
+        id: "waiting" as TabId,
+        label: stateLabel.submitted,
+        rows: waiting,
+        empty: "검수를 기다리는 문항이 없습니다.",
+      },
+      {
+        id: "started" as TabId,
+        label: "짚는 중",
+        rows: waiting.filter((i) => i.reviewDraft),
+        empty: "누군가 열어 둔 검수가 없습니다.",
+      },
+      {
+        id: "ai" as TabId,
+        label: "AI 초안",
+        rows: waiting.filter((i) => i.origin === "ai"),
+        empty: "AI가 만든 초안이 검수 대기에 없습니다.",
+      },
+      {
+        id: "approved" as TabId,
+        label: stateLabel.approved,
+        rows: judgedRows.filter((i) => i.state === "approved"),
+        empty: "승인한 문항이 없습니다.",
+      },
+      {
+        id: "rejected" as TabId,
+        label: stateLabel.rejected,
+        rows: judgedRows.filter((i) => i.state === "rejected"),
+        empty: "돌려보낸 문항이 없습니다.",
+      },
+    ],
+    [waiting, judgedRows],
+  );
+
+  const current = tabs.find((t) => t.id === tab) ?? tabs[0];
+  const rows = current.rows;
 
   const cols = useMemo<Col<ItemDraft>[]>(
     () => [
@@ -161,63 +216,56 @@ export default function ReviewQueue() {
         head: "관리",
         width: "5.5rem",
         nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/items/${r.id}`}
-            className="a2-btn a2-btn-sm a2-btn-primary"
-            aria-label={`${r.code || r.id} 검수하기`}
-          >
-            검수하기
-          </Link>
-        ),
+        cell: (r) =>
+          /* 판정이 끝난 줄은 검수할 것이 없다. 같은 글자의 단추를 세워 두면 눌러 놓고
+             왜 검수판이 안 열리는지 상세까지 들어가 확인하게 된다 */
+          r.state === "submitted" ? (
+            <Link
+              href={`/admin2/items/${r.id}`}
+              className="a2-btn a2-btn-sm a2-btn-primary"
+              aria-label={`${r.code || r.id} 검수하기`}
+            >
+              검수하기
+            </Link>
+          ) : (
+            <Link
+              href={`/admin2/items/${r.id}`}
+              className="a2-btn a2-btn-sm"
+              aria-label={`${r.code || r.id} 문항 열기`}
+            >
+              문항 열기
+            </Link>
+          ),
       },
     ],
     [],
   );
 
+  /* 출처(AI 초안)는 머리의 탭이 맡는다. 같은 조건을 두 군데서 걸면 서로 부딪친다 */
   const filters = useMemo<Filter<ItemDraft>[]>(
     () => [
       {
         id: "subject",
         label: "과목",
-        options: [...new Set(waiting.map((i) => i.subject))].map((v) => ({ value: v, label: v })),
+        options: [...new Set(rows.map((i) => i.subject))].map((v) => ({ value: v, label: v })),
         match: (r, v) => r.subject === v,
       },
       {
         id: "level",
         label: "단계",
-        options: [...new Set(waiting.map((i) => i.level))]
+        options: [...new Set(rows.map((i) => i.level))]
           .sort()
           .map((v) => ({ value: v, label: `${v} ${levelSpecs[v].name}` })),
         match: (r, v) => r.level === v,
       },
-      {
-        id: "origin",
-        label: "출처",
-        options: [
-          { value: "ai", label: "AI 초안" },
-          { value: "human", label: "사람" },
-        ],
-        match: (r, v) => (v === "ai" ? r.origin === "ai" : r.origin !== "ai"),
-      },
     ],
-    [waiting],
+    [rows],
   );
 
   return (
     <>
       <PageHead
         title="문항 검수"
-        statCols={5}
-        meta={
-          <>
-            <span>
-              대기 <span className="a2-num text-(--a2-ink-2)">{n(waiting.length)}</span>
-            </span>
-            <span aria-hidden>·</span>
-            <span>{reviewChecks.map((c) => c.label).join(" · ")}</span>
-          </>
-        }
         actions={
           <>
             <Link href="/admin2/authoring" className="a2-btn">
@@ -228,44 +276,30 @@ export default function ReviewQueue() {
             </Link>
           </>
         }
-        stats={
-          <>
-            <Kpi label={stateLabel.submitted} value={n(waiting.length)} unit="문항" sub="오래 기다린 것이 위로" />
-            <Kpi label="짚는 중" value={n(started)} unit="문항" sub="누가 이미 열어 둔 것" />
-            <Kpi label="AI 초안" value={n(fromAi)} unit="문항" sub="태깅을 특히 볼 것" />
-            <Kpi
-              label={stateLabel.approved}
-              value={n(approved)}
-              unit="문항"
-              sub={judged ? `판정한 것의 ${pct(approved, judged)}%` : "아직 없음"}
-              href="/admin2/items"
-            />
-            <Kpi
-              label={stateLabel.rejected}
-              value={n(rejected)}
-              unit="문항"
-              sub="돌려보낸 것"
-              href="/admin2/authoring"
-            />
-          </>
-        }
+        tabsLabel="상태별 조회 조건"
+        tabs={tabs.map((t) => (
+          <Tab
+            key={t.id}
+            label={t.label}
+            count={n(t.rows.length)}
+            active={tab === t.id}
+            onClick={() => setTab(t.id)}
+          />
+        ))}
       />
 
+      {/* 탭을 바꾸면 표를 새로 세운다 — 걸어 둔 검색어·거르개는 그 목록에 맞춰 다시
+          고르는 것이 맞다. 조건은 위에 그대로 적혀 있는데 왜 0줄인지는 안 적혀 있다 */}
       <DataTable
-        rows={waiting}
+        key={tab}
+        rows={rows}
         cols={cols}
         filters={filters}
         getKey={(r) => r.id}
         searchHint="문항 ID · 발문 · 출제자"
-        empty="검수를 기다리는 문항이 없습니다."
-        /* 넘겨받은 차례가 무엇인지 적어 둔다. 적지 않으면 머리 행의 정렬 화살표가 전부
-           꺼져 있는데 줄 차례는 뒤섞여 보여, 표가 고장 난 것처럼 읽힌다 */
-        toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기본 차례 · 오래 기다린 순</span>}
+        empty={current.empty}
+        showCount={false}
       />
-
-      <SeedNote>
-        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 승인·반려는 문항 상세의 검수판에서 3단을 짚어야 열립니다.
-      </SeedNote>
     </>
   );
 }

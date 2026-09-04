@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { can, permissionIds, staffRoles, type PermissionId } from "@/lib/admin";
-import { staffDirectory } from "@/lib/adminUsers";
-import { n } from "@/lib/admin2";
-import { Body, PageHead, Panel, SeedNote } from "@/components/admin2/ui";
+import { Body, Panel } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
-import StaffTable from "./StaffTable";
+import StaffView from "./StaffView";
 
 export const metadata = { title: "운영자·권한" };
 
@@ -20,9 +17,10 @@ export const metadata = { title: "운영자·권한" };
  * 학생 개인정보를 못 본다」는 따로 있으면 아무 뜻이 없고, 둘을 겹쳐야 비로소 「지금
  * 개인정보에 닿을 수 있는 사람이 몇인가」가 된다. 대조표를 딴 화면으로 빼지 않은 까닭이다.
  *
- * 지표 띠(Kpi)를 두지 않았다. 넉 줄짜리 띠를 얹으면 표 머리가 100px 밀리는데 이 화면에서
- * 실제로 쓰는 숫자는 넷 다 한 줄로 적히는 종류다. 그래서 제목 옆 meta로 붙였다.
- * 최고권한 계정 수와 2단계 미설정 수를 나란히 세운 것은 이 둘이 겹치는 순간이 사고라서다.
+ * 지표 띠(Kpi)를 두지 않았다. 넉 줄짜리 띠를 얹으면 표 머리가 100px 밀린다. 대신 그 숫자를
+ * 조회 조건 탭으로 바꿨다 — 활성·정지/휴면·2단계 미설정을 누르면 아래 목록이 그 묶음만
+ * 남는다. 2단계 미설정을 탭으로 올린 것은, 이 화면에서 유일하게 「오늘 해야 하는 일」인
+ * 숫자라서다. 머리·탭·목록은 StaffView(클라이언트)가 맡는다.
  *
  * ⚠ 계정·이름은 전부 예시다(lib/adminUsers.ts). 권한 표만은 예시가 아니라 실제 정의로,
  *   lib/admin.ts의 staffRoles.permissions를 can()으로 그대로 읽어 찍는다. 손으로 옮겨
@@ -51,48 +49,12 @@ const permissionLabel: Record<PermissionId, string> = {
   "system.manage": "시스템 설정 (ADM-13)",
 };
 
-/* 머리에 세울 넷. 셋은 규모고 하나(2단계 미설정)는 오늘 할 일이다 */
-const superCount = staffDirectory.filter((s) => s.role === "super").length;
-const mfaOff = staffDirectory.filter((s) => !s.mfa).length;
-const inactive = staffDirectory.filter((s) => s.state !== "active").length;
-
 export default function Admin2StaffPage() {
   return (
     <>
-    <PageHead
-      title="운영자·권한"
-      meta={
-        <>
-          <span>
-            계정 <span className="a2-num text-(--a2-ink-2)">{n(staffDirectory.length)}</span>
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            최고권한 <span className="a2-num text-(--a2-ink-2)">{n(superCount)}</span>
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            2단계 미설정 <span className="a2-num text-(--a2-ink-2)">{n(mfaOff)}</span>
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            정지·휴면 <span className="a2-num text-(--a2-ink-2)">{n(inactive)}</span>
-          </span>
-        </>
-      }
-      actions={
-        /* 이 화면에서 못 하는 일로 나가는 문 하나. 계정을 만졌으면 그 기록이 어디에
-           남는지가 바로 다음 질문이라 감사 로그를 붙였다. 동작하지 않는 「운영자 추가」
-           같은 단추는 두지 않았다 */
-        <Link href="/admin2/audit" className="a2-btn">
-          감사 로그
-        </Link>
-      }
-    />
-
       {/* ① 누가 들어올 수 있는가 */}
-      <StaffTable />
-<Body>
+      <StaffView />
+      <Body>
 
         {/* ② 그 역할은 무엇을 할 수 있는가 —
             이 화면의 핵심. 슈퍼 관리자가 「출제자가 학생 개인정보를 볼 수 있나」를 확인하러
@@ -176,12 +138,7 @@ export default function Admin2StaffPage() {
           </Panel>
         </div>
 
-</Body>
-      <SeedNote>
-        운영자 계정·이름·접속 시각은 화면 설계를 위한 예시이며 실존 인물이 아닙니다. 다만 역할 ×
-        권한 대조표는 예시가 아니라 <span className="a2-mono">lib/admin.ts</span>의 역할 정의를{" "}
-        <span className="a2-mono">can()</span>으로 그대로 읽어 찍은 것입니다.
-      </SeedNote>
+      </Body>
     </>
   );
 }

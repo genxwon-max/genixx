@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR, Saira } from "next/font/google";
+import { Chakra_Petch, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
 const notoKr = Noto_Sans_KR({
@@ -9,9 +9,15 @@ const notoKr = Noto_Sans_KR({
   display: "swap",
 });
 
-/** 로고 워드마크 전용. 본문에는 쓰지 않는다. */
-const saira = Saira({
-  variable: "--font-saira",
+/**
+ * 로고 워드마크 전용. 본문에는 쓰지 않는다.
+ *
+ * 한동안 Saira를 썼는데, 인쇄된 로고 원본과 나란히 놓아 보니 G의 배가 둥글게 말리고
+ * E의 모서리가 부드러워 원본의 네모난 인상이 나오지 않았다. Chakra Petch는 G의 가로대가
+ * 곧게 끊기고 X의 끝이 직각으로 잘려 원본에 훨씬 가깝다.
+ */
+const chakra = Chakra_Petch({
+  variable: "--font-chakra",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   display: "swap",
@@ -28,7 +34,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${notoKr.variable} ${saira.variable} h-full`}>
+    <html lang="ko" className={`${notoKr.variable} ${chakra.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );

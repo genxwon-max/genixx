@@ -43,10 +43,6 @@ const CASE_TONE: Record<CaseState, Tone> = {
   published: "muted",
 };
 
-/** 거르개 차림표에 쓰는 차례 — 판정이 흘러가는 순서 그대로. 가나다순으로 두면
- *  「케이스 회의」가 「AI 분석 완료」보다 위에 서서 단계를 못 읽는다. */
-const STATE_ORDER: CaseState[] = ["ai", "review", "conference", "confirmed", "published"];
-
 /** 설문 세 종. 자리 순서가 곧 누구의 설문인지이므로 이 배열이 유일한 기준이다 */
 const SURVEYS = [
   { key: "mother", label: "엄마" },
@@ -209,13 +205,8 @@ const COLS: Col<GradingCase>[] = [
   },
 ];
 
+/* 상태는 머리의 탭이 맡는다(QueueView). 같은 조건을 두 군데서 걸면 서로 부딪친다 */
 const FILTERS: Filter<GradingCase>[] = [
-  {
-    id: "state",
-    label: "상태",
-    options: STATE_ORDER.map((s) => ({ value: s, label: caseStates[s].label })),
-    match: (c, v) => c.state === v,
-  },
   {
     // 「75 이상만」은 두지 않는다. 이 화면에서 아무도 찾지 않는 묶음이라 차림표만 길어진다
     id: "confidence",
@@ -234,7 +225,7 @@ const FILTERS: Filter<GradingCase>[] = [
   },
 ];
 
-export default function QueueTable({ rows }: { rows: GradingCase[] }) {
+export default function QueueTable({ rows, empty }: { rows: GradingCase[]; empty: string }) {
   return (
     <DataTable
       rows={rows}
@@ -242,10 +233,9 @@ export default function QueueTable({ rows }: { rows: GradingCase[] }) {
       getKey={(c) => c.id}
       filters={FILTERS}
       searchHint="케이스·응시번호·기관·사유"
-      empty="조건에 맞는 케이스가 없습니다."
-      // 넘겨받은 순서가 신뢰도 낮은 순이라는 것을 적어 둔다. 적지 않으면 머리 행의
-      // 정렬 화살표가 꺼져 있는데 줄 순서는 뒤섞여 보여, 표가 고장 난 것처럼 읽힌다
-      toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기본 정렬 · 신뢰도 낮은 순</span>}
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

@@ -6,9 +6,8 @@ export const metadata = { title: "평가 회차" };
  * ADM-05 평가 회차.
  *
  * 회차 상태 · 응시 기간 · 편성은 브라우저 저장소가 들고 있어(lib/roundPlanStore.ts ·
- * lib/formStore.ts) 서버에서 읽으면 씨앗값만 나온다. 이 파일은 문서 제목만 달고 안은
- * 클라이언트가 그린다 — 한 화면 안에서 표는 「응시 진행중」, 머리는 「준비중」이라고
- * 말하는 일을 없애려는 것이다.
+ * lib/formStore.ts) 서버에서 읽으면 씨앗값만 나온다. 그 값을 그리는 것은 표뿐이고,
+ * 표가 제 몫의 클라이언트 경계를 들고 있다.
  */
 export default function Admin2Rounds() {
   return <RoundsView />;

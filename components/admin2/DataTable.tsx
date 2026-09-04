@@ -65,6 +65,31 @@ export type Filter<T> = {
   match: (row: T, value: string) => boolean;
 };
 
+/**
+ * 줄 고르기 — **고르는 표에만** 준다.
+ *
+ * 이 콘솔의 표는 대개 훑는 표다. 줄마다 누를 것이 생기면 훑는 일이 고르는 일로 바뀌므로
+ * 체크상자를 기본으로 두지 않는다(admin2.css의 .a2-choice 주석과 같은 까닭). 다만
+ * 「목록에서 여럿 골라 한 번에 넣는다」가 곧 그 화면이 하는 일인 자리가 있다 — 검사지에
+ * 문항을 담는 표가 그것이다. 그때만 이 값을 넘겨 첫 칸에 체크상자를 세운다.
+ *
+ * 고른 것을 표가 들고 있지 않는다. 부르는 쪽이 들고 있어야 「고른 것 담기」 단추도, 담고
+ * 나서 비우는 일도 표 밖에서 된다 — 표가 들고 있으면 담긴 뒤에도 체크가 남는다.
+ *
+ * 머리의 체크상자는 **지금 쪽에 보이는 줄**만 켠다. 걸러 낸 전체를 켜면 200줄이 한 번에
+ * 딸려 오는데, 그것을 되돌리려면 다시 200줄을 꺼야 한다.
+ */
+export type Selection<T> = {
+  /** 고른 줄의 열쇠 (getKey가 낸 값) */
+  chosen: string[];
+  /** 한 줄 켜고 끄기 */
+  onToggle: (key: string) => void;
+  /** 지금 쪽에 보이는 줄 전부 — on이면 넣고 아니면 뺀다 */
+  onToggleMany: (keys: string[], on: boolean) => void;
+  /** 체크상자에 읽어 줄 이름. 없으면 열쇠를 읽는다 */
+  labelOf?: (row: T) => string;
+};
+
 const hideCls = {
   sm: "max-sm:hidden",
   md: "max-md:hidden",
@@ -79,7 +104,9 @@ export default function DataTable<T>({
   search = true,
   searchHint = "검색",
   pageSize: initialPageSize = 25,
+  showCount = true,
   toolbarExtra,
+  selection,
   empty = "조건에 맞는 줄이 없습니다.",
 }: {
   rows: T[];
@@ -89,8 +116,18 @@ export default function DataTable<T>({
   search?: boolean;
   searchHint?: string;
   pageSize?: number;
+  /**
+   * 도구 줄에 「N줄」을 적을지.
+   *
+   * 기본은 적는다 — 거르개를 걸고 몇 줄이 남았는지가 곧 답일 때가 많다. 다만 화면 위에
+   * 이미 같은 수가 서 있으면(상태 탭의 개수 알약 같은 것) 같은 값이 한 화면에 세 번
+   * 적히므로, 그런 화면만 끈다. 끄더라도 쪽 넘김 줄의 「1–3 / 3」은 그대로 남는다.
+   */
+  showCount?: boolean;
   /** 도구 줄 오른쪽에 붙일 것 — 내려받기·새로 만들기 */
   toolbarExtra?: React.ReactNode;
+  /** 줄마다 체크상자를 세운다 — 고르는 표에만 */
+  selection?: Selection<T>;
   empty?: string;
 }) {
   /* 실제로 걸린 조건 — 표는 이것만 본다 */
@@ -149,6 +186,13 @@ export default function DataTable<T>({
   const BLOCK = 10;
   const blockAt = Math.floor(at / BLOCK) * BLOCK;
   const block = Array.from({ length: Math.min(BLOCK, pages - blockAt) }, (_, i) => blockAt + i);
+
+  /* 고른 것 — 표는 들고 있지 않고 부르는 쪽의 목록을 되비추기만 한다.
+     머리의 체크상자는 지금 쪽에 보이는 줄만 본다(Selection 주석). */
+  const chosenSet = useMemo(() => new Set(selection?.chosen ?? []), [selection?.chosen]);
+  const pageKeys = slice.map(getKey);
+  const pageAllOn = pageKeys.length > 0 && pageKeys.every((k) => chosenSet.has(k));
+  const pageSomeOn = pageKeys.some((k) => chosenSet.has(k));
 
   /** 지금 고른 것과 걸린 것이 다른가 — 다르면 검색을 눌러야 한다고 알려 준다 */
   const dirty =
@@ -236,13 +280,17 @@ export default function DataTable<T>({
               두었더니 거르개 사이에 묻혀 안 읽혔다 — 숫자만 한 눈금 키워 세운다.
               이 수는 **걸린 조건**의 결과다. 고르는 중인 값으로 세면 검색을 누르기도 전에
               줄 수가 바뀌어, 검색이 하는 일이 무엇인지 알 수 없게 된다 */}
-          <span className="a2-t-sm text-(--a2-ink-3)">
-            <span className="a2-num a2-t text-(--a2-ink)">{shown.length.toLocaleString("ko-KR")}</span>
-            {shown.length !== rows.length && (
-              <span> / 전체 {rows.length.toLocaleString("ko-KR")}</span>
-            )}
-            줄
-          </span>
+          {showCount && (
+            <span className="a2-t-sm text-(--a2-ink-3)">
+              <span className="a2-num a2-t text-(--a2-ink)">
+                {shown.length.toLocaleString("ko-KR")}
+              </span>
+              {shown.length !== rows.length && (
+                <span> / 전체 {rows.length.toLocaleString("ko-KR")}</span>
+              )}
+              줄
+            </span>
+          )}
 
           {/* 고쳐 놓고 안 누른 사람에게. 이 줄이 없으면 조건을 고쳐 놓고 표가 그대로인 것을
               고장으로 읽는다 */}
@@ -263,6 +311,21 @@ export default function DataTable<T>({
         <table className="a2-table">
           <thead>
             <tr>
+              {selection && (
+                <th scope="col" style={{ width: "2.25rem" }}>
+                  {/* 반쯤 켜진 상태(indeterminate)는 DOM 속성으로만 있다. 상태로 들고 있으면
+                      켜고 끌 때마다 다시 그리게 되므로 ref로 직접 얹는다 */}
+                  <input
+                    type="checkbox"
+                    checked={pageAllOn}
+                    ref={(el) => {
+                      if (el) el.indeterminate = !pageAllOn && pageSomeOn;
+                    }}
+                    onChange={() => selection.onToggleMany(pageKeys, !pageAllOn)}
+                    aria-label="이 쪽에 보이는 줄 전부 고르기"
+                  />
+                </th>
+              )}
               <th scope="col" className="a2-th-num" style={{ width: "3.5rem" }}>
                 No
               </th>
@@ -305,7 +368,17 @@ export default function DataTable<T>({
           </thead>
           <tbody>
             {slice.map((r, i) => (
-              <tr key={getKey(r)}>
+              <tr key={getKey(r)} data-on={selection && chosenSet.has(getKey(r)) ? "true" : undefined}>
+                {selection && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={chosenSet.has(getKey(r))}
+                      onChange={() => selection.onToggle(getKey(r))}
+                      aria-label={`${selection.labelOf?.(r) ?? getKey(r)} 고르기`}
+                    />
+                  </td>
+                )}
                 {/* 내림차순이라 첫 줄이 곧 전체 개수다. 쪽을 넘겨도 이어진다 —
                     96줄짜리 목록의 2쪽 첫 줄은 71이다(96 − 25). 쪽마다 다시 세면
                     「일흔한 번째 줄」을 말로 가리킬 수 없다 */}
@@ -327,7 +400,7 @@ export default function DataTable<T>({
             ))}
             {slice.length === 0 && (
               <tr>
-                <td colSpan={cols.length + 1} className="text-center text-(--a2-ink-4)">
+                <td colSpan={cols.length + 1 + (selection ? 1 : 0)} className="text-center text-(--a2-ink-4)">
                   <span className="block py-10">{empty}</span>
                 </td>
               </tr>
