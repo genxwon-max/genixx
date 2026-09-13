@@ -205,6 +205,69 @@ export function monthly(rows: Payment[]) {
   return [...map.entries()].map(([ym, v]) => ({ ym, ...v }));
 }
 
+/* ───────────────────────── 조회 기간 ─────────────────────────
+   결제 화면이 가장 자주 답하는 물음은 「이번 달 얼마」와 「전부 합쳐 얼마」다. 그 둘을
+   화면에서 손으로 세지 않도록, 기간을 다루는 말을 여기에 모아 둔다.
+
+   ⚠ 「이번 달」을 new Date()로 읽지 않는다. 달이 바뀌는 순간이나 시간대가 다른 기기에서
+     서버가 그린 달과 브라우저가 그린 달이 갈린다(lib/adminMetrics.ts의 ANCHOR와 같은
+     까닭). 지어낸 기록이 끝나는 달이 곧 이번 달이고, 그 달은 지금 회차(2026.08)와 맞춰
+     두었다. 집계 API를 붙일 때는 응답이 내려 주는 기준 달로 갈아 끼운다. */
+
+/** 기록이 시작하는 달 (YYYY-MM) */
+export const firstYm = MONTHS[0].ym;
+/** 이번 달 (YYYY-MM) */
+export const thisYm = MONTHS[MONTHS.length - 1].ym;
+
+/**
+ * 조회 기간.
+ *
+ * 빈 값이 「전체」다. "all" 같은 표식을 따로 두지 않는 까닭은 그 글자가 곧 조건이 되어
+ * 연도와 달 두 곳에서 같은 예외를 두 번 다뤄야 하기 때문이다.
+ */
+export type Period = { year: string; month: string };
+
+export const ALL_TIME: Period = { year: "", month: "" };
+export const THIS_MONTH: Period = { year: thisYm.slice(0, 4), month: thisYm.slice(5, 7) };
+export const THIS_YEAR: Period = { year: thisYm.slice(0, 4), month: "" };
+
+export const samePeriod = (a: Period, b: Period) => a.year === b.year && a.month === b.month;
+
+/** 달(YYYY-MM)이 그 기간에 드는가. 추이 막대가 「지금 보는 달」을 칠할 때 쓴다 */
+export const ymInPeriod = (ym: string, { year, month }: Period) =>
+  (!year || ym.startsWith(year)) && (!month || ym.slice(5, 7) === month);
+
+/* 승인 시각은 "YYYY-MM-DD HH:MM"이라 앞 일곱 자가 곧 달이다 — 자리를 두 번 세지 않는다 */
+export const inPeriod = (p: Payment, period: Period) => ymInPeriod(p.paidAt, period);
+
+/** 기간을 사람 말 한 마디로. 숫자 옆에 무엇의 값인지 적으려면 이 말이 필요하다 */
+export function periodLabel({ year, month }: Period) {
+  if (year && month) return `${year}년 ${Number(month)}월`;
+  if (year) return `${year}년`;
+  if (month) return `해마다 ${Number(month)}월`;
+  return "전체 기간";
+}
+
+/**
+ * 견줄 앞 기간 — 달을 고르면 그 앞 달, 해만 고르면 그 앞 해.
+ *
+ * 전체 기간과 「해마다 N월」은 null을 낸다. 짝지을 앞 기간이 없는데 억지로 하나를 세우면
+ * 화살표가 아무 뜻도 없는 값을 가리키게 된다.
+ */
+export function prevPeriod({ year, month }: Period): Period | null {
+  if (year && month) {
+    const zero = Number(year) * 12 + (Number(month) - 1) - 1;
+    return { year: String(Math.floor(zero / 12)), month: String((zero % 12) + 1).padStart(2, "0") };
+  }
+  if (year) return { year: String(Number(year) - 1), month: "" };
+  return null;
+}
+
+/** 증감률(%). 앞 기간이 0이면 내지 않는다 — 0에서 늘어난 것을 몇 %라 적을 수는 없다 */
+export function growth(now: number, before: number): number | null {
+  return before > 0 ? Math.round(((now - before) / before) * 1000) / 10 : null;
+}
+
 /** 상품별 순매출 — 많이 판 것이 위로 */
 export function byProduct(rows: Payment[]) {
   const map = new Map<string, { name: string; net: number; count: number; qty: number }>();

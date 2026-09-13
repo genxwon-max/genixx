@@ -283,14 +283,22 @@ export default function SignupFlow() {
       return;
     }
 
-    signIn({
-      role: draft.type === "parent" ? "parent" : draft.type === "teacher" ? "teacher" : "director",
-      name: name.trim(),
-      provider: draft.provider,
-      email: draft.email || undefined,
-      loginId: social ? undefined : loginId,
-      approved: !type.needsApproval,
-    });
+    // 학부모는 여기서 세션을 만들지 않는다. 가입과 로그인은 다른 일이고, 방금 정한
+    // 아이디·비밀번호를 한 번은 써 봐야 다음에 혼자 돌아올 수 있다. 가입 완료
+    // 화면(/signup/done)이 로그인할지 묻는다.
+    //
+    // 학생은 위에서 이미 갈라져 나갔고(응시로 곧장 이어져야 한다), 교사·기관은
+    // 승인 대기 화면이 자기 신청 상태를 보여 주는 자리라 세션이 있어야 한다.
+    if (draft.type !== "parent") {
+      signIn({
+        role: draft.type === "teacher" ? "teacher" : "director",
+        name: name.trim(),
+        provider: draft.provider,
+        email: draft.email || undefined,
+        loginId: social ? undefined : loginId,
+        approved: !type.needsApproval,
+      });
+    }
     router.push(type.needsApproval ? "/my/pending" : type.next);
   };
 

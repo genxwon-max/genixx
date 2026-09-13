@@ -2,7 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 import type { ExamRecord } from "./examStore";
-import { confidenceOf, decideType, expertNotes, scoreAxes } from "./result";
+import { confidenceOf, decideType, scoreAxes } from "./result";
+import { assembleFrom } from "./reportAssetStore";
+import { bandFromGrade } from "./surveyBands";
+import { labelCheck } from "./labelCheck";
 
 /**
  * 리포트 승인 (EXP-08).
@@ -78,49 +81,9 @@ export type ReportDoc = {
   log: ReportLogEntry[];
 };
 
-/* ───────────────────────── 라벨링 점검 ─────────────────────────
-   진단 윤리 헌장 7조 — 아이를 규정하는 말을 리포트에 담지 않는다.
-   등급·서열·백분위는 아이를 줄 세우는 말이라 문장이 아무리 부드러워도 막는다.
-   단정·비교 표현은 맥락에 따라 괜찮을 수 있어 짚기만 한다. */
-
-export type LabelFinding = { tone: "block" | "warn"; word: string; why: string };
-
-const BANNED: { words: string[]; why: string }[] = [
-  {
-    words: ["상위", "하위", "백분위", "등급", "석차", "순위", "%ile"],
-    why: "아이를 줄 세우는 표현입니다. 발현 단계로 바꿔 적어 주세요.",
-  },
-  {
-    words: ["영재", "우수아", "천재", "수재", "저능", "부진아"],
-    why: "아이를 규정하는 이름표입니다. 헌장 7조가 막는 표현입니다.",
-  },
-];
-
-const CAUTION: { words: string[]; why: string }[] = [
-  {
-    words: ["부족합니다", "떨어집니다", "못합니다", "약점", "결함"],
-    why: "능력의 없음으로 읽힙니다. 「아직 보여줄 기회가 적었다」로 적을 수 있는지 보세요.",
-  },
-  {
-    words: ["또래보다", "평균보다", "다른 아이"],
-    why: "다른 아이와 견주는 말입니다. 이 아이 안에서의 차이로 적을 수 있는지 보세요.",
-  },
-  {
-    words: ["반드시", "틀림없이", "확실히", "분명히"],
-    why: "한 회차 결과에 단정을 붙이고 있습니다.",
-  },
-];
-
-export function labelCheck(text: string): LabelFinding[] {
-  const out: LabelFinding[] = [];
-  for (const g of BANNED) {
-    for (const w of g.words) if (text.includes(w)) out.push({ tone: "block", word: w, why: g.why });
-  }
-  for (const g of CAUTION) {
-    for (const w of g.words) if (text.includes(w)) out.push({ tone: "warn", word: w, why: g.why });
-  }
-  return out;
-}
+/* 라벨링 점검은 lib/labelCheck.ts로 뗐다 — 해석 템플릿 저장소도 같은 점검을 걸어야 하는데
+   서로 물면 순환 import가 된다. 여기서 다시 내보내 기존에 부르던 자리는 그대로 둔다 */
+export { labelCheck, type LabelFinding } from "./labelCheck";
 
 /** 리포트 한 벌 전체를 훑는다 */
 export function reportCheck(doc: ReportDoc) {
@@ -140,7 +103,7 @@ const b = (
   text: string,
 ): ReportBlock => ({ id, section, title, rule, evidence, text });
 
-const SEED: ReportDoc[] = [
+const HAND: ReportDoc[] = [
   {
     id: "RP-2026-0311",
     studentId: "demo-0311",
@@ -330,6 +293,85 @@ const SEED: ReportDoc[] = [
   },
 ];
 
+/**
+ * 손으로 쓴 넷 뒤에 붙이는 생성분.
+ *
+ * 넷만으로는 리포트 승인 화면이 하는 일이 안 보인다 — 발송은 「쌓인 것을 훑어 내보내는
+ * 일」이라 줄이 열도 안 되면 거르개도 쪽 넘김도 예약도 쓸 자리가 없다. 채점 워크벤치가
+ * makeScores()로 같은 일을 하고 있어(lib/expertStore.ts) 그 꼴을 따른다.
+ *
+ * ⚠ 앞의 넷은 건드리지 않는다. 그중 RP-2026-0312에는 라벨링 점검에 걸리라고 일부러 넣어
+ *   둔 블록이 있어서, 손대면 승인 화면의 점검 시연이 죽는다.
+ *
+ * ⚠ 시계를 읽지 않는다. 조립 시각을 2026-08-16 둘레에 못 박아 두어야 화면을 대조하는
+ *   사람이 매번 같은 목록을 본다.
+ */
+function makeReports(): ReportDoc[] {
+  /* 씨앗을 고정한 난수 — 열 때마다 같은 목록이 서야 한다 */
+  let seed = 20260816;
+  const r = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const pick = <T,>(list: readonly T[]) => list[Math.floor(r() * list.length)];
+
+  const FAMILY = ["김", "이", "박", "정", "최", "강", "조", "윤", "장", "임", "한", "오"];
+  const GIVEN = ["서준", "하윤", "도윤", "지우", "시우", "예린", "수아", "지호", "채원", "민준", "하은", "유진"];
+  const GRADES = ["초등 3학년", "초등 4학년", "초등 5학년", "초등 6학년", "중학교 1학년"];
+  const TYPES = [
+    { code: "LMN형", name: "이야기 탐험가형", axis: "언어" },
+    { code: "MLN형", name: "규칙 발견가형", axis: "수리·논리" },
+    { code: "NLM형", name: "관찰 탐구가형", axis: "자연·탐구" },
+    { code: "LNM형", name: "이야기 탐험가형", axis: "언어" },
+  ];
+  const CONF = ["높음", "보통", "참고"];
+
+  return Array.from({ length: 14 }, (_, i) => {
+    const t = pick(TYPES);
+    const grade = pick(GRADES);
+    const name = `${pick(FAMILY)}${pick(GIVEN)}`;
+    const score = 58 + Math.floor(r() * 34);
+    /* 조립일을 08-16부터 09-08까지 흩는다. 한 날에 몰아 두면 스케줄러를 걸었을 때
+       열여덟 줄이 전부 같은 상태가 되어, 「기다리는 중」과 「때가 됨」이 갈리는 그림이
+       화면에 안 나온다 */
+    const at0 = Date.UTC(2026, 7, 16) + Math.round((i * 23) / 13) * 86_400_000;
+    const d0 = new Date(at0);
+    const at = `${d0.getUTCFullYear()}-${String(d0.getUTCMonth() + 1).padStart(2, "0")}-${String(d0.getUTCDate()).padStart(2, "0")} ${String(9 + (i % 8)).padStart(2, "0")}:${String(10 + i * 3).padStart(2, "0")}`;
+    const seat = String(441 + i * 3).padStart(4, "0");
+
+    return {
+      id: `RP-2026-${seat}`,
+      studentId: `demo-${seat}`,
+      student: name,
+      grade,
+      round: "2026 파일럿 3회차",
+      typeCode: t.code,
+      typeName: t.name,
+      confidence: pick(CONF),
+      assembledAt: at,
+      state: "review" as ReportState,
+      log: [{ at, by: "조립 규칙", text: "리포트를 조립했습니다 (블록 4)" }],
+      blocks: [
+        b("t1", "재능 유형", `유형 판정 ${t.code}`,
+          "R-01 · 측정된 축 가운데 상위 두 축의 조합으로 유형을 정한다",
+          `${t.axis} ${score}`,
+          `${t.axis} 영역에서 이 학년에 기대하는 수행이 안정적으로 나타났습니다. 정답 여부보다 그렇게 생각한 까닭을 함께 적은 점이 확인됩니다.`),
+        b("t2", "강하게 나타난 축", `${t.axis} 축`,
+          "R-04 · 최상위 축에 그 축의 발현 밴드 문구를 붙인다",
+          `${t.axis} ${score}`,
+          "서술형 답에서 답만 쓰지 않고 근거를 함께 적었습니다. 자료에서 찾은 것을 자기 말로 바꾸어 쓰는 모습이 반복해서 나타납니다."),
+        b("t3", "미측정 축", "다섯 축 안내",
+          "R-09 · 1단계 진단에서 재지 않은 다섯 축에 늘 붙는 고정 블록",
+          "공간·청각·신체·사회관계·자기이해",
+          "다섯 축은 지필로 재기 어려워 2027 심화진단에서 측정합니다. 이번 결과의 빈 축은 '없음'이 아니라 '아직 재지 않음'입니다."),
+        b("t4", "집에서 해 볼 것", "활동 제안",
+          "R-12 · 최상위 축 × 학년대로 활동 모듈을 뽑는다",
+          `${t.axis} × ${grade}`,
+          "오늘 읽거나 본 것 가운데 하나를 골라 한 줄로 옮겨 적게 해 보세요. 분량보다 매일 하는 것이 중요합니다."),
+      ],
+    };
+  });
+}
+
+const SEED: ReportDoc[] = [...HAND, ...makeReports()];
+
 const KEY = "genixx.reports";
 const EVENT = "genixx:reports-change";
 
@@ -463,6 +505,19 @@ export function reopenReport(id: string, by: string) {
  *
  * 조립까지는 규칙이 한다. 여기서 만들어지는 것은 「검토 대기」이지 결과가 아니다 —
  * 사람이 발행을 누르기 전까지 보호자 화면은 닫혀 있다.
+ *
+ * ── 문구와 규칙이 이제 데이터에서 온다 ──
+ * 여태 이 함수가 "R-01 · …" 같은 규칙 문자열과 expertNotes()의 문장을 코드에 박아 두고
+ * 있었다. 그래서 문구 한 줄을 고치려면 배포를 해야 했고, 정작 고쳐야 하는 사람(검수
+ * 담당)은 손댈 자리가 없었다. 이제 둘 다 리포트 관리 화면(ADM-08)이 고치는 값이다
+ * (lib/reportAssets.ts의 씨앗 + lib/reportAssetStore.ts의 덮어쓰기).
+ *
+ * ⚠ 조립하는 순간 문장을 **블록에 복사해 담는다.** 뒤에 템플릿을 고쳐도 이미 조립된
+ *   리포트는 그대로다 — 보호자가 이미 읽은 글이 뒤에서 소리 없이 바뀌면 안 된다.
+ *   고친 문구는 다음 조립부터 나간다.
+ *
+ * ⚠ 미리보기와 **같은 함수(assembleFrom)를 쓴다.** 화면이 보여 준 것과 실제로 나가는 글이
+ *   다른 코드에서 나오면 미리보기가 「그럴 것이다」를 말하는 자리가 되어 아무도 안 믿는다.
  */
 export function ensureReport(
   studentId: string,
@@ -476,50 +531,48 @@ export function ensureReport(
 
   const scores = scoreAxes(record);
   const type = decideType(scores);
-  const notes = expertNotes(scores, record);
   const conf = confidenceOf(record);
-  const measured = scores.filter((s) => s.measured && s.score !== null);
-  const evidence = measured
-    .map((s) => `${s.axis.label} ${s.score}`)
-    .join(" · ");
+  const measured = scores
+    .filter((s) => s.measured && s.score !== null)
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const evidence = measured.map((s) => `${s.axis.label} ${s.score}`).join(" · ") || "측정값 없음";
 
-  const blocks: ReportBlock[] = [];
-  if (type) {
-    blocks.push(
-      b(
-        "t1",
-        "재능 유형",
-        `유형 판정 ${type.code}`,
-        "R-01 · 측정된 축 가운데 상위 두 축의 조합으로 유형을 정한다",
-        evidence || "측정값 없음",
-        type.summary,
-      ),
-    );
-  }
-  notes.forEach((n, i) =>
-    blocks.push(
-      b(
-        `n${i + 1}`,
-        n.title,
-        n.title,
-        "R-04 · 축 순위와 정보원 수에 따라 붙는 해석 블록",
-        evidence || "측정값 없음",
-        n.body,
-      ),
-    ),
-  );
-  (type?.directions ?? []).slice(0, 2).forEach((d, i) =>
-    blocks.push(
-      b(
-        `a${i + 1}`,
-        "집에서 해 볼 것",
-        d.t,
-        "R-12 · 최상위 축 × 학년군으로 활동 모듈을 뽑는다",
-        evidence || "측정값 없음",
-        d.d,
-      ),
-    ),
-  );
+  const top = measured[0] ?? null;
+  const low = measured.length > 1 ? measured[measured.length - 1] : null;
+  const surveys = (["mother", "father", "teacher"] as const).filter(
+    (k) => record.surveys[k] === "done",
+  ).length;
+
+  /* 과목 점수 — 교차 해석 규칙이 「학력은 낮은데 재능은 높다」를 가리는 데 쓴다.
+     측정된 축의 평균을 학력 쪽 값으로 본다(2026 파일럿은 축과 과목이 1:1이다) */
+  const subjectScore = measured.length
+    ? Math.round(measured.reduce((sum, s) => sum + (s.score ?? 0), 0) / measured.length)
+    : 0;
+
+  const blocks: ReportBlock[] = top
+    ? assembleFrom({
+        grade: bandFromGrade(grade),
+        topAxis: top.axis.id,
+        topScore: top.score ?? 0,
+        lowAxis: low?.axis.id ?? null,
+        lowScore: low?.score ?? 0,
+        subjectScore,
+        surveys,
+      })
+        /* 문구가 없는 자리는 블록을 세우지 않는다 — 빈 문단이 리포트에 서면
+           보호자는 무엇이 빠졌는지 모른 채 그 자리를 읽는다 */
+        .filter((x) => x.text.trim())
+        .map((x, i) =>
+          b(
+            `b${i + 1}`,
+            x.section,
+            x.title,
+            `${x.rule.id} · ${x.rule.desc}`,
+            evidence,
+            x.text,
+          ),
+        )
+    : [];
 
   const doc: ReportDoc = {
     id: `RP-${Date.now().toString(36).toUpperCase()}`,

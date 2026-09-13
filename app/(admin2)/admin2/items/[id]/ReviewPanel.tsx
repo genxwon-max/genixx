@@ -63,7 +63,7 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
   return (
     <Panel
       title="검수"
-      meta="3단 · EXP-03"
+      meta="1차 내용 · 2차 태깅 교차검증 · 3차 윤리·편향"
       actions={
         <button
           type="button"

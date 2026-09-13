@@ -8,6 +8,8 @@ import { roleOf } from "@/lib/admin";
 import { adminSignOut, useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { useItems } from "@/lib/itemStore";
+import { scoreDone, useExpert } from "@/lib/expertStore";
+import { useInterviewDesk } from "@/lib/interviewStore";
 import { usePendingApprovals } from "@/lib/approvalStore";
 import ConsoleGate from "./ConsoleGate";
 import Palette from "./Palette";
@@ -43,10 +45,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
      세는 조건은 각 화면이 목록을 고르는 조건과 같아야 한다 — 출제는 작성 중+반려됨,
      검수는 검수 대기, 가입 승인은 아직 처리하지 않은 신청이다. */
   const items = useItems();
+  const { scores } = useExpert();
+  const desk = useInterviewDesk();
   const live = {
     drafts: items.filter((i) => i.state === "draft" || i.state === "rejected").length,
     review: items.filter((i) => i.state === "submitted").length,
     approvals: usePendingApprovals(),
+    /* 채점도 브라우저 저장소에 있다 — 세는 조건은 채점 화면의 「검토 대기」 탭과 같다 */
+    grading: scores.filter((t) => !scoreDone(t)).length,
+    /* 면담은 「아직 날짜가 없는 것」을 센다 — 들어온 신청과 대상으로 받아 둔 것.
+       세는 조건은 면담 관리 목록의 「신청 접수」·「선발됨」 두 탭과 같아야 한다.
+       다르게 세면 8을 눌렀는데 열한 줄인 화면이 된다.
+       ⚠ 「지난 일정」은 여기 넣지 않는다. 그것은 날짜가 있는 줄이라 기둥의 숫자가
+         「잡아야 할 것」이 아니라 「신경 쓸 것」으로 뜻이 넓어진다 */
+    interviews: desk.filter((r) => r.state === "applied" || r.state === "queued").length,
   };
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -159,9 +171,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 {shown && (
                   <ul id={`a2-nav-${gi}`} className="a2-nav-list">
                     {g.items.map((it) => {
-                      const on = it.exact
-                        ? pathname === it.href
-                        : pathname === it.href || pathname.startsWith(`${it.href}/`);
+                      /* 지금 화면은 하나다 — 주소 앞머리가 걸리는 항목을 다 칠하면,
+                         한 항목의 주소가 다른 항목의 앞머리인 자리(개인정보 관리 ·
+                         파기 스케줄러)에서 둘이 함께 「여기」라고 말한다. 가장 긴
+                         주소가 이기는 셈은 findAdmin2가 이미 하고 있으므로 그것을 쓴다 */
+                      const on = here?.item.href === it.href;
                       const count = it.live ? live[it.live] : it.count;
                       return (
                         <li key={it.href}>
@@ -244,7 +258,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               /
             </span>
             <span className="truncate a2-t-sm font-bold text-white">{here?.item.label ?? "—"}</span>
-            {here && <span className="a2-mono a2-t-xs text-(--a2-side-ink-2)">{here.item.code}</span>}
           </nav>
 
           {/* 「예시 데이터」 꼬리표와 「기존 콘솔」 단추를 뺐다.

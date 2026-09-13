@@ -4,9 +4,17 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { n } from "@/lib/admin2";
-import { formTextOf, reviewChecks, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
+import {
+  formTextOf,
+  reviewChecks,
+  runAiAudit,
+  stateLabel,
+  typeTextOf,
+  useItems,
+  type ItemDraft,
+} from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { PageHead, Tab, Tag } from "@/components/admin2/ui";
+import { Body, PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 
 /**
  * EXP-03 문항 검수 — 넘어온 것만 세운다.
@@ -109,6 +117,39 @@ export default function ReviewQueue() {
   const current = tabs.find((t) => t.id === tab) ?? tabs[0];
   const rows = current.rows;
 
+  /*
+   * AI 검수를 돌린다 (EXP-03-2).
+   *
+   * 대상은 **검수 대기 전부**다. 지금 보고 있는 탭이 아니라 큐 전체를 돌린다 — 「승인됨」
+   * 탭을 보고 있다고 승인된 문항을 다시 검수할 수는 없고, 탭마다 대상이 달라지면 같은
+   * 단추가 화면마다 다른 일을 한다.
+   *
+   * 물어보고 돌린다. 규칙에 걸린 것은 그 자리에서 반려되어 출제자에게 돌아가고, 걸린 것이
+   * 없으면 승인되어 문항 은행으로 오른다 — 한 번 누르면 여러 문항의 상태가 함께 바뀐다.
+   *
+   * ⚠ AI 검수는 규칙 대조다. 교과 내용이 맞는지, 이 학년 아이가 읽을 수 있는지는 여기서
+   *   가려지지 않아 「사람에게 넘김」으로 남는다(lib/itemAudit.ts).
+   */
+  const [audited, setAudited] = useState<string | null>(null);
+  const queue = waiting;
+
+  const audit = () => {
+    if (queue.length === 0) return;
+    const ok = window.confirm(
+      `검수 대기 ${n(queue.length)}건에 AI 검수를 돌립니다.\n\n` +
+        "규칙을 어긴 문항은 사유를 적어 출제자에게 되돌아가고,\n" +
+        "걸린 것이 없는 문항은 승인되어 문항 은행으로 오릅니다.\n\n돌릴까요?",
+    );
+    if (!ok) return;
+    const r = runAiAudit(queue.map((i) => i.id));
+    setAudited(
+      `${n(r.done)}건을 검수했습니다 — 승인 ${n(r.approved)} · 반려 ${n(r.rejected)} · 사람에게 넘김 ${n(r.held)}.` +
+        (r.held > 0
+          ? " 넘긴 문항은 상태를 바꾸지 않았습니다. 규칙으로 가릴 수 없는 것이 남아 있어 결론은 사람이 냅니다."
+          : ""),
+    );
+  };
+
   const cols = useMemo<Col<ItemDraft>[]>(
     () => [
       {
@@ -201,16 +242,32 @@ export default function ReviewQueue() {
         cell: (r) => (r.origin === "ai" ? <Tag accent>AI 초안</Tag> : dash),
       },
       {
+        /*
+         * 검수가 어디까지 왔나.
+         *
+         * 셋 가운데 하나가 선다 — 사람이 열어 짚고 있으면 「짚는 중」, AI 검수가 돌았으면
+         * 「AI 검수 완료」, 아무것도 없으면 「아직」.
+         *
+         * 사람이 먼저다. AI가 돌고 나서 사람이 열어 짚기 시작한 줄에 「AI 검수 완료」가 서
+         * 있으면, 그 줄을 다시 열어도 되는 줄로 읽어 짚어 둔 것을 덮어쓴다.
+         */
         key: "progress",
         head: "검수",
-        width: "6.5rem",
+        width: "7.5rem",
         nowrap: true,
-        value: (r) => (r.reviewDraft ? `짚는 중 ${progressOf(r)}` : "아직"),
-        sort: (r) => -progressOf(r),
+        value: (r) => (r.reviewDraft ? `짚는 중 ${progressOf(r)}` : r.aiAudit ? "AI 검수 완료" : "아직"),
+        sort: (r) => (r.reviewDraft ? -progressOf(r) - 10 : r.aiAudit ? -1 : 0),
         cell: (r) =>
           r.reviewDraft ? (
             <span className="a2-t-sm" style={{ color: "var(--a2-warn)" }}>
               짚는 중 {progressOf(r)}/{reviewChecks.length}
+            </span>
+          ) : r.aiAudit ? (
+            <span
+              className="a2-t-sm"
+              title={`${r.aiAudit.at} · 규칙 위반 ${r.aiAudit.blocks} · 확인 필요 ${r.aiAudit.warns}`}
+            >
+              <Status tone="info">AI 검수 완료</Status>
             </span>
           ) : (
             <span className="a2-t-sm text-(--a2-ink-4)">아직</span>
@@ -280,14 +337,15 @@ export default function ReviewQueue() {
       <PageHead
         title="문항 검수"
         actions={
-          <>
-            <Link href="/admin2/authoring" className="a2-btn">
-              문항 출제
-            </Link>
-            <Link href="/admin2/items" className="a2-btn">
-              문항 은행
-            </Link>
-          </>
+          <button
+            type="button"
+            className="a2-btn a2-btn-primary"
+            disabled={queue.length === 0}
+            onClick={audit}
+          >
+            AI 문항 검수
+            {queue.length > 0 && <span className="a2-num"> {n(queue.length)}</span>}
+          </button>
         }
         tabsLabel="상태별 조회 조건"
         tabs={tabs.map((t) => (
@@ -300,6 +358,24 @@ export default function ReviewQueue() {
           />
         ))}
       />
+
+      {/* 돌린 결과는 한 줄로 적고 닫을 수 있게 둔다. 표가 그 자리에서 다시 서므로
+          무엇이 어디로 갔는지는 이 줄에만 남는다 */}
+      {audited && (
+        <Body className="pb-0">
+          <p className="a2-note" style={{ borderLeftColor: "var(--a2-info)" }}>
+            <span>{audited}</span>
+            <button
+              type="button"
+              className="ml-auto shrink-0 text-(--a2-ink-4) hover:text-(--a2-ink)"
+              onClick={() => setAudited(null)}
+              aria-label="닫기"
+            >
+              ×
+            </button>
+          </p>
+        </Body>
+      )}
 
       {/* 탭을 바꾸면 표를 새로 세운다 — 걸어 둔 검색어·거르개는 그 목록에 맞춰 다시
           고르는 것이 맞다. 조건은 위에 그대로 적혀 있는데 왜 0줄인지는 안 적혀 있다 */}

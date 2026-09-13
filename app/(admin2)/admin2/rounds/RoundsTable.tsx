@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Bar, Status } from "@/components/admin2/ui";
-import { roundStates, type Round, type RoundState } from "@/lib/admin";
+import { roundStateLabels, roundStates, type Round } from "@/lib/admin";
 import { n, pct, roundTone } from "@/lib/admin2";
 import { useForms } from "@/lib/formStore";
 import { planOf, usePlans, useRounds } from "@/lib/roundPlanStore";
@@ -26,10 +26,9 @@ import { planOf, usePlans, useRounds } from "@/lib/roundPlanStore";
 
 const dash = <span className="text-(--a2-ink-4)">—</span>;
 
-const stateOptions = (Object.keys(roundStates) as RoundState[]).map((k) => ({
-  value: k,
-  label: roundStates[k].label,
-}));
+/* 차림표를 열쇠가 아니라 **말**로 세운다. 열쇠로 세우면 open과 grading이 같은
+   「진행중」을 쓰므로 차림표에 같은 줄이 두 번 선다(lib/admin.ts의 roundStates) */
+const stateOptions = roundStateLabels.map((l) => ({ value: l, label: l }));
 
 export default function RoundsTable() {
   const plans = usePlans();
@@ -37,8 +36,8 @@ export default function RoundsTable() {
   /* 코드에 박힌 넷 + 여기서 만든 회차. 목록이 둘로 갈리면 만든 회차가 표에 안 선다 */
   const allRounds = useRounds();
 
-  /* 거르개는 상태 하나. 씨앗이 아니라 **화면에 그리는 값**으로 거른다 — 「응시
-     진행중」을 골랐는데 방금 연 회차가 안 걸리면 거르개가 고장 난 것으로 읽힌다.
+  /* 거르개는 상태 하나. 씨앗이 아니라 **화면에 그리는 값**으로 거른다 — 「진행중」을
+     골랐는데 방금 연 회차가 안 걸리면 거르개가 고장 난 것으로 읽힌다.
      연도별 거르개는 회차 이름과 기간에 연도가 있어 정렬로 갈음된다. */
   const filters: Filter<Round>[] = useMemo(
     () => [
@@ -46,7 +45,7 @@ export default function RoundsTable() {
         id: "state",
         label: "상태",
         options: stateOptions,
-        match: (r, v) => planOf(plans, r.id).state === v,
+        match: (r, v) => roundStates[planOf(plans, r.id).state].label === v,
       },
     ],
     [plans],
@@ -85,7 +84,7 @@ export default function RoundsTable() {
         head: "상태",
         width: "6.5rem",
         nowrap: true,
-        /* 정렬하지 않는다 — 준비중·응시·채점중·마감은 크기 순서가 아니라 차례이고,
+        /* 정렬하지 않는다 — 대기중·진행중·마감은 크기 순서가 아니라 차례이고,
            그 차례는 기간 순으로 이미 보인다. 고르고 싶으면 위 거르개를 쓴다. */
         cell: (r) => {
           const st = planOf(plans, r.id).state;
@@ -130,12 +129,14 @@ export default function RoundsTable() {
         },
       },
       {
+        /* 0은 「아직 안 정했다」가 아니라 **제한 없음**이다. 대시로 적으면 그 둘이 한
+           글자로 겹친다(lib/admin.ts의 target 주석) */
         key: "target",
-        head: "대상",
-        width: "5rem",
+        head: "정원",
+        width: "5.5rem",
         num: true,
         value: (r) => r.target,
-        cell: (r) => (r.target ? n(r.target) : dash),
+        cell: (r) => (r.target ? n(r.target) : <span className="a2-t-sm text-(--a2-ink-3)">제한 없음</span>),
       },
       {
         /* 막대 셋은 비율만 보인다. 표에서 묻는 것은 「어느 회차가 덜 걷혔나」이지 건수가
@@ -193,7 +194,6 @@ export default function RoundsTable() {
          여기서 회차를 만들 수 있게 되면서 분기마다 한 줄씩 쌓이는 목록이 되었다 */
       searchHint="회차 이름"
       empty="조건에 맞는 회차가 없습니다."
-      toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">회차 이름을 누르면 편성 화면으로</span>}
     />
   );
 }

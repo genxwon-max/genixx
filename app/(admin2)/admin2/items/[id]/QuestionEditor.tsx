@@ -1,14 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { detailModes, renderDetail, type DetailMode } from "@/lib/richText";
-import { IMAGE_MAX_BYTES, dataUrlBytes, shrinkImage } from "@/lib/productStore";
+import { useState } from "react";
 import {
   OX_CHOICES,
   difficulties,
   difficultyPicked,
   itemTypes,
-  levelPatch,
   needsRubric,
   questionStandardIssue,
   retypeQuestion,
@@ -28,10 +25,12 @@ import {
   type TalentId,
 } from "@/lib/blueprint";
 import { toneColor } from "@/lib/admin2";
+import BodyEditor from "@/components/admin2/BodyEditor";
 import { FormRow } from "@/components/admin2/ui";
 
 /**
- * 문항 상세의 본문 — 지문 편집기 · 문항 목록 · 문항 하나의 줄들.
+ * 문항 상세의 본문 — 세트의 문항 목록 · 문항 하나의 분류 줄 · 세부 분류 줄 · 내용 줄.
+ * 지문·발문 편집기는 components/admin2/BodyEditor.tsx에 있다.
  *
  * ── 왜 편집기를 갈래로 나누나 ──
  * 발문을 글 한 칸으로만 받던 때는 수학·과학 문항이 화면에서 성립하지 않았다. 「아래
@@ -51,200 +50,6 @@ import { FormRow } from "@/components/admin2/ui";
  * ⚠ 그림은 지금 data URL로 문항 안에 들어간다. 파일 서버가 붙으면 짧은 주소로 바뀐다.
  *   그때까지는 저장소가 5MB에서 끊기므로 올릴 때 캔버스로 줄인다(lib/productStore.ts).
  */
-
-export type BodyValue = { mode: DetailMode; body: string; images: string[] };
-
-/** 갈래를 고르고 그 갈래로 쓰는 한 덩이. 이름표는 감싸는 폼 줄(FormRow)이 맡는다 */
-export function BodyEditor({
-  name,
-  value,
-  disabled,
-  rows = 6,
-  placeholder,
-  onChange,
-}: {
-  /**
-   * 라디오 묶음 이름 — 화면 안에서 겹치면 안 된다.
-   *
-   * 지문 편집기와 문항 폼이 한 화면에 같이 설 수 있다. 이름을 하나로 두면 브라우저가
-   * 전부 한 묶음으로 보고, 한쪽에서 마크다운을 고르는 순간 다른 쪽 갈래가 꺼진다.
-   */
-  name: string;
-  value: BodyValue;
-  disabled: boolean;
-  rows?: number;
-  placeholder?: string;
-  onChange: (patch: Partial<BodyValue>) => void;
-}) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [preview, setPreview] = useState(false);
-  const { mode, body, images } = value;
-
-  /** 그림을 줄여 담는다. 이미지 갈래는 목록에, 글 갈래는 본문 끝에 표기로 넣는다 */
-  async function load(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setBusy(true);
-    setError("");
-    try {
-      const made: string[] = [];
-      for (const file of Array.from(files)) {
-        try {
-          const url = await shrinkImage(file);
-          if (dataUrlBytes(url) > IMAGE_MAX_BYTES) {
-            setError(`${file.name}은(는) 줄여도 너무 큽니다. 더 작은 그림으로 올려 주세요.`);
-            continue;
-          }
-          made.push(url);
-        } catch {
-          setError(`${file.name}을(를) 읽지 못했습니다.`);
-        }
-      }
-      if (made.length === 0) return;
-
-      if (mode === "images") {
-        onChange({ images: [...images, ...made] });
-        return;
-      }
-      const tag = (url: string) =>
-        mode === "markdown" ? `![](${url})` : `<img src="${url}" alt="">`;
-      const gap = body === "" || body.endsWith("\n") ? "" : "\n";
-      onChange({ body: `${body}${gap}${made.map(tag).join("\n")}\n` });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const html = renderDetail(mode, body, images);
-
-  return (
-    <div className="w-full">
-      {/* 갈래 고르개 — 무엇으로 쓸지가 먼저 정해져야 아래 칸이 정해진다 */}
-      <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
-        {detailModes.map((m) => (
-          <label key={m.id} className="a2-choice">
-            <input
-              type="radio"
-              name={name}
-              checked={mode === m.id}
-              disabled={disabled}
-              onChange={() => onChange({ mode: m.id })}
-            />
-            {m.label}
-          </label>
-        ))}
-      </div>
-
-      {mode === "images" ? (
-        <div className="mt-3 grid gap-2">
-          {images.length === 0 ? (
-            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 올린 그림이 없습니다.</p>
-          ) : (
-            <ul className="grid gap-2">
-              {images.map((src, k) => (
-                <li
-                  key={`${k}-${src.slice(-16)}`}
-                  className="flex items-start gap-2.5 rounded border border-(--a2-line) p-2"
-                >
-                  <span className="a2-mono a2-t-xs w-5 shrink-0 pt-1 text-(--a2-ink-4)">
-                    {k + 1}
-                  </span>
-                  {/* 미리보기라 next/image를 쓰지 않는다 — data URL은 최적화를 못 거친다 */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="" className="max-h-48 rounded border border-(--a2-line)" />
-                  <span className="ml-auto flex shrink-0 gap-1">
-                    <button
-                      type="button"
-                      className="a2-btn a2-btn-sm"
-                      disabled={disabled || k === 0}
-                      aria-label={`그림 ${k + 1} 위로`}
-                      onClick={() => {
-                        const next = [...images];
-                        [next[k - 1], next[k]] = [next[k], next[k - 1]];
-                        onChange({ images: next });
-                      }}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="a2-btn a2-btn-sm a2-btn-danger"
-                      disabled={disabled}
-                      aria-label={`그림 ${k + 1} 지우기`}
-                      onClick={() => onChange({ images: images.filter((_, n) => n !== k) })}
-                    >
-                      ×
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : (
-        <textarea
-          className={`a2-textarea a2-textarea-lg mt-3 ${mode === "text" ? "" : "a2-mono"}`}
-          rows={rows}
-          value={body}
-          disabled={disabled}
-          placeholder={placeholder}
-          onChange={(e) => onChange({ body: e.target.value })}
-        />
-      )}
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="a2-btn"
-          disabled={disabled || busy}
-          onClick={() => fileRef.current?.click()}
-        >
-          {busy ? "줄이는 중…" : mode === "images" ? "그림 추가" : "그림 넣기"}
-        </button>
-        {mode !== "images" && (
-          <button
-            type="button"
-            className="a2-btn"
-            aria-pressed={preview}
-            onClick={() => setPreview((v) => !v)}
-          >
-            {preview ? "미리보기 접기" : "미리보기"}
-          </button>
-        )}
-      </div>
-
-      {preview && mode !== "images" && (
-        <div className="mt-2 w-full">
-          {html.trim() === "" ? (
-            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 채운 것이 없습니다.</p>
-          ) : (
-            /* 소독을 거친 값만 넣는다 — renderDetail 안에서 sanitizeHtml을 지난다 */
-            <div className="a2-preview a2-prose" dangerouslySetInnerHTML={{ __html: html }} />
-          )}
-        </div>
-      )}
-
-      {error && (
-        <p className="a2-hint" style={{ color: "var(--a2-danger)" }}>
-          {error}
-        </p>
-      )}
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        multiple={mode === "images"}
-        className="sr-only"
-        onChange={(e) => {
-          void load(e.target.files);
-          e.target.value = "";
-        }}
-      />
-    </div>
-  );
-}
 
 /**
  * 세트에 든 문항 목록.
@@ -389,19 +194,132 @@ type RowProps = {
 };
 
 /**
- * 문항 하나의 분류 줄 — 이 문항이 무엇을 재나.
+ * 문항 하나의 분류 줄 — 배점 · 인지단계 · 난이도.
  *
- * 내용 줄과 갈라 둔 것은 세우는 자리가 다르기 때문이다. 단일이면 문항 상세의 「분류」 판
- * 안에서 과목·학년군과 나란히 서고, 세트면 목록에서 들어간 문항 상세에 선다. 세트의
- * 바깥 화면에는 분류가 아예 없다 — 분류는 세트가 아니라 그 안의 문항에 붙는 것이라,
- * 바깥에 세우면 어느 문항의 것인지 말할 수 없는 값이 된다.
+ * 분류는 두 판으로 갈린다. 문항을 쓰기 **전에** 정해야 하는 것(과목 · 학년군 · 배점 ·
+ * 인지단계 · 난이도)은 문항 위 「분류」 판에, 문항을 쓰고 **나서** 붙이는 것(단원 · 성취기준 ·
+ * 재능 축 …)은 문항 아래 「세부 분류」 판에 선다. 단계와 난이도를 모르고는 발문을 쓸 수
+ * 없지만, 성취기준 코드는 다 쓴 문항을 보고 찾아 붙이는 것이 실제 차례다.
  *
- * 두 자리가 같은 줄을 쓰는 것이 요점이다 — 단일로 쓰던 사람이 세트로 넘어갔을 때 칸이
- * 다르면 같은 것을 두 번 배워야 한다.
+ * 단일이면 문항 상세에, 세트면 목록에서 들어간 문항 상세에 선다. 세트의 바깥 화면에는
+ * 분류가 아예 없다 — 분류는 세트가 아니라 그 안의 문항에 붙는 것이라, 바깥에 세우면 어느
+ * 문항의 것인지 말할 수 없는 값이 된다. 두 자리가 같은 줄을 쓰는 것이 요점이다 — 단일로
+ * 쓰던 사람이 세트로 넘어갔을 때 칸이 다르면 같은 것을 두 번 배워야 한다.
+ */
+export function QuestionCoreRows({ q, disabled, onChange }: Omit<RowProps, "band">) {
+  const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
+  const outOfRange = !levelAllowed(q.talent, q.level);
+
+  /* 치는 중인 글자. 바깥에서 배점이 바뀌면(취소 · 다른 문항) 그 글자는 버리고 값을 그린다 —
+     글자가 나타내는 수와 지금 배점이 같을 때만 글자를 믿는다 */
+  const [pointsText, setPointsText] = useState(q.points === 0 ? "" : String(q.points));
+  const textValue = pointsText === "" || pointsText === "." ? 0 : Number(pointsText);
+  const pointsShown = textValue === q.points ? pointsText : q.points === 0 ? "" : String(q.points);
+
+  return (
+    <>
+      {/* 운영자가 직접 적는다. 인지단계를 바꿔도 적어 둔 배점을 덮지 않는다 — 덮으면 단계를
+          한 번 고친 것만으로 매겨 둔 배점이 소리 없이 사라진다. 새 문항만 단계의 기본 배점
+          (lib/blueprint.ts의 levelSpecs)으로 시작한다.
+
+          비운 칸은 0으로 든다. 0 이하는 제출 문턱이 막는다(missingContent).
+          칸은 치는 글자를 따로 들고 있다(pointsText) — 숫자만 들고 다시 그리면 「0.5」를 치는
+          도중의 「0」과 「0.」이 0으로 굳어 빈칸이 되고, 소수점을 칠 수가 없다 */}
+      <FormRow
+        label="배점"
+        req
+        hint={
+          q.points > 0 ? undefined : (
+            <span style={{ color: toneColor.danger }}>0보다 큰 배점을 적어야 검수로 제출할 수 있습니다.</span>
+          )
+        }
+      >
+        <span className="flex min-h-10 items-center gap-2">
+          <input
+            type="text"
+            inputMode="decimal"
+            className="a2-input a2-input-lg a2-num"
+            style={{ maxWidth: "8rem" }}
+            value={pointsShown}
+            disabled={disabled}
+            placeholder="0"
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              /* 숫자와 소수점 하나만 받는다. 다른 글자는 칸에 들이지 않는다 */
+              if (!/^\d*\.?\d*$/.test(raw)) return;
+              setPointsText(raw);
+              set({ points: raw === "" || raw === "." ? 0 : Number(raw) });
+            }}
+            aria-invalid={!(q.points > 0)}
+            aria-label="배점"
+          />
+          <span className="a2-t-sm text-(--a2-ink-3)">점</span>
+        </span>
+      </FormRow>
+
+      <FormRow
+        label="인지단계"
+        req
+        hint={
+          outOfRange ? (
+            <span style={{ color: toneColor.danger }}>
+              아래 세부 분류의 재능 축({talentName(q.talent)})은 {q.level}을 낼 수 없습니다.
+            </span>
+          ) : undefined
+        }
+      >
+        <select
+          className="a2-select a2-input-lg"
+          value={q.level}
+          disabled={disabled}
+          onChange={(e) => set({ level: e.target.value as Level })}
+          aria-invalid={outOfRange}
+        >
+          {LEVELS.map((l) => (
+            <option key={l} value={l} disabled={!levelAllowed(q.talent, l)}>
+              {l} {levelSpecs[l].name}
+              {levelAllowed(q.talent, l) ? "" : ` — ${talentName(q.talent)} 축은 출제 불가`}
+            </option>
+          ))}
+        </select>
+      </FormRow>
+
+      <FormRow label="난이도" req>
+        <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
+          {difficulties.map((d) => (
+            <label key={d.b} className="a2-choice">
+              <input
+                type="radio"
+                name={`b-${q.id}`}
+                checked={q.b === d.b}
+                disabled={disabled}
+                onChange={() => set({ b: d.b })}
+              />
+              {d.label}
+              <span className="a2-mono font-normal text-(--a2-ink-4)">b {d.b}</span>
+            </label>
+          ))}
+        </div>
+      </FormRow>
+    </>
+  );
+}
+
+const talentName = (id: TalentId) => talents.find((t) => t.id === id)?.name ?? id;
+
+/**
+ * 문항 하나의 세부 분류 줄 — 성취기준 · 재능 축 · 하위요소.
+ *
+ * 문항 아래 「세부 분류」 판에 선다(차례의 까닭은 QuestionCoreRows 참조).
+ *
+ * ⚠ 재능 축과 인지단계가 두 판으로 떨어졌다. 축마다 낼 수 있는 단계가 달라서, 여기서 축을
+ *   바꾸면 위 판의 단계가 범위를 벗어날 수 있다 — 붙어 있을 때는 보였지만 이제는 판 하나를
+ *   건너야 보이므로 두 칸 모두에 같은 경고를 띄운다.
  */
 export function QuestionTagRows({ q, band, disabled, onChange }: RowProps) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
   const std = questionStandardIssue(q, band);
+  const outOfRange = !levelAllowed(q.talent, q.level);
 
   return (
     <>
@@ -442,11 +360,22 @@ export function QuestionTagRows({ q, band, disabled, onChange }: RowProps) {
         />
       </FormRow>
 
-      <FormRow label="재능 축 (Tag B)" req>
+      <FormRow
+        label="재능 축 (Tag B)"
+        req
+        hint={
+          outOfRange ? (
+            <span style={{ color: toneColor.danger }}>
+              이 축은 위 분류의 인지단계({q.level})를 낼 수 없습니다.
+            </span>
+          ) : undefined
+        }
+      >
         <select
           className="a2-select a2-input-lg"
           value={q.talent}
           disabled={disabled}
+          aria-invalid={outOfRange}
           onChange={(e) => {
             /* 축을 바꾸면 하위요소는 그 축의 것으로 갈아 끼운다. 그대로 두면
                LANG-01이 수리-논리 문항에 붙어 좌표가 통째로 어긋난다. */
@@ -475,53 +404,6 @@ export function QuestionTagRows({ q, band, disabled, onChange }: RowProps) {
             </option>
           ))}
         </select>
-      </FormRow>
-
-      {/* 단계를 고르면 배점이 따라온다(§1 고정 매핑). 난이도는 따라오지 않는다 */}
-      <FormRow
-        label="인지단계"
-        req
-        hint={`${levelSpecs[q.level].format} │ 채점 ${levelSpecs[q.level].scoring} │ 배점 ${q.points}점`}
-      >
-        <select
-          className="a2-select a2-input-lg"
-          value={q.level}
-          disabled={disabled}
-          onChange={(e) => set(levelPatch(e.target.value as Level))}
-        >
-          {LEVELS.map((l) => (
-            <option key={l} value={l} disabled={!levelAllowed(q.talent, l)}>
-              {l} {levelSpecs[l].name}
-              {levelAllowed(q.talent, l) ? "" : " — 이 축은 출제 불가"}
-            </option>
-          ))}
-        </select>
-      </FormRow>
-
-      <FormRow
-        label="난이도"
-        req
-        hint={
-          difficultyPicked(q.b)
-            ? undefined
-            : `넷 중 하나를 골라야 검수로 제출할 수 있습니다. ${levelSpecs[q.level].name}(${q.level})의 앵커값은 b ${levelSpecs[q.level].b}입니다.`
-        }
-      >
-        <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
-          {difficulties.map((d) => (
-            <label key={d.b} className="a2-choice">
-              <input
-                type="radio"
-                name={`b-${q.id}`}
-                checked={q.b === d.b}
-                disabled={disabled}
-                onChange={() => set({ b: d.b })}
-              />
-              {d.label}
-              <span className="a2-mono font-normal text-(--a2-ink-4)">b {d.b}</span>
-            </label>
-          ))}
-        </div>
       </FormRow>
     </>
   );

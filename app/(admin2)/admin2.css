@@ -7,7 +7,8 @@
  *
  * ───── 이 화면이 따르는 규칙 ─────
  *  글자   11 · 12 · 13 · 14 · 16 · 18 여섯 눈금 + 22 · 28. 본문 13, 표 13, 곁들이는 글 12.
- *         22는 지표 숫자(.a2-metric)가 쓰고, 28은 화면 제목(.a2-title-lg) 하나만 쓴다.
+ *         22는 지표 숫자(.a2-metric)가 쓰고, 28은 화면 제목(.a2-title-lg)과 그 화면이
+ *         답하는 숫자 하나(.a2-metric-lg)가 쓴다 — 둘 다 화면에 하나뿐이라 서로 다투지 않는다.
  *         한동안 제목도 22로 지표와 나눠 썼는데, 머리에서 지표 띠를 걷어 내고 탭 줄로
  *         바꾸고 나니 제목이 그 아래 12·13px 무리와 한 덩어리로 붙어 「지금 어느
  *         화면인가」가 안 읽혔다. 눈금을 늘리는 대신 나눠 쓴다는 규칙을 여기서 한 번
@@ -88,6 +89,10 @@
 
     --a2-radius: 3px;
     --a2-row: 38px;
+    /* 달력 한 시간의 높이. 격자선(repeating-linear-gradient)과 일정 블록의 top·height가
+       같은 숫자를 써야 해서 변수로 둔다 — 한쪽만 고치면 블록이 선에서 떨어진다.
+       44px로 시작했더니 40분 면담이 29px라 11px 글자 두 줄이 안 들어갔다. */
+    --a2-cal-hour: 56px;
     /* 머리 행 높이 — 표 안의 정렬 단추가 이 값으로 제 높이를 잡는다(DataTable.tsx).
        th에만 적어 두고 단추 높이는 px로 박아 두었더니, 줄 높이를 올릴 때마다 눌리는
        넓이가 칸보다 작아졌다 */
@@ -179,6 +184,19 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
   }
+  /* 화면이 답하는 숫자 하나.
+     결제 화면의 「이 기간에 얼마가 남았나」처럼, 그 화면을 연 사람이 찾으러 온 값이다.
+     22px 지표 다섯이 나란히 서면 어느 것이 답이고 어느 것이 곁들이인지가 안 읽혀서,
+     답 하나만 28px로 올리고 나머지는 22px에 둔다. 화면에 하나뿐일 때만 쓴다 —
+     둘을 세우면 올린 만큼이 그대로 사라진다. */
+  .a2-metric-lg {
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 1.75rem;
+    line-height: 1.15;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
 
   /* ── 면 ── */
   .a2-panel {
@@ -196,6 +214,21 @@
     padding: 8px 12px;
     border-bottom: 1px solid var(--a2-line);
     background: var(--a2-raised);
+  }
+
+  /* ── 판이 제 이름을 크게 부르는 머리 ──
+     열어 놓고 고치는 판(회차 편성에서 연 검사지)은 그 판이 곧 「지금 무엇을 고치는가」다.
+     13px 제목을 왼쪽 끝에 두면 판 여섯 장이 쌓인 화면에서 무엇이 열렸는지가 안 읽힌다.
+     이름을 가운데 18px로 세우고 식별자를 그 아래에 붙인다 — 화면 머리(PageHead)와 같은 꼴.
+
+     가운데를 진짜 가운데에 두려고 세 칸(1fr auto 1fr)으로 나눈다. 동작은 오른쪽 칸에
+     그대로 서고 왼쪽 빈 칸이 그 폭을 맞춰 준다 — space-between으로는 동작 폭의 절반만큼
+     제목이 왼쪽으로 밀린다. */
+  .a2-panel-head-lead {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding-block: 12px;
   }
 
   /* ── 버튼 ──
@@ -859,15 +892,18 @@
      옅은 판 위에 얹어 상태 칸이 표에서 한 줄기로 서게 하되, 판에는 상태 색을 섞지
      않는다. 7%만 섞어 봐도 「활성」(--a2-ok)이 제 바탕 위에서 4.27까지 떨어졌다.
      면을 --a2-raised로 고정하면 네 색 모두 4.6 위에 남는다. */
+  /* 상태는 **글자 색**으로만 적는다.
+     한동안 색점 + 테두리 + 옅은 면으로 알약을 세웠다. 한 줄에 하나면 읽을 만한데, 목록은
+     스무 줄이라 알약 스물이 세로로 늘어서 표가 값이 아니라 알약으로 읽혔다. 테두리와 면을
+     걷고 글자에만 색을 남긴다 — 색은 부르는 쪽이 style로 넣는다(ui.tsx의 Status).
+     ⚠ 색만으로 구분하지 않는다는 약속은 그대로다. 상태는 늘 낱말로도 적혀 있어서
+       흑백으로 인쇄해도 뜻이 남는다. 알약을 걷어 낸 것이 그 약속을 건드리지 않는 까닭이다.
+     ⚠ 면(--a2-raised)이 사라져 글자가 흰 판 위에 선다. 네 색(ok·warn·danger·info)은 옅은
+       면보다 흰 면에서 대비가 더 나오므로 이 변경으로 읽기가 나빠지지 않는다. */
   .a2-status {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 22px;
-    padding-inline: 7px;
-    border: 1px solid var(--a2-line);
-    border-radius: var(--a2-radius);
-    background: var(--a2-raised);
+    gap: 4px;
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
@@ -881,22 +917,18 @@
   }
 
   /* 꼬리표 — 분류값(역할·과목·종류)에만. 상태에는 쓰지 않는다 */
+  /* 분류 꼬리표도 글자로. 테두리 친 칩이 한 줄에 서넛씩 서면(면담 상세·조립 규칙) 그
+     줄이 값이 아니라 상자 여럿으로 보인다. 옆에 선 것들과 갈리는 것은 굵기와 색이 맡고,
+     사이를 벌리는 것은 부르는 쪽의 gap이 맡는다 */
   .a2-tag {
     display: inline-flex;
     align-items: center;
-    height: 20px;
-    padding-inline: 6px;
-    border: 1px solid var(--a2-line-2);
-    border-radius: var(--a2-radius);
-    background: var(--a2-raised);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--a2-ink-2);
     white-space: nowrap;
   }
   .a2-tag-accent {
-    border-color: var(--a2-accent-line);
-    background: var(--a2-accent-soft);
     color: var(--a2-accent-2);
   }
 
@@ -963,23 +995,19 @@
     outline-offset: -3px;
   }
   /* 개수 — 이름 뒤에 붙는 작은 알약. 그냥 숫자로 두면 이름의 일부로 읽힌다 */
+  /* 탭 옆 개수도 동그란 알약을 걷고 숫자만 남긴다. 탭이 넷에서 여섯이면 알약도 그만큼
+     서서, 정작 눌러야 하는 탭 이름보다 숫자가 먼저 눈에 들어왔다 */
   .a2-tab-n {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding-inline: 5px;
-    border-radius: 999px;
-    background: var(--a2-raised);
     font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
     font-size: 0.6875rem;
     font-weight: 700;
     color: var(--a2-ink-3);
   }
+  /* 고른 탭의 개수도 면을 걷고 색만 남긴다 — 알약 하나만 남으면 그 한 칸이 오히려 튄다 */
   .a2-tab[aria-pressed="true"] .a2-tab-n {
-    background: var(--a2-accent-soft);
     color: var(--a2-accent-2);
   }
 
@@ -998,6 +1026,233 @@
     inset-block: 0;
     left: 0;
     background: var(--a2-accent);
+  }
+
+  /* ── 달 한 줄 — 막대로 눕힌 추이의 한 칸 ──
+     결제의 「달별 순매출」이 쓴다. 줄을 누르면 그 달로 조회 기간이 좁아진다 — 연도 고르개와
+     달 고르개를 차례로 돌리는 것보다, 보고 있는 막대를 바로 누르는 쪽이 짧다.
+
+     고른 기간에 드는 줄은 옅은 파란 면으로 표시한다. 막대 색만 바꾸면 어느 달을 보고
+     있는지가 4px 띠 하나에 걸리고, 그 띠는 값이 작은 달에서 거의 사라진다. */
+  .a2-mrow {
+    display: grid;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 4px 6px;
+    border-radius: var(--a2-radius);
+    text-align: left;
+    cursor: pointer;
+  }
+  .a2-mrow:hover {
+    background: var(--a2-hover);
+  }
+  .a2-mrow[aria-pressed="true"] {
+    background: var(--a2-accent-soft);
+  }
+  .a2-mrow[aria-pressed="true"] .a2-bar > span {
+    background: var(--a2-accent-2);
+  }
+  .a2-mrow:focus-visible {
+    outline: 2px solid var(--a2-accent);
+    outline-offset: -2px;
+  }
+
+  /* ── 달력 ──
+     표에 세우면 「9월 11일에 셋」까지는 적을 수 있어도 그 셋이 언제인지가 안 보인다.
+     달력은 그 하나를 위해 있다.
+
+     월 격자를 기본으로 두고 주 시간표를 곁에 둔다. 「몇 시에 넣을까」는 면담 상세의
+     하루 띠(components/admin2/DayStrip.tsx)가 이미 답하므로, 이 화면이 답할 것은
+     「어느 날이 비었나」다. 주 시간표는 겹쳐 잡은 것을 눈으로 확인하는 자리로 남긴다.
+
+     새 색 토큰을 하나도 만들지 않았다. 필요한 면 다섯 단계(panel·raised·hover·thead·
+     accent-soft)가 이미 다 있다.
+     ⚠ 다른 달·주말을 흐리게 만들고 싶어도 글자색을 --a2-ink-4 아래로 내리지 않는다 —
+       그 색이 이미 --a2-bg 위에서 4.63:1이다. 면을 --a2-raised로 눌러 표현한다
+       (.a2-status가 상태 색을 면에 안 섞는 것과 같은 논리). */
+  .a2-cal-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    /* 칸이 좁아질 때 칩이 칸을 밀어내지 않게. 안의 .a2-clip이 부모가 폭을 잡아 주는
+       것을 전제로 한다 */
+    min-width: 0;
+    min-height: 6.5rem;
+    padding: 5px 5px 7px;
+    background: var(--a2-panel);
+    text-align: left;
+  }
+  .a2-cal-cell:hover {
+    background: var(--a2-hover);
+  }
+  .a2-cal-cell[data-out="true"],
+  .a2-cal-cell[data-weekend="true"] {
+    background: var(--a2-raised);
+  }
+  /* 고른 날 — 파란 면 + 위쪽 2px. 면만 칠하면 마우스가 얹힌 칸(--a2-hover)과 한 눈금
+     차이라 구분되지 않는다(.a2-table의 고른 줄과 같은 수법) */
+  .a2-cal-cell[aria-pressed="true"] {
+    background: var(--a2-accent-soft);
+    box-shadow: inset 0 2px 0 var(--a2-accent);
+  }
+
+  .a2-cal-day {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding-inline: 4px;
+    border-radius: var(--a2-radius);
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--a2-ink-3);
+  }
+  /* 오늘. 파란 원을 그리지 않는다 — 새 곡률을 만들지 않고 꼬리표와 같은 파랑을 쓴다 */
+  .a2-cal-day[data-today="true"] {
+    background: var(--a2-accent-soft);
+    color: var(--a2-accent-2);
+  }
+
+  /* 격자 칸 안의 일정 한 건. .a2-tag를 쓰지 않는 까닭은 요구가 다르기 때문이다 —
+     칸 폭에 맞춰 줄어야 하고(min-width:0 + 말줄임), 두 토막이 붙는다.
+     .a2-tag에 유틸을 덧대 흉내 내면 같은 조합이 스무 군데에 복사된다. */
+  .a2-cal-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    padding: 1px 4px;
+    border: 1px solid var(--a2-line);
+    border-left: 2px solid var(--a2-line-2);
+    border-radius: var(--a2-radius);
+    background: var(--a2-raised);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    color: var(--a2-ink-2);
+  }
+  /* 날짜가 지났는데 그대로인 것. 색만으로 구분하지 않으므로 화면에서 글자 앞에 「!」가
+     함께 선다 */
+  .a2-cal-chip[data-late="true"] {
+    border-left-color: var(--a2-danger);
+  }
+  /* 칩·블록 안의 글자를 칸 폭에 맞춰 줄인다.
+     ⚠ .a2-clip을 쓰지 않는다. 저것은 max-width를 0으로 눌러 **부모가 폭을 잡아 주는**
+       표 칸 전용이고, 여기처럼 세로 flex 안에 서면 폭이 0으로 접혀 글자가 통째로
+       사라진다. 시각은 줄이지 않고(flex:none) 뒤에 붙는 이름만 줄인다 — 「15:0…」이
+       되면 그 칩이 아무 말도 못 한다. */
+  .a2-cal-chip > * {
+    flex: none;
+  }
+  .a2-cal-chip > :last-child {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .a2-cal-slot > * {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 주 시간표의 시각 축 */
+  .a2-cal-axis {
+    display: grid;
+    grid-auto-rows: var(--a2-cal-hour);
+    background: var(--a2-panel);
+    border-right: 1px solid var(--a2-line);
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem;
+    color: var(--a2-ink-4);
+  }
+  .a2-cal-axis > span {
+    padding: 2px 6px 0 0;
+    text-align: right;
+    /* 눈금 글자가 선 위에 앉게 — 칸 가운데 두면 어느 선을 가리키는지 안 읽힌다 */
+    transform: translateY(-0.55em);
+  }
+
+  /* 하루 한 칸. 정시마다 선을 긋는다 — 칸마다 border-top을 주면 셀이 백 개가 넘고,
+     그 위에 절대 위치 블록을 얹지 못한다. 30분 선까지 그으면 스물두 줄이 되어 판이
+     줄무늬가 되고, 소요시간이 40·50분이라 30분 선이 어느 블록 경계와도 안 맞았다. */
+  .a2-cal-hours {
+    position: relative;
+    min-width: 0;
+    height: calc(var(--a2-cal-hour) * 11);
+    border-right: 1px solid var(--a2-line);
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--a2-line) 0,
+      var(--a2-line) 1px,
+      transparent 1px,
+      transparent var(--a2-cal-hour)
+    );
+  }
+  .a2-cal-hours[data-weekend="true"] {
+    background-color: var(--a2-raised);
+  }
+
+  /* 격자 안의 일정 블록. 자리(top·height·left·width)는 계산되는 값이라 inline style이
+     넣고, 면·테두리·글자만 여기서 진다 — .a2-bar > span이 width만 style로 받는 것과
+     같은 가름이다. 하루 띠(DayStrip)도 이 클래스를 그대로 쓴다. */
+  .a2-cal-slot {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+    padding: 2px 5px;
+    border: 1px solid var(--a2-accent-line);
+    border-left: 3px solid var(--a2-accent);
+    border-radius: var(--a2-radius);
+    background: var(--a2-accent-soft);
+    overflow: hidden;
+    text-align: left;
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    color: var(--a2-ink-2);
+  }
+  .a2-cal-slot[data-clash="true"] {
+    border-left-color: var(--a2-danger);
+  }
+  /* 지금 고치고 있는 것이 아니라 이미 잡혀 있는 것 — 회색으로 눌러 둔다 */
+  .a2-cal-slot[data-on="false"] {
+    border-color: var(--a2-line);
+    border-left-color: var(--a2-line-2);
+    background: var(--a2-raised);
+  }
+
+  /* 하루를 가로 한 줄로 편 띠 — 면담 상세의 일정 폼과 달력 오른쪽 판이 함께 쓴다.
+     30분마다 옅은 세로선을 긋는다(11시간 = 스물두 칸). 세로 눈금(.a2-cal-hours)과
+     방향이 달라 따로 둔다. */
+  .a2-cal-strip {
+    position: relative;
+    height: 34px;
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+    background:
+      repeating-linear-gradient(
+        to right,
+        var(--a2-line) 0,
+        var(--a2-line) 1px,
+        transparent 1px,
+        transparent calc(100% / 22)
+      ),
+      var(--a2-panel);
   }
 
   /* ── 왼쪽 기둥 ── */

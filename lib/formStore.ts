@@ -323,10 +323,18 @@ export function moveFormItem(id: string, itemId: string, dir: 1 | -1) {
   patch(id, { itemIds: ids });
 }
 
-export function setFormItems(id: string, itemIds: string[], by: string, text: string) {
+export function setFormItems(
+  id: string,
+  itemIds: string[],
+  by: string,
+  text: string,
+  /* 무엇이 이 목록을 세웠는지 — 조합 제안인지 사람이 고른 것인지. 기록에서 둘이
+     갈려야 「그날 제안을 받았다」와 「그날 손으로 담았다」를 뒤에 가려 읽는다 */
+  action: FormLogEntry["action"] = "suggest",
+) {
   const form = read().find((f) => f.id === id);
   if (!editable(form)) return;
-  patch(id, { itemIds }, { by, action: "suggest", text });
+  patch(id, { itemIds }, { by, action, text });
 }
 
 export function confirmForm(id: string, by: string, note: string) {
@@ -478,7 +486,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
  * 같은 단계 안에서는 앵커를 먼저, 그다음 정답률이 한가운데(50%)에 가까운 것을
  * 먼저 고른다. 너무 쉽거나 너무 어려운 문항은 변별에 보태는 것이 적다.
  */
-export function suggestItems(form: ExamForm, items: ItemDraft[]) {
+export function suggestItems(form: Pick<ExamForm, "subject" | "band">, items: ItemDraft[]) {
   const pool = items.filter(
     (i) => i.state === "approved" && i.subject === form.subject && i.band === form.band,
   );

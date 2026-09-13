@@ -68,6 +68,8 @@ export const rubric: Record<RubricLevel, { label: string; short: string; tone: s
 
 export type ScoreTask = {
   id: string;
+  /** 어느 회차에서 걷힌 응답인가 (lib/admin.ts rounds의 id) */
+  round: string;
   /** 목록에서는 이름 대신 회차 내 응시번호로 표기한다 */
   seat: string;
   grade: string;
@@ -85,7 +87,25 @@ export type ScoreTask = {
   /** 이중 채점 표본 — 두 사람이 서로 모르게 매긴다 */
   double: boolean;
   second?: { level: RubricLevel; by: string; at: string };
+  /**
+   * 손으로 고친 배점.
+   *
+   * 루브릭은 0·1·2 세 칸이라 그 사이가 없다. 「답은 맞는데 까닭이 반만 있다」처럼
+   * 칸 사이에 떨어지는 답이 실제로 나오므로, 답안지를 훑는 자리에서 0.5씩 손볼 수
+   * 있게 둔다. 손대지 않으면 루브릭 점수를 그대로 쓴다 — 그래서 undefined가 뜻을 갖는다.
+   */
+  points?: number;
+  /** 아이와 학부모가 읽는 해설 — 리포트에 실린다. 채점 메모(human.note)와 다른 글이다 */
+  comment?: string;
+  markedBy?: string;
+  markedAt?: string;
 };
+
+/** 서술형 한 문항의 만점 */
+export const MAX_POINT = 2;
+
+/** 배점을 고르는 눈금 — 0부터 만점까지 0.5씩 */
+export const POINT_STEPS = [0, 0.5, 1, 1.5, 2];
 
 /** 저신뢰라 사람에게 자동으로 넘어간 건인가 */
 export const isRouted = (t: ScoreTask) => t.confidence < ROUTE_CUT;
@@ -94,6 +114,13 @@ export const isRouted = (t: ScoreTask) => t.confidence < ROUTE_CUT;
 export const levelOf = (t: ScoreTask) => t.human?.level ?? t.aiLevel;
 
 export const scoreDone = (t: ScoreTask) => !!t.human;
+
+/** 지금 이 응답에 붙은 점수 — 손으로 고쳤으면 그 값, 아니면 루브릭 점수 */
+export const pointsOf = (t: ScoreTask) => t.points ?? rubric[levelOf(t)].point;
+
+/** 사람이 배점을 손댄 자리인가 — 목록에서 표시해 준다 */
+export const pointsFixed = (t: ScoreTask) =>
+  t.points != null && t.points !== rubric[levelOf(t)].point;
 
 /* ───────────────────────── EXP-05 개방형 코딩 ───────────────────────── */
 
@@ -398,6 +425,7 @@ const SEED_AT = "2026-08-16 10:20"; // 고정값 — SSR/CSR 불일치를 막는
 
 const st = (
   id: string,
+  round: string,
   seat: string,
   grade: string,
   subject: ScoreTask["subject"],
@@ -410,6 +438,7 @@ const st = (
   extra: Partial<ScoreTask> = {},
 ): ScoreTask => ({
   id,
+  round,
   seat,
   grade,
   subject,
@@ -424,9 +453,11 @@ const st = (
   ...extra,
 });
 
-const SEED_SCORES: ScoreTask[] = [
+/** 손으로 쓴 아홉 건 — 화면을 처음 세울 때 기준으로 삼은 글이다 */
+const HAND_SCORES: ScoreTask[] = [
   st(
     "SC-0412-K1",
+    "2026-3",
     "0412",
     "초5",
     "국어",
@@ -440,6 +471,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0412-M1",
+    "2026-3",
     "0412",
     "초5",
     "수학",
@@ -452,6 +484,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0418-K1",
+    "2026-3",
     "0418",
     "초6",
     "국어",
@@ -465,6 +498,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0421-S1",
+    "2026-3",
     "0421",
     "중1",
     "과학",
@@ -477,6 +511,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0423-K1",
+    "2026-3",
     "0423",
     "초4",
     "국어",
@@ -490,6 +525,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0426-M1",
+    "2026-3",
     "0426",
     "초5",
     "수학",
@@ -502,6 +538,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0426-S1",
+    "2026-3",
     "0426",
     "초5",
     "과학",
@@ -515,6 +552,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0430-K1",
+    "2026-3",
     "0430",
     "중2",
     "국어",
@@ -527,6 +565,7 @@ const SEED_SCORES: ScoreTask[] = [
   ),
   st(
     "SC-0433-S1",
+    "2026-3",
     "0433",
     "초6",
     "과학",
@@ -551,6 +590,582 @@ const ct = (
   sampled: boolean,
   human?: CodingTask["human"],
 ): CodingTask => ({ id, seat, grade, prompt, question, text, aiCodes, confidence, sampled, human });
+
+/* ───────────────────────── 씨앗 짓기 ───────────────────────── */
+
+/**
+ * 발문 하나와 수준별 답·근거.
+ *
+ * 회차마다 같은 발문이 여러 아이에게 나가고 아이마다 답이 다르다. 그래서 씨앗을
+ * 「발문 × 수준」으로 짜 두고 아이를 거기에 붙인다 — 답과 AI 근거가 늘 짝이 맞아,
+ * 화면에서 「오답인데 근거는 완전정답 이야기」 같은 줄이 서지 않는다.
+ *
+ * ⚠ 아이 답은 **맞춤법을 고치지 않았다.** 고쳐 두면 채점하는 눈이 달라진다 — 실제
+ *   화면에서도 아이가 쓴 그대로를 보여 준다.
+ */
+type StemSeed = {
+  subject: ScoreTask["subject"];
+  axis: string;
+  /** 이 발문이 나가는 학년 */
+  grades: string[];
+  stem: string;
+  ans: Record<RubricLevel, { answer: string; why: string }>;
+};
+
+const STEMS: StemSeed[] = [
+  {
+    subject: "국어",
+    axis: "언어",
+    grades: ["초3", "초4"],
+    stem: "이야기에서 가장 중요한 사건을 하나 고르고 그렇게 고른 까닭을 쓰시오",
+    ans: {
+      full: {
+        answer: "제일 중요한건 주인공이 강아지를 다시 데려온 일이다 왜냬하면 그전까지는 계속 혼자서 밥먹는 장면만 나왔는데 강아지 데려오고 나서부터 마당에서 웃는 장면이 나오기 때문이다 그래서 여기서부터 이야기가 바뀐거 같다",
+        why: "「혼자서 밥먹는 장면」과 「마당에서 웃는 장면」을 앞뒤로 견주어 그 사건을 고른 까닭을 글에서 끌어왔고, 이야기가 바뀌는 자리라는 말까지 덧붙였습니다.",
+      },
+      partial: {
+        answer: "강아지 다시 데려온 일이 제일 중요한 사건이다",
+        why: "고른 사건은 글의 중심 사건과 맞지만 왜 중요한지가 한 줄도 없어, 글을 읽고 고른 것인지 찍은 것인지 가릴 수 없습니다.",
+      },
+      none: {
+        answer: "가장 중요한 사건을 하나 고르고 그렇게 고른 까닭을 쓰는것 나는 강아지 키우고 싶은데 엄마가 안됀다고 한다 형이 알레르기 있어서 안됀다고 했다",
+        why: "발문을 그대로 옮겨 적은 뒤 집에서 강아지를 못 키운다는 자기 이야기로 넘어가, 글에서 사건을 고른 대목이 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "국어",
+    axis: "언어",
+    grades: ["초3", "초4"],
+    stem: "밑줄 친 낱말이 윗글에서 어떤 뜻으로 쓰였는지 앞뒤 문장을 근거로 쓰시오",
+    ans: {
+      full: {
+        answer: "여기서 굳다는 딱딱해진다는 뜻이 아니라 마음을 단단이 먹었다는 뜻이다 바로 앞문장에 다시는 울지 않겠다고 나와서 그렇게 봤다",
+        why: "바로 앞 문장의 「다시는 울지 않겠다」를 근거로 들어 사전에 나오는 뜻과 윗글에서 쓰인 뜻을 갈라냈습니다.",
+      },
+      partial: {
+        answer: "마음이 굳었다는건 마음을 단단히 먹었다는 뜻인거 같다 왜냐하면 우리 아빠도 나한테 마음 굳게 먹어라고 말할때가 있는데 그때 참으라는 뜻이기 때문이다",
+        why: "뜻은 문맥에 맞게 짚었으나 근거로 든 것이 아빠가 쓰는 말이라, 앞뒤 문장에서 찾으라는 조건과 이어지지 않습니다.",
+      },
+      none: {
+        answer: "잘 모르겠어요 낱말이 너무 어려워요",
+        why: "뜻을 적은 대목이 없어 판단할 내용이 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "국어",
+    axis: "언어",
+    grades: ["초5", "초6"],
+    stem: "글쓴이가 든 근거 가운데 주장을 뒷받침하지 못하는 것을 하나 골라 쓰고, 왜 그렇게 보았는지 쓰시오",
+    ans: {
+      full: {
+        answer: "세번째 근거가 주장이랑 상관없다 운동화 값이 비싸다는건 잔디를 깔든 안깔든 똑같은거라서 운동장을 바꿔야 되는 이유가 안댄다 앞에 두개는 넘어져서 다친 애들 수랑 흙먼지 이야기라 운동장이랑 이어지는데 이거만 혼자 다른 이야기다",
+        why: "세 번째 근거를 고른 뒤 「잔디를 깔든 안 깔든 똑같다」로 주장과 이어지지 않는 까닭을 댔고, 앞의 두 근거와 견주어 왜 그것만 겉도는지까지 보였습니다.",
+      },
+      partial: {
+        answer: "세번째 근거가 주장이랑 안맞다 그거 빼면 될거 같다",
+        why: "뒷받침이 되지 않는 근거는 바르게 골랐으나 어디가 어떻게 안 맞는지가 없어, 고른 까닭을 확인할 수 없습니다.",
+      },
+      none: {
+        answer: "나는 인조잔디로 바꾸는게 좋다고 생각한다 우리 형 학교는 잔디가 있어서 축구할때 넘어져도 안아프다고 했다 흙운동장은 비오면 물웅덩이도 생긴다 그래서 우리학교도 빨리 바꿔줬으면 좋겠다",
+        why: "자기 의견과 형 학교 이야기만 적었을 뿐, 글쓴이가 든 근거 가운데 하나를 고른 대목이 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "국어",
+    axis: "언어",
+    grades: ["초5", "초6"],
+    stem: "윗글에서 사실인 부분과 글쓴이의 생각인 부분을 하나씩 찾아 쓰고, 그렇게 나눈 까닭을 쓰시오",
+    ans: {
+      full: {
+        answer: "사실은 작년에 도서관을 쓴 사람이 삼천명이라는 거고 생각은 도서관을 더 늦게까지 열어야 한다는 거다 앞에꺼는 숫자라서 세보면 맞는지 알수있고 뒤에꺼는 사람마다 다르게 생각할수 있으니까 글쓴이 생각이다",
+        why: "두 문장을 각각 옮겨 적은 뒤 「세보면 알수있다」와 「사람마다 다르게 생각할수 있다」로 가르는 기준까지 세웠습니다.",
+      },
+      partial: {
+        answer: "사실은 도서관 쓴 사람이 삼천명이라는 거다 생각은 그냥 글쓴이 마음이다 왜냐하면 사실은 안변하고 생각은 변하기 때문이다",
+        why: "사실 쪽은 「삼천명」을 글에서 골랐으나 생각 쪽은 어느 문장인지 짚지 않았고, 까닭도 「변하기 때문」이라는 일반 설명에 그칩니다.",
+      },
+      none: {
+        answer: "사실 두개 생각 한개",
+        why: "찾은 개수만 적고 어느 문장인지 쓰지 않아 판단할 내용이 없습니다. 다만 한 줄에서 끊겨 뒤에 이어 쓰려다 만 것인지는 가리기 어렵습니다.",
+      },
+    },
+  },
+  {
+    subject: "국어",
+    axis: "언어",
+    grades: ["중1", "중2"],
+    stem: "글쓴이가 이 글을 쓴 목적이 무엇인지 쓰고, 그렇게 본 근거를 글에서 찾아 쓰시오",
+    ans: {
+      full: {
+        answer: "학교앞 횡단보도에 신호등 놔달라고 설득하려고 쓴 글이다 두번째 문단에서 작년에 사고가 네번 났다고 숫자를 대고 마지막에 이제는 어른들이 나서야 한다고 부탁하면서 끝냈기 때문이다 그냥 알려주려는 글이였으면 끝에 부탁하는 말이 안나왔을거다",
+        why: "두 번째 문단의 사고 횟수와 끝문장의 요청을 함께 근거로 들었고, 정보를 알리는 글이었다면 부탁이 없었을 것이라고 견주어 목적을 설득으로 좁혔습니다.",
+      },
+      partial: {
+        answer: "신호등 놔달라고 하려고 쓴 글이다",
+        why: "목적은 바르게 짚었으나 글의 어느 문단이나 문장을 보고 그렇게 판단했는지가 없습니다.",
+      },
+      none: {
+        answer: "글쓴이는 학교 앞이 위험하다고 했다 차가 많이 다니고 아이들도 많이 지나 다녀서 위험하다고 했다",
+        why: "글에 나온 내용을 다시 옮겨 적었을 뿐, 이 글을 왜 썼는지에 해당하는 말이 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "국어",
+    axis: "언어",
+    grades: ["중1", "중2"],
+    stem: "두번째 문단이 글 전체에서 하는 구실이 무엇인지 앞뒤 문단과 견주어 쓰시오",
+    ans: {
+      full: {
+        answer: "두번째 문단은 첫문단이 던진 물음에 답을 주는 자리다 첫문단에서 요즘 애들이 왜 책을 안읽냐고 물어보고 두번째에서 스마트폰 때문이라고 이유를 대고 세번째부터는 그럼 어떡할지로 넘어간다 그래서 두번째가 빠지면 세번째 해결책이 갑자기 나오는 셈이 됀다",
+        why: "앞 문단의 물음과 뒤 문단의 해결책을 나란히 놓고 두 번째 문단을 이유 대기로 자리매김했으며, 그 문단이 빠졌을 때 어떻게 되는지까지 따져 보였습니다.",
+      },
+      partial: {
+        answer: "두번째 문단은 이유를 말해주는 문단이다 왜냐하면 원래 글은 처음에 문제를 말하고 가운데에서 이유를 대고 마지막에 해결책을 쓰기 때문이다 학원에서도 그렇게 배웠다 그래서 가운데 문단은 거의 이유라고 보면 된다",
+        why: "구실은 이유 대기로 바르게 보았으나 근거가 윗글의 짜임이 아니라 「원래 글은」이라는 일반 틀이어서, 앞뒤 문단과 견주라는 조건을 채우지 못했습니다.",
+      },
+      none: {
+        answer: "두번째 문단은 두번째로 나오는 문단이다",
+        why: "문단의 차례를 되풀이해 적었을 뿐, 글 안에서 하는 구실을 말한 대목이 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "수학",
+    axis: "수리·논리",
+    grades: ["초5", "초6"],
+    stem: "친구의 풀이에서 처음으로 잘못된 곳을 찾고, 왜 잘못인지 쓰시오",
+    ans: {
+      full: {
+        answer: "세번째 줄 부터 틀렷다 24÷6+2 인데 친구는 6+2를 먼저 더해서 8을 만들고 24÷8=3 이라고 했다 ÷하고 +가 같이 있을때는 나누기 부터 하는거라서 24÷6=4를 하고 거기다 2를 더해서 6이 되야 맞다",
+        why: "24÷8=3이 나온 세 번째 줄을 짚었고 나누기를 먼저 한다는 순서로 4+2=6까지 되짚어 완전정답으로 봅니다.",
+      },
+      partial: {
+        answer: "세번째 줄이 틀렷다 여기서 부터 답이 이상해젓다",
+        why: "세 번째 줄이라는 위치는 맞게 짚었으나 6+2를 먼저 하면 왜 안 되는지가 이상해졌다는 말뿐이라 부분정답으로 봅니다.",
+      },
+      none: {
+        answer: "친구가 어디서 부터 잘못한건지 아무리 봐도 모르겟다 나도 이런 문제만 나오면 자꾸 틀려서 자신이 없다",
+        why: "몇째 줄인지도 계산 순서 이야기도 없고 자신이 없다는 자기 이야기로 끝나 판단할 내용이 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "수학",
+    axis: "수리·논리",
+    grades: ["초3", "초4"],
+    stem: "나눗셈의 몫과 나머지가 이 상황에서 각각 무엇을 뜻하는지 밝히고, 필요한 의자 수를 쓰시오",
+    ans: {
+      full: {
+        answer: "35÷4를 하면 8이고 3이 남는다 8은 네명이 꽉 찬 의자가 8개 라는 뜻이고 3은 아직 못 앉은 아이가 3명 남앗다는 뜻이다 그 3명도 앉아야 되니까 의자를 한개 더 놔서 다 해서 9개가 있어야 된다",
+        why: "몫 8을 꽉 찬 의자로, 나머지 3을 못 앉은 아이로 각각 옮겨 읽고 그래서 한 개를 더 놓아 9개라는 결론까지 이어 붙여 완전정답입니다.",
+      },
+      partial: {
+        answer: "의자는 9개 있어야 된다 왜냬하면 한명이라도 못 앉고 서 있으면 안됀다고 생각하기 때문이다",
+        why: "의자 9개라는 답은 맞으나 까닭이 남은 3명이 아니라 서 있으면 안 된다는 자기 생각이어서 몫과 나머지의 뜻으로 이어지지 않습니다.",
+      },
+      none: {
+        answer: "의자 한개에 4명씩 앉고 아이는 35명 입니다",
+        why: "문제에 있는 4명과 35명을 옮겨 적었을 뿐 몫과 나머지가 무엇을 뜻하는지도 의자 수도 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "수학",
+    axis: "수리·논리",
+    grades: ["초5", "초6"],
+    stem: "두 가게의 값을 견주어 어느 쪽이 더 싼지 고르고, 그렇게 본 까닭을 쓰시오",
+    ans: {
+      full: {
+        answer: "나 가게가 더 싸다 가 가게는 300g에 4500원 이니까 100g으로 하면 1500원 이고 나 가게는 500g에 6500원 이니까 100g에 1300원이다 g수가 서로 달라서 100g으로 똑같이 맞춰놓고 봐야 되는데 그렇게 하니까 나 가게가 100g마다 200원씩 더 쌋다",
+        why: "300g에 4500원과 500g에 6500원을 각각 100g당 1500원과 1300원으로 고친 과정이 답에 그대로 남아 있고 200원 차까지 짚어 완전정답입니다.",
+      },
+      partial: {
+        answer: "나 가게가 더 쌈 100g으로 하면 1300원 나옴",
+        why: "100g당 1300원까지는 맞게 구했으나 가 가게를 100g당 얼마로 고쳤는지가 없어 견준 자리가 비어 부분정답으로 봅니다.",
+      },
+      none: {
+        answer: "가 가게가 싸다 4500원이 6500원 보다 싸니까 그러니까 당연이 가 가게다",
+        why: "300g과 500g으로 양이 다른데 전체 값 4500원과 6500원만 견주어 반대 결론을 냈습니다. 값을 비교하기는 했으나 묻는 것과 다른 답입니다.",
+      },
+    },
+  },
+  {
+    subject: "수학",
+    axis: "수리·논리",
+    grades: ["중1", "중2"],
+    stem: "같은 문제를 서로 다른 두 가지 방법으로 풀고, 두 방법에서 왜 같은 답이 나오는지 쓰시오",
+    ans: {
+      full: {
+        answer: "첫번째는 괄호 안 부터 더해서 4×(7+3)=4×10=40 으로 풀었고 두번째는 따로 곱해서 4×7+4×3=28+12=40 으로 풀었다 둘다 40이 나오는 이유는 4개짜리를 10묶음 한꺼번에 세는거랑 7묶음 세고 3묶음 세서 더하는거랑 결국 세는 물건이 똑같은 거 이기 때문이다",
+        why: "두 식을 값까지 모두 적었고 10묶음을 한꺼번에 세는 것과 7묶음·3묶음을 나눠 세는 것이 같은 물건을 센다는 뜻으로 이어 붙여 완전정답입니다.",
+      },
+      partial: {
+        answer: "4×(7+3)=40 이고 4×7+4×3=40 이다 계산해 보니까 둘다 40으로 똑같이 나왔다 답이 같게 나왔으니까 두개는 같은 방법인게 맞다",
+        why: "두 식과 40이라는 값은 맞으나 까닭이 답이 같으니 같다는 되풀이여서 4를 묶어 곱한 것과 나눠 곱한 것 사이의 관계로 이어지지 않습니다.",
+      },
+      none: {
+        answer: "4×(7+3)=4×10=40 답은 40",
+        why: "한 가지 방법의 계산만 있고 다른 방법도, 두 방법이 왜 같은지도 없어 묻는 것에 답하지 못했습니다.",
+      },
+    },
+  },
+  {
+    subject: "수학",
+    axis: "수리·논리",
+    grades: ["초3", "초4"],
+    stem: "계산하기 전에 답을 어림해 보고, 어림한 값과 실제로 계산한 값을 견주어 쓰시오",
+    ans: {
+      full: {
+        answer: "397은 400으로 올리고 206은 200으로 내려서 600쯤 이라고 어림햇다 근데 진짜 답은 603이라서 어림이 3 작았다 206에서 6을 내린게 397에 3을 올린거 보다 커서 그런거 같다",
+        why: "600과 603의 3 차이를 6을 내린 것과 3을 올린 것의 크기로 되짚어 어림이 왜 작게 나왔는지까지 적어 완전정답입니다.",
+      },
+      partial: {
+        answer: "600쯤 나올거 같다 계산하니까 603 나옴",
+        why: "어림값 600과 계산값 603을 둘 다 맞게 적었으나 3만큼 차이가 난 까닭이 한 줄도 없어 부분정답으로 봅니다.",
+      },
+      none: {
+        answer: "어림은 안하고 그냥 계산 햇다 397+206=603 이다 어림은 어차피 정확하지가 않아서 안 해도 될거 같다",
+        why: "어림한 값이 없어 견줄 대상 자체가 없고 어림은 안 해도 된다는 자기 생각으로 끝나 묻는 것과 다른 답이 되었습니다.",
+      },
+    },
+  },
+  {
+    subject: "수학",
+    axis: "수리·논리",
+    grades: ["중1", "중2"],
+    stem: "빠짐없이 겹치지 않게 세는 방법을 설명하고, 모두 몇 가지인지 쓰시오",
+    ans: {
+      full: {
+        answer: "윗옷 한개를 먼저 딱 정해놓고 거기다가 바지 4개를 하나씩 다 붙여보면 윗옷 한개당 4가지가 나온다 윗옷이 3개니까 3×4=12 가지다 이렇게 윗옷 순서대로 가면 빠트리는 것도 없고 아까 센거를 또 세는 것도 없다",
+        why: "윗옷 하나를 고정하고 바지 4개를 붙이는 절차를 적은 뒤 윗옷이 3개라서 3×4=12가지라는 값으로 이어 붙여 완전정답입니다.",
+      },
+      partial: {
+        answer: "12가지다 공책에 하나씩 다 그려봣더니 12개가 나왔다 천천히 세면 안 틀린다",
+        why: "12가지라는 수는 맞으나 세는 방법이 천천히 센다는 말에 그쳐 윗옷 3개와 바지 4개를 어떻게 짝지었는지로 이어지지 않습니다.",
+      },
+      none: {
+        answer: "윗옷이 3개고 바지가 4개니까 3+4=7 이라서 7가지 입니다",
+        why: "옷을 짝짓지 않고 개수만 더해 7가지라 했고 빠짐없이 세는 방법도 없어 묻는 것과 다른 답입니다.",
+      },
+    },
+  },
+  {
+    subject: "과학",
+    axis: "자연·탐구",
+    grades: ["초5", "초6"],
+    stem: "실험에서 한 가지만 다르게 한 것과 똑같이 맞춘 것이 각각 무엇인지 쓰고, 왜 그렇게 했는지 쓰시오",
+    ans: {
+      full: {
+        answer: "우리조는 물 주는 양만 다르게 했다 한쪽은 20mL 한쪽은 5mL 주고 흙은 같은 봉지에서 퍼서 넣고 컵도 같은거 쓰고 창가에 나란히 놔뒀다 왜냬하면 물말고 딴게 같이 달라지면 콩나물이 물때문에 자란건지 햇빛때문에 자란건지 몰라서 이다 그래서 나머지는 다 똑같이 마춰야 한다",
+        why: "다르게 한 것을 20mL와 5mL라는 값까지 들어 적고 흙·컵·놓은 자리를 같게 맞춘 것을 하나씩 든 뒤, 다른 것이 같이 바뀌면 물 때문인지 햇빛 때문인지 가릴 수 없다는 까닭까지 이었습니다.",
+      },
+      partial: {
+        answer: "물 주는 양만 다르게 했고 나머지는 똑같이 마췄다 흙이랑 컵이랑 놓은 자리",
+        why: "다르게 한 것과 같게 맞춘 것을 흙·컵·자리까지 정확히 짚었으나, 왜 그것들을 같게 맞춰야 하는지가 한 줄도 없어 부분정답으로 봅니다.",
+      },
+      none: {
+        answer: "한 가지만 다르게 하고 나머지는 똑같이 맞추었습니다 그래서 실험이 잘 됬다 우리조가 제일 빨리 끝냈다",
+        why: "발문의 문장을 거의 그대로 옮겨 적고 조 자랑을 붙였을 뿐, 무엇을 다르게 했고 무엇을 같게 맞추었는지는 한 가지도 적히지 않았습니다.",
+      },
+    },
+  },
+  {
+    subject: "과학",
+    axis: "자연·탐구",
+    grades: ["초3", "초4"],
+    stem: "같은 것을 한 번만 재지 않고 여러 번 잰 까닭을 쓰시오",
+    ans: {
+      full: {
+        answer: "한번만 재면 내가 초시게를 늦게 눌럿을수도 있어서 그게 진짜 값인지 모른다 우리는 세번 재서 12초 13초 12초가 나왔는데 12초가 두번이라서 12초로 정했다 여러번 재면 이상한 값이 껴도 바로 알수있다",
+        why: "한 번은 초시계를 늦게 눌렀을 수 있다는 점을 들고, 12·13·12초라는 자기 조가 잰 값 셋을 그대로 근거로 삼아 12초로 정한 데까지 이어 완전정답으로 봅니다.",
+      },
+      partial: {
+        answer: "여러번 재야 더 정확해진다 과학자들도 다 여러번 한다고 티비에서 봤다 나도 커서 과학자 될거다",
+        why: "정확해진다는 까닭을 대기는 했으나 우리 조가 잰 값이 서로 달랐다는 실험 기록은 한 번도 들지 않고 방송에서 들은 이야기에만 기대고 있습니다.",
+      },
+      none: {
+        answer: "세번 쟀다",
+        why: "몇 번 쟀는지만 적혀 있고 까닭에 해당하는 말이 없습니다. 다만 분량이 한 줄이라 뒤에 쓰려던 것이 있었는지는 판단이 어렵습니다.",
+      },
+    },
+  },
+  {
+    subject: "과학",
+    axis: "자연·탐구",
+    grades: ["초5", "초6"],
+    stem: "모아 온 잎을 두 무리로 나눈 기준이 무엇인지 쓰고, 그 기준이면 왜 헷갈리지 않는지 쓰시오",
+    ans: {
+      full: {
+        answer: "나는 잎 가장자리가 톱니처럼 뾰족뾰족한거랑 매끈한거로 나눴다 크기로 나누면 중간짜리가 큰쪽인지 작은쪽인지 애매해서 나랑 짝이랑 다르게 나눌수 있는데 톱니는 있나 없나만 보면 되니까 누가 나눠도 똑같이 나눠진다",
+        why: "가장자리의 톱니 유무라는 기준을 대고, 크기로 나누면 중간 크기가 어느 쪽인지 사람마다 갈린다는 견줌을 들어 그 기준이면 왜 헷갈리지 않는지까지 답했습니다.",
+      },
+      partial: {
+        answer: "잎 끝이 뾰족한거랑 안 뾰족한거로 나눴다 뾰족한게 12장이고 안 뾰족한게 8장 이렇게 됬다",
+        why: "나눈 기준과 무리마다의 장수까지 적었으나, 그 기준이면 왜 헷갈리지 않는지에 해당하는 말이 없어 부분정답으로 봅니다.",
+      },
+      none: {
+        answer: "잎을 진짜 많이 주웠다 단풍잎이 제일 이뻣다 나는 노란색을 조아한다 다음에 또 줍고싶다",
+        why: "주운 잎에 대한 느낌만 네 줄 적혀 있고 두 무리로 가른 기준에 해당하는 말이 한 군데도 없습니다.",
+      },
+    },
+  },
+  {
+    subject: "과학",
+    axis: "자연·탐구",
+    grades: ["초3", "초4"],
+    stem: "표에 적은 그림자 길이를 보고 하루 동안 그림자가 어떻게 달라졌는지 쓰고, 표의 어느 값을 보고 그렇게 보았는지 함께 쓰시오",
+    ans: {
+      full: {
+        answer: "그림자가 짧아졌다가 다시 길어졌다 9시에 65cm였는데 12시에 20cm로 제일 짧아지고 3시에 다시 58cm가 됬다 그래서 낮 12시쯤에 제일 짧고 아침이랑 저녁쪽으로 갈수록 길어지는거 같다",
+        why: "9시 65cm, 12시 20cm, 3시 58cm라는 표의 값 셋을 그대로 들어 짧아졌다 다시 길어지는 흐름을 세웠고, 가장 짧은 때가 정오 무렵이라는 데까지 갔습니다.",
+      },
+      partial: {
+        answer: "해가 움직이니까 그림자도 따라 움직여서 길이가 달라진다 아침에는 길고 낮에는 짧다고 책에서 봤다",
+        why: "아침에 길고 낮에 짧다는 방향은 맞게 짚었으나 우리 조가 표에 적은 65cm·20cm 같은 값은 하나도 들지 않고 책에서 본 이야기로만 답했습니다.",
+      },
+      none: {
+        answer: "표에 숫자가 너무 많아서 잘 모르겠다 그리고 우리조는 3시에 안 재서 칸이 비어있다",
+        why: "표가 어렵다는 말과 빈칸 이야기뿐이라 그림자 길이가 어떻게 달라졌는지에 대한 답이 없습니다. 다만 3시 값이 실제로 비어 있었다면 견주기 어려웠을 수는 있습니다.",
+      },
+    },
+  },
+  {
+    subject: "과학",
+    axis: "자연·탐구",
+    grades: ["중1", "중2"],
+    stem: "우리 조 기록지만 보고 다른 반 친구가 이 실험을 똑같이 해 보려 한다. 기록지에서 빠진 것을 찾아 쓰고, 그것이 없으면 결과가 어떻게 달라지는지 쓰시오",
+    ans: {
+      full: {
+        answer: "우리 기록지에는 물 100mL에 소금 넣었다고만 썻고 그 물이 몇도짜리인지가 안 적혀있다 남이 찬물로 하면 소금이 다 안 녹아서 우리보다 적게 녹은걸로 나온다 그리고 몇분동안 저었는지도 안 써놔서 대충 저으면 녹는 양이 또 달라진다",
+        why: "빠진 기록을 물의 온도와 젓는 시간 둘로 짚고, 찬물로 하면 덜 녹아 우리 결과와 달라진다는 데까지 이어 완전정답입니다.",
+      },
+      partial: {
+        answer: "물 온도랑 소금 양이랑 몇분 저었는지랑 온도계 종류도 적어야 된다",
+        why: "빠진 기록을 온도·소금 양·젓는 시간·온도계까지 네 가지나 골랐으나, 그것이 빠지면 결과가 어떻게 달라지는지는 한 가지도 적지 않아 부분정답으로 봅니다.",
+      },
+      none: {
+        answer: "실험 순서를 잘 지키고 안전에 조심하라고 적어야 한다 보안경도 껴야되고 소금 먹으면 안됀다",
+        why: "안전 수칙만 적었을 뿐, 같은 실험을 되풀이하는 데 필요한 기록이 무엇인지는 답하지 않았습니다.",
+      },
+    },
+  },
+  {
+    subject: "과학",
+    axis: "자연·탐구",
+    grades: ["중1", "중2"],
+    stem: "같은 물의 온도를 재는데 친구가 잰 값과 내가 잰 값이 다르게 나왔다. 어느 값을 쓸지 정하고 그 까닭을 쓰시오",
+    ans: {
+      full: {
+        answer: "나는 42도 친구는 45도로 틀리게 나왔다 근데 친구는 온도계를 물에서 꺼내들고 눈금을 읽었고 나는 담근 채로 읽었다 꺼내면 공기 온도때문에 눈금이 바뀌니까 담근채로 읽은 내 값 42도를 쓰기로 했다 대신 이따가 한번 더 같이 재보기로 했다",
+        why: "두 값이 갈린 까닭을 온도계를 꺼내 읽었는지 담근 채 읽었는지로 짚고, 그 설명 위에서 42도를 고른 뒤 다시 재 보자는 데까지 갔습니다.",
+      },
+      partial: {
+        answer: "내 값을 쓸거다 왜냬하면 내가 원래 더 꼼꼼히 하는 편이고 친구는 좀 대충 하기 때문이다",
+        why: "쓸 값은 정했으나 까닭이 잰 방법이 아니라 친구의 성격이라, 온도계를 어떻게 읽었는지에 대한 기록과는 이어지지 않습니다.",
+      },
+      none: {
+        answer: "값이 다르게 나왔다 왜 다른지는 모르겠다",
+        why: "값이 달랐다는 사실만 옮겨 적었고 어느 값을 쓸지 정하지 않아 판단할 내용이 없습니다.",
+      },
+    },
+  },
+];
+
+/** 씨앗을 늘 같은 꼴로 짓는 난수 — 화면을 다시 열 때마다 답이 바뀌면 안 된다 */
+function seedRng(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) % 4294967296;
+    return s / 4294967296;
+  };
+}
+
+/** 못 박은 날에서 분 단위로 옮긴 시각 — 시계를 읽지 않으므로 서버와 브라우저가 같다 */
+function stampAt(base: string, minutes: number) {
+  const d = new Date(`${base}:00Z`);
+  d.setUTCMinutes(d.getUTCMinutes() + minutes);
+  const p = (v: number) => String(v).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+}
+
+/** 채점하는 사람들 — 감사 로그(lib/admin.ts)에 서는 이름과 같게 둔다 */
+const SCORERS = ["이서연", "정태호", "강수아", "노아름"];
+
+/**
+ * 회차마다 채점이 어디까지 갔는가.
+ *
+ * 회차 현황(lib/admin.ts rounds)이 적어 둔 것과 어긋나지 않게 잡는다 — 3회차는 아직
+ * 응시를 받는 중이라 채점이 한창이고, 2회차는 막바지, 1회차는 끝났다. 준비중인 4회차는
+ * 걷힌 답이 없으므로 한 줄도 짓지 않는다. 여기서 어긋나면 회차 화면에서 「채점 완료
+ * 1052건」인 회차가 채점 화면에서는 대기 스물로 서게 된다.
+ */
+const ROUND_SEEDS = [
+  { id: "2026-3", rn: 3, seats: 26, seat0: 440, done: 0.3, from: "2026-08-18T09:10" },
+  { id: "2026-2", rn: 2, seats: 18, seat0: 118, done: 0.92, from: "2026-06-09T09:40" },
+  { id: "2026-1", rn: 1, seats: 14, seat0: 205, done: 1, from: "2026-03-05T10:05" },
+];
+
+const SUBJECT_CODE: Record<ScoreTask["subject"], string> = { 국어: "K", 수학: "M", 과학: "S" };
+const GRADES = ["초3", "초4", "초5", "초6", "중1", "중2"];
+const LEVELS: RubricLevel[] = ["full", "partial", "none"];
+
+/** 사람이 AI와 다르게 본 까닭 — 바꾼 방향에 맞는 말만 고른다 */
+const CHANGE_NOTE: Record<"up" | "down", string[]> = {
+  up: [
+    "짧지만 묻는 것과 까닭이 다 들어 있어 한 단계 올렸습니다.",
+    "맞춤법이 거칠 뿐 근거는 자료에서 끌어왔습니다.",
+    "AI가 분량을 보고 낮춘 것으로 보입니다. 내용으로는 기준을 채웁니다.",
+  ],
+  down: [
+    "근거로 든 것이 자료가 아니라 아이 경험이라 한 단계 내렸습니다.",
+    "답은 맞게 짚었으나 까닭이 없어 완전정답으로 보기 어렵습니다.",
+    "묻는 것과 조금 다른 것에 답했습니다.",
+  ],
+};
+
+/**
+ * 아이와 학부모가 읽는 해설.
+ *
+ * 점수를 되풀이해 적지 않는다 — 「2점입니다」는 숫자 칸이 이미 말한다. 여기 적을 것은
+ * **다음에 무엇을 하면 되는가**뿐이라, 발문이 무엇이든 같은 자리를 짚게 된다.
+ */
+const COMMENTS: Record<RubricLevel, string> = {
+  full: "묻는 것과 그렇게 본 까닭을 함께 적었습니다. 다음에는 까닭을 두 가지로 늘려 보면 더 단단해집니다.",
+  partial: "답은 바르게 짚었습니다. 왜 그렇게 보았는지를 자료에서 한 줄만 끌어와 붙이면 완전정답이 됩니다.",
+  none: "묻는 것이 무엇인지부터 다시 짚어 봅시다. 문제에서 「무엇을 쓰라」고 했는지 밑줄을 그어 보면 좋겠습니다.",
+};
+
+/**
+ * 회차·과목별 응답을 짓는다.
+ *
+ * 손으로 쓴 아홉 건(위)만으로는 이 화면이 하는 일이 안 보인다 — 채점은 「쌓인 것을
+ * 훑어 내려가는 일」이라 줄이 열도 안 되면 거르개도 쪽 넘김도 쓸 자리가 없다.
+ */
+function makeScores(): ScoreTask[] {
+  const r = seedRng(20260908);
+  const out: ScoreTask[] = [];
+
+  for (const round of ROUND_SEEDS) {
+    let seat = round.seat0;
+    for (let i = 0; i < round.seats; i++) {
+      /* 응시번호는 띄엄띄엄 붙는다 — 회차에 800명이 보는데 번호가 촘촘히 이어지면
+         이 목록이 전수인 줄로 읽힌다 */
+      seat += 1 + Math.floor(r() * 3);
+      const seatNo = String(seat).padStart(4, "0");
+      const grade = GRADES[Math.floor(r() * GRADES.length)];
+      const fits = STEMS.filter((s) => s.grades.includes(grade));
+      const pool = fits.length > 0 ? fits : STEMS;
+
+      /* 한 아이가 한 과목만 보지 않는다. 다만 전 과목을 다 넣으면 목록이 학생 명부가
+         된다 — 서술형이 걸린 과목만 여기 선다 */
+      const howMany = r() > 0.45 ? 2 : 1;
+      const used: string[] = [];
+      for (let k = 0; k < howMany; k++) {
+        const pick = pool[Math.floor(r() * pool.length)];
+        if (used.includes(pick.stem)) continue;
+        used.push(pick.stem);
+
+        const roll = r();
+        const level: RubricLevel = roll < 0.42 ? "full" : roll < 0.76 ? "partial" : "none";
+        const cell = pick.ans[level];
+
+        /* 확신도는 수준에 따라 다르게 흩는다 — AI는 완전정답을 가장 잘 맞히고,
+           오답은 「짧아서 오답인지 몰라서 오답인지」를 못 가려 낮게 나온다 */
+        const span =
+          level === "full" ? [0.78, 0.97] : level === "partial" ? [0.6, 0.92] : [0.48, 0.86];
+        const confidence = Math.round((span[0] + r() * (span[1] - span[0])) * 100) / 100;
+
+        /* 이중 채점 표본 — 전수로 두 번 매길 수는 없으니 얼마쯤만 뽑는다. 너무 적게
+           뽑으면 일치도가 표본 서넛에서 나와 값이 크게 흔들린다 */
+        const double = r() < 0.26;
+        const settled = r() < round.done;
+        const minutes = Math.floor(r() * 40 * 60);
+
+        const task: ScoreTask = {
+          id: `SC-${round.rn}-${seatNo}-${SUBJECT_CODE[pick.subject]}${k + 1}`,
+          round: round.id,
+          seat: seatNo,
+          grade,
+          subject: pick.subject,
+          axis: pick.axis,
+          stem: pick.stem,
+          answer: cell.answer,
+          aiLevel: level,
+          confidence,
+          aiWhy: cell.why,
+          assignee: null,
+          double,
+        };
+
+        if (settled) {
+          /* 사람이 AI를 뒤집는 일은 흔치 않다. 흔하면 AI를 쓸 까닭이 없고, 아예
+             없으면 사람이 확인 도장만 찍는 셈이라 둘 다 사실이 아니다 */
+          const flip = r() < 0.22;
+          const others = LEVELS.filter((v) => v !== level);
+          const humanLevel = flip ? others[Math.floor(r() * others.length)] : level;
+          const dir = rubric[humanLevel].point > rubric[level].point ? "up" : "down";
+          const notes = CHANGE_NOTE[dir];
+          task.human = {
+            level: humanLevel,
+            by: SCORERS[Math.floor(r() * SCORERS.length)],
+            at: stampAt(round.from, minutes),
+            note: flip ? notes[Math.floor(r() * notes.length)] : "",
+          };
+
+          /* 2차는 1차보다 늦게 붙는다 — 표본 가운데 얼마쯤은 늘 두 번째 사람을
+             기다리는 중이다. 다 채워 두면 「이중 채점」 자리가 늘 비어 있어, 그 화면이
+             하는 일이 무엇인지 볼 수가 없다 */
+          /* 해설은 확정한 것에만 붙는다. 점수가 정해지기 전에 「다음에 이렇게 해 보자」를
+             적으면 그 뒤에 점수가 바뀌었을 때 둘이 어긋난다 */
+          if (r() < 0.3) {
+            task.comment = COMMENTS[humanLevel];
+            task.markedBy = task.human.by;
+            task.markedAt = stampAt(round.from, minutes + 30 + Math.floor(r() * 300));
+          }
+
+          /* 루브릭 세 칸 사이에 떨어지는 답 — 사람이 반 칸을 얹거나 덜어 낸 자리다 */
+          if (r() < 0.12) {
+            const base = rubric[humanLevel].point;
+            task.points = base === MAX_POINT ? base - 0.5 : base + 0.5;
+            task.markedBy = task.human.by;
+            task.markedAt = task.markedAt ?? stampAt(round.from, minutes + 45);
+          }
+
+          if (double && r() < 0.68) {
+            /* 2차는 1차를 보지 않고 매긴다 — 그래서 가끔 갈린다. 갈린 자리가 곧
+               루브릭을 다시 손볼 자리다 */
+            const split = r() < 0.18;
+            const alt = LEVELS.filter((v) => v !== humanLevel);
+            task.second = {
+              level: split ? alt[Math.floor(r() * alt.length)] : humanLevel,
+              by: SCORERS[Math.floor(r() * SCORERS.length)],
+              at: stampAt(round.from, minutes + 60 + Math.floor(r() * 600)),
+            };
+          }
+        } else if (confidence < ROUTE_CUT && r() < 0.55) {
+          /* 저신뢰인데 아직 확정 전 — 절반쯤은 이미 사람 손에 들어가 있다 */
+          task.assignee = SCORERS[Math.floor(r() * SCORERS.length)];
+        }
+
+        out.push(task);
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * 채점 대상 전부 — 손으로 쓴 것이 앞, 지은 것이 뒤.
+ *
+ * 차례가 곧 목록의 차례다(DataTable은 담긴 대로 번호를 매긴다). 열려 있는 회차가
+ * 위로 오게 두어, 화면을 열면 지금 손이 가야 하는 것부터 보인다.
+ */
+const SEED_SCORES: ScoreTask[] = [...HAND_SCORES, ...makeScores()];
 
 const SEED_CODING: CodingTask[] = [
   ct("CD-0412-1", "0412", "초5", "소개", "나를 소개하는 글을 자유롭게 써 보세요", "저는 만화 그리는걸 좋아합니다. 이야기를 먼저 짜고 그림을 그립니다. 친구들한테 보여주면 다음편 언제 나오냐고 물어봅니다.", ["언어", "공간"], 0.86, true, {
@@ -972,6 +1587,101 @@ export function routeLowConfidence(to: string, by: string) {
   return hit.length;
 }
 
+/**
+ * 답안지 하나 — 한 회차에서 한 아이가 낸 서술형 전부.
+ *
+ * 채점 화면의 단위는 응답이지만(확신도가 응답마다 다르므로), **되돌려 주는 단위는
+ * 사람**이다. 리포트에 실리는 것은 「이 아이가 이번 회차에 몇 점을 받았고 무엇을
+ * 더 하면 되는가」이지 응답 하나가 아니다. 그래서 같은 자료를 사람으로도 묶는다.
+ */
+export type Sheet = {
+  key: string;
+  round: string;
+  seat: string;
+  grade: string;
+  tasks: ScoreTask[];
+};
+
+/** 답안지 주소 — 응시번호는 회차 안에서만 유일하므로 회차를 앞에 붙인다 */
+export const sheetKey = (t: { round: string; seat: string }) => `${t.round}-${t.seat}`;
+
+/** 주소를 회차와 응시번호로 되돌린다 — 회차 id에도 대시가 있어 뒤에서 자른다 */
+export function splitSheetKey(key: string) {
+  const cut = key.lastIndexOf("-");
+  return cut < 0 ? { round: key, seat: "" } : { round: key.slice(0, cut), seat: key.slice(cut + 1) };
+}
+
+/** 응답을 사람으로 묶는다 — 담긴 차례를 지켜, 목록의 차례가 회차 차례와 같게 둔다 */
+export function sheetsOf(scores: ScoreTask[]): Sheet[] {
+  const out: Sheet[] = [];
+  const at = new Map<string, Sheet>();
+  for (const t of scores) {
+    const key = sheetKey(t);
+    let sheet = at.get(key);
+    if (!sheet) {
+      sheet = { key, round: t.round, seat: t.seat, grade: t.grade, tasks: [] };
+      at.set(key, sheet);
+      out.push(sheet);
+    }
+    sheet.tasks.push(t);
+  }
+  return out;
+}
+
+/** 답안지 한 장의 점수 — 받은 점 / 만점 */
+export function sheetScore(sheet: Sheet) {
+  return {
+    got: sheet.tasks.reduce((sum, t) => sum + (scoreDone(t) ? pointsOf(t) : 0), 0),
+    max: sheet.tasks.length * MAX_POINT,
+    done: sheet.tasks.filter(scoreDone).length,
+    total: sheet.tasks.length,
+  };
+}
+
+/**
+ * 배점과 해설을 손본다 — 답안지 한 장을 한 번에 저장한다.
+ *
+ * 응답마다 저장을 누르게 두면 열 문항짜리 답안지에서 열 번을 누르게 되고, 그러다
+ * 두어 개를 안 누르고 나간다. 한 장이 한 번이다.
+ */
+export function markSheet(
+  edits: { id: string; points: number | null; comment: string }[],
+  by: string,
+) {
+  const cur = read();
+  const map = new Map(edits.map((e) => [e.id, e]));
+  if (map.size === 0) return;
+  const at = now();
+  let touched = 0;
+  const scores = cur.scores.map((t) => {
+    const e = map.get(t.id);
+    if (!e) return t;
+    const points = e.points ?? undefined;
+    const comment = e.comment.trim();
+    /* 값이 그대로면 손댄 것으로 치지 않는다 — 안 고친 응답에 「누가 언제」가 찍히면
+       그 도장이 아무것도 뜻하지 않게 된다 */
+    if (points === t.points && comment === (t.comment ?? "")) return t;
+    touched += 1;
+    return {
+      ...t,
+      points,
+      comment: comment || undefined,
+      markedBy: by,
+      markedAt: at,
+    };
+  });
+  if (touched === 0) return;
+  const first = cur.scores.find((t) => map.has(t.id));
+  commit(
+    { scores },
+    {
+      by,
+      where: "채점",
+      text: `${first ? `${first.seat} ` : ""}답안지 ${touched}문항 — 배점·해설 손봄`,
+    },
+  );
+}
+
 /* ───────────────────────── EXP-05 동작 ───────────────────────── */
 
 /**
@@ -1034,6 +1744,29 @@ export function confirmCoding(id: string, codes: OpenCode[], by: string, note: s
 
 /* ───────────────────────── EXP-06 동작 ───────────────────────── */
 
+/**
+ * 면담 케이스를 한 줄 더한다.
+ *
+ * admin2 면담 관리(/admin2/interviews)에서 보호자·교사가 보낸 신청을 대상으로 받을 때
+ * 부른다. 그 줄이 여기 서야 이 콘솔의 면담 워크벤치와 판정 협진이 같은 케이스를 본다.
+ *
+ * ⚠ InterviewCase의 **모양은 건드리지 않는다.** 칸을 새로 붙이면 이미 genixx.expert를 쓴
+ *   브라우저에서는 영영 안 나타난다 — read()가 최상위 키만 덮어서 interviews 배열은
+ *   저장분이 통째로 이기기 때문이다. 줄을 더하는 것은 쓰기라 그 함정에 안 걸린다.
+ *
+ * ⚠ 소요시간·방식·장소는 여기 담지 않는다. 그 값은 admin2가 제 저장소에 덮어 든다
+ *   (lib/interviewStore.ts). 두 콘솔이 「언제」는 같이 보고 「몇 분·어떤 방식」은 admin2만
+ *   안다 — 면담 API를 붙일 때 한 벌로 합친다.
+ */
+export function pushInterview(c: InterviewCase, by: string) {
+  const cur = read();
+  if (cur.interviews.some((v) => v.id === c.id)) return;
+  commit(
+    { interviews: [...cur.interviews, c] },
+    { by, where: "면담", text: `${c.id} ${c.seat} 면담 대상 확정 — 보호자·교사 신청` },
+  );
+}
+
 export function scheduleInterview(id: string, at: string, interviewer: string, by: string) {
   const cur = read();
   commit(
@@ -1043,6 +1776,30 @@ export function scheduleInterview(id: string, at: string, interviewer: string, b
       ),
     },
     { by, where: "면담", text: `${id} 일정 ${at} · 면담원 ${interviewer}` },
+  );
+}
+
+/**
+ * 잡아 둔 일정을 걷는다 — 선발됨으로 되돌린다.
+ *
+ * scheduleInterview의 짝이다. 짝이 없으면 admin2에서 일정을 지웠을 때 이 콘솔은 계속
+ * 「일정 잡힘」이라 말하고, scheduledAt이 남아 있어 저쪽 화면이 그 문자열을 되읽어
+ * 방금 지운 일정을 다시 세운다.
+ *
+ * ⚠ 기록(notes·transcript)은 건드리지 않는다. 날짜를 물렸다고 면담원이 적어 둔 것을
+ *   지울 까닭이 없고, 그 글은 다시 잡은 면담에서 그대로 이어 쓴다.
+ */
+export function unscheduleInterview(id: string, by: string, why: string) {
+  const cur = read();
+  commit(
+    {
+      interviews: cur.interviews.map((v) =>
+        v.id === id
+          ? { ...v, state: "queued", scheduledAt: undefined, interviewer: undefined }
+          : v,
+      ),
+    },
+    { by, where: "면담", text: `${id} 일정 지움 — ${why}` },
   );
 }
 

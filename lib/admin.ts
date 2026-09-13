@@ -65,6 +65,34 @@ export const permissionIds: PermissionId[] = [
   "system.manage",
 ];
 
+/**
+ * 권한 ID 옆에 붙일 뜻 — 위 PermissionId 선언에 달린 주석을 그대로 옮긴다.
+ *
+ * 화면 쪽(운영자·권한 대조표, 운영자 상세)에 두었던 것을 정의 옆으로 끌어왔다. 두
+ * 화면이 각자 들고 있으면 권한을 하나 더할 때 한쪽만 고치게 되고, 그러면 같은 권한이
+ * 화면마다 다른 이름으로 불린다.
+ */
+export const permissionLabel: Record<PermissionId, string> = {
+  "member.read": "회원 목록 열람",
+  "member.approve": "교사·기관 가입 승인",
+  "student.pii": "학생 개인정보(생년월일·연락처) 열람",
+  "student.code": "접속코드 발급·회수",
+  "round.manage": "회차 개설·마감",
+  "item.write": "문항 작성",
+  "item.review": "문항 교차 검수·승인",
+  "grade.review": "AI 제안값 검토 의견 등록",
+  "grade.confirm": "판정 확정·리포트 발행",
+  "org.manage": "기관 계약·응시권 배정",
+  "billing.read": "결제·정산 열람",
+  "content.publish": "콘텐츠 발행",
+  "inquiry.reply": "문의 답변",
+  "audit.read": "감사 로그 열람",
+  "staff.manage": "운영자 계정·권한 관리",
+  "report.publish": "리포트 발행 승인 (EXP-08-3)",
+  "psychometrics.read": "심리측정 분석 콘솔 (ADM-07)",
+  "system.manage": "시스템 설정 (ADM-13)",
+};
+
 /** 정의서 9장의 HITL 4역할. 출제자와 검수자는 이해충돌을 막기 위해 권한을 맞물려 가른다. */
 export type StaffRoleId = "super" | "author" | "reviewer" | "master";
 
@@ -679,7 +707,16 @@ export type Round = {
    */
   closesOn: string;
   state: RoundState;
-  /** 응시 대상 인원 */
+  /**
+   * 응시 정원 — **0이면 제한 없음**.
+   *
+   * 「내보낼 대상 수」로 두었다가 정원으로 바꿨다. 적은 수만큼 결제되면 그 회차는 더
+   * 받지 않는다. 0을 「아직 안 정했다」로 읽지 않는 것이 요점이라, 화면에서도 대시가
+   * 아니라 「제한 없음」으로 적는다(회차 목록의 정원 칸).
+   *
+   * 제출률의 분모로도 이 값을 쓴다. 정원이 없는 회차는 분모가 없으므로 막대를 그리지
+   * 않고 대시로 둔다 — 0으로 나누면 늘 0%가 되어 「아무도 안 냈다」로 읽힌다.
+   */
   target: number;
   submitted: number;
   graded: number;
@@ -691,13 +728,43 @@ export type Round = {
  *
  * 회차 현황(ADM-05)과 대시보드가 같은 회차를 저마다 다른 말로 부르면, 두 화면을
  * 오가는 사람이 같은 회차인지 먼저 의심하게 된다. 말과 색을 여기서 한 번만 정한다.
+ *
+ * ── 넷을 셋으로 말한다 ──
+ * 상태 열쇠는 넷이지만 화면에 세우는 말은 셋이다 — 대기중 · 진행중 · 마감.
+ *
+ * open(응시 진행중)과 grading(채점중)을 한 말로 묶은 까닭은, 표를 훑는 사람이 이 칸에서
+ * 묻는 것이 「지금 손댈 수 있나」 하나이기 때문이다. 응시 중이든 채점 중이든 답은 같다 —
+ * 열려서 돌고 있다. 넷으로 갈라 두면 그 물음에 답하려고 넷을 둘로 다시 묶어 읽어야 한다.
+ *
+ * 「응시가 끝났나 채점이 끝났나」는 다른 물음이고, 그 답은 이 칸이 아니라 응시 기간과
+ * 제출률이 한다 — 회차 목록에 이미 나란히 서 있다.
+ *
+ * ⚠ 열쇠(draft·open·grading·closed)는 그대로 둔다. 편성 저장분과 씨앗이 이 글자를 쓰고
+ *   있어, 줄이면 이미 열어 둔 회차가 목록에서 사라진다. 줄이는 것은 말이지 값이 아니다.
+ *
+ * ⚠ 같은 말에는 같은 색을 준다(lib/admin2.ts의 roundTone). 두 열쇠가 한 말을 쓰는데 색이
+ *   갈리면 같은 「진행중」이 표 한 장에 두 색으로 선다.
  */
 export const roundStates = {
-  draft: { label: "준비중", className: "text-brand-700" },
-  open: { label: "응시 진행중", className: "text-emerald-700" },
-  grading: { label: "채점중", className: "text-amber-700" },
+  draft: { label: "대기중", className: "text-brand-700" },
+  open: { label: "진행중", className: "text-emerald-700" },
+  grading: { label: "진행중", className: "text-emerald-700" },
   closed: { label: "마감", className: "text-exam-muted" },
 } as const;
+
+/**
+ * 화면에 세우는 회차 상태 — 셋뿐이다. 거르개 차림표가 이 목록을 쓴다.
+ *
+ * 열쇠로 차림표를 만들면 「진행중」이 두 줄 선다. 사람이 고르는 것은 말이므로 말로 세우고,
+ * 고른 말에 걸리는 열쇠는 statesOfLabel이 되돌려 준다.
+ */
+export const roundStateLabels = ["대기중", "진행중", "마감"] as const;
+
+export type RoundStateLabel = (typeof roundStateLabels)[number];
+
+/** 이 말을 쓰는 상태 열쇠들 — 거르개가 줄을 고를 때 쓴다 */
+export const statesOfLabel = (label: string): RoundState[] =>
+  (Object.keys(roundStates) as RoundState[]).filter((k) => roundStates[k].label === label);
 
 /* 최신 회차가 앞에 온다 — 대시보드는 rounds[0]으로 들어오고, 회차 고르개의
    「이전」은 뒤로(오래된 쪽), 「다음」은 앞으로(새 쪽) 간다. */
@@ -1303,6 +1370,13 @@ export type InquiryRow = {
   category: string;
   title: string;
   writer: string;
+  /**
+   * 보내온 사람이 쓴 글.
+   *
+   * 답변 화면이 붙기 전에는 제목만으로도 목록이 굴러갔지만, 답을 쓰려면 무엇을 물었는지가
+   * 있어야 한다. 제목은 요약이고 이것이 본문이다.
+   */
+  body: string;
   state: "new" | "working" | "answered";
   /** 접수 후 경과 시간 */
   waited: string;
@@ -1310,8 +1384,19 @@ export type InquiryRow = {
   overdue: boolean;
 };
 
+/*
+ * 문의 상태.
+ *
+ * 첫 칸을 「미배정」에서 「대기」로 고쳤다. 배정이라는 말은 「누가 맡을지 정하는 사람이
+ * 따로 있다」를 뜻하는데 이 콘솔에는 그런 자리가 없다 — 문의를 여는 사람이 곧 답하는
+ * 사람이고, 맡기 단추도 걷었다(app/(admin2)/admin2/inquiries/[id]). 아직 아무도 답하지
+ * 않았다는 것이 이 칸이 말하는 전부라 「대기」로 적는다.
+ *
+ * 상태 열쇠(new)는 그대로 둔다. 브라우저에 저장된 값과 씨앗이 이 글자를 쓰고 있어,
+ * 이름을 바꾸면 이미 답한 문의가 목록에서 사라진다.
+ */
 export const inquiryStates: Record<InquiryRow["state"], { label: string; className: string }> = {
-  new: { label: "미배정", className: "text-rose-600" },
+  new: { label: "대기", className: "text-rose-600" },
   working: { label: "처리중", className: "text-amber-700" },
   answered: { label: "답변 완료", className: "text-emerald-700" },
 };
@@ -1323,6 +1408,7 @@ export const inquiries: InquiryRow[] = [
     category: "결과 해석",
     title: "미측정 축이 5개인데 리포트를 이대로 봐도 되나요",
     writer: "김****",
+    body: "아이 리포트를 받았는데 재능 좌표 여덟 축 중 다섯 개가 「미측정」으로 나옵니다. 이대로 아이의 강점을 판단해도 되는 건지, 아니면 다음 회차를 기다려야 하는지 알고 싶습니다.",
     state: "new",
     waited: "2시간",
     overdue: false,
@@ -1333,6 +1419,7 @@ export const inquiries: InquiryRow[] = [
     category: "도입 상담",
     title: "교육지원청 단위 400명 시범 운영 문의",
     writer: "광주 서부교육지원청",
+    body: "관내 초등학교 12곳, 3~4학년 약 400명을 대상으로 시범 운영을 검토하고 있습니다. 회차 일정과 기관 단위 계약 절차, 학교별 결과 취합이 가능한지 안내 부탁드립니다.",
     state: "new",
     waited: "5시간",
     overdue: false,
@@ -1343,6 +1430,7 @@ export const inquiries: InquiryRow[] = [
     category: "접속코드",
     title: "아이 접속코드를 분실했습니다",
     writer: "최****",
+    body: "아이에게 준 8자리 접속코드를 잃어버렸습니다. 다시 발급받으려면 어떻게 해야 하나요? 이미 1과목은 응시를 마친 상태입니다.",
     state: "working",
     waited: "9시간",
     overdue: false,
@@ -1353,6 +1441,7 @@ export const inquiries: InquiryRow[] = [
     category: "개인정보",
     title: "동의를 철회하고 자료를 파기하고 싶습니다",
     writer: "배****",
+    body: "개인정보 수집 동의를 철회하고 그동안 제출한 답안과 설문을 모두 파기해 주시기 바랍니다. 처리 결과를 메일로 회신해 주세요.",
     state: "working",
     waited: "31시간",
     overdue: true,
@@ -1363,6 +1452,7 @@ export const inquiries: InquiryRow[] = [
     category: "응시",
     title: "과학 시험 중 창이 닫혔는데 재응시가 되나요",
     writer: "문****",
+    body: "과학 응시 도중 브라우저가 갑자기 닫혔습니다. 다시 들어가니 남은 시간이 그대로 줄어 있던데, 이 경우 재응시가 가능한지 궁금합니다.",
     state: "answered",
     waited: "완료",
     overdue: false,

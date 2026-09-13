@@ -13,7 +13,7 @@ export default function LegalPage() {
   return (
     <>
       <PageHero
-        eyebrow="PUB-08 · 정책·법적 고지"
+        eyebrow="정책·법적 고지"
         title={
           <>
             무엇을 모으고 어떻게 쓰는지
@@ -33,10 +33,8 @@ export default function LegalPage() {
                   href={l.href}
                   className="group flex h-full flex-col rounded-3xl border border-brand-100 bg-white p-7 shadow-card transition-shadow hover:shadow-float"
                 >
-                  <span className="type-tag w-fit rounded-full bg-brand-50 px-3 py-1 text-brand-700">
-                    {l.id}
-                  </span>
-                  <h2 className="type-h3 mt-4 font-black text-brand-950">{l.label}</h2>
+                  {/* 화면 ID 알약을 걷었다 — 읽는 사람에게 「PUB-08-3」은 아무 뜻이 없다 */}
+                  <h2 className="type-h3 font-black text-brand-950">{l.label}</h2>
                   <p className="type-body mt-2 flex-1 text-slate-600">
                     {l.desc}
                   </p>

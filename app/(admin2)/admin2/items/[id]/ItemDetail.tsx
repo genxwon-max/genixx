@@ -3,20 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { gradeBands, submitChecklist, type GradeBand } from "@/lib/blueprint";
+import { checkStandardCode, gradeBands, type GradeBand } from "@/lib/blueprint";
 import { itemTone } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { roundsOf, useForms } from "@/lib/formStore";
 import {
-  addComment,
-  allDifficultiesPicked,
-  allLevelsAllowed,
-  allStandardsOk,
   blankQuestion,
-  codePrefix,
-  difficultyLabel,
   itemForms,
-  missingFields,
+  missingContent,
   patchItem,
   rejectLabel,
   restoreItem,
@@ -25,27 +18,24 @@ import {
   setAnchor,
   stateLabel,
   submitItem,
-  summaryOf,
-  typeTextOf,
   useItems,
   withdrawItem,
+  type ItemComment,
   type ItemDraft,
   type ItemForm,
   type Question,
 } from "@/lib/itemStore";
 import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
-import {
-  Body,
-  DescList,
-  FormRow,
-  PageHead,
-  Panel,
-  SeedNote,
-  Status,
-  Tag,
-} from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
+import BodyEditor from "@/components/admin2/BodyEditor";
+import ItemPreview from "@/components/admin2/ItemPreview";
 import ReviewPanel from "./ReviewPanel";
-import { BodyEditor, QuestionBodyRows, QuestionList, QuestionTagRows } from "./QuestionEditor";
+import {
+  QuestionBodyRows,
+  QuestionCoreRows,
+  QuestionList,
+  QuestionTagRows,
+} from "./QuestionEditor";
 
 /**
  * ADM-04-1 문항 상세 — 등록 · 수정 · 검수를 한 장에서.
@@ -56,11 +46,26 @@ import { BodyEditor, QuestionBodyRows, QuestionList, QuestionTagRows } from "./Q
  * 한 화면에서 끝나야 한다.
  *
  * ── 차례 ──
+ * 맨 위에 검수 이력 — 무엇이 걸렸나. 기록이 없으면 서지 않는다.
  *   ① 문항 구성  단일인가 세트인가
- *   ② 분류      단일일 때만. 어디에 붙고 얼마나 어려운 문항인가
+ *   ② 분류      단일일 때만. 과목 · 학년군 · 배점 · 인지단계 · 난이도
  *   ③ 문항      무슨 자료를 읽히고 무엇을 묻나 (세트는 목록 → 문항 상세)
- *   ④ 제출 준비  검수자에게 미리 할 말 · 내보내기 전에 짚을 것
- * 그 아래는 되짚어 보는 것 — 상태 · 검수 · 이력 · 메모.
+ *   ④ 세부 분류  단일일 때만. 단원 · 문항 ID · 성취기준 · 재능 축 · 하위요소
+ * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 승인 뒤 관리.
+ *
+ * ── 분류를 문항 앞뒤로 가른다 ──
+ * 한 판에 열세 줄이 서 있어서 문항을 쓰러 온 사람이 발문 칸까지 한 화면을 넘겨야 했다.
+ * 그런데 그 열세 줄은 정하는 때가 다르다. 단계와 난이도를 모르고는 발문을 쓸 수 없지만,
+ * 성취기준 코드와 하위요소는 다 쓴 문항을 보고 찾아 붙이는 것이 실제 차례다. 그래서
+ * 쓰기 전에 정할 다섯만 문항 위에 두고, 나머지는 문항 아래로 내린다.
+ *
+ * ── 제출 준비 · 상태 · 메모를 걷었다 ──
+ * 출제자 유의사항과 제출 전 체크리스트는 출제자와 검수자가 다른 사람인 옛 콘솔의 장치다.
+ * 이 콘솔은 쓰는 사람이 곧 검수하는 사람이라 칸만 늘었다. 판을 걷으면서 제출 문턱에서도
+ * 뺐다(lib/itemStore.ts의 missingContent) — 판은 없는데 문턱은 남아 있으면 제출 단추가
+ * 영영 켜지지 않는다. 상태는 머리에 이미 서 있고, 반려됐다는 한 줄만 맨 위로 옮겼다.
+ * 메모는 쓰는 칸만 걷었다 — 거기 쌓인 기록(반려 사유 · 앵커 지정과 다시 쓰기의 까닭)은
+ * 검수 이력에 함께 편다. 기록까지 걷으면 반려 사유가 이 콘솔 어디에도 보이지 않는 문항이 생긴다.
  *
  * 문항 구성이 맨 앞인 것은 그 하나가 **아래를 통째로 바꾸기** 때문이다. 세트면 함께
  * 읽을 보기가 있어야 하고, 문항이 하나가 아니라 목록이 되고, 문항마다 따로 들어가 볼
@@ -72,8 +77,9 @@ import { BodyEditor, QuestionBodyRows, QuestionList, QuestionTagRows } from "./Q
  * 하나뿐이라 바깥에 세워도 뜻이 통하지만, 세트에서는 성취기준도 단계도 난이도도
  * 문항마다 다르다 — 바깥에 한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다.
  * 그래서 세트에서는 이 판을 아예 세우지 않고, 문항 하나로 들어간 화면에 세운다. 거기서
- * 과목·학년군·단원·문항 ID(세트가 함께 쓰는 것)와 성취기준·재능 축·단계·난이도(그
- * 문항만의 것)가 한 판에 서고, 어느 쪽이 함께 걸리는 값인지 맨 위에 적어 둔다.
+ * 단일과 같은 차례로 선다 — 분류 → 문항 → 세부 분류. 판마다 세트가 함께 쓰는 것(과목·
+ * 학년군 / 단원·문항 ID)이 먼저 서고 그 문항만의 것이 뒤따르며, 어느 쪽이 함께 걸리는
+ * 값인지 판 맨 위에 적어 둔다.
  *
  * ── 이름표는 왼쪽, 예외 없이 ──
  * 칸 위에 이름을 얹으면 한 줄이 두 줄을 먹어서, 분류만으로 화면 한 장이 넘어갔다.
@@ -82,8 +88,7 @@ import { BodyEditor, QuestionBodyRows, QuestionList, QuestionTagRows } from "./Q
  *
  * 그래서 판이 줄었다. 난이도·문항 구성·지문은 각각 판 하나에 칸 하나뿐이었는데, 이름표를
  * 왼쪽으로 돌리자 판 제목과 이름표가 같은 말을 두 번 하게 됐다. 난이도는 분류 줄에,
- * 지문은 문항 판의 첫 줄로 들어갔고, 유의사항과 체크리스트는 「제출 준비」 한 판으로
- * 합쳤다. 맨 위 문항 구성은 판 제목 없이 줄 하나만 세운다.
+ * 지문은 문항 판의 첫 줄로 들어갔다. 맨 위 문항 구성은 판 제목 없이 줄 하나만 세운다.
  *
  * ── 세트는 목록 ──
  * 세트 안의 문항을 죄다 펼쳐 놓으면 셋만 되어도 화면이 스무 칸을 넘어가 지금 몇 번을
@@ -107,15 +112,15 @@ const SET_MAX = 8;
 
 export default function ItemDetail({ id }: { id: string }) {
   const items = useItems();
-  const forms = useForms();
   const prefs = useAdminPrefs();
   const router = useRouter();
   const [reason, setReason] = useState("");
-  const [memo, setMemo] = useState("");
   /** 고치는 중인 값. null이면 손대지 않았다는 뜻이다 */
   const [draft, setDraft] = useState<Partial<ItemDraft> | null>(null);
   /** 세트에서 들어가 있는 문항. null이면 목록을 보고 있다 */
   const [openQ, setOpenQ] = useState<string | null>(null);
+  /** 응시 화면 미리보기를 띄웠는가 */
+  const [preview, setPreview] = useState(false);
 
   const item = items.find((i) => i.id === id);
   /** 화면이 그리는 값 — 저장된 문항 위에 고치는 중인 값을 덮는다 */
@@ -161,9 +166,8 @@ export default function ItemDetail({ id }: { id: string }) {
   const locked = !editable;
   const by = prefs.staffName || "운영자";
   /** 화면에 적는 「남은 것」은 지금 보이는 값 기준. 제출 문턱은 저장된 값 기준이다 */
-  const missing = missingFields(view);
-  const ready = missingFields(item).length === 0;
-  const shipped = roundsOf(view.id, forms);
+  const missing = missingContent(view);
+  const ready = missingContent(item).length === 0;
 
   /** 고친 값을 초안에 담아 둔다. 저장소로 나가는 것은 save()뿐이다 */
   const set = (patch: Partial<ItemDraft>) => {
@@ -172,25 +176,44 @@ export default function ItemDetail({ id }: { id: string }) {
   };
 
   const qs = view.questions;
-  /* 요약(단계·b·배점)은 저장할 때 만들어지므로, 고치는 중인 화면은 그 자리에서 다시
-     구해야 한다. 안 그러면 문항을 더하거나 단계를 올린 것이 저장 전까지 안 보인다 */
-  const sum = summaryOf(qs);
-  /* 코드는 저장할 때 다시 매겨진다. 지금 고친 값으로 앞부분이 달라지면 미리 알려 준다 —
-     저장하고 나서야 번호가 바뀐 것을 알면 어느 문항이 어느 것인지 헷갈린다 */
-  const nextPrefix = codePrefix(view);
-  const willRecode = !view.code.startsWith(`${nextPrefix}-`);
   const setQuestions = (next: Question[]) => set({ questions: next });
   const setQuestion = (k: number, next: Question) =>
     setQuestions(qs.map((x, n) => (n === k ? next : x)));
   /** 세트를 단일로 되돌리면 저장할 때 2번 이후가 떨어진다. 미리 알려 준다 */
   const dropping = view.form === "single" ? qs.length - 1 : 0;
 
+  /* 학년군을 바꾸면 성취기준 코드가 범위를 벗어난다. 코드는 문항 아래 세부 분류 판에 있어
+     바꾼 자리에서 보이지 않으므로 학년군 칸에도 적는다. 다른 학년군이었다면 맞았을 코드만
+     센다 — 비었거나 형식이 틀린 코드는 학년군을 바꿔서 생긴 일이 아니다 */
+  const bandBroken = qs.filter(
+    (q) =>
+      !checkStandardCode(q.standardCode, view.band).ok &&
+      gradeBands.some((g) => g.id !== view.band && checkStandardCode(q.standardCode, g.id).ok),
+  ).length;
+
+  /* 검수 이력에 메모를 함께 편다. 메모를 쓰는 판은 걷었지만 거기 쌓인 기록은 걷지 않는다 —
+     반려 사유만 comments에 들고 있는 문항이 있고(검수 기록이 생기기 전에 반려된 IT-2602),
+     앵커 지정·다시 쓰기의 까닭은 comments에만 남는다. 검수판에서 승인·반려하면 같은 말이
+     reviews와 comments 양쪽에 남으므로, 짝이 있는 것은 검수 기록 쪽 한 번만 세운다 */
+  const mirrored = (c: ItemComment) =>
+    c.kind !== "note" &&
+    view.reviews.some((r) => r.at === c.at && r.verdict === c.kind && r.text === c.text);
+  const loose = view.comments.filter((c) => !mirrored(c));
+  const notes = loose.length;
+  const history = [
+    ...view.reviews.map((r) => ({ at: r.at, review: r, comment: undefined, key: `r-${r.at}-${r.round}` })),
+    ...loose.map((c, k) => ({ at: c.at, review: undefined, comment: c, key: `c-${c.at}-${k}` })),
+  ]
+    .map((e, k) => ({ ...e, k }))
+    /* 새것이 위. 같은 시각이면 나중에 쌓인 것이 위 — at은 「YYYY-MM-DD HH:MM」이라 글자로 견준다 */
+    .sort((a, b) => (a.at === b.at ? b.k - a.k : a.at < b.at ? 1 : -1));
+
   const saveBar = editable ? <PageSaveBar dirty={dirty} onSave={save} onCancel={cancel} /> : null;
 
-  /* 세트가 통째로 함께 쓰는 칸. 단일이면 문항 상세의 분류 판에, 세트면 문항 하나로
-     들어간 화면의 분류 판에 선다 — 어느 쪽이든 「이 문항이 어디에 붙나」의 앞머리다.
-     세트 바깥 화면에는 세우지 않는다. 거기서는 어느 문항의 분류인지 말할 수가 없다. */
-  const sharedTagRows = (
+  /* 세트가 통째로 함께 쓰는 칸 — 둘로 갈라 분류 판과 세부 분류 판의 앞머리에 각각 선다.
+     단일이면 문항 상세에, 세트면 문항 하나로 들어간 화면에 선다. 세트 바깥 화면에는
+     세우지 않는다. 거기서는 어느 문항의 분류인지 말할 수가 없다. */
+  const sharedCoreRows = (
     <>
       <FormRow label="과목" req>
         <select
@@ -205,7 +228,20 @@ export default function ItemDetail({ id }: { id: string }) {
         </select>
       </FormRow>
 
-      <FormRow label="학년군" req>
+      <FormRow
+        label="학년군"
+        req
+        hint={
+          bandBroken > 0 ? (
+            <span style={{ color: "var(--a2-danger)" }}>
+              {view.form === "set"
+                ? `이 세트 문항의 성취기준 코드 ${bandBroken}개가`
+                : "아래 세부 분류의 성취기준 코드가"}{" "}
+              이 학년군 범위를 벗어납니다.
+            </span>
+          ) : undefined
+        }
+      >
         <select
           className="a2-select a2-input-lg"
           value={view.band}
@@ -225,7 +261,11 @@ export default function ItemDetail({ id }: { id: string }) {
           ))}
         </select>
       </FormRow>
+    </>
+  );
 
+  const sharedDetailRows = (
+    <>
       <FormRow label="단원" req>
         <input
           className="a2-input a2-input-lg"
@@ -247,20 +287,10 @@ export default function ItemDetail({ id }: { id: string }) {
       </FormRow>
 
       {/* 손으로 적는 칸이 아니다. 코드에 담기는 것이 전부 이 화면의 다른 칸에
-                    이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID) */}
-      <FormRow
-        label="문항 ID"
-        hint={
-          willRecode ? (
-            <>
-              저장하면 <b className="a2-mono text-(--a2-ink)">{nextPrefix}</b>로 시작하는 번호로
-              다시 매겨집니다.
-            </>
-          ) : (
-            "연월일 · 학년 · 과목 · 문항 유형 · 단계 · 일련번호 — 자동으로 매깁니다."
-          )
-        }
-      >
+          이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID).
+          과목·학년군·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
+          적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
+      <FormRow label="문항 ID">
         <span className="a2-mono a2-t-md font-bold text-(--a2-ink)">
           {view.code || "저장하면 매겨집니다"}
         </span>
@@ -293,16 +323,15 @@ export default function ItemDetail({ id }: { id: string }) {
             <Panel title="분류" flush>
               <p className="a2-note m-4 mb-0">
                 <span>
-                  과목 · 학년군 · 단원 · 문항 ID는 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면
-                  같은 세트의 다른 문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
+                  과목 · 학년군은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은 세트의 다른
+                  문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
                 </span>
               </p>
               <div className="a2-form a2-form-lg mt-4">
-                {sharedTagRows}
-                <QuestionTagRows
-                  key={`tags-${qs[openIndex].id}`}
+                {sharedCoreRows}
+                <QuestionCoreRows
+                  key={`core-${qs[openIndex].id}`}
                   q={qs[openIndex]}
-                  band={view.band}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(openIndex, next)}
                 />
@@ -314,6 +343,25 @@ export default function ItemDetail({ id }: { id: string }) {
                 <QuestionBodyRows
                   key={`body-${qs[openIndex].id}`}
                   q={qs[openIndex]}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                />
+              </div>
+            </Panel>
+
+            <Panel title="세부 분류" flush>
+              <p className="a2-note m-4 mb-0">
+                <span>
+                  단원 · 단원 번호 · 문항 ID는 <b>세트 전체</b>가 함께 씁니다. 그 아래는 이
+                  문항만의 값입니다.
+                </span>
+              </p>
+              <div className="a2-form a2-form-lg mt-4">
+                {sharedDetailRows}
+                <QuestionTagRows
+                  key={`tags-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
+                  band={view.band}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(openIndex, next)}
                 />
@@ -342,6 +390,12 @@ export default function ItemDetail({ id }: { id: string }) {
               <span className="a2-t-xs text-(--a2-ink-4)">상태</span>
               <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status>
             </span>
+            {/* 검수하는 사람이 가장 자주 누르는 단추라 나가는 문들보다 왼쪽에 둔다.
+                지금 화면의 값(초안 포함)으로 띄운다 — 저장하기 전에 「이렇게 보이는가」를
+                보는 것이 미리보기의 일이다 */}
+            <button type="button" className="a2-btn" onClick={() => setPreview(true)}>
+              미리보기
+            </button>
             {editable && (
               <button
                 type="button"
@@ -352,7 +406,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     ? "먼저 저장해 주세요 — 검수자는 저장된 문항을 받습니다"
                     : ready
                       ? undefined
-                      : `${missingFields(item).join(" · ")}이(가) 남았습니다`
+                      : `${missingContent(item).join(" · ")}이(가) 남았습니다`
                 }
                 onClick={() => submitItem(view.id)}
               >
@@ -394,6 +448,87 @@ export default function ItemDetail({ id }: { id: string }) {
                     : "승인된 문항은 잠깁니다. 고치려면 위에서 새 판을 뜨세요 — 원본은 그대로 둡니다."}
               </span>
             </p>
+          )}
+          {/* 상태 판과 함께 걷힌 한 줄을 여기로 옮긴다. 반려된 문항은 머리의 「반려됨」만으로는
+              무엇을 고칠지가 바로 아래 검수 이력에 있다는 것이 보이지 않는다 */}
+          {view.state === "rejected" && (
+            <p className="a2-note" style={{ borderLeftColor: "var(--a2-danger)" }}>
+              <span>
+                반려된 문항입니다. 아래 검수 이력의 소견대로 고친 뒤 다시 제출하면 검수 목록으로
+                돌아갑니다.
+              </span>
+            </p>
+          )}
+
+          {/* ── 검수 이력 ──
+              맨 위에 둔다. 검수를 거친 문항을 여는 까닭은 대개 「무엇이 걸렸나」를 보고
+              고치러 온 것이라, 소견이 입력 칸 아래에 있으면 고칠 곳과 고칠 까닭 사이를
+              스크롤로 오가야 한다. 기록이 하나도 없으면 판째 세우지 않는다 — 「아직 검수를
+              거치지 않았습니다」 한 줄이 작성 중인 문항마다 맨 위 자리를 차지한다 */}
+          {history.length > 0 && (
+            <Panel
+              title="검수 이력"
+              meta={`${view.reviews.length}회${notes > 0 ? ` · 메모 ${notes}건` : ""}`}
+              flush
+            >
+              <ul className="divide-y divide-(--a2-line)">
+                {history.map(({ review: r, comment: c, key }) =>
+                  c ? (
+                    <li key={key} className="p-4">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        {c.kind === "note" ? (
+                          <span className="a2-t-sm font-semibold text-(--a2-ink-3)">메모</span>
+                        ) : (
+                          <Status tone={c.kind === "approve" ? "ok" : "danger"}>
+                            {c.kind === "approve"
+                              ? "승인"
+                              : `반려 · ${c.code ? rejectLabel(c.code) : "사유 없음"}`}
+                          </Status>
+                        )}
+                        <span className="a2-t-sm text-(--a2-ink-2)">{c.by}</span>
+                        <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{c.at}</span>
+                      </div>
+                      <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
+                    </li>
+                  ) : r ? (
+                    <li key={key} className="p-4">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Status tone={r.verdict === "approve" ? "ok" : "danger"}>
+                          {r.verdict === "approve"
+                            ? "승인"
+                            : `반려 · ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
+                        </Status>
+                        <span className="a2-t-sm text-(--a2-ink-2)">
+                          {r.round}차 · {r.by}
+                        </span>
+                        <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{r.at}</span>
+                        {r.machine && <Tag>기계</Tag>}
+                        {r.self && (
+                          <span className="a2-t-xs font-bold" style={{ color: "var(--a2-danger)" }}>
+                            자가 검수
+                          </span>
+                        )}
+                      </div>
+                      <ul className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
+                        {r.checks.map((c) => (
+                          <li
+                            key={c.id}
+                            className="a2-t-xs"
+                            style={{
+                              color: c.ok ? "var(--a2-ok)" : "var(--a2-danger)",
+                            }}
+                          >
+                            {c.id === "content" ? "내용" : c.id === "tagging" ? "태깅" : "윤리"}{" "}
+                            {c.ok === null ? "—" : c.ok ? "통과" : "걸림"}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
+                    </li>
+                  ) : null,
+                )}
+              </ul>
+            </Panel>
           )}
 
           {/* ── ① 무엇부터 정하나 ──
@@ -443,17 +578,16 @@ export default function ItemDetail({ id }: { id: string }) {
             </div>
           </Panel>
 
-          {/* ── ② 어디에 붙나 ──
-              단일일 때만 선다. 세트에서는 분류가 문항마다 다르므로(성취기준도 단계도
-              난이도도) 바깥에 한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다.
-              세트의 분류는 문항 하나로 들어간 화면에 있다 */}
+          {/* ── ② 쓰기 전에 정할 것 ──
+              단일일 때만 선다. 세트에서는 분류가 문항마다 다르므로(단계도 난이도도) 바깥에
+              한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다. 세트의 분류는 문항
+              하나로 들어간 화면에 있다 */}
           {view.form === "single" && (
             <Panel title="분류" flush>
               <div className="a2-form a2-form-lg">
-                {sharedTagRows}
-                <QuestionTagRows
+                {sharedCoreRows}
+                <QuestionCoreRows
                   q={qs[0]}
-                  band={view.band}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(0, next)}
                 />
@@ -527,134 +661,31 @@ export default function ItemDetail({ id }: { id: string }) {
             )}
           </Panel>
 
-          {/* ── ④ 내보내기 전에 ── */}
-          <Panel title="제출 준비" flush>
-            <div className="a2-form a2-form-lg">
-              <FormRow label="출제자 유의사항" req>
-                <textarea
-                  className="a2-textarea a2-textarea-lg"
-                  rows={4}
-                  value={view.guidance}
+          {/* ── ④ 쓰고 나서 붙일 것 ──
+              단일일 때만 선다(까닭은 ②와 같다). 성취기준 코드와 하위요소는 다 쓴 문항을
+              보고 찾아 붙이는 것이라 문항 아래가 제자리다 */}
+          {view.form === "single" && (
+            <Panel title="세부 분류" flush>
+              <div className="a2-form a2-form-lg">
+                {sharedDetailRows}
+                <QuestionTagRows
+                  q={qs[0]}
+                  band={view.band}
                   disabled={locked}
-                  onChange={(e) => set({ guidance: e.target.value })}
-                  placeholder="바꾸어 써도 뜻이 통하는지만 봅니다. 쓰임의 차이를 묻기 시작하면 S2로 이탈합니다."
+                  onChange={(next: Question) => setQuestion(0, next)}
                 />
-              </FormRow>
+              </div>
+            </Panel>
+          )}
 
-              <FormRow label="제출 전 체크리스트" req>
-                <ul className="grid w-full gap-1.5">
-                  {submitChecklist.map((c) => {
-                    /* 자동으로 보는 둘은 사람이 켜고 끄지 못한다. 켤 수 있게 두면 코드가
-                       틀린 채로 체크만 켜고 제출하는 길이 열린다 */
-                    /* 세트면 문항 하나만 맞아도 통과가 되면 안 된다 — 전부를 본다 */
-                    const auto =
-                      c.id === "code"
-                        ? allStandardsOk(view)
-                        : c.id === "tagb"
-                          ? allLevelsAllowed(view)
-                          : null;
-                    const on = c.auto ? !!auto : view.checks.includes(c.id);
-                    return (
-                      <li key={c.id}>
-                        <label className="flex items-start gap-2.5 py-0.5">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5"
-                            checked={on}
-                            readOnly={c.auto}
-                            disabled={c.auto || locked}
-                            onChange={() => {
-                              if (c.auto) return;
-                              set({
-                                checks: view.checks.includes(c.id)
-                                  ? view.checks.filter((x) => x !== c.id)
-                                  : [...view.checks, c.id],
-                              });
-                            }}
-                          />
-                          <span className="a2-t-sm text-(--a2-ink-2)">
-                            {c.text}
-                            {c.auto && (
-                              <span className="ml-1.5 a2-t-xs text-(--a2-ink-4)">
-                                자동 확인 · {on ? "통과" : "아직"}
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-                {editable && missing.length > 0 && (
-                  <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
-                    <span>제출까지 남은 것 — {missing.join(" · ")}</span>
-                  </p>
-                )}
-              </FormRow>
-            </div>
-          </Panel>
-
-          {/* ── 되짚어 보기 ── */}
-          <Panel title="상태" meta={view.origin === "ai" ? "AI가 낸 초안" : "사람이 쓴 문항"}>
-            <DescList
-              rows={[
-                {
-                  k: "상태",
-                  v: <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status>,
-                },
-                { k: "출제자", v: `${view.authorName} (${view.author})` },
-                { k: "구성", v: typeTextOf(view) },
-                {
-                  /* 세트의 b는 문항들의 평균이라 넷 중 하나로 떨어지지 않는다.
-                     거기에 이름표를 붙이면 전부 「아직 고르지 않음」으로 뜬다 */
-                  k: "배점 · 난이도",
-                  v:
-                    qs.length === 1
-                      ? `${sum.points}점 · ${difficultyLabel(sum.b)} (b ${sum.b})`
-                      : allDifficultiesPicked(view)
-                        ? `${sum.points}점 · 평균 b ${sum.b}`
-                        : `${sum.points}점 · 난이도를 아직 다 고르지 않았습니다`,
-                },
-                {
-                  k: "Tag B 좌표",
-                  v: <span className="a2-t-sm">{view.tagB || "—"}</span>,
-                },
-                {
-                  k: "앵커",
-                  v: view.anchor ? (
-                    <Tag accent>앵커</Tag>
-                  ) : (
-                    <span className="text-(--a2-ink-4)">아님</span>
-                  ),
-                },
-                {
-                  k: "정답률",
-                  v:
-                    view.correctRate == null ? (
-                      <span className="text-(--a2-ink-4)">미출제</span>
-                    ) : (
-                      <span className="a2-num">{view.correctRate}%</span>
-                    ),
-                },
-                {
-                  k: "나간 회차",
-                  v: shipped.length ? (
-                    shipped.join(" · ")
-                  ) : (
-                    <span className="text-(--a2-ink-4)">없음</span>
-                  ),
-                },
-              ]}
-            />
-            {view.state === "rejected" && (
-              <p className="a2-note mt-3" style={{ borderLeftColor: "var(--a2-danger)" }}>
-                <span>
-                  반려된 문항입니다. 아래 검수 소견대로 고친 뒤 다시 제출하면 검수 목록으로
-                  돌아갑니다.
-                </span>
-              </p>
-            )}
-          </Panel>
+          {/* 제출 준비 판과 함께 이 줄이 사라지면, 제출 단추가 왜 꺼져 있는지 말해 주는 곳이
+              꺼진 단추의 풍선 도움말 하나만 남는다 — 꺼진 단추에는 풍선이 뜨지 않는
+              브라우저도 있다. 판은 걷되 줄은 입력 칸이 끝나는 자리에 남긴다 */}
+          {editable && missing.length > 0 && (
+            <p className="a2-note" style={{ borderLeftColor: "var(--a2-warn)" }}>
+              <span>제출까지 남은 것 — {missing.join(" · ")}</span>
+            </p>
+          )}
 
           {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
               짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
@@ -729,90 +760,6 @@ export default function ItemDetail({ id }: { id: string }) {
             </Panel>
           )}
 
-          <Panel title="검수 이력" meta={`${view.reviews.length}회`} flush>
-            {view.reviews.length === 0 ? (
-              <p className="p-4 a2-t-sm text-(--a2-ink-4)">아직 검수를 거치지 않았습니다.</p>
-            ) : (
-              <ul className="divide-y divide-(--a2-line)">
-                {[...view.reviews].reverse().map((r) => (
-                  <li key={`${r.at}-${r.round}`} className="p-4">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <Status tone={r.verdict === "approve" ? "ok" : "danger"}>
-                        {r.verdict === "approve"
-                          ? "승인"
-                          : `반려 · ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
-                      </Status>
-                      <span className="a2-t-sm text-(--a2-ink-2)">
-                        {r.round}차 · {r.by}
-                      </span>
-                      <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{r.at}</span>
-                      {r.machine && <Tag>기계</Tag>}
-                      {r.self && (
-                        <span className="a2-t-xs font-bold" style={{ color: "var(--a2-danger)" }}>
-                          자가 검수
-                        </span>
-                      )}
-                    </div>
-                    <ul className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
-                      {r.checks.map((c) => (
-                        <li
-                          key={c.id}
-                          className="a2-t-xs"
-                          style={{
-                            color: c.ok ? "var(--a2-ok)" : "var(--a2-danger)",
-                          }}
-                        >
-                          {c.id === "content" ? "내용" : c.id === "tagging" ? "태깅" : "윤리"}{" "}
-                          {c.ok === null ? "—" : c.ok ? "통과" : "걸림"}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel title="메모" flush>
-            <div className="a2-form a2-form-lg">
-              <FormRow label="메모">
-                <textarea
-                  className="a2-textarea a2-textarea-lg"
-                  rows={3}
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                  placeholder="반려까지는 아니지만 짚어 둘 것"
-                />
-                <span className="flex w-full justify-end">
-                  <button
-                    type="button"
-                    className="a2-btn"
-                    disabled={memo.trim().length < 2}
-                    onClick={() => {
-                      addComment(view.id, by, prefs.role, memo.trim());
-                      setMemo("");
-                    }}
-                  >
-                    메모 남기기
-                  </button>
-                </span>
-              </FormRow>
-            </div>
-            {view.comments.length > 0 && (
-              <ul className="divide-y divide-(--a2-line)">
-                {[...view.comments].reverse().map((c, k) => (
-                  <li key={`${c.at}-${k}`} className="p-4">
-                    <p className="a2-t-xs text-(--a2-ink-4)">
-                      <span className="a2-mono">{c.at}</span> · {c.by} ·{" "}
-                      {c.kind === "reject" ? "반려" : c.kind === "approve" ? "승인" : "메모"}
-                    </p>
-                    <p className="whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
         </div>
 
         {/* 저장은 오른쪽 아래에 붙여 둔다 — 회원·학생·기관 상세와 같은 자리다.
@@ -821,6 +768,7 @@ export default function ItemDetail({ id }: { id: string }) {
       </Body>
 
       <LeaveDialog guard={guard} />
+      {preview && <ItemPreview item={view} onClose={() => setPreview(false)} />}
       <SeedNote>
         문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항 API로 갈아 끼웁니다.
         발문·지문에 넣은 그림은 파일 서버가 붙기 전까지 문항 안에 통째로 들어갑니다.

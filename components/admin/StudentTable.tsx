@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { maskName } from "@/lib/adminUsers";
 import { formatCode } from "@/lib/roster";
 import DataList, { Picker, type Column } from "./DataList";
 import { Badge, Callout, CountStrip, EmptyHint } from "./Parts";
@@ -109,9 +110,6 @@ const stateTone: Record<Row["state"], string> = {
 
 const states: Row["state"][] = ["미응시", "응시중", "제출완료", "발행완료"];
 
-function maskName(name: string) {
-  return `${name[0]}${"○".repeat(name.length - 1)}`;
-}
 function maskBirth(birth: string) {
   return `${birth.slice(0, 4)}년 ○○월 ○○일`;
 }

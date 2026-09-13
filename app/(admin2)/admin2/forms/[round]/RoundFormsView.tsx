@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { gradeBands } from "@/lib/blueprint";
+import { useRef, useState } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useForms } from "@/lib/formStore";
 import { useItems } from "@/lib/itemStore";
-import { bandFor, planOf, slotsFor, slotsOf, usePlans, useRounds } from "@/lib/roundPlanStore";
+import { planOf, slotsFor, slotsOf, usePlans, useRounds } from "@/lib/roundPlanStore";
 import FormSlot from "@/components/admin2/FormSlot";
-import { Body, PageHead, Panel, SeedNote } from "@/components/admin2/ui";
+import { Body, PageHead, Panel } from "@/components/admin2/ui";
 
 /**
  * ADM-04-3 상세 — **한 회차, 과목 탭 하나에 검사지 한 벌**.
@@ -37,6 +36,12 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
      따라가게 두면 탭을 눌러도 되돌아온다 */
   const [tab, setTab] = useState<string | null>(subject ?? null);
 
+  /* 탭을 옮기면 아래 편집기가 통째로 새로 선다(key). 담다 만 것이 있으면 그대로
+     사라지므로, 옮기기 전에 편집기에게 물어보게 한다 — 그 물음은 편집기가 들고 있고
+     여기서는 「가려는 일」만 넘긴다(FormSlot의 onGuard) */
+  const askRef = useRef<((run: () => void) => void) | null>(null);
+  const goTab = (next: string) => (askRef.current ?? ((run: () => void) => run()))(() => setTab(next));
+
   const round = rounds.find((r) => r.id === id);
 
   if (!round) {
@@ -63,8 +68,6 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
   }
 
   const plan = planOf(plans, round.id);
-  const band = bandFor(plan);
-  const bandLabel = gradeBands.find((g) => g.id === band)?.label ?? band;
   const slots = slotsOf(round.id, forms, items, slotsFor(plan));
 
   /* 고른 탭이 편성에서 빠졌을 수 있다(다른 화면에서 과목을 뺀 뒤). 없으면 첫 과목으로
@@ -72,8 +75,6 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
   const slot = slots.find((s) => s.subject === tab) ?? slots[0] ?? null;
 
   const by = prefs.staffName || "운영자";
-  const built = slots.filter((s) => s.form).length;
-  const confirmed = slots.filter((s) => s.form?.state === "confirmed").length;
 
   return (
     <>
@@ -117,7 +118,7 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
               key={s.key}
               type="button"
               aria-pressed={on}
-              onClick={() => setTab(s.subject)}
+              onClick={() => goTab(s.subject)}
               className={`-mb-px flex h-9 items-center gap-1.5 border-b-2 a2-t-sm font-bold ${
                 on ? "border-(--a2-accent) text-(--a2-ink)" : "border-transparent text-(--a2-ink-3) hover:text-(--a2-ink)"
               }`}
@@ -150,7 +151,16 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
           /* key를 칸 열쇠로 준다. 없으면 국어 탭에서 체크해 둔 문항 목록을 든 채로 수학
              탭이 열려, 담기를 누르면 다른 과목 문항이 들어간다(확정 대조에서 걸리기는
              하지만 그 전에 담기는 것 자체를 막는 편이 낫다) */
-          <FormSlot key={slot.key} roundId={round.id} slot={slot} items={items} by={by} />
+          <FormSlot
+            key={slot.key}
+            roundId={round.id}
+            slot={slot}
+            items={items}
+            by={by}
+            onGuard={(ask) => {
+              askRef.current = ask;
+            }}
+          />
         ) : (
           <Panel title="넣은 과목이 없습니다">
             <p className="a2-t-sm text-(--a2-ink-2)">
@@ -163,17 +173,7 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
             </div>
           </Panel>
         )}
-
-        <p className="a2-hint mt-2">
-          과목과 학년군({bandLabel})은 회차마다 정합니다 — 바꾸려면 「회차 편성 · 개폐」로 갑니다. 검사지를 짠 뒤에
-          회차를 여는 일도 그 화면입니다. 지금 이 회차에 검사지 {built}벌이 있고 그중 {confirmed}벌이 확정입니다.
-        </p>
       </Body>
-
-      <SeedNote>
-        검사지·문항·회차 편성은 이 브라우저에만 저장됩니다(lib/formStore.ts · itemStore.ts · roundPlanStore.ts).
-        담을 수 있는 것은 검수를 지나 <b className="font-semibold">승인</b>된, 이 회차의 과목·학년군과 같은 문항뿐입니다.
-      </SeedNote>
     </>
   );
 }

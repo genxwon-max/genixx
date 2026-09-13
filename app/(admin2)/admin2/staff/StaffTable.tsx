@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status, Tag } from "@/components/admin2/ui";
 import { accountTone } from "@/lib/admin2";
 import { roleOf, staffRoles } from "@/lib/admin";
-import { userStateLabel, type StaffMember } from "@/lib/adminUsers";
+import { userStateLabel } from "@/lib/adminUsers";
+import { type StaffRow } from "@/lib/staffPermStore";
 
 /*
  * ADM-03 운영자 목록.
@@ -31,7 +33,7 @@ import { userStateLabel, type StaffMember } from "@/lib/adminUsers";
  * · 비밀번호 마지막 변경·접속 IP 칸도 없다. 있으면 좋을 칸이지만 데이터가 없다.
  */
 
-const cols: Col<StaffMember>[] = [
+const cols: Col<StaffRow>[] = [
   {
     key: "id",
     head: "계정 ID",
@@ -54,18 +56,39 @@ const cols: Col<StaffMember>[] = [
     width: "5.5rem",
     nowrap: true,
     value: (r) => r.name,
-    cell: (r) => <span className="font-semibold text-(--a2-ink)">{r.name}</span>,
+    cell: (r) => (
+      <Link
+        href={`/admin2/staff/${r.id}`}
+        className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
+      >
+        {r.name}
+      </Link>
+    ),
   },
   /* 역할: 값이 넷뿐인 분류라 꼬리표로 적는다. 최고권한(super)에만 강조를 준다 —
      스물여덟 줄에서 눈이 먼저 세어야 하는 것이 그 줄이기 때문이다. 역할 데이터에 붙은
-     tone은 기존 /admin의 팔레트 클래스(text-emerald-700 …)라 이 콘솔에서는 쓰지 않는다 */
+     tone은 기존 /admin의 팔레트 클래스(text-emerald-700 …)라 이 콘솔에서는 쓰지 않는다.
+
+     역할 옆에 지금 든 권한 수를 늘 세워 둔다. 상세에서 칸을 몇 개 더하고 빼면 역할
+     이름만으로는 그 계정이 무엇을 할 수 있는지 알 수 없게 되기 때문이다 — 숫자가
+     역할 기본값과 어긋나면 「고침」이 함께 선다 */
   {
     key: "role",
     head: "역할",
-    width: "5rem",
+    width: "7.5rem",
     nowrap: true,
     value: (r) => roleOf(r.role).short,
-    cell: (r) => <Tag accent={r.role === "super"}>{roleOf(r.role).short}</Tag>,
+    cell: (r) => (
+      <span className="inline-flex items-center gap-1.5">
+        <Tag accent={r.role === "super"}>{roleOf(r.role).short}</Tag>
+        <span className="a2-num a2-t-xs text-(--a2-ink-4)">{r.perms.length}</span>
+        {r.edited && (
+          <span className="a2-t-xs font-bold" style={{ color: "var(--a2-warn)" }}>
+            고침
+          </span>
+        )}
+      </span>
+    ),
   },
   {
     key: "team",
@@ -118,22 +141,23 @@ const cols: Col<StaffMember>[] = [
     value: (r) => r.joinedAt,
     cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.joinedAt}</span>,
   },
-  /* 동작: 아직 계정 편집 화면이 없어 자리만 잡는 칸이다. 다만 눌러도 아무 일도 안 하는
-     죽은 단추는 두지 않았다 — 이 줄이 무엇을 할 수 있는지는 아래 대조표가 답하므로
-     그 자리로 내려보낸다. 편집·정지·MFA 초기화가 붙을 자리도 여기다 */
+  /* 동작: 이 줄의 상세로 가는 문 하나. 예전에는 화면 아래 「역할 × 권한」 대조표로
+     뛰기만 했다. 대조표는 「출제자는 무엇을 할 수 있나」에 답하는 자리라 「이 사람에게
+     감사 로그를 열어 주자」로 이어지지 못하고 늘 거기서 끝났고, 상세가 그 일까지
+     맡으면서 대조표는 걷어 냈다. 정지·MFA 초기화가 붙을 자리도 상세다 */
   {
     key: "act",
     head: "동작",
     width: "5.5rem",
     nowrap: true,
     cell: (r) => (
-      <a
-        href="#roles"
+      <Link
+        href={`/admin2/staff/${r.id}`}
         className="a2-btn a2-btn-sm"
-        title={`${roleOf(r.role).label}가 가진 권한을 아래 대조표에서 봅니다`}
+        title={`${r.name}의 역할과 권한을 봅니다`}
       >
         권한 보기
-      </a>
+      </Link>
     ),
   },
 ];
@@ -143,7 +167,7 @@ const cols: Col<StaffMember>[] = [
 /* 계정 상태와 2단계 인증은 머리의 탭이 맡는다(StaffView). 같은 조건을 두 군데서 걸면
    탭에서 「2단계 미설정」을 고른 채 거르개에서 「켠 계정」을 골라 0줄이 나온다.
    역할은 넷이라 탭으로 올리지 않고 여기 그대로 둔다 */
-const filters: Filter<StaffMember>[] = [
+const filters: Filter<StaffRow>[] = [
   {
     id: "role",
     label: "역할",
@@ -152,7 +176,7 @@ const filters: Filter<StaffMember>[] = [
   },
 ];
 
-export default function StaffTable({ rows, empty }: { rows: StaffMember[]; empty: string }) {
+export default function StaffTable({ rows, empty }: { rows: StaffRow[]; empty: string }) {
   return (
     <DataTable
       rows={rows}

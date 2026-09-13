@@ -68,7 +68,7 @@ export default function RoundsProgress() {
                 상태
               </th>
               <th scope="col" className="a2-th-num" style={{ width: "4.5rem" }}>
-                대상
+                정원
               </th>
               <th scope="col" style={{ width: "8rem" }}>
                 제출
@@ -95,7 +95,10 @@ export default function RoundsProgress() {
                   <td className="a2-nowrap">
                     <Status tone={roundTone[st]}>{roundStates[st].label}</Status>
                   </td>
-                  <td className="a2-td-num">{r.target ? n(r.target) : "—"}</td>
+                  <td className="a2-td-num">
+                    {/* 0은 「아직 안 정했다」가 아니라 제한 없음이다(lib/admin.ts의 target) */}
+                    {r.target ? n(r.target) : <span className="a2-t-sm text-(--a2-ink-3)">제한 없음</span>}
+                  </td>
                   <td className="a2-nowrap">
                     {r.target ? <Bar value={r.submitted} total={r.target} /> : <span className="text-(--a2-ink-4)">—</span>}
                   </td>

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { gradeBands, type GradeBand } from "@/lib/blueprint";
-import { n } from "@/lib/admin2";
 import { planSubjects } from "@/lib/roundPlanStore";
 import type { ItemDraft } from "@/lib/itemStore";
+import { FormRow } from "@/components/admin2/ui";
 
 /**
  * 학년군을 먼저 고르고, 평가 과목을 하나씩 넣는다.
@@ -27,6 +27,10 @@ import type { ItemDraft } from "@/lib/itemStore";
  * ⚠ 표에 과목별 승인 문항 수를 세워 두었다가 뺐다. 고를 때 필요한 값이 아니라 짤 때 필요한
  *   값이고(편성판의 「남은 승인」이 이미 적는다), 학년군마다 한 칸씩 붙어 세 과목이 다섯 칸을
  *   차지했다. 여기서 답할 것은 「무엇을 몇 번째로 낼까」뿐이다.
+ *
+ * ⚠ **폼 줄 둘(학년군 · 평가 과목)을 내놓는다.** 반드시 .a2-form 안에서 쓰고, 바깥에서 또
+ *   「편성」 같은 이름표로 감싸지 말 것 — 감싸면 이름표가 두 겹이 되고 오른쪽 칸이 그만큼
+ *   좁아진다. 세우는 두 화면(회차 생성 · 회차 편성)이 같은 줄을 쓰는 것이 요점이다.
  */
 export default function PlanPicker({
   band,
@@ -35,12 +39,15 @@ export default function PlanPicker({
   disabled = false,
   /** 이미 담긴 문항 수 — 뺄 때 무엇을 잃는지(잃지는 않지만) 알려 준다 */
   pickedOf,
+  hint,
 }: {
   band: GradeBand;
   subjects: ItemDraft["subject"][];
   onChange: (next: { band: GradeBand; subjects: ItemDraft["subject"][] }) => void;
   disabled?: boolean;
   pickedOf?: (subject: ItemDraft["subject"], band: GradeBand) => number;
+  /** 세우는 화면만 아는 말 — 과목 줄 아래에 덧붙는다 */
+  hint?: React.ReactNode;
 }) {
   const [adding, setAdding] = useState<ItemDraft["subject"] | "">("");
 
@@ -66,13 +73,13 @@ export default function PlanPicker({
   };
 
   return (
-    <div className="grid gap-3">
+    <>
       {/* ── 학년군 — 먼저, 그리고 하나만 ── */}
-      <label className="a2-field block">
-        <span className="a2-label">학년군</span>
+      <FormRow label="학년군" req>
         <select
           className="a2-select"
           style={{ maxWidth: "14rem" }}
+          aria-label="학년군"
           value={band}
           disabled={disabled}
           onChange={(e) => onChange({ band: e.target.value as GradeBand, subjects })}
@@ -83,16 +90,15 @@ export default function PlanPicker({
             </option>
           ))}
         </select>
-        <span className="a2-hint">
-          한 회차는 한 학년군을 봅니다. 둘 다 볼 일이 있으면 회차를 둘 만드세요 — 한 회차에 묶으면 제출률과 판정 진행이
-          두 학년군의 평균이 되어 어느 쪽이 밀렸는지가 사라집니다.
-        </span>
-      </label>
+      </FormRow>
 
       {/* ── 평가 과목 — 넣은 차례가 곧 순서 ── */}
-      <div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="a2-label">평가 과목</span>
+      <FormRow
+        label="평가 과목"
+        req
+        hint={hint}
+      >
+        <span className="flex flex-wrap items-center gap-1.5">
           <select
             className="a2-select h-[28px] w-auto text-[0.6875rem]"
             value={adding}
@@ -119,9 +125,9 @@ export default function PlanPicker({
             추가
           </button>
           {left.length === 0 && <span className="a2-t-xs text-(--a2-ink-4)">세 과목을 모두 넣었습니다</span>}
-        </div>
+        </span>
 
-        <div className="mt-1.5 overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <table className="a2-table" style={{ width: "auto", minWidth: "20rem" }}>
             <thead>
               <tr>
@@ -186,13 +192,7 @@ export default function PlanPicker({
             </tbody>
           </table>
         </div>
-
-        <span className="a2-hint">
-          넣은 차례가 응시 차례입니다. 검사지는 과목마다 한 벌이므로 지금{" "}
-          <span className="a2-num text-(--a2-ink-2)">{n(subjects.length)}</span>벌입니다. 담을 수 있는 승인 문항이 몇인지는
-          편성판의 「남은 승인」이 칸마다 적습니다.
-        </span>
-      </div>
-    </div>
+      </FormRow>
+    </>
   );
 }

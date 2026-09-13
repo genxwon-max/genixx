@@ -143,6 +143,7 @@ export function Panel({
   meta,
   actions,
   flush = false,
+  lead = false,
   className = "",
   children,
 }: {
@@ -151,34 +152,60 @@ export function Panel({
   actions?: React.ReactNode;
   /** 표를 그대로 담을 때 — 안쪽 여백을 두지 않는다 */
   flush?: boolean;
+  /**
+   * 이 판이 화면에서 「지금 고치고 있는 것」일 때 — 이름을 가운데 크게 세운다.
+   *
+   * 판마다 달면 열두 판이 열두 번 제 이름을 외친다. 열어 놓고 고치는 판 하나에만 준다.
+   */
+  lead?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
+  /* min-w-0 — 판이 grid·flex 칸 안에 서면 기본값(min-width:auto)이 「안에 든 것보다
+     좁아지지 말 것」이라, 폭 박은 표를 담은 판이 좁은 화면에서 칸 밖으로 삐져나가
+     잘린다. 0으로 풀어야 판이 칸에 맞고, 가로 스크롤은 표 상자(TableBox)가 맡는다.
+     흐름 안에 그냥 선 판에는 아무 일도 일어나지 않는다 */
   return (
-    <section className={`a2-panel ${className}`}>
-      {(title || actions) && (
-        <div className="a2-panel-head">
-          <div className="flex min-w-0 items-baseline gap-2">
-            {title && <h2 className="a2-h truncate">{title}</h2>}
-            {meta && <span className="truncate a2-t-xs text-(--a2-ink-4)">{meta}</span>}
+    <section className={`a2-panel min-w-0 ${className}`}>
+      {(title || actions) &&
+        (lead ? (
+          <div className="a2-panel-head a2-panel-head-lead">
+            {/* 왼쪽 빈 칸 — 오른쪽 동작과 폭을 나눠 가져 가운데를 가운데로 만든다 */}
+            <span aria-hidden />
+            <div className="grid min-w-0 justify-items-center gap-0.5 text-center">
+              {title && <h2 className="a2-title truncate">{title}</h2>}
+              {meta && <span className="a2-mono truncate a2-t-xs text-(--a2-ink-4)">{meta}</span>}
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-1.5">{actions}</div>
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
-        </div>
-      )}
+        ) : (
+          <div className="a2-panel-head">
+            <div className="flex min-w-0 items-baseline gap-2">
+              {title && <h2 className="a2-h truncate">{title}</h2>}
+              {meta && <span className="truncate a2-t-xs text-(--a2-ink-4)">{meta}</span>}
+            </div>
+            {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
+          </div>
+        ))}
       <div className={flush ? "" : "p-3"}>{children}</div>
     </section>
   );
 }
 
-/* ── 상태 — 점 + 글자. 색만으로 구분하지 않는다 ──
-   글자를 회색(--a2-ink-2)으로 눌러 두었더니 표에서 상태를 읽는 단서가 6px 점 하나뿐이
-   되었다. 글자도 같은 색으로 적는다 — 점이 사라져도(흑백 인쇄) 글자는 남으므로 색만으로
-   구분하지 않는다는 약속은 그대로다. 면은 admin2.css에서 --a2-raised로 눌러 둔다. */
+/* ── 상태 — **글자 색**으로만 적는다 ──
+   처음에는 점 + 글자를 옅은 면에 얹은 알약이었다. 한 줄에 하나면 읽을 만한데, 목록은 스무
+   줄이라 알약 스물이 세로로 늘어서 표가 값이 아니라 알약으로 읽혔다. 점과 면과 테두리를
+   걷고 글자에만 색을 남긴다(admin2.css의 .a2-status).
+
+   색만으로 구분하지 않는다는 약속은 그대로다 — 상태는 늘 낱말로도 적혀 있어서 흑백으로
+   인쇄해도 뜻이 남는다. 애초에 그 약속을 지키던 것은 점이 아니라 글자였다.
+
+   ⚠ 점(.a2-dot)은 CSS에 남겨 둔다. 이해충돌 표시·열람 사유 표식처럼 **글자 없이 혼자 서서
+     무언가를 가리키는** 자리가 일곱 군데 있고, 그것들은 알약이 아니다. */
 export function Status({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   return (
     <span className="a2-status" style={{ color: toneColor[tone] }}>
-      <span aria-hidden className="a2-dot" />
-      <span>{children}</span>
+      {children}
     </span>
   );
 }

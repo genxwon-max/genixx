@@ -161,9 +161,6 @@ export const difficulties: { b: number; label: string }[] = [
   { b: 1.5, label: "아주 어려움" },
 ];
 
-export const difficultyLabel = (b: number | null) =>
-  difficulties.find((d) => d.b === b)?.label ?? "아직 고르지 않음";
-
 /** 사람이 넷 중에서 고른 값인가 */
 export const difficultyPicked = (b: number | null) =>
   b !== null && difficulties.some((d) => d.b === b);
@@ -294,7 +291,12 @@ export type Question = {
    * 나타내려 한 것이 잘못이라 형을 나눈다.
    */
   b: number | null;
-  /** ⑤ 배점 — 인지단계에서 자동으로 따라온다(§1 고정 매핑) */
+  /**
+   * ⑤ 배점 — 사람이 직접 적는다. 0이면 아직 안 적은 것이다.
+   *
+   * 한동안 인지단계에서 따라오게 했다(§1 단계별 배점). 이제는 새 문항이 단계의 기본 배점
+   * (levelSpecs[level].points)으로 시작할 뿐, 단계를 바꿔도 적어 둔 값을 덮지 않는다.
+   */
   points: number;
 };
 
@@ -370,7 +372,7 @@ export type ItemDraft = {
   /** ④ Tag B 부태그 — 두 영역을 불가피하게 걸칠 때만. 점수는 주태그에만 귀속(§6 운용규칙②) */
   subTalent?: TalentId;
   subSubskill?: string;
-  /** ⑤ 배점 — 단계에서 자동으로 따라온다 */
+  /** ⑤ 배점 — 문항들의 배점을 더한 요약(summaryOf). 고치는 것은 문항 쪽이다 */
   points: number;
   /** ⑤ 예상 난이도 b 모수 — 단계 앵커값에서 시작해 출제자가 조정 */
   b: number;
@@ -497,18 +499,26 @@ export const rejectLabel = (id: RejectCode) => rejectCodes.find((c) => c.id === 
 export const reviewChecks = [
   {
     id: "content",
-    label: "1차 내용",
+    label: "1차 내용 검수",
     desc: "교과 정확성 · 발문 명료성 · 정답 유일성 · 학년 이독성",
   },
   {
+    /*
+     * 2차는 **교차검증**이다 — 한 사람이 태그가 맞나 보는 것이 아니라, 교육과정 전문가와
+     * 뇌과학 자문위원이 **서로 모른 채 각자 태깅한 뒤** 그 둘이 같은지를 본다.
+     *
+     * 한 사람이 보면 출제자가 적어 둔 태그를 읽고 「그럴듯하다」로 끝난다(앵커링). 태그는
+     * 리포트의 재능 좌표를 그대로 정하는 값이라, 그럴듯함으로 통과시키면 좌표가 조용히
+     * 기운다. 두 사람이 독립으로 붙이고 어긋난 것만 사람이 다시 보는 것이 요점이다.
+     */
     id: "tagging",
-    label: "2차 태깅",
-    desc: "이중태그와 S위계가 문항이 실제로 재는 것과 맞는가",
+    label: "2차 태깅 교차검증",
+    desc: "교육과정 전문가 + 뇌과학 자문위원 독립 태깅",
   },
   {
     id: "ethics",
-    label: "3차 윤리·편향",
-    desc: "성·지역·문화·SES 편향, 아동 정서 적합성",
+    label: "3차 윤리·편향 검수",
+    desc: "성·지역·문화·SES 편향 · 아동 정서 적합성 · 특수교육 대상 접근성",
   },
 ] as const;
 
@@ -569,6 +579,14 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       { id: "t-p-spec", text: "형식·배점·b모수가 단계 명세대로입니다" },
       { id: "t-p-band", text: "학년군이 지문과 보기 수준에 맞습니다" },
       { id: "t-p-single", text: "두 축이 겹치지 않고 하나로 읽힙니다" },
+      {
+        id: "t-p-cross",
+        text: "교육과정 전문가와 뇌과학 자문위원의 독립 태깅이 일치합니다",
+      },
+      {
+        id: "t-p-resolved",
+        text: "두 태깅이 갈렸지만 근거를 맞춰 한 값으로 정리했습니다",
+      },
     ],
     block: [
       {
@@ -583,6 +601,11 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
         id: "t-b-mixed",
         text: "한 문항이 두 축을 같이 재고 있어 점수 해석이 안 됩니다",
       },
+      {
+        id: "t-b-cross",
+        text: "두 사람의 독립 태깅이 갈리고 어느 쪽이 맞는지 정하지 못했습니다",
+      },
+      { id: "t-b-onlyone", text: "독립 태깅이 한 사람 것만 들어왔습니다" },
     ],
   },
   ethics: {
@@ -593,6 +616,10 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       { id: "e-p-emotion", text: "아동 정서에 부담이 되는 소재가 없습니다" },
       { id: "e-p-label", text: "아이를 규정하지 않고 수행만 묻습니다" },
       { id: "e-p-belief", text: "특정 종교·정치색이 드러나지 않습니다" },
+      {
+        id: "e-p-a11y",
+        text: "특수교육 대상 아동도 풀 수 있습니다 — 그림·색에만 기대지 않고 글로도 읽힙니다",
+      },
     ],
     block: [
       {
@@ -604,6 +631,18 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       { id: "e-b-emotion", text: "아동 정서에 부담이 될 수 있는 소재입니다" },
       { id: "e-b-label", text: "아이의 특성을 규정하는 표현이 있습니다" },
       { id: "e-b-belief", text: "특정 종교·정치색이 드러납니다" },
+      {
+        id: "e-b-a11y-visual",
+        text: "그림·색을 봐야만 풀립니다 — 저시력·색약 아동이 답할 수 없습니다",
+      },
+      {
+        id: "e-b-a11y-read",
+        text: "읽기 보조가 필요한 아동에게 발문이 너무 길거나 문장이 겹칩니다",
+      },
+      {
+        id: "e-b-a11y-time",
+        text: "손 조작·속도를 요구해 시간 연장으로도 메우기 어렵습니다",
+      },
     ],
   },
 };
@@ -1880,8 +1919,9 @@ function fillQuestion(q: Partial<Question>, n: number, tags: QuestionTags): Ques
     subskill: q.subskill ?? tags.subskill,
     level,
     b: q.b ?? tags.b,
-    /* 배점은 단계에서 따라온다. 물려받은 배점이 세트 전체의 합일 수 있어 그대로 쓰면
-       문항 하나가 세트 총점을 이고 앉는다 */
+    /* 문항에 적힌 배점이 없으면 단계의 기본 배점으로 시작한다. 물려받은 배점을 쓰지 않는
+       것은 그것이 세트 전체의 합일 수 있어서다 — 그대로 쓰면 문항 하나가 세트 총점을
+       이고 앉는다 */
     points: q.points ?? levelSpecs[level].points,
   };
 }
@@ -2102,9 +2142,10 @@ export function addItem(author: string, authorName: string): ItemDraft {
  *
  * 대신 두 가지를 지킨다.
  *
- *  1) 상태는 draft로 들어간다. 만들자마자 검수로 넘기는 길은 없다. 출제자가 열어
- *     보고 제출 전 체크리스트(§9)를 직접 짚어야 제출 칸이 열린다 — 「사람이 한 번도
- *     안 읽은 문항」이 검수 목록에 쌓이는 것을 여기서 막는다.
+ *  1) 상태는 draft로 들어간다. 만들자마자 검수로 넘기는 길은 없다. 제출 단추는 문항
+ *     상세에만 있어서 누군가 그 문항을 열어야 넘어간다 — 「사람이 한 번도 안 연 문항」이
+ *     검수 목록에 쌓이는 것을 여기서 막는다. 옛 콘솔은 거기에 더해 제출 전 체크리스트(§9)를
+ *     직접 짚게 한다(missingFields). 슈퍼 관리자 콘솔은 그 판을 걷었다(missingContent).
  *  2) origin에 ai를 남긴다. 검수자가 AI 산출물인 줄 알고 봐야 한다.
  *
  * 문항 자체는 lib/itemBank.ts에 미리 써 둔 본에서 꺼낸다. 실제 서비스라면 그 자리에
@@ -2117,8 +2158,18 @@ export function addItem(author: string, authorName: string): ItemDraft {
  */
 
 export type GenerateSpec = {
+  /**
+   * 단일이냐 세트냐.
+   *
+   * 세트면 뽑은 문항을 **보기 하나 아래 묶어** 초안 한 장으로 만든다. 자료를 두 번
+   * 읽히지 않고 단계를 올려 묻는 것이 세트를 두는 까닭이라, 단계 차례(S1 → S4)로
+   * 안에 세운다.
+   */
+  form: ItemForm;
   subject: ItemDraft["subject"];
   band: GradeBand;
+  /** 예상 난이도 b — difficulties 넷 중 하나 */
+  b: number;
   talent: TalentId;
   subskill: string;
   unit: string;
@@ -2141,13 +2192,21 @@ export function checkSpec(spec: GenerateSpec): string[] {
   const bad: string[] = [];
   const total = countOf(spec.counts);
 
-  if (total === 0) bad.push("생성할 문항 수를 한 단계 이상 적어 주세요.");
+  if (total === 0) bad.push("단계마다 뽑을 문항 수를 한 칸 이상 적어 주세요.");
   if (total > GENERATE_MAX) bad.push(`한 번에 ${GENERATE_MAX}문항까지 뽑을 수 있습니다.`);
-  if (!spec.unit.trim()) bad.push("단원 이름을 적어 주세요.");
-  if (!/\d/.test(spec.unitNo)) bad.push("단원 번호를 숫자로 적어 주세요. 문항 ID에 들어갑니다.");
+  /* 세트는 보기 하나를 함께 읽고 그 위에서 둘 이상을 묻는 꼴이다. 하나짜리 세트는
+     단일과 같은 것인데, 그렇게 만들어 두면 편성판이 그것을 세트로 세고 배점 합도
+     세트 규칙으로 잡는다 */
+  if (spec.form === "set" && total < 2) bad.push("세트는 두 문항 이상이어야 합니다.");
+  if (!difficultyPicked(spec.b)) bad.push("난이도를 골라 주세요.");
 
-  const code = checkStandardCode(spec.standardCode, spec.band);
-  if (!code.ok) bad.push(code.why);
+  /* 단원과 성취기준 코드는 비워 둘 수 있다 — 생성한 뒤 문항을 보고 붙이는 편이 맞는
+     자리가 많다. 다만 **적었으면 맞아야 한다**. 틀린 코드가 붙은 문항은 안 붙은 문항
+     보다 나쁘다: 검수에서 맞는 줄 알고 지나간다 */
+  if (spec.standardCode.trim()) {
+    const code = checkStandardCode(spec.standardCode, spec.band);
+    if (!code.ok) bad.push(code.why);
+  }
 
   /* 재능 축마다 다룰 수 있는 단계가 다르다 — 자기-성찰은 S4가 없다 */
   for (const level of LEVELS_ALL) {
@@ -2168,70 +2227,128 @@ const LEVELS_ALL: Level[] = ["S1", "S2", "S3", "S4"];
  */
 export function generateItems(spec: GenerateSpec, author: string, authorName: string): ItemDraft[] {
   const list = read();
-  const made: ItemDraft[] = [];
 
-  let serial = list.filter((i) => i.subject === spec.subject).length;
-
+  /* 뽑을 것을 단계 차례로 편다. 세트 안에서도 S1 → S4로 서야 한 자료를 놓고 단계를
+     올려 물을 수 있다 — 그것이 세트를 두는 까닭이다 */
+  const picks: { level: Level; k: number; n: number }[] = [];
   for (const level of LEVELS_ALL) {
     const n = spec.counts[level] ?? 0;
-    for (let k = 0; k < n; k += 1) {
-      serial += 1;
-      const s = levelSpecs[level];
-      const type = typeForLevel[level];
-      const sample = pickSample(spec.subject, level, k);
+    for (let k = 0; k < n; k += 1) picks.push({ level, k, n });
+  }
+  if (picks.length === 0) return [];
 
-      const item = fill({
-        id: `IT-AI-${Date.now().toString(36).toUpperCase()}-${serial}`,
-        /* 코드는 저장소가 읽을 때 매긴다(withCodes) — 여기서는 비워 둔다 */
-        code: "",
-        subject: spec.subject,
-        band: spec.band,
-        grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
-        passage: sample.passage ?? "",
+  /** 출제자가 열었을 때 무엇부터 봐야 하는지 */
+  const guidanceOf = (level: Level, k: number, n: number, inSet: boolean) => {
+    const s = levelSpecs[level];
+    return [
+      "AI가 만든 문항입니다. 그대로 두지 말고 아래를 확인하고 고쳐 주세요.",
+      `· 태깅 — 고른 축(${spec.talent} · ${spec.subskill})이 이 문항이 실제로 재는 것과 맞는가`,
+      spec.standardCode.trim()
+        ? `· 성취기준 — ${spec.standardCode.trim()}의 내용과 아래 성취기준 내용이 맞는가`
+        : "· 성취기준 — 아직 비어 있습니다. 문항을 보고 코드를 붙여 주세요",
+      `· 단계 — ${s.rule}`,
+      `· 금지 — ${s.deny}`,
+      inSet ? "· 세트입니다. 보기 하나를 함께 읽는 문항인지, 앞 문항의 답이 뒷 문항에 새지 않는지 볼 것" : "",
+      !inSet && n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
+      spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  };
+
+  /** 뽑은 것 하나를 문항 한 칸으로 */
+  const questionOf = (pick: { level: Level; k: number }, order: number) => {
+    const s = levelSpecs[pick.level];
+    const sample = pickSample(spec.subject, pick.level, pick.k);
+    return {
+      sample,
+      q: {
+        id: `q${order + 1}`,
+        type: typeForLevel[pick.level],
         stem: sample.stem,
+        stemMode: "text" as const,
+        stemImages: [],
         choices: sample.choices ?? ["", "", "", ""],
         answer: sample.answer ?? 0,
         explain: sample.explain,
-        type,
         shortAnswers: sample.shortAnswers ?? "",
         rubric: sample.rubric ?? "",
-        assets: [],
-        version: 1,
-        unit: spec.unit.trim(),
-        unitNo: spec.unitNo.trim(),
+        distractorIntent: sample.distractorIntent ?? [],
         standardCode: spec.standardCode.trim(),
         standardText: sample.standardText,
         tagADetail: sample.tagADetail,
         talent: spec.talent,
         subskill: spec.subskill,
+        level: pick.level,
+        /* 사람이 고른 난이도를 그대로 쓴다. 단계 앵커값을 몰래 넣어 두면 「아무도 안
+           고른 것」과 구별되지 않는다(Question.b 주석) */
+        b: spec.b,
         points: s.points,
-        b: s.b,
-        anchor: false,
-        /* 출제자가 열었을 때 무엇부터 봐야 하는지. 태깅을 먼저 적는 것은, 축은
-           사람이 고르고 문항은 본에서 나오므로 둘이 어긋날 수 있는 자리라서다. */
-        guidance: [
-          "AI가 만든 문항입니다. 그대로 두지 말고 아래를 확인하고 고쳐 주세요.",
-          `· 태깅 — 고른 축(${spec.talent} · ${spec.subskill})이 이 문항이 실제로 재는 것과 맞는가`,
-          `· 성취기준 — ${spec.standardCode.trim()}의 내용과 아래 성취기준 내용이 맞는가`,
-          `· 단계 — ${s.rule}`,
-          `· 금지 — ${s.deny}`,
-          n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
-          spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        distractorIntent: sample.distractorIntent ?? [],
-        level,
-        author,
-        authorName,
-        state: "draft",
-        origin: "ai",
-        aiBrief: spec.brief.trim(),
-        comments: [],
-        reviews: [],
-        updatedAt: now(),
-      });
+      },
+    };
+  };
 
+  const stamp = Date.now().toString(36).toUpperCase();
+  const base = {
+    code: "",
+    subject: spec.subject,
+    band: spec.band,
+    grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
+    assets: [],
+    version: 1,
+    unit: spec.unit.trim(),
+    unitNo: spec.unitNo.trim(),
+    standardCode: spec.standardCode.trim(),
+    talent: spec.talent,
+    subskill: spec.subskill,
+    b: spec.b,
+    anchor: false,
+    author,
+    authorName,
+    state: "draft" as const,
+    origin: "ai" as const,
+    aiBrief: spec.brief.trim(),
+    comments: [],
+    reviews: [],
+    updatedAt: now(),
+  };
+
+  let serial = list.filter((i) => i.subject === spec.subject).length;
+  const made: ItemDraft[] = [];
+
+  if (spec.form === "set") {
+    /* 세트는 한 장이다. 보기는 첫 문항의 지문을 쓴다 — 뒤 문항의 지문은 버리지 않고
+       발문 앞에 붙이지도 않는다. 한 자료를 함께 읽는 것이 세트이므로, 자료가 여럿이면
+       그것은 세트가 아니라 낱개 여럿이다 */
+    const built = picks.map((pick, i) => questionOf(pick, i));
+    serial += 1;
+    const item = fill({
+      ...base,
+      id: `IT-AI-${stamp}-${serial}`,
+      form: "set",
+      passage: built[0].sample.passage ?? "",
+      questions: built.map((b) => b.q),
+      standardText: built[0].sample.standardText,
+      tagADetail: built[0].sample.tagADetail,
+      level: built[0].q.level,
+      guidance: guidanceOf(built[0].q.level, 0, built.length, true),
+    });
+    made.push({ ...item, ...syncTags(item) });
+  } else {
+    for (const pick of picks) {
+      serial += 1;
+      const built = questionOf(pick, 0);
+      const item = fill({
+        ...base,
+        id: `IT-AI-${stamp}-${serial}`,
+        form: "single",
+        passage: built.sample.passage ?? "",
+        questions: [built.q],
+        standardText: built.sample.standardText,
+        tagADetail: built.sample.tagADetail,
+        level: pick.level,
+        guidance: guidanceOf(pick.level, pick.k, pick.n, false),
+      });
       made.push({ ...item, ...syncTags(item) });
     }
   }
@@ -2266,23 +2383,14 @@ export const typeForLevel: Record<Level, ItemType> = {
 export function setLevel(id: string, level: Level) {
   const item = read().find((i) => i.id === id);
   if (!item) return;
+  /* 형식만 따라온다. b모수와 배점은 덮지 않는다 — 둘 다 사람이 고르고 적는 값이라, 단계를
+     한 번 바꾼 것만으로 앵커값·기본 배점으로 돌아가 있으면 아무 말 없이 고친 것이 사라진다.
+     b는 난이도를 넷 중에서 고르게 바꿨을 때, 배점은 새 콘솔에서 직접 적게 바꿨을 때 뺐다 */
   patchItem(id, {
     questions: item.questions.map((q, n) =>
-      n === 0 ? { ...q, ...levelPatch(level), type: typeForLevel[level] } : q,
+      n === 0 ? { ...q, level, type: typeForLevel[level] } : q,
     ),
   });
-}
-
-/**
- * 인지단계를 바꿀 때 따라오는 값 (발주서 §1 고정 매핑).
- *
- * b모수는 **여기서 빼 두었다**. 예전에는 단계를 고르면 앵커값이 따라 들어왔는데,
- * 난이도를 넷 중에서 고르게 바꾼 뒤로는 그 자동 대입이 거짓말이 된다 — 출제자가
- * 「아주 어려움」을 골라 놓고 단원을 손보다 단계를 한 번 바꾸면, 아무 말 없이
- * 앵커값으로 돌아가 있다. 배점은 그대로 따라온다(§1은 단계별 배점을 못 박는다).
- */
-export function levelPatch(level: Level): Pick<Question, "level" | "points"> {
-  return { level, points: levelSpecs[level].points };
 }
 
 /* ── 문항 다루기 (화면이 초안 위에서 쓰는 순수 함수들) ──────────────────────
@@ -2309,7 +2417,13 @@ export function nextQuestionId(list: Question[]) {
  */
 export function blankQuestion(list: Question[], type: ItemType = "choice"): Question {
   const prev = list[list.length - 1];
-  return fillQuestion({ id: nextQuestionId(list), type }, list.length, {
+  /* 앞 문항에 적어 둔 배점을 물려받는다. 단계를 물려받는 것과 같은 까닭이고, 앞 문항이
+     없거나 비워 두었으면 단계의 기본 배점으로 시작한다.
+     ⚠ 문항 쪽에 실어 보낸다. fillQuestion은 태그 쪽 배점을 읽지 않는다 — 옛 납작한 문항을
+       풀 때 그 자리에 세트 총점이 들어 있을 수 있어서다 */
+  const points =
+    prev && prev.points > 0 ? prev.points : levelSpecs[prev?.level ?? "S1"].points;
+  return fillQuestion({ id: nextQuestionId(list), type, points }, list.length, {
     standardCode: prev?.standardCode ?? "",
     standardText: prev?.standardText ?? "",
     tagADetail: "",
@@ -2317,7 +2431,7 @@ export function blankQuestion(list: Question[], type: ItemType = "choice"): Ques
     subskill: prev?.subskill ?? subskillsOf(prev?.talent ?? "LANG")[0].code,
     level: prev?.level ?? "S1",
     b: prev?.b ?? null,
-    points: levelSpecs[prev?.level ?? "S1"].points,
+    points,
   });
 }
 
@@ -2802,6 +2916,25 @@ export function removeAsset(id: string, assetId: string) {
  * 반려되므로(§7.2) 학년군 범위까지 함께 본다.
  */
 export function missingFields(i: ItemDraft) {
+  const out = missingContent(i);
+
+  if (!i.guidance.trim()) out.push("출제자 유의사항");
+
+  const left = submitChecklist.filter((c) => !c.auto && !i.checks.includes(c.id)).length;
+  if (left > 0) out.push(`체크리스트 ${left}항목`);
+
+  return out;
+}
+
+/**
+ * 문항 자체에 모자란 것 — 출제자 유의사항 · 체크리스트를 뺀 나머지.
+ *
+ * 슈퍼 관리자 콘솔(app/(admin2)/admin2/items/[id])은 「제출 준비」 판을 걷었다. 출제자가
+ * 검수자에게 건네는 말과 스스로 짚는 목록은 역할이 나뉜 옛 콘솔의 장치이고, 쓰고 검수하는
+ * 사람이 한 사람인 콘솔에서는 칸만 늘렸다. 판을 걷고 문턱을 그대로 두면 제출 단추가
+ * 영영 켜지지 않으므로, 그 콘솔은 이것으로 문턱을 잰다. 옛 콘솔은 missingFields 그대로다.
+ */
+export function missingContent(i: ItemDraft) {
   const out: string[] = [];
   /* 문항 ID는 저장소가 매긴다(withCodes). 사람이 채우는 칸이 아니라 여기서 보지 않는다 */
   if (!i.unit.trim()) out.push("단원");
@@ -2820,11 +2953,6 @@ export function missingFields(i: ItemDraft) {
     const tag = i.form === "set" ? `${n + 1}번 ` : "";
     out.push(...missingInQuestion(q, tag, i.band));
   }
-
-  if (!i.guidance.trim()) out.push("출제자 유의사항");
-
-  const left = submitChecklist.filter((c) => !c.auto && !i.checks.includes(c.id)).length;
-  if (left > 0) out.push(`체크리스트 ${left}항목`);
 
   return out;
 }
@@ -2866,6 +2994,8 @@ function missingInQuestion(q: Question, tag: string, band: GradeBand): string[] 
   if (!q.tagADetail.trim()) out.push(`${tag}Tag A 세부`);
   if (!levelAllowed(q.talent, q.level)) out.push(`${tag}Tag B 단계 범위`);
   if (!difficultyPicked(q.b)) out.push(`${tag}난이도`);
+  /* 배점은 사람이 적는 칸이라 비울 수 있다. 0점 문항은 맞혀도 총점에 아무것도 보태지 않는다 */
+  if (!(q.points > 0)) out.push(`${tag}배점`);
 
   if (stemIsEmpty(q)) out.push(`${tag}발문`);
   if (!q.explain.trim()) out.push(`${tag}정답 · 해설`);
@@ -2897,21 +3027,6 @@ export function standardIssue(i: ItemDraft) {
 /** 문항 하나의 성취기준 코드 진단 — 학년군은 문항이 쥐고 있어 따로 받는다 */
 export function questionStandardIssue(q: Question, band: GradeBand) {
   return checkStandardCode(q.standardCode, band);
-}
-
-/** 문항 전체가 성취기준 코드를 갖췄는가 — 제출 전 체크리스트의 자동 확인이 본다 */
-export function allStandardsOk(i: ItemDraft) {
-  return i.questions.every((q) => checkStandardCode(q.standardCode, i.band).ok);
-}
-
-/** 모든 문항이 난이도를 골랐는가 — 상태 판이 요약을 적을지 말지 정할 때 본다 */
-export function allDifficultiesPicked(i: ItemDraft) {
-  return i.questions.every((q) => difficultyPicked(q.b));
-}
-
-/** 모든 문항의 재능 축이 그 단계를 낼 수 있는가 */
-export function allLevelsAllowed(i: ItemDraft) {
-  return i.questions.every((q) => levelAllowed(q.talent, q.level));
 }
 
 export const stateLabel: Record<ItemState, string> = {

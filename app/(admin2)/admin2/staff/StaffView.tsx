@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { staffDirectory } from "@/lib/adminUsers";
 import { n } from "@/lib/admin2";
+import { useStaffRows } from "@/lib/staffPermStore";
 import { PageHead, Tab } from "@/components/admin2/ui";
 import StaffTable from "./StaffTable";
 
@@ -26,35 +26,38 @@ type TabId = "all" | "active" | "off" | "mfa";
 
 export default function StaffView() {
   const [tab, setTab] = useState<TabId>("all");
+  /* 상세에서 갈아 끼운 역할을 여기서 미리 얹는다. 표에만 얹으면 거르개가 명부의 옛
+     역할로 걸러, 「출제자」를 골라 놓고 검수자가 섞여 나온다(lib/staffPermStore.ts) */
+  const staff = useStaffRows();
 
   const tabs = useMemo(
     () => [
       {
         id: "all" as TabId,
         label: "전체",
-        rows: staffDirectory,
+        rows: staff,
         empty: "조건에 맞는 운영자가 없습니다.",
       },
       {
         id: "active" as TabId,
         label: "활성",
-        rows: staffDirectory.filter((s) => s.state === "active"),
+        rows: staff.filter((s) => s.state === "active"),
         empty: "활성 계정이 없습니다.",
       },
       {
         id: "off" as TabId,
         label: "정지·휴면",
-        rows: staffDirectory.filter((s) => s.state !== "active"),
+        rows: staff.filter((s) => s.state !== "active"),
         empty: "정지·휴면 계정이 없습니다.",
       },
       {
         id: "mfa" as TabId,
         label: "2단계 미설정",
-        rows: staffDirectory.filter((s) => !s.mfa),
+        rows: staff.filter((s) => !s.mfa),
         empty: "2단계 인증을 끈 계정이 없습니다.",
       },
     ],
-    [],
+    [staff],
   );
 
   const current = tabs.find((t) => t.id === tab) ?? tabs[0];

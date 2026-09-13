@@ -35,7 +35,8 @@ import Generator from "./Generator";
  * 검수판으로 가는 문으로 바뀐다.
  *
  * 고치는 자리는 여기가 아니라 문항 상세(ADM-04-1)다. 목록에서 바로 고치게 하면 지문·보기·
- * 정답·채점 기준이 한 줄에 들어가지 않고, 무엇보다 제출 전 체크리스트를 짚는 자리가 사라진다.
+ * 정답·채점 기준이 한 줄에 들어가지 않고, 무엇보다 문항을 한 번도 열어 보지 않고 검수로
+ * 넘기는 길이 생긴다 — 제출 단추는 상세에만 있다.
  *
  * AI 생성은 별도 주소로 떼지 않고 이 화면 위에서 펼친다(Generator). 만들고 나면 바로 아래
  * 목록에 초안이 쌓이는 것을 같은 화면에서 본다.
@@ -300,14 +301,16 @@ export default function AuthoringView() {
   return (
     <>
       <PageHead
-        title="문항 출제"
+        /* 판을 편 동안에는 제목도 그 일을 말한다. 「문항 출제」 아래에 「AI 문항 생성」이
+           또 서면 제목이 둘이 되고, 지금 무엇을 하는 중인지는 둘 다 아닌 자리에서 읽힌다 */
+        title={open ? "AI 문항 출제" : "문항 출제"}
         actions={
           <>
             <Link href="/admin2/items" className="a2-btn">
               문항 은행
             </Link>
             <button type="button" className="a2-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-              AI로 생성
+              AI 문항 출제
             </button>
             <button
               type="button"
@@ -324,15 +327,22 @@ export default function AuthoringView() {
           </>
         }
         tabsLabel="상태별 조회 조건"
-        tabs={tabs.map((t) => (
-          <Tab
-            key={t.id}
-            label={t.label}
-            count={n(t.count)}
-            active={tab === t.id}
-            onClick={() => setTab(t.id)}
-          />
-        ))}
+        /* 생성 판을 편 동안에는 상태 탭을 접는다. 그 줄은 **아래 목록을 고르는** 자리인데,
+           지금 하는 일은 목록을 고르는 것이 아니라 문항을 만드는 것이다. 띄워 두면 조건을
+           바꿔 놓고 왜 화면이 그대로인지를 한 번 겪는다 */
+        tabs={
+          open
+            ? undefined
+            : tabs.map((t) => (
+                <Tab
+                  key={t.id}
+                  label={t.label}
+                  count={n(t.count)}
+                  active={tab === t.id}
+                  onClick={() => setTab(t.id)}
+                />
+              ))
+        }
       />
 
       {open && (
@@ -351,16 +361,20 @@ export default function AuthoringView() {
           것이 맞다. 「반려됨에서 수학만」을 걸어 둔 채 검수 대기로 넘어가면, 걸린 조건은
           위에 그대로 적혀 있는데 왜 0줄인지는 안 적혀 있다 */}
       {/* 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄의 「1–3 / 3」이 이미 같은 수를 적는다 */}
-      <DataTable
-        key={tab}
-        rows={rows}
-        cols={cols}
-        filters={filters}
-        getKey={(r) => r.id}
-        searchHint="문항 ID · 발문 · 단원"
-        empty={current.empty}
-        showCount={false}
-      />
+      {/* 판을 편 동안에는 목록을 접는다. 만드는 동안 아래에 표가 깔려 있으면 채워야 할
+          칸이 화면 밖으로 밀리고, 정작 그 표는 아직 만들지도 않은 문항을 보여 준다 */}
+      {!open && (
+        <DataTable
+          key={tab}
+          rows={rows}
+          cols={cols}
+          filters={filters}
+          getKey={(r) => r.id}
+          searchHint="문항 ID · 발문 · 단원"
+          empty={current.empty}
+          showCount={false}
+        />
+      )}
     </>
   );
 }

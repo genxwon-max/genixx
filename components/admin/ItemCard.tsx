@@ -61,7 +61,8 @@ const subjects = ["국어", "수학", "과학"] as const;
  * 출제자가 자기가 어디를 쓰고 있는지 잃지 않는다.
  *
  * 규칙 중 화면이 대신 지킬 수 있는 것은 화면이 지킨다 —
- *  · 단계를 고르면 형식·배점·b모수가 따라온다(§1 고정 매핑). 형식을 먼저 고르고
+ *  · 단계를 고르면 형식이 따라온다(§1 고정 매핑). 배점과 b모수는 새 콘솔의 문항 상세에서
+ *    사람이 적고 고르며, 단계를 바꿔도 덮지 않는다(lib/itemStore.ts의 setLevel). 형식을 먼저 고르고
  *    단계를 끼워 맞추는 길은 열지 않는다 — 발주서가 「판별 → 형식」 순서를 못 박았다.
  *  · 성취기준 코드는 학년군 접두까지 본다. 코드가 없거나 학년군을 벗어나면
  *    접수 반려되므로(§7.2) 제출을 막는다.
@@ -307,7 +308,7 @@ export default function ItemCard({ id }: { id: string }) {
         <Section
           no="②"
           title="인지단계"
-          note="S1~S4 중 하나. 단계를 고르면 형식·배점·b모수가 따라옵니다."
+          note="S1~S4 중 하나. 단계를 고르면 형식이 따라옵니다."
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {LEVELS.map((l) => {
@@ -560,7 +561,7 @@ export default function ItemCard({ id }: { id: string }) {
         <Section no="⑤" title="문항형식 · 배점 · b모수" note="단계별 고정 매핑 + 예상 난이도">
           <p className="adm-t-md font-bold text-exam-text">{formatLine(item.level)}</p>
           <p className="mt-1.5 adm-t-sm text-exam-muted">
-            형식과 배점은 단계에서 따라옵니다. 형식을 먼저 정하고 단계를 끼워 맞추지 않습니다 —
+            형식은 단계에서 따라옵니다. 형식을 먼저 정하고 단계를 끼워 맞추지 않습니다 —
             판별이 먼저, 형식은 그 결과입니다.
           </p>
 
@@ -579,12 +580,12 @@ export default function ItemCard({ id }: { id: string }) {
                 ))}
               </select>
             </Field>
-            {/* 배점과 b모수는 이제 문제(Question)에서 만드는 값이다 — 배점은 단계에서
-                따라오고 b는 넷 중에서 고른다. 세트면 배점은 합, b는 평균이라 문항 쪽에
+            {/* 배점과 b모수는 이제 문제(Question)에서 만드는 값이다 — 배점은 문제마다 직접
+                적고 b는 넷 중에서 고른다. 세트면 배점은 합, b는 평균이라 문항 쪽에
                 써넣을 수가 없다. 여기서 고칠 수 있게 두면 친 숫자가 다음 저장에서 조용히
                 되돌아가므로, 읽기만 하고 어디서 고치는지를 적어 둔다.
                 (lib/itemStore.ts의 summaryOf) */}
-            <Field label="배점" hint="인지단계에서 따라옵니다 (§1 고정 매핑)">
+            <Field label="배점" hint="새 콘솔의 문제 상세에서 적습니다">
               <input
                 type="number"
                 value={item.points}

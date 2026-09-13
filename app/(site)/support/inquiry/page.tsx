@@ -12,7 +12,7 @@ export default function InquiryPage() {
   return (
     <>
       <PageHero
-        eyebrow="PUB-06-2 · 1:1 문의"
+        eyebrow="1:1 문의"
         title="문의를 남겨 주세요"
         desc="영업일 기준 1~2일 안에 답변드립니다. 회원이 아니어도 이메일 인증만으로 접수할 수 있습니다."
       />

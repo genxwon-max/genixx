@@ -28,7 +28,7 @@ export type LevelSpec = {
   define: string;
   /** 형식 (§1 고정 매핑) */
   format: string;
-  /** 배점 */
+  /** 기본 배점 — 새 문항이 처음 받는 값. 배점은 문항마다 사람이 고쳐 적는다 */
   points: number;
   /** 채점 방식 */
   scoring: string;

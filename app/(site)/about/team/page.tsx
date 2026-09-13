@@ -16,7 +16,7 @@ export default function TeamPage() {
   return (
     <>
       <PageHero
-        eyebrow="PUB-02-5 · 연구·자문진"
+        eyebrow="연구·자문진"
         title={
           <>
             누가 만들었고

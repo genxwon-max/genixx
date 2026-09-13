@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { LEVELS, gradeBands, type GradeBand, type Level } from "@/lib/blueprint";
-import { roundStates, type RoundState } from "@/lib/admin";
+import { gradeBands, type GradeBand } from "@/lib/blueprint";
+import { roundStateLabels, roundStates, type RoundState } from "@/lib/admin";
 import { n, roundTone } from "@/lib/admin2";
 import { useForms } from "@/lib/formStore";
 import { useItems, type ItemDraft } from "@/lib/itemStore";
@@ -58,8 +58,6 @@ type Row = {
   picked: number;
   points: number;
   anchors: number;
-  pool: number;
-  spread: Record<Level, number>;
   /** 손이 가야 하는 차례 — 0 한 벌도 없음 · 1 짜는 중 · 2 전부 확정 */
   rank: 0 | 1 | 2;
 };
@@ -148,11 +146,6 @@ export default function FormsView() {
           picked: all.length,
           points: all.reduce((sum, i) => sum + i.points, 0),
           anchors: all.filter((i) => i.anchor).length,
-          pool: slots.reduce((sum, s) => sum + s.pool, 0),
-          spread: LEVELS.reduce(
-            (acc, l) => ({ ...acc, [l]: all.filter((i) => i.level === l).length }),
-            {} as Record<Level, number>,
-          ),
           /* 「전부 확정」은 짤 칸이 하나라도 있고 그것이 전부 확정되었을 때다. 칸이 0인
              회차(과목을 하나도 안 넣은 회차)를 전부 확정으로 세면 손댈 것이 없는 회차가
              맨 아래에 서고, 정작 편성을 안 한 사실이 안 보인다 */
@@ -229,65 +222,12 @@ export default function FormsView() {
           ),
       },
       {
-        key: "plan",
-        head: "검사지",
-        width: "7.5rem",
-        nowrap: true,
-        value: (r) => PLAN_LABEL[r.rank],
-        sort: (r) => r.rank,
-        cell: (r) =>
-          r.built === 0 ? (
-            <span className="a2-t-sm text-(--a2-ink-4)">비어 있음</span>
-          ) : (
-            <Status tone={r.rank === 2 ? "ok" : "warn"}>
-              <span className="a2-num">
-                {r.confirmed}/{r.slots}
-              </span>{" "}
-              확정
-            </Status>
-          ),
-      },
-      {
         key: "picked",
         head: "문항",
         width: "4.5rem",
         num: true,
         value: (r) => r.picked,
         cell: (r) => (r.picked ? n(r.picked) : dash),
-      },
-      {
-        /* 단계 배분 — 회차 전체를 합한 값이다. 0인 단계가 있으면 그 층은 이번 회차로
-           아예 재지 못한다. 과목마다의 배분은 상세의 과목 탭이 적는다 */
-        key: "spread",
-        head: "단계 배분",
-        width: "7.5rem",
-        nowrap: true,
-        hide: "md",
-        value: (r) => LEVELS.map((l) => r.spread[l]).join(" · "),
-        cell: (r) =>
-          r.picked ? (
-            <span className="a2-num a2-t-sm">
-              {LEVELS.map((l, i) => (
-                <span key={l}>
-                  {i > 0 && <span className="text-(--a2-ink-4)"> · </span>}
-                  <span style={r.spread[l] === 0 ? { color: "var(--a2-danger)" } : undefined}>
-                    {r.spread[l]}
-                  </span>
-                </span>
-              ))}
-            </span>
-          ) : (
-            dash
-          ),
-      },
-      {
-        key: "points",
-        head: "배점",
-        width: "4.5rem",
-        num: true,
-        hide: "lg",
-        value: (r) => r.points,
-        cell: (r) => (r.points ? n(r.points) : dash),
       },
       {
         key: "anchors",
@@ -299,18 +239,13 @@ export default function FormsView() {
         cell: (r) => (r.anchors ? n(r.anchors) : dash),
       },
       {
-        /* 담을 수 있는 승인 문항이 0이면 이 회차는 지금 짤 수 없다 — 문항 은행부터
-           채워야 한다. 「비어 있음」과 「채울 것이 없음」은 다른 일이라 칸을 따로 둔다 */
-        key: "pool",
-        head: "남은 승인",
-        width: "5.5rem",
+        key: "points",
+        head: "배점",
+        width: "4.5rem",
         num: true,
-        value: (r) => r.pool,
-        cell: (r) => (
-          <span style={r.pool === 0 && r.built === 0 ? { color: "var(--a2-danger)" } : undefined}>
-            {n(r.pool)}
-          </span>
-        ),
+        hide: "lg",
+        value: (r) => r.points,
+        cell: (r) => (r.points ? n(r.points) : dash),
       },
       {
         key: "act",
@@ -330,13 +265,12 @@ export default function FormsView() {
   const filters = useMemo<Filter<Row>[]>(
     () => [
       {
+        /* 차림표를 열쇠가 아니라 **말**로 세운다. 열쇠로 세우면 open과 grading이 같은
+           「진행중」을 쓰므로 차림표에 같은 줄이 두 번 선다 */
         id: "roundState",
         label: "회차 상태",
-        options: (Object.keys(roundStates) as RoundState[]).map((k) => ({
-          value: k,
-          label: roundStates[k].label,
-        })),
-        match: (r, v) => r.roundState === v,
+        options: roundStateLabels.map((l) => ({ value: l, label: l })),
+        match: (r, v) => roundStates[r.roundState].label === v,
       },
       {
         id: "subject",

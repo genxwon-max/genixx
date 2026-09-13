@@ -5,13 +5,22 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { GradeBand } from "@/lib/blueprint";
 import { QUESTIONS_PER_SUBJECT, subjects } from "@/lib/exam";
+import { roundStateLabels } from "@/lib/admin";
 import { n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
 import type { ItemDraft } from "@/lib/itemStore";
-import { blankNote, createRound, defaultBand, planSubjects } from "@/lib/roundPlanStore";
-import NoteField from "@/components/admin2/NoteField";
+import {
+  DEFAULT_CLOSE_AT,
+  DEFAULT_OPEN_AT,
+  blankNote,
+  checkPeriod,
+  createRound,
+  defaultBand,
+  planSubjects,
+} from "@/lib/roundPlanStore";
+import BodyEditor from "@/components/admin2/BodyEditor";
 import PlanPicker from "@/components/admin2/PlanPicker";
-import { Body, PageHead } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead } from "@/components/admin2/ui";
 
 /**
  * ADM-05-1 회차 생성 — 이름표 칸과 입력 칸을 가로선으로 나눈 등록 폼.
@@ -26,7 +35,7 @@ import { Body, PageHead } from "@/components/admin2/ui";
  * 비워도 되는 칸이라서다 — 필수 칸 사이에 선택 칸을 끼우면 어디까지 채워야 끝인지 흐려진다.
  *
  * ── 여기서 정하지 않는 것 ──
- * 상태는 늘 준비중으로 들어간다. 「시험중·시험완료」를 여기서 고르게 하면 검사지가 한 벌도
+ * 상태는 늘 대기중으로 들어간다. 「시험중·시험완료」를 여기서 고르게 하면 검사지가 한 벌도
  * 없는 회차를 열 수 있고, 그 회차는 응시자에게 빈 시험지를 준다. 여는 일은 편성을 마친 뒤
  * 편성 화면의 관문을 지나야 한다 — 그 사실을 칸으로 세워 두고 고르지 못하게 적어 둔다.
  */
@@ -37,7 +46,14 @@ export default function NewRoundForm() {
   const [label, setLabel] = useState("");
   const [opensOn, setOpensOn] = useState("");
   const [closesOn, setClosesOn] = useState("");
-  const [target, setTarget] = useState(1000);
+  /* 시각은 바닥값을 깔고 시작한다 — 날짜만 정하면 그날 통째로 여는 것이고, 그것이
+     이 화면에 오는 사람이 열에 아홉 바라는 것이다. 빈 칸으로 세워 두면 시각을 안 쓰는
+     회차까지 두 칸을 더 채워야 만들 수 있다 */
+  const [opensAt, setOpensAt] = useState(DEFAULT_OPEN_AT);
+  const [closesAt, setClosesAt] = useState(DEFAULT_CLOSE_AT);
+  /* 응시 정원 — **0이면 제한 없음**. 파일럿은 전면 무료라 정원을 두지 않는 것이
+     기본값이고, 숫자를 적으면 그만큼만 받는다 */
+  const [target, setTarget] = useState(0);
   const [band, setBand] = useState<GradeBand>(defaultBand);
   const [picked, setPicked] = useState<ItemDraft["subject"][]>([...planSubjects]);
   const [notice, setNotice] = useState(blankNote());
@@ -47,14 +63,16 @@ export default function NewRoundForm() {
   const save = () => {
     const bad: string[] = [];
     if (!label.trim()) bad.push("회차 이름을 적어 주세요. 목록과 리포트에 그대로 나갑니다.");
-    if (!opensOn || !closesOn) bad.push("응시 기간을 정해 주세요.");
-    else if (closesOn < opensOn) bad.push("마감일이 시작일보다 앞섭니다.");
+    /* 기간은 편성 화면과 **같은 잣대**로 본다(checkPeriod). 여기서만 따로 재면
+       만들 때는 통과한 기간이 편성 화면에서 막히는 날이 온다 */
+    bad.push(...checkPeriod({ opensOn, opensAt, closesOn, closesAt }));
     if (picked.length === 0) bad.push("평가 과목을 하나 이상 넣어 주세요. 과목이 없으면 응시할 것이 없습니다.");
-    if (!Number.isFinite(target) || target <= 0) bad.push("응시 대상 수를 한 명 이상으로 적어 주세요.");
+    if (!Number.isFinite(target) || target < 0 || !Number.isInteger(target))
+      bad.push("응시 정원은 0 이상의 정수로 적어 주세요. 0이면 제한이 없습니다.");
     if (bad.length > 0) return setErrors(bad);
 
     const id = createRound(
-      { label, opensOn, closesOn, target, band, subjects: picked, notice, caution },
+      { label, opensOn, opensAt, closesOn, closesAt, target, band, subjects: picked, notice, caution },
       prefs.staffName || "운영자",
     );
     /* 만들고 바로 편성으로 보낸다. 목록에 줄만 하나 늘려 두면 「이제 뭘 하지」가 남는데,
@@ -91,7 +109,6 @@ export default function NewRoundForm() {
               onChange={(e) => setLabel(e.target.value)}
               placeholder="2027 파일럿 1회차"
             />
-            <span className="a2-hint">회차 목록 · 리포트 · 응시 화면에 이 이름 그대로 나갑니다.</span>
           </div>
         </div>
 
@@ -102,9 +119,18 @@ export default function NewRoundForm() {
             <input
               type="date"
               className="a2-input"
-              style={{ maxWidth: "12rem" }}
+              style={{ maxWidth: "11rem" }}
+              aria-label="응시 시작일"
               value={opensOn}
               onChange={(e) => setOpensOn(e.target.value)}
+            />
+            <input
+              type="time"
+              className="a2-input"
+              style={{ maxWidth: "8rem" }}
+              aria-label="응시 시작 시각"
+              value={opensAt}
+              onChange={(e) => setOpensAt(e.target.value)}
             />
           </div>
         </div>
@@ -115,83 +141,76 @@ export default function NewRoundForm() {
             <input
               type="date"
               className="a2-input"
-              style={{ maxWidth: "12rem" }}
+              style={{ maxWidth: "11rem" }}
+              aria-label="응시 마감일"
               value={closesOn}
               onChange={(e) => setClosesOn(e.target.value)}
+            />
+            <input
+              type="time"
+              className="a2-input"
+              style={{ maxWidth: "8rem" }}
+              aria-label="응시 마감 시각"
+              value={closesAt}
+              onChange={(e) => setClosesAt(e.target.value)}
             />
             {days != null && (
               <span className="a2-t-sm text-(--a2-ink-3)">
                 <span className="a2-num">{n(days)}</span>일간
               </span>
             )}
-            <span className="a2-hint">
-              기간은 나중에 편성 화면에서 고칠 수 있습니다. 고치면 까닭이 회차 기록에 남습니다.
-            </span>
           </div>
         </div>
 
         {/* ── 누구에게 ── */}
+        {/* 정원 — 적은 수만큼 결제되면 그 회차는 더 받지 않는다. 0은 제한이 없다는 뜻이다.
+            「0이면 제한 없음」을 곁글로 적지 않고 **값 옆에 그대로 적는다** — 0을 넣어 본
+            사람이 그 자리에서 답을 본다 */}
         <div className="a2-form-row">
-          <div className="a2-form-label a2-form-req">응시 대상</div>
+          <div className="a2-form-label">응시 정원</div>
           <div className="a2-form-field">
             <input
               type="number"
               className="a2-input"
               style={{ maxWidth: "9rem" }}
-              min={1}
+              min={0}
+              step={1}
               value={target}
-              onChange={(e) => setTarget(Math.round(Number(e.target.value) || 0))}
+              onChange={(e) => setTarget(Math.max(0, Math.round(Number(e.target.value) || 0)))}
             />
-            <span className="a2-t-sm text-(--a2-ink-3)">명</span>
-            <span className="a2-hint">제출률의 분모입니다. 실제 응시자 수가 아니라 내보낼 대상 수입니다.</span>
+            <span className="a2-t-sm text-(--a2-ink-3)">
+              {target === 0 ? "명 — 제한 없음" : "명까지 받습니다"}
+            </span>
           </div>
         </div>
 
         {/* ── 무엇으로 — 이 화면의 본체 ──
             학년군을 먼저 받고 과목을 넣는 까닭은 PlanPicker 머리 주석에 적어 두었다 */}
-        <div className="a2-form-row">
-          <div className="a2-form-label a2-form-req">편성</div>
-          <div className="a2-form-field">
-            <div className="w-full">
-              <PlanPicker
-                band={band}
-                subjects={picked}
-                onChange={(next) => {
-                  setBand(next.band);
-                  setPicked(next.subjects);
-                }}
-              />
-            </div>
-            <span className="a2-hint">
-              한 벌 {QUESTIONS_PER_SUBJECT}문항 기준입니다. 나중에 편성 화면에서 다시 정할 수 있습니다.
-            </span>
-          </div>
-        </div>
+        {/* PlanPicker가 학년군·평가 과목 두 줄을 그대로 낸다. 「편성」이라는 이름표로 한 번
+            더 감싸지 않는다 — 감싸면 이름표가 두 겹이 되고, 편성 화면(ADM-05-4)과 여기가
+            같은 줄을 다른 깊이로 그리게 된다 */}
+        <PlanPicker
+          band={band}
+          subjects={picked}
+          onChange={(next) => {
+            setBand(next.band);
+            setPicked(next.subjects);
+          }}
+        />
 
-        {/* ── 정하지 않는 칸. 비워 두지 않고 왜 못 고치는지 적는다 ── */}
+        {/* ── 정하지 않는 칸. 비워 두지 않고 왜 못 고치는지 적는다 ──
+            상태 이름을 손으로 적지 않는다. 목록·대시보드와 같은 한 벌에서 끌어온다
+            (lib/admin.ts의 roundStateLabels) — 여기만 옛 이름으로 남으면 만들자마자
+            여는 화면이 다른 말을 쓴다 */}
         <div className="a2-form-row">
           <div className="a2-form-label">회차 상태</div>
           <div className="a2-form-field">
-            <label className="a2-choice">
-              <input type="radio" checked readOnly />
-              준비중
-            </label>
-            <label className="a2-choice">
-              <input type="radio" disabled />
-              응시 진행중
-            </label>
-            <label className="a2-choice">
-              <input type="radio" disabled />
-              채점중
-            </label>
-            <label className="a2-choice">
-              <input type="radio" disabled />
-              마감
-            </label>
-            <span className="a2-hint">
-              새 회차는 늘 준비중으로 들어갑니다. 검사지가 한 벌도 없는 회차를 열면 응시자가 빈 시험지를 받으므로, 여는
-              일은 편성을 마친 뒤 편성 화면의 관문을 지나야 합니다.
-            </span>
+            {roundStateLabels.map((l, i) => (
+              <label key={l} className="a2-choice">
+                <input type="radio" checked={i === 0} disabled={i > 0} readOnly />
+                {l}
+              </label>
+            ))}
           </div>
         </div>
 
@@ -202,42 +221,34 @@ export default function NewRoundForm() {
               {subjects.map((s) => `${s.short} ${s.limitMin}분`).join(" · ")} · 과목당{" "}
               <span className="a2-num">{QUESTIONS_PER_SUBJECT}</span>문항
             </span>
-            <span className="a2-hint">
-              응시 화면이 쓰는 값입니다(lib/exam.ts). 회차마다 다르게 두는 길은 아직 없습니다.
-            </span>
           </div>
         </div>
 
         {/* ── 무슨 말과 함께 ── */}
-        <div className="a2-form-row">
-          <div className="a2-form-label">회차 공지</div>
-          <div className="a2-form-field">
-            <div className="w-full">
-              <NoteField
-                label="회차 공지"
-                value={notice}
-                onChange={setNotice}
-                placeholder="이 회차에만 해당하는 안내를 적습니다. 예 — 이번 회차는 서술형 첨부 제출을 마감 30분 뒤까지 받습니다."
-                hint="비워 두어도 됩니다. 편성 화면에서 나중에 적거나 고칠 수 있습니다."
-              />
-            </div>
-          </div>
-        </div>
+        {/* 공지·유의사항은 편성 화면(ADM-05-4)과 같은 칸을 쓴다 — 글 · 마크다운 · HTML ·
+            그림 네 갈래. 만드는 자리와 고치는 자리가 다른 편집기를 쓰면, 여기서 마크다운으로
+            적은 것이 저기서는 글자 그대로 보인다 */}
+        <FormRow label="회차 공지">
+          <BodyEditor
+            name="new-round-notice-mode"
+            value={notice}
+            disabled={false}
+            rows={5}
+            placeholder="이 회차에만 해당하는 안내를 적습니다. 예 — 이번 회차는 서술형 첨부 제출을 마감 30분 뒤까지 받습니다."
+            onChange={(patch) => setNotice((v) => ({ ...v, ...patch }))}
+          />
+        </FormRow>
 
-        <div className="a2-form-row">
-          <div className="a2-form-label">회차 유의사항</div>
-          <div className="a2-form-field">
-            <div className="w-full">
-              <NoteField
-                label="회차 유의사항"
-                value={caution}
-                onChange={setCaution}
-                placeholder="이 회차에서만 조심할 것을 적습니다."
-                hint="검사 전체의 유의사항과 다릅니다 — 저쪽은 회차가 바뀌어도 같은 말이고, 이 칸은 이번 회차에서만 참인 말입니다."
-              />
-            </div>
-          </div>
-        </div>
+        <FormRow label="회차 유의사항">
+          <BodyEditor
+            name="new-round-caution-mode"
+            value={caution}
+            disabled={false}
+            rows={5}
+            placeholder="이 회차에서만 조심할 것을 적습니다."
+            onChange={(patch) => setCaution((v) => ({ ...v, ...patch }))}
+          />
+        </FormRow>
       </div>
 
       {errors.length > 0 && (

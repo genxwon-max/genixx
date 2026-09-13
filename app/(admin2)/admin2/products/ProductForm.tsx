@@ -9,7 +9,6 @@ import {
   dataUrlBytes,
   discountRate,
   IMAGE_MAX_BYTES,
-  IMAGE_MAX_PX,
   productKindLabel,
   productKinds,
   productStateLabel,
@@ -144,14 +143,14 @@ export default function ProductForm({ edit }: { edit?: Product }) {
 
   const save = () => {
     const bad: string[] = [];
-    if (!form.name.trim()) bad.push("상품명을 적어 주세요. 목록과 결제 내역에 그대로 나갑니다.");
+    if (!form.name.trim()) bad.push("상품명을 적어 주세요.");
     if (!Number.isFinite(form.price) || form.price < 0) bad.push("정가를 0원 이상으로 적어 주세요.");
     if (form.salePrice != null && form.salePrice > form.price)
       bad.push("판매가가 정가보다 큽니다. 할인이 아니라면 정가를 고쳐 주세요.");
     if (form.sellsFrom && form.sellsTo && form.sellsTo < form.sellsFrom)
       bad.push("판매 종료일이 시작일보다 앞섭니다.");
     if (form.state === "selling" && !form.thumb)
-      bad.push("판매중으로 열려면 대표 이미지가 있어야 합니다. 파는 화면에서 빈칸으로 나갑니다.");
+      bad.push("판매중으로 열려면 대표 이미지가 있어야 합니다.");
     if (bad.length > 0) return setErrors(bad);
 
     /* HTML은 담기 전에 한 번 걸러 둔다. 파는 화면에서 그릴 때도 다시 소독하지만,
@@ -174,7 +173,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
     form.detailImages.reduce((s, u) => s + dataUrlBytes(u), 0);
 
   const mode = form.detailMode;
-  const modeInfo = detailModes.find((m) => m.id === mode)!;
   /* 미리보기는 그릴 때마다 만든다. 글자 수가 몇천이라 값싸고, 담아 두면 갈래를 바꿨을 때
      앞 갈래의 그림이 한 박자 남는다 */
   const previewHtml = renderDetail(mode, form.description, form.detailImages);
@@ -211,7 +209,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                 onChange={(e) => set("name", e.target.value)}
                 placeholder="재능진단 종합 리포트"
               />
-              <span className="a2-hint">상품 목록 · 결제 내역 · 구매 화면에 이 이름 그대로 나갑니다.</span>
             </div>
           </div>
 
@@ -230,7 +227,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                   </option>
                 ))}
               </select>
-              <span className="a2-hint">결제 통계를 종류별로 묶을 때 쓰는 값입니다.</span>
             </div>
           </div>
 
@@ -244,7 +240,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                 onChange={(e) => set("summary", e.target.value)}
                 placeholder="8개 재능 축 해석과 성장 가이드를 담은 리포트입니다."
               />
-              <span className="a2-hint">목록과 상품 카드에 이름 옆으로 붙습니다.</span>
             </div>
           </div>
 
@@ -261,7 +256,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                 placeholder="0"
               />
               <span className="a2-t-sm text-(--a2-ink-3)">원</span>
-              <span className="a2-hint">0원으로 두면 무료 상품입니다. 파일럿 회차 응시권이 그렇습니다.</span>
             </div>
           </div>
 
@@ -285,10 +279,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                   −{rate}%
                 </span>
               )}
-              <span className="a2-hint">
-                실제로 받는 값입니다. 할인율은 여기서 계산해 보여 주기만 하고 따로 저장하지 않습니다 — 율과 금액을
-                둘 다 들면 반올림에서 어긋납니다.
-              </span>
             </div>
           </div>
 
@@ -364,10 +354,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                   e.target.value = "";
                 }}
               />
-              <span className="a2-hint">
-                목록과 카드에 서는 한 장입니다. 올린 그림은 긴 변 {IMAGE_MAX_PX}px으로 줄여 담고, 주소로 걸면
-                그 주소를 그대로 씁니다.
-              </span>
             </div>
           </div>
 
@@ -391,7 +377,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                   </label>
                 ))}
               </span>
-              <span className="a2-hint">{modeInfo.hint}</span>
 
               {/* ── 이미지 갈래 ── */}
               {mode === "images" && (
@@ -452,9 +437,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                   >
                     {busy ? "줄이는 중…" : "이미지 추가"}
                   </button>
-                  <span className="a2-hint">
-                    여러 장을 한 번에 올릴 수 있습니다. <b>위에서 아래로 이 차례대로</b> 상세 화면에 이어 붙습니다.
-                  </span>
                 </>
               )}
 
@@ -497,12 +479,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                       <span className="a2-num">{form.description.length.toLocaleString("ko-KR")}</span>자
                     </span>
                   </span>
-                  {mode !== "text" && (
-                    <span className="a2-hint">
-                      「그림 넣기」는 올린 그림을 본문 끝에 붙입니다. 파일 서버가 아직 없어 주소 대신 그림
-                      자체가 들어가므로 본문이 길어집니다 — 서버가 붙으면 짧은 주소로 바뀝니다.
-                    </span>
-                  )}
                 </>
               )}
 
@@ -519,11 +495,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                          <img>뿐이고, 나머지 셋은 renderDetail 안에서 sanitizeHtml을 지난다 */
                       dangerouslySetInnerHTML={{ __html: previewHtml }}
                     />
-                  )}
-                  {mode === "html" && (
-                    <p className="a2-hint">
-                      저장할 때 허용 목록 밖의 태그·속성을 걷어 냅니다. 미리보기가 곧 저장될 모습입니다.
-                    </p>
                   )}
                 </div>
               )}
@@ -569,10 +540,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                   {productStateLabel[s]}
                 </label>
               ))}
-              <span className="a2-hint">
-                숨김은 주소를 아는 사람만 들어옵니다. 판매 종료는 목록에서도 빠집니다. 이미 결제된 건은 어느
-                쪽으로 바꿔도 그대로 남습니다.
-              </span>
             </div>
           </div>
 
@@ -594,7 +561,6 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                 value={form.sellsTo}
                 onChange={(e) => set("sellsTo", e.target.value)}
               />
-              <span className="a2-hint">비워 두면 기한 없이 팝니다.</span>
             </div>
           </div>
         </div>

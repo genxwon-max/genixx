@@ -191,6 +191,17 @@ function fullPhone(r: () => number) {
   return `010-${head}-${String((head * 7919) % 10000).padStart(4, "0")}`;
 }
 
+/**
+ * 목록에서 쓰는 가림. 성만 남긴다 — 김○○.
+ *
+ * components/admin/StudentTable.tsx 안에 갇혀 있던 것을 올렸다. 가림 함수 셋이 한 자리에
+ * 있어야 「목록은 가리고 상세는 편다」가 규약으로 지켜진다 — 화면마다 제 것을 지으면
+ * 어느 화면은 성만 남기고 어느 화면은 가운데만 가리는 상태가 된다.
+ */
+export function maskName(v: string) {
+  return v.length < 2 ? v : `${v[0]}${"○".repeat(v.length - 1)}`;
+}
+
 /** 목록에서 쓰는 가림. 아이디 앞 두 글자만 남긴다 */
 export function maskMail(v: string) {
   const at = v.indexOf("@");

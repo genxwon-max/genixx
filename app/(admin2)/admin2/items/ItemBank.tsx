@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { LEVELS, gradeBands, levelSpecs } from "@/lib/blueprint";
 import { n } from "@/lib/admin2";
-import { useAdminPrefs } from "@/lib/adminStore";
 import {
-  addItem,
   stateLabel,
   formTextOf,
   typeTextOf,
@@ -222,8 +219,6 @@ type TabId = "all" | ItemState | "conflict";
 
 export default function ItemBank() {
   const items = useItems();
-  const prefs = useAdminPrefs();
-  const router = useRouter();
   const [tab, setTab] = useState<TabId>("all");
 
   /* 기본 줄 순서 — 손이 가야 하는 상태를 위로. 같은 상태끼리는 코드 오름차순으로 못
@@ -274,25 +269,10 @@ export default function ItemBank() {
     <>
       <PageHead
         title="문항 은행"
-        actions={
-          <>
-            <Link href="/admin2/rounds" className="a2-btn">
-              회차 편성
-            </Link>
-            <button
-              type="button"
-              className="a2-btn a2-btn-primary"
-              onClick={() => {
-                /* 빈 문항을 만들어 바로 상세로 보낸다. 목록에 빈 줄만 만들어 두면
-                   「방금 만든 그것」을 다시 찾아야 한다. */
-                const made = addItem(prefs.loginId || "super", prefs.staffName || "운영자");
-                router.push(`/admin2/items/${made.id}`);
-              }}
-            >
-              새 문항
-            </button>
-          </>
-        }
+        /* 단추를 세우지 않는다. 이 화면은 **쌓인 것을 보는 자리**이고, 문항을 쓰는 일은
+           출제(EXP-02)에, 회차에 담는 일은 평가별 문항관리(ADM-04-3)에 제 화면이 있다.
+           목록마다 다른 화면으로 가는 문을 세워 두면 기둥과 같은 일을 하는 단추가 화면마다
+           늘어난다 — 갈 데는 기둥이 이미 답한다 */
         /* ① 어느 상태에 몰려 있나 — 누르면 그 상태만 남는다 */
         tabsLabel="상태별 조회 조건"
         tabs={tabs.map((t) => (

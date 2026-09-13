@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Body, PageHead, SeedNote } from "@/components/admin2/ui";
+import { Body, PageHead } from "@/components/admin2/ui";
 import RoundsTable from "./RoundsTable";
 
 /**
@@ -38,10 +38,6 @@ export default function RoundsView() {
       <Body>
         <RoundsTable />
       </Body>
-      <SeedNote>
-        대상 · 제출 · 판정 · 발행 숫자는 화면 설계를 위한 예시입니다(lib/admin.ts). 상태 · 기간 · 편성 칸은 이
-        브라우저에 저장된 편성 기록에서 읽고, 여기서 만든 회차도 이 브라우저에만 남습니다.
-      </SeedNote>
     </>
   );
 }

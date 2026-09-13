@@ -4,6 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { currentRound, rounds, type Round, type RoundState } from "./admin";
 import { gradeBands, type GradeBand } from "./blueprint";
 import { formItems, type ExamForm } from "./formStore";
+import { detailIsEmpty, type DetailMode } from "./richText";
 import type { ItemDraft } from "./itemStore";
 
 /**
@@ -57,21 +58,55 @@ export type PlanLog = { at: string; by: string; action: PlanAction; text: string
  * 자리에 업로드 주소가 들어간다. 담기 전에 가로 1200px로 줄인다 — 브라우저 저장소는
  * 5MB 남짓이라 사진 두 장이면 회차 기록·문항·검사지가 통째로 안 들어간다(NoteImages 참조).
  */
-export type RoundNote = { text: string; images: string[] };
+/**
+ * 회차 공지 한 덩이 — 문항 지문과 **같은 네 갈래**로 쓴다(글 · 마크다운 · HTML · 그림).
+ *
+ * 글 한 칸과 그림 목록으로만 받던 것을 넓혔다. 공지에 실제로 들어가는 것은 「9월 2일
+ * 오전에 점검이 있습니다」 같은 두 문장이기도 하고, 표와 굵은 글씨가 필요한 안내이기도
+ * 하다. 문항 지문이 같은 문제를 이미 네 갈래로 풀어 두었으므로(lib/richText.ts) 그것을
+ * 그대로 쓴다 — 같은 일을 하는 칸이 화면마다 다른 꼴이면 한쪽에만 미리보기가 붙는다.
+ */
+export type RoundNote = { mode: DetailMode; body: string; images: string[] };
 
-export const blankNote = (): RoundNote => ({ text: "", images: [] });
+export const blankNote = (): RoundNote => ({ mode: "text", body: "", images: [] });
 
-/** 옛 저장분은 글만 문자열로 들고 있다 — 읽을 때 한 꼴로 맞춘다 */
-export function noteOf(v: RoundNote | string | undefined): RoundNote {
+/**
+ * 저장분을 한 꼴로 맞춘다.
+ *
+ * 세 대가 섞여 있다 — 글만 문자열로 든 것, {text, images}로 든 것, 지금 꼴. 앞의 둘은
+ * 전부 「글」 갈래로 읽는다. 읽을 때 맞추므로 저장소를 옮겨 쓰는 일(migration)이 없다.
+ */
+export function noteOf(v: RoundNote | { text?: string; images?: string[] } | string | undefined): RoundNote {
   if (!v) return blankNote();
-  return typeof v === "string" ? { text: v, images: [] } : { text: v.text ?? "", images: v.images ?? [] };
+  if (typeof v === "string") return { mode: "text", body: v, images: [] };
+  const old = v as Partial<RoundNote> & { text?: string };
+  const body = old.body ?? old.text ?? "";
+  const images = old.images ?? [];
+  /* 글이 없고 그림만 있는 옛 공지는 「그림」 갈래로 읽는다. 「글」로 읽으면 본문이 비어
+     있다는 뜻이 되어, 다음 저장 때 detailIsEmpty가 그 공지를 통째로 버린다 */
+  return {
+    mode: old.mode ?? (body.trim() === "" && images.length > 0 ? "images" : "text"),
+    body,
+    images,
+  };
+}
+
+/**
+ * 저장할 꼴로 다듬는다 — **저장한 뒤에 읽어 오는 값과 같아야 한다.**
+ *
+ * 화면이 든 초안과 저장소가 든 값을 견주어 「고친 것이 남았는가」를 셈하므로(useEditDraft),
+ * 저장할 때 조용히 다듬으면 그 둘이 영영 어긋난다 — 줄 끝 빈 칸 하나로 저장 줄이 계속
+ * 켜져 있고, 저장을 눌러도 내려오지 않는다. 다듬는 규칙을 한 곳에 두고 양쪽이 함께 쓴다.
+ */
+export function canonNote(v: RoundNote): RoundNote {
+  return detailIsEmpty(v.mode, v.body, v.images) ? blankNote() : { ...v, body: v.body.trim() };
 }
 
 export type RoundPlan = {
   round: string;
   state: RoundState;
   /**
-   * 응시 기간 (YYYY-MM-DD).
+   * 응시 기간의 날짜 (YYYY-MM-DD).
    *
    * 회차 목록(lib/admin.ts)의 opensOn·closesOn을 시작값으로 받아 여기서 고친다. 상태와
    * 같은 자리에 두는 까닭은 하나다 — 「언제부터 언제까지 여는가」와 「지금 열려 있는가」는
@@ -79,6 +114,23 @@ export type RoundPlan = {
    */
   opensOn: string;
   closesOn: string;
+  /**
+   * 응시 기간의 시각 (HH:MM) — **날짜와 갈라 든다**.
+   *
+   * 하루 단위로만 열던 것을 시각까지 잡게 했다. 「8월 31일까지」가 그날 자정까지인지
+   * 저녁 여섯 시까지인지를 화면이 말해 주지 않으면, 마감일 오후에 들어온 응시를 받을지
+   * 말지를 사람이 그때그때 정하게 된다.
+   *
+   * 날짜에 붙여 한 문자열(YYYY-MM-DDTHH:mm)로 들지 않는 까닭은 저장된 것 때문이다.
+   * 브라우저에 남은 회차와 코드에 박힌 회차 넷(lib/admin.ts)은 전부 날짜만 들고 있고,
+   * 그 값을 그대로 읽어야 이미 짜 둔 회차가 화면에서 안 깨진다.
+   *
+   * ⚠ 없으면 그날 통째로 본다 — 시작 00:00, 마감 23:59(DEFAULT_OPEN_AT · DEFAULT_CLOSE_AT).
+   *   09:00~18:00 같은 값을 바닥값으로 두면, 시각을 넣기 전에 만든 회차의 뜻이 조용히
+   *   좁아진다. 읽는 자리는 늘 periodOf()를 지난다.
+   */
+  opensAt?: string;
+  closesAt?: string;
   openedAt?: string;
   openedBy?: string;
   closedAt?: string;
@@ -131,12 +183,25 @@ export type RoundPlan = {
 
 export type Plans = Record<string, RoundPlan>;
 
+/* 시각을 안 적은 회차는 그날 통째로 본다. 바닥값을 여기 한 곳에만 둔다 —
+   화면과 저장소가 각자 09:00을 적어 두면 둘이 갈리는 날이 온다 */
+export const DEFAULT_OPEN_AT = "00:00";
+export const DEFAULT_CLOSE_AT = "23:59";
+
 /* 씨앗은 lib/admin.ts의 회차 목록이다. 상태를 두 군데 적어 두면 한쪽만 고쳐지는
    날이 반드시 온다 — 여기서는 회차 목록의 상태와 기간을 시작값으로만 받아 쓴다. */
 const SEED: Plans = Object.fromEntries(
   rounds.map((r): [string, RoundPlan] => [
     r.id,
-    { round: r.id, state: r.state, opensOn: r.opensOn, closesOn: r.closesOn, log: [] },
+    {
+      round: r.id,
+      state: r.state,
+      opensOn: r.opensOn,
+      closesOn: r.closesOn,
+      opensAt: DEFAULT_OPEN_AT,
+      closesAt: DEFAULT_CLOSE_AT,
+      log: [],
+    },
   ]),
 );
 
@@ -192,6 +257,8 @@ function blankPlan(roundId: string): RoundPlan {
     state: r?.state ?? "draft",
     opensOn: r?.opensOn ?? "",
     closesOn: r?.closesOn ?? "",
+    opensAt: DEFAULT_OPEN_AT,
+    closesAt: DEFAULT_CLOSE_AT,
     log: [],
   };
 }
@@ -213,26 +280,61 @@ export function useCurrentRound() {
   return rounds.find((r) => planOf(plans, r.id).state === "open") ?? currentRound;
 }
 
-/** 사람이 읽는 기간 한 줄 — 회차 목록의 period와 같은 꼴로 적는다 */
+/** 응시 기간 네 칸 — 날짜 둘과 시각 둘을 늘 한 덩이로 옮긴다 */
+export type Period = {
+  opensOn: string;
+  opensAt: string;
+  closesOn: string;
+  closesAt: string;
+};
+
+/** 저장분에서 기간을 꺼낸다 — 시각이 없는 옛 회차는 여기서 바닥값을 입는다 */
+export function periodOf(plan: RoundPlan): Period {
+  return {
+    opensOn: plan.opensOn,
+    opensAt: plan.opensAt || DEFAULT_OPEN_AT,
+    closesOn: plan.closesOn,
+    closesAt: plan.closesAt || DEFAULT_CLOSE_AT,
+  };
+}
+
+/**
+ * 견주기 위한 한 문자열 — "2026-08-31 23:59".
+ *
+ * 날짜와 시각을 이 차례로 붙이면 글자 크기 비교가 곧 시간 비교가 된다(둘 다 0으로
+ * 자리를 채우는 꼴이라). Date로 파싱하지 않는 까닭은 시간대다 — 브라우저가 어디에
+ * 있든 관리자가 적어 넣은 「18:00」은 같은 18:00이어야 한다.
+ */
+export const stampOf = (day: string, time: string) => `${day} ${time}`;
+
+/** 사람이 읽는 기간 한 줄 */
 export function periodText(plan: RoundPlan) {
-  if (!plan.opensOn || !plan.closesOn) return "기간 미정";
-  return `${plan.opensOn.replace(/-/g, ".")} – ${plan.closesOn.replace(/-/g, ".")}`;
+  const p = periodOf(plan);
+  if (!p.opensOn || !p.closesOn) return "기간 미정";
+  return `${p.opensOn.replace(/-/g, ".")} ${p.opensAt} – ${p.closesOn.replace(/-/g, ".")} ${p.closesAt}`;
 }
 
 /**
  * 기간이 말이 되는가 — 저장 전에 본다.
  *
  * 오늘 날짜와 견주지 않는다. 지난 회차의 기간을 뒤늦게 바로잡는 일이 실제로 있고,
- * 「어제보다 앞이다」로 막으면 그 수정을 화면이 가로막는다. 여기서 보는 것은 두
+ * 「어제보다 앞이다」로 막으면 그 수정을 화면이 가로막는다. 여기서 보는 것은 네
  * 값끼리의 앞뒤와 꼴뿐이다.
+ *
+ * 마감이 시작과 **같은 것도 막는다**. 길이가 0인 기간은 열어도 아무도 못 들어온다.
  */
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export function checkPeriod(opensOn: string, closesOn: string): string[] {
+export function checkPeriod(p: Period): string[] {
   const out: string[] = [];
-  if (!DATE_RE.test(opensOn)) out.push("시작일을 YYYY-MM-DD로 적어 주세요");
-  if (!DATE_RE.test(closesOn)) out.push("마감일을 YYYY-MM-DD로 적어 주세요");
-  if (out.length === 0 && closesOn < opensOn) out.push("마감일이 시작일보다 앞입니다");
+  if (!DATE_RE.test(p.opensOn)) out.push("시작일을 YYYY-MM-DD로 적어 주세요");
+  if (!TIME_RE.test(p.opensAt)) out.push("시작 시각을 HH:MM으로 적어 주세요");
+  if (!DATE_RE.test(p.closesOn)) out.push("마감일을 YYYY-MM-DD로 적어 주세요");
+  if (!TIME_RE.test(p.closesAt)) out.push("마감 시각을 HH:MM으로 적어 주세요");
+  if (out.length === 0 && stampOf(p.closesOn, p.closesAt) <= stampOf(p.opensOn, p.opensAt)) {
+    out.push("마감이 시작보다 앞이거나 같습니다");
+  }
   return out;
 }
 
@@ -252,9 +354,16 @@ export const allSlotKeys = planSubjects.flatMap((s) => gradeBands.map((g) => slo
 /** 이 회차가 보는 학년군. 없으면 3·4학년군 */
 export const bandFor = (plan: RoundPlan): GradeBand => plan.band ?? defaultBand;
 
-/** 이 회차에 넣은 과목 — **넣은 차례 그대로**. 없으면 세 과목 전부 */
+/**
+ * 이 회차에 넣은 과목 — **넣은 차례 그대로**. 칸이 아예 없으면(옛 회차) 세 과목 전부.
+ *
+ * ⚠ 빈 배열과 없음을 가른다. `?.length`로 보던 때는 **과목을 전부 뺀 회차가 세 과목을
+ *   보는 회차로 되읽혔다** — 저장해도 화면이 「고친 것이 남았다」에서 내려오지 않고,
+ *   저장을 누를 때마다 「편성을 정했습니다 — 과목 없음」이 기록에 한 줄씩 쌓였다.
+ *   전부 뺀 회차는 열 수 없지만(여는 관문이 막는다) 그것과 이것은 다른 이야기다.
+ */
 export const subjectsFor = (plan: RoundPlan): ItemDraft["subject"][] =>
-  plan.subjects?.length ? plan.subjects.filter((s) => planSubjects.includes(s)) : planSubjects;
+  plan.subjects ? plan.subjects.filter((s) => planSubjects.includes(s)) : planSubjects;
 
 /**
  * 이 회차가 보는 칸 = 과목 × 학년군.
@@ -383,7 +492,9 @@ export function createRound(
   input: {
     label: string;
     opensOn: string;
+    opensAt: string;
     closesOn: string;
+    closesAt: string;
     target: number;
     band: GradeBand;
     subjects: ItemDraft["subject"][];
@@ -401,7 +512,9 @@ export function createRound(
       round: id,
       state: "draft",
       opensOn: input.opensOn,
+      opensAt: input.opensAt,
       closesOn: input.closesOn,
+      closesAt: input.closesAt,
       band: input.band,
       subjects: input.subjects,
       notice: input.notice,
@@ -427,16 +540,15 @@ export function createRound(
  * 고칠 때마다 회차 기록에 한 줄이 쌓이면 정작 개폐 이력이 그 사이에 묻힌다.
  */
 export function setRoundNotes(roundId: string, notes: { notice: RoundNote; caution: RoundNote }) {
-  const empty = (v: RoundNote) => !v.text.trim() && v.images.length === 0;
+  /* 빈 것은 아예 담지 않는다 — 빈 덩이를 담아 두면 「공지가 있다」로 읽는 화면이 생긴다.
+     담는 값은 canonNote와 같은 규칙을 지난다(위 주석) */
+  const keep = (v: RoundNote) =>
+    detailIsEmpty(v.mode, v.body, v.images) ? undefined : canonNote(v);
   const cur = read();
   const plan = cur[roundId] ?? blankPlan(roundId);
   write({
     ...cur,
-    [roundId]: {
-      ...plan,
-      notice: empty(notes.notice) ? undefined : { text: notes.notice.text.trim(), images: notes.notice.images },
-      caution: empty(notes.caution) ? undefined : { text: notes.caution.text.trim(), images: notes.caution.images },
-    },
+    [roundId]: { ...plan, notice: keep(notes.notice), caution: keep(notes.caution) },
   });
 }
 
@@ -491,7 +603,7 @@ export function openChecks(roundId: string, slots: PlanSlot[], plans: Plans): Pl
   /* 기간부터 본다. 기간이 비뚤어진 채로 열면 응시 화면이 「오늘은 응시 기간이
      아닙니다」를 띄우고, 관리자는 회차를 열었는데 아무도 못 들어오는 상태가 된다. */
   const plan = planOf(plans, roundId);
-  const period = checkPeriod(plan.opensOn, plan.closesOn);
+  const period = checkPeriod(periodOf(plan));
   if (period.length > 0) {
     out.push({ tone: "block", text: `응시 기간을 먼저 정해 주세요 — ${period.join(" · ")}` });
   }
@@ -573,17 +685,29 @@ export function finishRound(id: string, by: string, text: string) {
  * 대신 무엇을 무엇으로 바꿨는지를 기록에 그대로 적는다 — 기간이 바뀐 회차의 결과를
  * 뒤에 견줄 때, 「그때 열흘 늘렸다」가 남아 있어야 제출률 차이를 설명할 수 있다.
  */
-export function setPeriod(id: string, opensOn: string, closesOn: string, by: string, why: string) {
-  if (checkPeriod(opensOn, closesOn).length > 0) return;
-  const before = planOf(read(), id);
+export function setPeriod(id: string, next: Period, by: string, why: string) {
+  if (checkPeriod(next).length > 0) return;
+  const before = periodOf(planOf(read(), id));
+  /* 무엇이 무엇으로 바뀌었는지를 날짜·시각 한 덩이로 적는다. 「마감 2026-08-31 →
+     2026-08-31」처럼 날짜만 적으면 시각만 늘린 연장이 기록에서 사라진다 */
+  const moved = (a: string, b: string) => (a ? a : "없음") + " → " + b;
   const changed = [
-    before.opensOn !== opensOn ? `시작 ${before.opensOn || "없음"} → ${opensOn}` : "",
-    before.closesOn !== closesOn ? `마감 ${before.closesOn || "없음"} → ${closesOn}` : "",
+    before.opensOn !== next.opensOn || before.opensAt !== next.opensAt
+      ? `시작 ${moved(before.opensOn && stampOf(before.opensOn, before.opensAt), stampOf(next.opensOn, next.opensAt))}`
+      : "",
+    before.closesOn !== next.closesOn || before.closesAt !== next.closesAt
+      ? `마감 ${moved(before.closesOn && stampOf(before.closesOn, before.closesAt), stampOf(next.closesOn, next.closesAt))}`
+      : "",
   ].filter(Boolean);
   if (changed.length === 0) return;
   patch(
     id,
-    { opensOn, closesOn },
+    {
+      opensOn: next.opensOn,
+      opensAt: next.opensAt,
+      closesOn: next.closesOn,
+      closesAt: next.closesAt,
+    },
     { by, action: "period", text: why ? `${changed.join(" · ")} — ${why}` : changed.join(" · ") },
   );
 }

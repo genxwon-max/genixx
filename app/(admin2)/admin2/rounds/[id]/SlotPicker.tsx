@@ -1,12 +1,10 @@
 "use client";
 
-import { gradeBands } from "@/lib/blueprint";
-import { n } from "@/lib/admin2";
-import { useAdminPrefs } from "@/lib/adminStore";
+import type { GradeBand } from "@/lib/blueprint";
 import { useForms } from "@/lib/formStore";
-import { bandFor, setRoundPlan, subjectsFor, type RoundPlan } from "@/lib/roundPlanStore";
+import type { ItemDraft } from "@/lib/itemStore";
 import PlanPicker from "@/components/admin2/PlanPicker";
-import { Panel } from "@/components/admin2/ui";
+import { FormRow, Panel } from "@/components/admin2/ui";
 
 /**
  * 이 회차의 편성을 다시 정한다 — 학년군과 평가 과목.
@@ -22,41 +20,57 @@ import { Panel } from "@/components/admin2/ui";
  *
  * 회차가 열린 뒤에는 잠근다. 응시가 시작된 회차에서 편성을 바꾸면 이미 시험을 본 아이와
  * 그 뒤에 보는 아이가 다른 검사지를 받는다.
+ *
+ * ⚠ 고른 것을 저장소에 바로 쓰지 않는다. 회차 편성 화면이 기간·공지와 함께 한 초안으로
+ *   들고 있다가 저장을 누를 때 함께 나간다 — 화면 하나에 저장이 셋이면 무엇이 저장된
+ *   상태인지가 판마다 달라진다.
  */
-export default function SlotPicker({ plan, locked }: { plan: RoundPlan; locked: boolean }) {
-  const prefs = useAdminPrefs();
+export default function SlotPicker({
+  value,
+  onChange,
+  locked,
+  round,
+}: {
+  value: { band: GradeBand; subjects: ItemDraft["subject"][] };
+  onChange: (next: { band: GradeBand; subjects: ItemDraft["subject"][] }) => void;
+  locked: boolean;
+  /** 담긴 문항 수를 세는 데만 쓴다 */
+  round: string;
+}) {
   const forms = useForms();
-
-  const band = bandFor(plan);
-  const subjects = subjectsFor(plan);
 
   /* 그 과목·학년군에 담긴 문항 수 — 뺄 때 무엇을 잃는지(잃지는 않지만) 알려 주는 값 */
   const pickedOf = (subject: string, band: string) =>
-    forms.find((f) => f.round === plan.round && f.subject === subject && f.band === band)?.itemIds.length ?? 0;
+    forms.find((f) => f.round === round && f.subject === subject && f.band === band)?.itemIds.length ?? 0;
 
   return (
-    <Panel
-      title="평가 과목 편성"
-      meta={`검사지 ${n(subjects.length)}벌 · ${gradeBands.find((g) => g.id === band)?.label}`}
-      className="mt-3"
-    >
-      {locked ? (
-        <>
-          <p className="a2-t-sm text-(--a2-ink-2)">
-            {subjects.join(" · ") || "과목 없음"} / {gradeBands.find((g) => g.id === band)?.label}
-          </p>
-          <p className="a2-hint">
-            응시가 시작된 뒤에는 편성을 바꾸지 못합니다 — 아이마다 다른 검사지를 받게 됩니다.
-          </p>
-        </>
-      ) : (
-        <PlanPicker
-          band={band}
-          subjects={subjects}
-          pickedOf={pickedOf}
-          onChange={(next) => setRoundPlan(plan.round, next, prefs.staffName || "운영자")}
-        />
-      )}
+    <Panel title="평가 과목 편성" flush>
+      {/* 잠긴 회차도 같은 두 줄로 적는다 — 고칠 수 있을 때와 없을 때 칸이 다른 자리에
+          서면, 잠겼다는 사실보다 화면이 바뀌었다는 것이 먼저 읽힌다 */}
+      <div className="a2-form">
+        {locked ? (
+          <>
+            <FormRow label="학년군">
+              <span className="a2-t-sm text-(--a2-ink-2)">
+                {value.band === "3-4" ? "초등 3·4학년군" : "초등 5·6학년군"}
+              </span>
+            </FormRow>
+            <FormRow
+              label="평가 과목"
+              hint="응시가 시작된 뒤에는 편성을 바꾸지 못합니다 — 아이마다 다른 검사지를 받게 됩니다."
+            >
+              <span className="a2-t-sm text-(--a2-ink-2)">{value.subjects.join(" · ") || "과목 없음"}</span>
+            </FormRow>
+          </>
+        ) : (
+          <PlanPicker
+            band={value.band}
+            subjects={value.subjects}
+            pickedOf={pickedOf}
+            onChange={onChange}
+          />
+        )}
+      </div>
     </Panel>
   );
 }

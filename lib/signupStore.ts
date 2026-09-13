@@ -90,6 +90,15 @@ export function useSignupDraft(): SignupDraft {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
 
+/**
+ * 구독하지 않고 지금 값만 한 번 읽는다 (authStore의 getSession과 같은 자리).
+ * 가입 완료 화면처럼 **읽고 나서 지우는** 곳이 쓴다 — 구독하고 있으면 지우는 순간
+ * 화면이 같이 비워진다.
+ */
+export function getSignupDraft(): SignupDraft {
+  return read();
+}
+
 export function patchSignupDraft(patch: Partial<SignupDraft>) {
   const next = { ...read(), ...patch };
   window.localStorage.setItem(KEY, JSON.stringify(next));

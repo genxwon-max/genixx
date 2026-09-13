@@ -1,4 +1,4 @@
-import { checkStandardCode, levelAllowed, levelSpecs, subskillsOf, tagBCoord } from "./blueprint";
+import { checkStandardCode, levelAllowed, subskillsOf, tagBCoord } from "./blueprint";
 import {
   typeForLevel,
   typeLabel,
@@ -246,7 +246,6 @@ export function auditItem(item: ItemDraft): AuditResult {
    */
   for (const [n, q] of item.questions.entries()) {
     const at = numbered(n);
-    const qSpec = levelSpecs[q.level];
 
     const qStd = checkStandardCode(q.standardCode, item.band);
     if (!qStd.ok) {
@@ -289,17 +288,8 @@ export function auditItem(item: ItemDraft): AuditResult {
       });
     }
 
-    /* 배점은 손으로 고치는 칸이 아니라 단계에서 따라오는 값이다. 어긋났다면 고칠 것은
-       배점이 아니라 단계라, 안내도 그렇게 적는다 */
-    if (q.points !== qSpec.points) {
-      tagging.push({
-        tone: "warn",
-        text: `${at}${q.level}의 배점은 ${qSpec.points}점인데 ${q.points}점입니다.`,
-        fix: "이 문항의 인지단계를 다시 잡아 주세요 — 배점은 단계에서 따라옵니다.",
-        code: "tag",
-        reason: "t-b-spec",
-      });
-    }
+    /* 배점이 단계의 기본 배점과 다른지는 보지 않는다. 배점은 사람이 직접 적는 값이라,
+       다르다고 짚으면 일부러 매긴 배점마다 경고가 붙는다 */
 
     if (!q.standardText.trim()) {
       tagging.push({
@@ -378,10 +368,12 @@ export function auditItem(item: ItemDraft): AuditResult {
 
 /* ───────────────────────── 기계가 쓰는 반려 소견 ───────────────────────── */
 
+/* 검수판(reviewChecks)이 쓰는 이름과 같아야 한다 — 반려 소견에 적히는 말이 화면의
+   단계 이름과 다르면 출제자가 어느 단에서 걸렸는지 되짚어야 한다 */
 const CHECK_LABEL: Record<ReviewCheckId, string> = {
-  content: "1차 내용",
-  tagging: "2차 태깅",
-  ethics: "3차 윤리·편향",
+  content: "1차 내용 검수",
+  tagging: "2차 태깅 교차검증",
+  ethics: "3차 윤리·편향 검수",
 };
 
 /** 걸린 것 하나를 두 줄로 — 무엇이 걸렸고, 무엇을 고쳐야 하는가 */

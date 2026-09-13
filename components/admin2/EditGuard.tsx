@@ -70,13 +70,34 @@ export function useEditDraft<T extends Record<string, unknown>>(saved: T) {
 export type LeaveGuard = {
   /** 붙잡아 둔 이동이 있는가 */
   pending: boolean;
+  /**
+   * 어떤 이동을 붙잡았는가 — 물음의 말을 고르는 데만 쓴다.
+   *
+   * 「나가기」와 「옮기기」는 사람에게 다른 일이다. 과목 탭을 옮기려다 붙잡혔는데
+   * 「이 화면을 떠나면」이라고 물으면, 화면째 닫히는 줄 알고 계속 편집을 누른다.
+   */
+  kind: "link" | "back" | "run" | null;
   stay: () => void;
   discard: () => void;
   saveAndGo: () => void;
+  /**
+   * 주소가 바뀌지 않는 이동을 물어보고 보낸다 — 과목 탭을 옮기거나 편성판의 다른 칸을
+   * 여는 것처럼, 화면은 그대로인데 고치던 판만 갈리는 자리다.
+   *
+   * 링크·뒤로가기는 저절로 붙잡히지만 이런 이동은 단추 하나라 잡을 것이 없다. 부르는
+   * 쪽에서 「가려는 일」을 통째로 넘기면, 손댄 것이 없을 때는 바로 하고 있을 때는
+   * 같은 물음을 띄운다.
+   */
+  ask: (run: () => void) => void;
 };
 
 /** 어디로 가려다 붙잡혔는가 */
-type Pending = { kind: "link"; href: string } | { kind: "back" } | null;
+type Pending =
+  | { kind: "link"; href: string }
+  | { kind: "back" }
+  /** 주소는 그대로 두고 이 일만 하려던 참 */
+  | { kind: "run"; run: () => void }
+  | null;
 
 /** Next 라우터의 state를 그대로 두고 표식만 얹는다 */
 function markState() {
@@ -84,8 +105,22 @@ function markState() {
   history.pushState({ ...state, a2guard: true }, "", location.href);
 }
 
-/** 손댄 채로 나가려는 것을 붙잡는다 */
-export function useUnsavedGuard(dirty: boolean, save: () => void): LeaveGuard {
+/**
+ * 손댄 채로 나가려는 것을 붙잡는다.
+ *
+ * `save`가 **false를 돌려주면 저장이 안 된 것으로 본다** — 그때는 보내지 않는다.
+ * 「저장하고 나가기」를 눌렀는데 값이 어긋나 저장이 걸러졌고 화면은 떠나 버리면, 사람이
+ * 저장했다고 믿는 순간에 고친 것이 통째로 사라진다.
+ *
+ * `discard`는 **주소가 바뀌지 않는 이동(ask)** 에서만 쓴다. 화면을 떠나는 길은 조각이
+ * 통째로 사라지므로 초안도 함께 사라지지만, 판만 갈리는 이동은 조각이 그대로 살아 있어
+ * 버린 줄 알았던 값이 다음 저장에 딸려 나간다.
+ */
+export function useUnsavedGuard(
+  dirty: boolean,
+  save: () => void | boolean,
+  discard?: () => void,
+): LeaveGuard {
   const router = useRouter();
   const [pending, setPending] = useState<Pending>(null);
   /** 히스토리에 깔아 둔 칸이 있는가 — 언제나 0개 아니면 1개다 */
@@ -155,10 +190,27 @@ export function useUnsavedGuard(dirty: boolean, save: () => void): LeaveGuard {
     return () => window.removeEventListener("popstate", onPop);
   }, [dirty]);
 
+  /* ④ 손댄 채로 이 조각이 화면에서 사라질 때 — 주소는 그대로인데 고치던 판만 갈리는
+     자리(과목 탭)다. 깔아 둔 칸을 걷어 두지 않으면 그 뒤로 뒤로가기가 한 번 헛돈다.
+     주소가 같으므로 이 back()으로는 화면이 바뀌지 않는다. 나가는 길(depart)은 제 손으로
+     히스토리를 치우므로 leaving 표식을 보고 건너뛴다. */
+  useEffect(
+    () => () => {
+      if (laid.current && !leaving.current) history.back();
+    },
+    [],
+  );
+
   const depart = (p: Exclude<Pending, null>) => {
+    setPending(null);
+    if (p.kind === "run") {
+      /* 주소는 그대로다. 깔아 둔 칸은 손댄 것이 없어지면 ③이, 판이 갈려 사라지면
+         ④가 걷는다 — 여기서 히스토리를 건드리지 않는다 */
+      p.run();
+      return;
+    }
     leaving.current = true;
     laid.current = false;
-    setPending(null);
     if (p.kind === "back") {
       // 깔아 둔 칸 + 지금 화면 = 두 칸을 지나가야 원래 뒤로 갈 곳에 닿는다
       history.go(-2);
@@ -170,11 +222,24 @@ export function useUnsavedGuard(dirty: boolean, save: () => void): LeaveGuard {
 
   return {
     pending: pending !== null,
+    kind: pending?.kind ?? null,
     stay: () => setPending(null),
-    discard: () => pending && depart(pending),
+    discard: () => {
+      if (!pending) return;
+      /* 판만 갈리는 이동은 조각이 살아남는다 — 버리기로 했으면 초안도 여기서 버려야
+         한다. 그러지 않으면 「저장하지 않고 옮기기」로 두고 온 값이 다음 저장에 딸려 나간다 */
+      if (pending.kind === "run") discard?.();
+      depart(pending);
+    },
     saveAndGo: () => {
-      save();
+      /* 저장이 걸러졌으면 보내지 않는다. 물음만 닫고 화면에 남겨, 무엇이 걸렸는지를
+         그 자리에서 보게 한다 */
+      if (save() === false) return setPending(null);
       if (pending) depart(pending);
+    },
+    ask: (run: () => void) => {
+      if (!dirty) return run();
+      setPending({ kind: "run", run });
     },
   };
 }
@@ -309,6 +374,9 @@ export function LeaveDialog({ guard }: { guard: LeaveGuard }) {
 
   if (!guard.pending) return null;
 
+  /* 주소가 바뀌는 이동은 「나가기」, 판만 갈리는 이동은 「옮기기」로 묻는다 */
+  const away = guard.kind === "run" ? "옮기기" : "나가기";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
@@ -325,17 +393,19 @@ export function LeaveDialog({ guard }: { guard: LeaveGuard }) {
           저장하지 않은 변경이 있습니다
         </h2>
         <p className="mt-2 a2-t-sm leading-[1.6] text-(--a2-ink-2)">
-          이 화면을 떠나면 고친 내용이 사라집니다. 저장하고 나갈까요?
+          {guard.kind === "run"
+            ? "다른 것을 열면 고친 내용이 사라집니다. 저장하고 옮길까요?"
+            : "이 화면을 떠나면 고친 내용이 사라집니다. 저장하고 나갈까요?"}
         </p>
         <div className="mt-4 flex flex-wrap justify-end gap-1.5">
           <button type="button" className="a2-btn" onClick={guard.stay}>
             계속 편집
           </button>
           <button type="button" className="a2-btn" onClick={guard.discard}>
-            저장하지 않고 나가기
+            저장하지 않고 {away}
           </button>
           <button type="button" className="a2-btn a2-btn-primary" onClick={guard.saveAndGo}>
-            저장하고 나가기
+            저장하고 {away}
           </button>
         </div>
       </div>

@@ -32,10 +32,9 @@ export default function SubPage({ href }: { href: string }) {
             <span aria-hidden>›</span>
             <span className="font-medium text-brand-700">{content.title}</span>
           </nav>
-          <p className="type-eyebrow mt-5 inline-flex items-center rounded-full bg-white px-3 py-1.5 text-brand-700 shadow-card">
-            {content.id}
-          </p>
-          <h1 className="type-h1 mt-4 max-w-3xl font-black text-brand-950">{content.title}</h1>
+          {/* 화면 ID 알약을 걷었다 — 정의서의 번호는 만드는 사람의 말이지 읽는 사람의
+              말이 아니다. 제목 위에 붙여 두면 그것부터 읽힌다 */}
+          <h1 className="type-h1 mt-5 max-w-3xl font-black text-brand-950">{content.title}</h1>
           <p className="type-lead mt-4 max-w-2xl text-slate-600">{content.lead}</p>
         </div>
       </section>

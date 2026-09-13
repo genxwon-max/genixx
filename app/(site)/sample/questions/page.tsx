@@ -50,7 +50,7 @@ export default function QuestionPreviewPage() {
   return (
     <>
       <PageHero
-        eyebrow="PUB-04-3"
+        eyebrow="샘플 문항"
         title="우리 아이가 푸는 문제, 미리 보세요"
         desc={`${assessment.name}(${assessment.ko}) 검사가 어떤 문항으로 이루어져 있는지 가입 전에 공개합니다. 아래 예시는 실제 세트에서 그대로 가져온 문항이며, 정답은 싣지 않았습니다.`}
         primary={{ label: "샘플 리포트 보기", href: "/sample/report" }}
