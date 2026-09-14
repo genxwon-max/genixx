@@ -13,7 +13,7 @@ import {
   type ItemState,
 } from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { PageHead, Tab, Tag } from "@/components/admin2/ui";
+import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 
 /**
  * ADM-04 문항 은행의 목록판.
@@ -50,10 +50,17 @@ const selfReviewed = (i: ItemDraft) => i.reviews.some((r) => r.self);
 
 const dash = <span className="text-(--a2-ink-4)">—</span>;
 
+/** 사용 칸의 글자 — 검색에도 이 글자 그대로 걸린다 */
+const inUseText = (s: ItemState) => (s === "approved" ? "사용" : s === "retired" ? "사용 중지" : "");
+
 /*
  * 칸 순서 — 무엇인가(코드) → 어디에 쓰이는가(과목·학년군·단계·유형) → 실제로 무슨
- * 문제인가(발문) → 지금 어디까지 왔나(상태) → 누가 붙어 있나(출제자) → 지난번에
+ * 문제인가(발문) → 회차에 나가나(사용·앵커) → 누가 붙어 있나(출제자) → 지난번에
  * 어땠나(정답률).
+ *
+ * 상태 칸은 따로 두지 않는다 — 머리의 탭이 맡는다. 사용 칸은 그 상태 가운데 승인됨과
+ * 사용 중지 둘만 「사용 · 사용 중지」로 다시 읽은 것이다. 전체 탭에서 훑을 때 회차 편성
+ * 후보에 오르는 줄이 어느 것인지가 탭을 옮기지 않고 보여야 해서 칸으로 세운다.
  *
  * 발문을 맨 왼쪽에 두지 않은 것은 코드로 문항을 찾아 오는 일이 훨씬 잦아서다 —
  * 검수 요청도 회차 편성도 4K02-S2-001로 문항을 부른다.
@@ -135,6 +142,24 @@ const COLS: Col<ItemDraft>[] = [
         <span title={r.stem}>{r.stem}</span>
       ) : (
         <span className="text-(--a2-ink-4)">발문 없음 — 작성 중</span>
+      ),
+  },
+  {
+    // 승인 전 문항은 켜고 끌 것이 아니라 대시로 둔다. 「사용 중지」로 적으면 누가 일부러
+    // 뺀 문항처럼 읽히고, 머리의 「사용 중지」 탭 개수와도 어긋난다
+    key: "inUse",
+    head: "사용",
+    width: "5.5rem",
+    nowrap: true,
+    value: (r) => inUseText(r.state),
+    sort: (r) => (r.state === "approved" ? 0 : r.state === "retired" ? 1 : 2),
+    cell: (r) =>
+      r.state === "approved" ? (
+        <Status tone="ok">사용</Status>
+      ) : r.state === "retired" ? (
+        <Status tone="muted">사용 중지</Status>
+      ) : (
+        <span title="승인된 문항만 켜고 끕니다">{dash}</span>
       ),
   },
   {

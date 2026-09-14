@@ -2836,28 +2836,32 @@ export function setAnchor(id: string, on: boolean, by: string, role: StaffRoleId
 /**
  * 승인된 문항을 회차에서 뺀다.
  *
- * 지우지 않는다. 상태만 바꾸고 까닭을 남긴다 — 이 문항으로 이미 판정한 결과가
- * 있는데 문항이 사라지면 그 판정을 설명할 길이 없어진다. 되돌릴 수도 있어야 해서
- * 까닭을 코멘트로도 남겨 둔다.
+ * 지우지 않는다. 상태만 바꾸고 누가 언제 뺐는지를 남긴다 — 이 문항으로 이미 판정한
+ * 결과가 있는데 문항이 사라지면 그 판정을 설명할 길이 없어진다. 되돌릴 수도 있어야 해서
+ * 코멘트로도 남겨 둔다.
+ *
+ * 까닭은 받으면 적고, 없어도 뺀다. 옛 콘솔은 까닭을 받는 대화상자를 거치지만, 슈퍼 관리자
+ * 콘솔은 문항 상세 머리의 사용 스위치 하나로 켜고 끈다(app/(admin2)/admin2/items/[id]).
+ * 되돌리는 것도 같은 스위치 한 번이라, 까닭 칸이 문턱이 되면 스위치가 스위치 노릇을 못 한다.
  */
-export function retireItem(id: string, by: string, role: StaffRoleId, reason: string) {
+export function retireItem(id: string, by: string, role: StaffRoleId, reason = "") {
   const item = read().find((i) => i.id === id);
   if (!item || item.state !== "approved") return null;
   patchItem(id, {
     state: "retired",
     retiredAt: now(),
     retiredBy: by,
-    retireReason: reason,
+    retireReason: reason || undefined,
     comments: [
       ...item.comments,
-      { at: now(), by, role, kind: "note", text: `사용 중지 — ${reason}` },
+      { at: now(), by, role, kind: "note", text: reason ? `사용 중지 — ${reason}` : "사용 중지" },
     ],
   });
   return item;
 }
 
 /** 사용 중지한 문항을 다시 쓴다 */
-export function restoreItem(id: string, by: string, role: StaffRoleId, reason: string) {
+export function restoreItem(id: string, by: string, role: StaffRoleId, reason = "") {
   const item = read().find((i) => i.id === id);
   if (!item || item.state !== "retired") return null;
   patchItem(id, {
@@ -2867,7 +2871,7 @@ export function restoreItem(id: string, by: string, role: StaffRoleId, reason: s
     retireReason: undefined,
     comments: [
       ...item.comments,
-      { at: now(), by, role, kind: "note", text: `다시 씀 — ${reason}` },
+      { at: now(), by, role, kind: "note", text: reason ? `다시 씀 — ${reason}` : "다시 씀" },
     ],
   });
   return item;

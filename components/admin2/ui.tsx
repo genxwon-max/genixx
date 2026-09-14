@@ -321,6 +321,37 @@ export function FormRow({
   );
 }
 
+/* ── 켜고 끄는 스위치 ──
+   누르는 **즉시** 저장소에 걸리는 두 값짜리에만 쓴다. 저장 단추를 거쳐야 나가는 칸은 체크
+   (.a2-choice)로 둔다 — 공지의 노출처럼. 한 화면에 둘이 섞여 서도 「이건 누르면 바로 걸린다」가
+   생김새로 갈린다.
+
+   이름을 늘 받는다. 스위치 옆에 글자가 있어도 그 글자와 단추를 묶어 주는 것이 없으면
+   화면 읽기 프로그램은 「전환 스위치, 켜짐」만 읽는다 — 무엇이 켜졌는지가 빠진다. */
+export function Switch({
+  on,
+  label,
+  disabled = false,
+  onChange,
+}: {
+  on: boolean;
+  label: string;
+  disabled?: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className="a2-switch"
+    />
+  );
+}
+
 /* ── 값 목록 — 설정·상세에서 이름:값을 세로로 쌓는다 ── */
 export function DescList({ rows }: { rows: { k: string; v: React.ReactNode }[] }) {
   return (

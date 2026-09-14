@@ -26,7 +26,7 @@ import {
   type Question,
 } from "@/lib/itemStore";
 import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
-import { Body, FormRow, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, Panel, SeedNote, Status, Switch, Tag } from "@/components/admin2/ui";
 import BodyEditor from "@/components/admin2/BodyEditor";
 import ItemPreview from "@/components/admin2/ItemPreview";
 import ReviewPanel from "./ReviewPanel";
@@ -51,7 +51,8 @@ import {
  *   ② 분류      단일일 때만. 과목 · 학년군 · 배점 · 인지단계 · 난이도
  *   ③ 문항      무슨 자료를 읽히고 무엇을 묻나 (세트는 목록 → 문항 상세)
  *   ④ 세부 분류  단일일 때만. 단원 · 문항 ID · 성취기준 · 재능 축 · 하위요소
- * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 승인 뒤 관리.
+ * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 앵커 판.
+ * 사용 · 사용 중지는 판이 아니라 머리의 스위치가 맡는다.
  *
  * ── 분류를 문항 앞뒤로 가른다 ──
  * 한 판에 열세 줄이 서 있어서 문항을 쓰러 온 사람이 발문 칸까지 한 화면을 넘겨야 했다.
@@ -164,6 +165,8 @@ export default function ItemDetail({ id }: { id: string }) {
 
   const editable = view.state === "draft" || view.state === "rejected";
   const locked = !editable;
+  /** 사용 스위치를 켜고 끌 수 있는가 — 검수를 지난 문항만 */
+  const switchable = view.state === "approved" || view.state === "retired";
   const by = prefs.staffName || "운영자";
   /** 화면에 적는 「남은 것」은 지금 보이는 값 기준. 제출 문턱은 저장된 값 기준이다 */
   const missing = missingContent(view);
@@ -386,6 +389,33 @@ export default function ItemDetail({ id }: { id: string }) {
         }
         actions={
           <>
+            {/* 사용 여부 — 승인됨과 사용 중지를 오간다. 문항 상태와 따로 노는 값이 아니다.
+                「사용 중지」라는 상태가 이미 회차 편성에서 문항을 빼는 자리라, 켜고 끄는 값을
+                하나 더 두면 승인됨인데 비사용인 문항이 생겨 둘 중 무엇을 믿을지 정해야 한다.
+
+                아래 판에 두지 않고 머리에 세운다. 승인된 문항은 판이 전부 잠겨 있어서, 문항을
+                열고 하는 일이 사실상 이것 하나인데 그 스위치가 판 열 개 밑에 있으면 찾으러
+                내려가야 한다. 승인 전 문항에도 꺼진 채로 세워 두고 까닭을 적는다 — 자리가
+                있다 없다 하면 승인하고 나서야 스위치가 있다는 것을 안다.
+
+                까닭을 묻지 않는다. 되돌리는 것도 스위치 한 번이고, 누가 언제 껐는지는 검수
+                이력에 메모로 남는다(lib/itemStore.ts retireItem) */}
+            <span
+              className="mr-2 flex items-center gap-1.5"
+              title={switchable ? undefined : "승인된 문항만 켜고 끌 수 있습니다"}
+            >
+              <span className="a2-t-xs text-(--a2-ink-4)" aria-hidden>
+                사용
+              </span>
+              <Switch
+                label="사용"
+                on={view.state === "approved"}
+                disabled={!switchable}
+                onChange={(on) =>
+                  on ? restoreItem(view.id, by, prefs.role) : retireItem(view.id, by, prefs.role)
+                }
+              />
+            </span>
             <span className="mr-1 flex items-center gap-1.5">
               <span className="a2-t-xs text-(--a2-ink-4)">상태</span>
               <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status>
@@ -444,8 +474,17 @@ export default function ItemDetail({ id }: { id: string }) {
                 {view.state === "submitted"
                   ? "검수 대기 중인 문항은 잠깁니다. 고치려면 위에서 제출을 회수하세요."
                   : view.state === "retired"
-                    ? "사용 중지된 문항입니다. 아래 「승인 뒤 관리」에서 다시 쓰기를 누르면 풀립니다."
+                    ? "사용 중지된 문항입니다 — 회차 편성 후보에 오르지 않습니다. 다시 쓰려면 위의 사용 스위치를 켜세요."
                     : "승인된 문항은 잠깁니다. 고치려면 위에서 새 판을 뜨세요 — 원본은 그대로 둡니다."}
+                {/* 누가 언제 껐는지 — 「승인 뒤 관리」 판 맨 아래에 있던 줄을 스위치와 함께
+                    위로 올린다. 스위치만 올리고 이 줄을 두고 오면 끈 기록이 판째 사라진다 */}
+                {view.state === "retired" && view.retiredAt && (
+                  <>
+                    <br />
+                    {view.retiredAt} · {view.retiredBy}
+                    {view.retireReason && ` — ${view.retireReason}`}
+                  </>
+                )}
               </span>
             </p>
           )}
@@ -691,8 +730,11 @@ export default function ItemDetail({ id }: { id: string }) {
               짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
           {view.state === "submitted" && <ReviewPanel key={view.id} item={item} />}
 
-          {(view.state === "approved" || view.state === "retired") && (
-            <Panel title="승인 뒤 관리" flush>
+          {/* 사용 중지·다시 쓰기는 머리의 사용 스위치로 올라갔다. 이 판에는 앵커만 남는다.
+              앵커는 까닭을 그대로 받는다 — 회차를 건너 같은 잣대로 쓰겠다는 결정이라, 켜고
+              끄는 스위치처럼 가볍게 오가는 값이 아니다 */}
+          {view.state === "approved" && (
+            <Panel title="앵커" flush>
               <div className="a2-form a2-form-lg">
                 <FormRow label="까닭" req>
                   <textarea
@@ -700,61 +742,26 @@ export default function ItemDetail({ id }: { id: string }) {
                     rows={3}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="예: 26A 회차 정답률 96% — 변별이 되지 않아 회차에서 뺍니다"
+                    placeholder="예: 세 회차 정답률이 40~60%로 고르게 나와 등화 기준으로 둡니다"
                   />
                   <span className="flex w-full flex-wrap gap-2">
-                    {view.state === "approved" && (
-                      <>
-                        <button
-                          type="button"
-                          className="a2-btn"
-                          disabled={reason.trim().length < 5 || !!view.disclosed}
-                          title={
-                            view.disclosed
-                              ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다"
-                              : undefined
-                          }
-                          onClick={() => {
-                            setAnchor(view.id, !view.anchor, by, prefs.role, reason.trim());
-                            setReason("");
-                          }}
-                        >
-                          {view.anchor ? "앵커 해제" : "앵커로 지정"}
-                        </button>
-                        <button
-                          type="button"
-                          className="a2-btn a2-btn-danger"
-                          disabled={reason.trim().length < 5}
-                          onClick={() => {
-                            retireItem(view.id, by, prefs.role, reason.trim());
-                            setReason("");
-                          }}
-                        >
-                          사용 중지
-                        </button>
-                      </>
-                    )}
-                    {view.state === "retired" && (
-                      <button
-                        type="button"
-                        className="a2-btn"
-                        disabled={reason.trim().length < 5}
-                        onClick={() => {
-                          restoreItem(view.id, by, prefs.role, reason.trim());
-                          setReason("");
-                        }}
-                      >
-                        다시 쓰기
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="a2-btn"
+                      disabled={reason.trim().length < 5 || !!view.disclosed}
+                      title={
+                        view.disclosed
+                          ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다"
+                          : undefined
+                      }
+                      onClick={() => {
+                        setAnchor(view.id, !view.anchor, by, prefs.role, reason.trim());
+                        setReason("");
+                      }}
+                    >
+                      {view.anchor ? "앵커 해제" : "앵커로 지정"}
+                    </button>
                   </span>
-                  {view.retireReason && (
-                    <p className="a2-note w-full">
-                      <span>
-                        {view.retiredAt} · {view.retiredBy} — {view.retireReason}
-                      </span>
-                    </p>
-                  )}
                 </FormRow>
               </div>
             </Panel>
