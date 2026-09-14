@@ -726,12 +726,121 @@
     padding: 14px 16px;
     gap: 8px 12px;
   }
+  /* ── 한 줄 반반 (ui.tsx FormRowPair) ──
+     가운데 이름표는 9rem. 「불인정 예」·「배점」 같은 짧은 이름만 이 자리에 선다.
+     1100px 아래에서는 입력 칸 둘이 각각 20rem을 못 넘겨 난이도 넷이 세 줄로 접히므로
+     두 줄로 되돌린다 — 그때 가운데 이름표는 왼쪽 기둥으로 돌아가고 위에 선을 긋는다 */
+  .a2-form-lg .a2-form-pair {
+    grid-template-columns: 13rem minmax(0, 1fr) 9rem minmax(0, 1fr);
+  }
+  .a2-form-label-mid {
+    border-left: 1px solid var(--a2-line);
+  }
+  @media (max-width: 1100px) {
+    .a2-form-lg .a2-form-pair {
+      grid-template-columns: 13rem minmax(0, 1fr);
+    }
+    .a2-form-label-mid {
+      border-left: 0;
+    }
+    .a2-form-label-mid,
+    .a2-form-label-mid + .a2-form-field {
+      border-top: 1px solid var(--a2-line);
+    }
+  }
+
+  /* ── 줄 안의 이름 (ui.tsx SubRows) ──
+     종이 카드의 합친 칸처럼 테두리 하나 안에 이름·칸을 쌓는다. 바깥 줄의 이름표보다 한 단
+     작게 둔다 — 같은 크기면 어느 것이 줄의 이름이고 어느 것이 칸의 이름인지 안 갈린다.
+     폭 9.5rem은 「인지 처리 위계 구체」(열 자)가 한 줄에 드는 폭이다 */
+  .a2-subrows {
+    display: grid;
+    width: 100%;
+    border: 1px solid var(--a2-line);
+    border-radius: var(--a2-radius);
+    overflow: hidden;
+  }
+  .a2-subrow {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+  }
+  .a2-subrow + .a2-subrow {
+    border-top: 1px solid var(--a2-line);
+  }
+  .a2-subrow-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 12px 10px;
+    background: var(--a2-raised);
+    border-right: 1px solid var(--a2-line);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--a2-ink-2);
+  }
+  .a2-subrow-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 6px;
+    min-width: 0;
+  }
+  .a2-subrow-field > .a2-hint {
+    flex: 1 0 100%;
+    margin: 0 4px 2px;
+  }
+
+  /* ── 자가 체크리스트 ──
+     줄마다 긴 문장이라 .a2-choice(한 줄 고정)를 못 쓴다. 누르는 자리는 줄 전체다 —
+     작은 체크 상자 하나만 누르게 두면 열네 번 겨냥해야 한다 */
+  .a2-checklist > li + li {
+    border-top: 1px solid var(--a2-line);
+  }
+  .a2-checklist label {
+    display: grid;
+    grid-template-columns: 14px 1.75rem minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 11px 16px;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--a2-ink);
+    cursor: pointer;
+  }
+  .a2-checklist label:has(input:disabled) {
+    cursor: default;
+  }
+  .a2-checklist input {
+    margin-top: 3px;
+  }
+  .a2-checklist-no {
+    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    color: var(--a2-ink-4);
+    padding-top: 1px;
+  }
+
   @media (max-width: 640px) {
-    .a2-form-lg .a2-form-row {
+    .a2-form-lg .a2-form-row,
+    .a2-form-lg .a2-form-pair {
       grid-template-columns: minmax(0, 1fr);
     }
     .a2-form-lg .a2-form-label {
       padding-block: 9px;
+    }
+    .a2-subrow {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .a2-subrow-label {
+      border-right: 0;
+      border-bottom: 1px solid var(--a2-line);
+      padding-block: 6px;
+    }
+    /* 이름표가 제 아래에 선을 긋는다(아래 .a2-form-label). 1100px 규칙이 칸 위에도 그어 두
+       겹이 되므로 칸 쪽을 걷는다 */
+    .a2-form-lg .a2-form-label-mid + .a2-form-field {
+      border-top: 0;
     }
   }
 
@@ -743,6 +852,356 @@
       border-right: 0;
       border-bottom: 1px solid var(--a2-line);
       padding-block: 6px;
+    }
+  }
+
+  /* ── 문항 카드 (.a2-card) ──
+     문항 상세만 입는다(.a2-form-lg와 함께). 종이 문항 카드처럼 **칸이 곧 입력**이다 — 값 칸의
+     안쪽 여백을 걷고, 입력의 테두리를 지워 칸의 선이 입력의 테두리 노릇을 한다. 여백 안에
+     테두리 친 입력을 또 세우면 선이 두 겹으로 서서 표가 아니라 판 위에 상자를 늘어놓은 것이
+     되고, 긴 글 칸이 좌우 16px씩 좁아진다.
+
+     이름표도 따라 줄였다. 값 칸이 40px 한 줄로 붙었으니 이름표의 위 여백(22px)은 눈높이를
+     맞출 것이 없어져 가운데로 세우고, 폭은 가장 긴 이름(「정답 · 채점 기준」)이 한 줄에 드는
+     10rem으로 좁힌다.
+
+     글자 안쪽 여백(12px)은 남긴다. 칸의 여백이 아니라 글이 선에 붙지 않게 하는 입력의 여백이다.
+     고르개 · 체크처럼 입력이 아닌 것은 .a2-cell-pad가 같은 12px를 준다.
+
+     ⚠ 이 콘솔의 규칙은 전부 @layer components 안에 있어서 Tailwind 유틸리티가 이긴다. 카드
+       안에서 여백·테두리를 바꿔야 하는 조각에는 mt-3 같은 유틸리티를 달지 않는다
+       (BodyEditor의 flush가 그래서 있다). */
+  .a2-card .a2-form-row {
+    grid-template-columns: 10rem minmax(0, 1fr);
+  }
+  .a2-card .a2-form-pair {
+    grid-template-columns: 10rem minmax(0, 1fr) 7rem minmax(0, 1fr);
+  }
+  .a2-card .a2-form-label {
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 12px;
+    line-height: 1.4;
+  }
+  .a2-card .a2-form-field {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+  }
+  .a2-card .a2-input,
+  .a2-card .a2-select,
+  .a2-card .a2-textarea {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: transparent;
+  }
+  .a2-card .a2-input,
+  .a2-card .a2-select {
+    height: 40px;
+    padding-inline: 12px;
+  }
+  .a2-card .a2-select {
+    padding-right: 28px;
+  }
+  .a2-card .a2-textarea {
+    padding: 10px 12px;
+  }
+  /* 테두리가 없으니 초점은 칸 안쪽에 두른다. 바깥으로 두르면 옆 칸의 선에 가려진다 */
+  .a2-card .a2-input:focus,
+  .a2-card .a2-select:focus,
+  .a2-card .a2-textarea:focus {
+    box-shadow: inset 0 0 0 2px var(--a2-accent);
+  }
+  .a2-card .a2-input:focus-visible,
+  .a2-card .a2-select:focus-visible,
+  .a2-card .a2-textarea:focus-visible {
+    outline: none;
+  }
+  .a2-card .a2-input:disabled,
+  .a2-card .a2-select:disabled,
+  .a2-card .a2-textarea:disabled {
+    background-color: var(--a2-raised);
+  }
+
+  /* 한 칸 안에 쌓인 조각 사이에는 선을 긋는다 — 칸 안의 칸이다.
+     ⚠ 위의 테두리 걷기보다 뒤에 둔다. 앞에 두면 조각이 입력일 때 border: 0에 지워진다 */
+  .a2-card .a2-form-field > * + *,
+  .a2-card .a2-form-block-body > * + *,
+  .a2-card .a2-subrow-field > * + *,
+  .a2-card .a2-cell-line-field > * + *,
+  .a2-card .a2-body-flush > * + * {
+    border-top: 1px solid var(--a2-line);
+  }
+  .a2-card .a2-cell-split > * + * {
+    border-left: 1px solid var(--a2-line);
+  }
+  .a2-card .a2-hint {
+    flex: none;
+    margin: 0;
+    padding: 5px 12px 6px;
+  }
+  .a2-card .a2-form-field > .a2-hint,
+  .a2-card .a2-form-block-body > .a2-hint,
+  .a2-card .a2-subrow-field > .a2-hint,
+  .a2-card .a2-block-part > .a2-hint,
+  .a2-card .a2-body-flush > .a2-hint {
+    border-top: 1px dashed var(--a2-line);
+  }
+
+  /* 고른 값만큼의 고르개 — 학년군 · 교과 단원 · 인지단계.
+     칸 끝까지 늘이면 테두리 없는 카드에서 화살표가 글에서 멀리 떨어진다. 크롬 계열은 고른 값의
+     폭으로, field-sizing을 모르는 브라우저는 가장 긴 보기의 폭으로 선다 */
+  .a2-card .a2-select-fit {
+    width: auto;
+    max-width: 100%;
+    field-sizing: content;
+  }
+  .a2-card .a2-form-field > .a2-select-fit {
+    align-self: flex-start;
+  }
+
+  /* 적은 만큼 늘어나는 글 칸 (components/admin2/GrowTextarea.tsx) — 칸 안에 스크롤을 세우지
+     않는다. 늘어나니 모서리를 끌어 늘리는 손잡이도 걷는다 */
+  .a2-grow {
+    field-sizing: content;
+    overflow: hidden;
+    resize: none;
+  }
+  /* 한 줄짜리 값 — 비었을 때는 input과 같은 40px, 칸 폭을 넘으면 접혀 늘어난다 */
+  .a2-card .a2-grow-line {
+    min-height: 40px;
+    padding-block: 8px;
+    line-height: 24px;
+  }
+  /* 옆 칸이 더 길게 늘어났으면 남은 높이까지 채운다 — 보기 글이 세 줄로 접힌 오답 설계 의도 줄,
+     인정 예만 길게 적은 인정 | 불인정 한 줄. 채우지 않으면 칸 아래가 비어, 그 빈 곳을 눌러도
+     쓰는 자리가 잡히지 않는다.
+     ⚠ flex: 1 0 auto로 둔다. 바탕 크기를 0으로 두면 글보다 낮게 눌려 뒷줄이 가려진다 */
+  .a2-card .a2-cell-split > .a2-grow {
+    align-self: stretch;
+  }
+  .a2-form-block-pair > .a2-form-block {
+    display: flex;
+    flex-direction: column;
+  }
+  .a2-form-block-pair .a2-form-block-body {
+    flex: 1 0 auto;
+  }
+  .a2-form-block-body > .a2-grow:only-child {
+    flex: 1 0 auto;
+  }
+
+  /* 입력이 아닌 것(고르개 묶음 · 읽기만 하는 값 · 단추 줄)의 글자 여백 */
+  .a2-cell-pad {
+    min-height: 40px;
+    padding: 6px 12px;
+  }
+  /* 칸 하나를 옆으로 가른다 — 재능 | 하위요소, 단원 | 학년·학기 */
+  .a2-cell-split {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  /* 오답 설계 의도 한 줄 — 번호 | 보기 글 | 의도. 좁은 화면에서는 보기 글을 줄인다.
+     폭을 style로 박으면 미디어 쿼리가 못 이겨, 375px에서 의도 칸이 76px로 눌렸다 */
+  .a2-cell-intent {
+    grid-template-columns: 3rem minmax(0, 12rem) minmax(0, 1fr);
+  }
+  @media (max-width: 640px) {
+    .a2-cell-intent {
+      grid-template-columns: 2.5rem minmax(0, 1fr) minmax(0, 1.6fr);
+    }
+  }
+  /* 입력 뒤에 단위 글자 — 배점 「점」 */
+  .a2-cell-unit {
+    display: flex;
+    align-items: center;
+  }
+  .a2-cell-unit > span {
+    flex: none;
+    padding-right: 12px;
+    font-size: 0.8125rem;
+    color: var(--a2-ink-3);
+  }
+  /* 세트의 단계별 문항 수 (items/[id]/LevelCounts.tsx) — 단계 넷을 한 줄에 칸으로 가른다.
+     좁으면 둘씩, 휴대폰에서는 하나씩 쌓는다 */
+  .a2-level-counts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .a2-level-count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    min-height: 40px;
+    padding: 4px 8px 4px 12px;
+  }
+  .a2-level-count-name {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--a2-ink-3);
+  }
+  .a2-level-count-name > b {
+    color: var(--a2-ink);
+  }
+  .a2-level-count-step {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+  }
+  .a2-level-count-step > span {
+    min-width: 1.25rem;
+    text-align: center;
+  }
+  .a2-card .a2-level-counts > * + * {
+    border-left: 1px solid var(--a2-line);
+  }
+  /* 1100px에서 둘로 접었더니 1100~1200px에서 칸 하나가 170px 남짓이라 단계 이름이 「지각 ·…」로
+     잘렸다. 기둥 메뉴 · 스크롤 막대까지 빼고 이름이 드는 폭에서 접는다 */
+  @media (max-width: 1240px) {
+    .a2-level-counts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .a2-card .a2-level-counts > :nth-child(3) {
+      border-left: 0;
+    }
+    .a2-card .a2-level-counts > :nth-child(n + 3) {
+      border-top: 1px solid var(--a2-line);
+    }
+  }
+  @media (max-width: 640px) {
+    .a2-level-counts {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .a2-card .a2-level-counts > * + * {
+      border-left: 0;
+      border-top: 1px solid var(--a2-line);
+    }
+  }
+
+  /* 칸 안에서 이름을 글 앞에 붙인 줄 (ui.tsx CellLine) */
+  .a2-cell-line {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .a2-cell-line-label {
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--a2-ink-2);
+  }
+  .a2-cell-line-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* 줄 안의 이름 — 카드에서는 바깥 테두리를 걷고 칸의 선에 맞춘다. 이름 칸은 흰 면에 굵게.
+     합친 칸의 이름(재능 평가 관점)만 옅은 면을 깔아, 둘 중 어느 것이 바깥 이름인지 갈린다 */
+  .a2-card .a2-subrows {
+    border: 0;
+    border-radius: 0;
+  }
+  .a2-card .a2-subrow {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+  }
+  .a2-card .a2-subrow-label {
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--a2-panel);
+    line-height: 1.4;
+  }
+  .a2-card .a2-subrow-field {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+  }
+
+  /* 머리 띠 칸 (ui.tsx FormBlock · BlockPart) — 표 머리 행과 같은 청회색 띠, 그 안의 덩이는
+     한 단 옅은 띠 */
+  .a2-form-block {
+    border-bottom: 1px solid var(--a2-line);
+  }
+  .a2-form-block-head {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-height: 36px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--a2-line);
+    background: var(--a2-thead);
+    color: var(--a2-thead-ink);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+  .a2-form-block-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .a2-block-part {
+    display: flex;
+    flex-direction: column;
+  }
+  .a2-block-part-head {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--a2-line);
+    background: var(--a2-raised);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--a2-ink-2);
+  }
+  .a2-form-block-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--a2-line);
+  }
+  .a2-form-block-pair > .a2-form-block {
+    border-bottom: 0;
+  }
+  .a2-form-block-pair > .a2-form-block + .a2-form-block {
+    border-left: 1px solid var(--a2-line);
+  }
+
+  @media (max-width: 1100px) {
+    .a2-card .a2-form-pair {
+      grid-template-columns: 10rem minmax(0, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .a2-card .a2-form-row,
+    .a2-card .a2-form-pair,
+    .a2-card .a2-subrow,
+    .a2-cell-line,
+    .a2-form-block-pair {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .a2-card .a2-form-label {
+      min-height: 0;
+    }
+    .a2-cell-line-label {
+      padding-block: 6px 0;
+    }
+    .a2-form-block-pair > .a2-form-block + .a2-form-block {
+      border-left: 0;
+      border-top: 1px solid var(--a2-line);
     }
   }
 

@@ -1,6 +1,7 @@
 import { checkStandardCode, levelAllowed, subskillsOf, tagBCoord } from "./blueprint";
 import {
-  typeForLevel,
+  levelTypesText,
+  typeFitsLevel,
   typeLabel,
   type ItemDraft,
   type RejectCode,
@@ -258,11 +259,13 @@ export function auditItem(item: ItemDraft): AuditResult {
       });
     }
 
-    if (q.type !== typeForLevel[q.level]) {
+    /* 고정 매핑이 허락하는 형식이면 통과한다 — S3은 단답도 서술 · 논술도 된다. 형식 칸과
+       체크리스트가 같은 함수를 본다(lib/itemStore.ts typeFitsLevel) */
+    if (!typeFitsLevel(q.level, q.type)) {
       tagging.push({
         tone: "block",
-        text: `${at}${q.level}은 ${typeLabel(typeForLevel[q.level])}이어야 하는데 ${typeLabel(q.type)}입니다.`,
-        fix: `형식을 ${typeLabel(typeForLevel[q.level])}으로 바꾸거나, 이 문항가 실제로 재는 단계를 다시 잡아 주세요.`,
+        text: `${at}${q.level}은 ${levelTypesText(q.level)}이어야 하는데 ${typeLabel(q.type)}입니다.`,
+        fix: `형식을 ${levelTypesText(q.level)}으로 바꾸거나, 이 문항이 실제로 재는 단계를 다시 잡아 주세요.`,
         code: "tag",
         reason: "t-b-spec",
       });
