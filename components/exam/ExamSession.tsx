@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   levelOf,
+  pageIndexOf,
+  pagesOf,
   QUESTIONS_PER_SUBJECT,
   questionsByLevel,
   questionsOf,
   subjectOf,
+  type Brief,
   type Question,
   type SubjectId,
 } from "@/lib/exam";
@@ -48,6 +51,14 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   const record = useExamRecord(studentId);
   const config = useExamConfig();
   const [index, setIndex] = useState(0);
+  /**
+   * 이동판에서 방금 고른 문항.
+   *
+   * 쪽 단위로 넘기게 되면서 「몇 쪽인가」만으로는 이동판이 하는 일을 못 하게 되었다.
+   * 세트 한 쪽에 다섯 문항이 서면 그 다섯이 모두 같은 쪽이라, 7번을 눌러도 쪽 번호가
+   * 안 바뀌어 화면이 꿈쩍도 하지 않는다. 고른 문항을 따로 들고 그 자리로 데려간다.
+   */
+  const [focusId, setFocusId] = useState<string | null>(null);
   const [askForfeit, setAskForfeit] = useState(false);
   const [askSubmit, setAskSubmit] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -146,12 +157,20 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
     );
   }
 
-  const question = list[index];
-  const value = rec.answers[question.id];
+  /* 넘기는 단위는 **쪽**이다 — 세트 하나(자료 + 문항 여럿)이거나 낱개 문항 하나.
+     세는 단위는 그대로 문항이다. 아이가 넘기는 것과 우리가 세는 것은 다른 층이다 */
+  const pages = pagesOf(subject);
+  const page = pages[Math.min(index, pages.length - 1)];
   const doneCount = list.filter((q) => isAnswered(q, rec.answers[q.id])).length;
   const remain = Math.max(0, limitMin * 60 - elapsed);
-  const isLast = index === list.length - 1;
+  const isLast = index === pages.length - 1;
   const unanswered = list.length - doneCount;
+  const isSet = page.items.length > 1;
+  /* 이동판이 짚는 문항 — 고른 것이 이 쪽에 없으면(다음 단추로 넘어온 참) 첫 문항 */
+  const hereId = page.items.some((q) => q.id === focusId) ? focusId! : page.items[0].id;
+  /* 세트는 층이 여럿일 수 있다(자료 하나로 S1과 S3를 묻는 것이 세트를 두는 까닭이다).
+     머리에는 그 쪽이 걸친 층을 한 줄로 적는다 */
+  const levelsHere = [...new Set(page.items.map((q) => q.level))];
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
@@ -163,185 +182,48 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
             <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
             <span className="hidden text-[12px] text-exam-muted sm:block">
               총 {QUESTIONS_PER_SUBJECT}문항 · 제한 {limitMin}분
+              {isSet && ` · 이 쪽은 한 자료로 ${page.items.length}문항`}
             </span>
           </div>
           <p className="text-[12px] font-medium tabular-nums text-exam-muted">
-            {question.level} {levelOf(question.level).name} · {index + 1} / {list.length}
+            {levelsHere.map((l) => `${l} ${levelOf(l).name}`).join(" · ")} · {index + 1} /{" "}
+            {pages.length}쪽
           </p>
         </div>
       </div>
 
-      {/* 본문 — 좌: 자료 / 가운데: 문제 / 우: 문항 이동판 */}
+      {/* 본문 — 좌: 자료 / 가운데: 문제(세트면 여럿) / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_15.5rem] lg:overflow-hidden">
-        <section className="order-2 border-b border-exam-line bg-exam-raised px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
-          <p className={eyebrow}>{question.brief.label}</p>
-          <h2 className="mt-3 text-[20px] font-black tracking-tight text-exam-text md:text-[22px]">
-            {question.brief.title}
-          </h2>
+        <BriefPanel brief={page.brief} />
 
-          <div className="mt-5 space-y-4">
-            {question.brief.paragraphs.map((p) => (
-              <p key={p} className="text-[15px] leading-[1.95] text-exam-text/90">
-                {p}
-              </p>
-            ))}
-          </div>
-
-          {question.brief.list && (
-            <ul className={`mt-5 space-y-2.5 p-5 ${panel}`}>
-              {question.brief.list.map((l) => (
-                <li key={l} className="text-[15px] leading-relaxed text-exam-text">
-                  {l}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {question.brief.table && (
-            <div className={`mt-5 overflow-x-auto ${panel}`}>
-              <table className="w-full text-left text-[14px]">
-                <thead>
-                  <tr className="border-b border-exam-line">
-                    {question.brief.table.head.map((h) => (
-                      <th
-                        key={h}
-                        className="whitespace-nowrap px-4 py-3 font-black tabular-nums text-exam-text"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {question.brief.table.rows.map((row) => (
-                    <tr key={row[0]}>
-                      {row.map((cell, c) => (
-                        <td
-                          key={c}
-                          className={`whitespace-nowrap px-4 py-3 tabular-nums ${
-                            c === 0 ? "font-bold text-exam-text" : "text-exam-muted"
-                          }`}
-                        >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {question.brief.note && (
-            <p className="mt-5 border-t border-exam-line pt-4 text-[13px] leading-relaxed text-exam-muted">
-              {question.brief.note}
-            </p>
-          )}
-        </section>
-
-        <section className="order-3 px-6 py-7 lg:order-2 lg:overflow-y-auto lg:px-10 lg:py-9">
-          <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
-            <p className="text-[13px] font-semibold text-exam-text">
-              <span className="tabular-nums">{question.no}</span>번
-              <span className="ml-2 font-medium text-exam-muted">
-                {question.type === "essay" ? "서술형" : "객관식"}
-              </span>
-            </p>
-            <p className="text-[12px] font-medium tabular-nums text-exam-muted">
-              {question.level} {levelOf(question.level).name}
-            </p>
-          </div>
-
-          <h1 className="mt-5 whitespace-pre-line text-[19px] font-bold leading-[1.75] text-exam-text md:text-[21px]">
-            {question.stem}
-          </h1>
-
-          {question.type === "choice" ? (
-            <fieldset className="mt-7">
-              <legend className="sr-only">보기 선택</legend>
-              <ul className="grid gap-2">
-                {question.choices?.map((c, i) => {
-                  const on = value === i;
-                  return (
-                    <li key={c}>
-                      {/* 고른 보기는 면을 물들이지 않고 테두리와 글자 굵기로 세운다.
-                          답안지에 형광펜을 칠하지는 않는다. */}
-                      <label
-                        className={`flex cursor-pointer items-start gap-4 rounded-[6px] border p-4 transition-colors ${
-                          on
-                            ? "border-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
-                            : "border-exam-line hover:border-exam-muted"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={question.id}
-                          value={i}
-                          checked={on}
-                          onChange={() => setAnswer(studentId, subject, question.id, i)}
-                          className="sr-only"
-                        />
-                        <span
-                          aria-hidden
-                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
-                            on
-                              ? "border-exam-text bg-exam-text text-white"
-                              : "border-exam-line text-exam-muted"
-                          }`}
-                        >
-                          {i + 1}
-                        </span>
-                        <span
-                          className={`text-[15px] leading-[1.7] ${
-                            on ? "font-semibold text-exam-text" : "text-exam-text"
-                          }`}
-                        >
-                          {c}
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </fieldset>
-          ) : (
-            <div className="mt-7">
-              {question.guide && (
-                <ol className={`mb-4 space-y-2 p-5 ${panel}`}>
-                  <li className={eyebrow}>이렇게 써 보세요</li>
-                  {question.guide.map((g, i) => (
-                    <li key={g} className="flex gap-2.5 text-[14px] leading-relaxed text-exam-text">
-                      <span className="font-bold tabular-nums text-exam-muted">{i + 1}.</span>
-                      {g}
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <textarea
-                rows={9}
-                value={typeof value === "string" ? value : ""}
-                onChange={(e) => setAnswer(studentId, subject, question.id, e.target.value)}
-                placeholder={question.placeholder}
-                aria-label="서술형 답안"
-                className="w-full rounded-md border border-exam-line bg-exam-panel px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-brand-500"
-              />
-              <p className="mt-2 text-right text-[12px] tabular-nums text-exam-muted">
-                {(typeof value === "string" ? value : "").trim().length}자
-              </p>
-            </div>
-          )}
-
-          <p className="mt-6 border-t border-exam-line pt-4 text-[12px] leading-relaxed text-exam-muted">
-            답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다. 제출한 뒤에는 문항마다 왜 그렇게
-            답했는지(또는 왜 풀지 못했는지) 적는 단계가 이어집니다.
-          </p>
-        </section>
+        {/* 가운데 — 세트면 이 쪽의 문항이 차례로 선다. 낱개면 하나뿐이다.
+            한 문항씩 넘기지 않는 까닭은 자료 때문이다: 2번을 풀다가 자료를 다시 보려고
+            앞 쪽으로 돌아가야 한다면 「두 번 읽히지 않는다」가 지켜지지 않는다 */}
+        <div className="order-3 divide-y divide-exam-line lg:order-2 lg:overflow-y-auto">
+          {page.items.map((q) => (
+            <QuestionBody
+              key={q.id}
+              q={q}
+              subject={subject}
+              studentId={studentId}
+              value={rec.answers[q.id]}
+              focus={q.id === focusId}
+            />
+          ))}
+        </div>
 
         <QuestionPad
           subject={subject}
-          index={index}
+          /* 세트면 그 쪽의 문항이 모두 「지금 보이는 것」이다. 그중 어디를 짚고 있는지는
+             isCurrent가 따로 말한다 — 다섯을 한꺼번에 「지금 여기」라고 하면 낭독기가
+             현재 단계 다섯 개를 읽는다 */
+          isHere={(q) => q.setId === page.id}
+          isCurrent={(q) => q.id === hereId}
           isDone={(q) => isAnswered(q, rec.answers[q.id])}
-          onPick={setIndex}
+          onPick={(q) => {
+            setIndex(pageIndexOf(subject, q));
+            setFocusId(q.id);
+          }}
           doneLabel="답한 문항"
           doneVerb="응답함"
         />
@@ -382,7 +264,7 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
             ) : (
               <button
                 type="button"
-                onClick={() => setIndex((i) => Math.min(list.length - 1, i + 1))}
+                onClick={() => setIndex((i) => Math.min(pages.length - 1, i + 1))}
                 className={btnPrimary}
               >
                 다음
@@ -431,17 +313,27 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
  */
 function QuestionPad({
   subject,
-  index,
+  isHere,
+  isCurrent,
   isDone,
   onPick,
   doneLabel,
   doneVerb,
 }: {
   subject: SubjectId;
-  index: number;
+  /**
+   * 지금 화면에 서 있는 문항인가.
+   *
+   * 번호(index)를 받던 것을 바꿨다. 응시 화면은 **쪽** 단위로 넘어가고(세트면 한 쪽에
+   * 문항이 여럿) 해석 화면은 여전히 문항 단위라, 같은 번호가 두 화면에서 다른 것을
+   * 가리키게 되었다. 「이 문항이 지금 보이는가」만 물으면 두 화면이 같은 판을 쓴다.
+   */
+  isHere: (q: Question) => boolean;
+  /** 그중에서도 지금 짚고 있는 하나 — 낭독기에 「현재 단계」로 읽히는 자리 */
+  isCurrent: (q: Question) => boolean;
   /** 이 문항을 채웠는가 — 응시 때는 「답했는가」, 해석 때는 「해석을 적었는가」 */
   isDone: (q: Question) => boolean;
-  onPick: (i: number) => void;
+  onPick: (q: Question) => void;
   doneLabel: string;
   doneVerb: string;
 }) {
@@ -469,14 +361,14 @@ function QuestionPad({
 
             <ol className="mt-2.5 flex flex-wrap gap-1.5">
               {g.items.map((q) => {
-                const at = list.indexOf(q);
                 const ok = isDone(q);
-                const current = at === index;
+                const here = isHere(q);
+                const current = isCurrent(q);
                 return (
                   <li key={q.id}>
                     <button
                       type="button"
-                      onClick={() => onPick(at)}
+                      onClick={() => onPick(q)}
                       aria-current={current ? "step" : undefined}
                       aria-label={`${q.no}번 ${ok ? doneVerb : "아직 " + doneVerb.replace("함", "하지 않음")}`}
                       title={`${q.no}번 · ${q.type === "essay" ? "서술형" : "객관식"} · ${
@@ -485,9 +377,12 @@ function QuestionPad({
                       className={`flex h-9 w-9 flex-col items-center justify-center rounded-[6px] border text-[13px] tabular-nums transition-colors ${
                         current
                           ? "border-exam-text bg-exam-text font-bold text-white"
-                          : ok
-                            ? "border-exam-muted font-bold text-exam-text hover:bg-exam-raised"
-                            : "border-exam-line font-medium text-exam-muted hover:bg-exam-raised"
+                          : here
+                            ? /* 같은 쪽에 함께 서 있는 문항 — 지금 보이지만 짚은 것은 아니다 */
+                              "border-exam-text font-bold text-exam-text hover:bg-exam-raised"
+                            : ok
+                              ? "border-exam-muted font-bold text-exam-text hover:bg-exam-raised"
+                              : "border-exam-line font-medium text-exam-muted hover:bg-exam-raised"
                       }`}
                     >
                       {q.no}
@@ -857,9 +752,10 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
 
         <QuestionPad
           subject={subject}
-          index={index}
+          isHere={(q) => q.id === question.id}
+          isCurrent={(q) => q.id === question.id}
           isDone={written}
-          onPick={setIndex}
+          onPick={(q) => setIndex(list.indexOf(q))}
           doneLabel="해석을 남긴 문항"
           doneVerb="작성함"
         />
@@ -1096,5 +992,217 @@ function Forfeited({
         </Link>
       </div>
     </Result>
+  );
+}
+
+/* ───────────────────────── 함께 읽는 자료 ───────────────────────── */
+
+/**
+ * 왼쪽에 붙는 자료 칸.
+ *
+ * 응시와 해석 두 화면이 같은 것을 그리고, 세트면 그 쪽의 문항 여럿이 이 하나를 나눠
+ * 읽는다. 조각으로 뽑아 둔 까닭이 그것이다 — 같은 자료를 두 곳이 각자 그리면 표가
+ * 한쪽에만 붙는 날이 온다.
+ */
+function BriefPanel({ brief }: { brief: Brief }) {
+  return (
+    <section className="order-2 border-b border-exam-line bg-exam-raised px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
+        <p className={eyebrow}>{brief.label}</p>
+        <h2 className="mt-3 text-[20px] font-black tracking-tight text-exam-text md:text-[22px]">
+          {brief.title}
+        </h2>
+
+        <div className="mt-5 space-y-4">
+          {brief.paragraphs.map((p) => (
+            <p key={p} className="text-[15px] leading-[1.95] text-exam-text/90">
+              {p}
+            </p>
+          ))}
+        </div>
+
+        {brief.list && (
+          <ul className={`mt-5 space-y-2.5 p-5 ${panel}`}>
+            {brief.list.map((l) => (
+              <li key={l} className="text-[15px] leading-relaxed text-exam-text">
+                {l}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {brief.table && (
+          <div className={`mt-5 overflow-x-auto ${panel}`}>
+            <table className="w-full text-left text-[14px]">
+              <thead>
+                <tr className="border-b border-exam-line">
+                  {brief.table.head.map((h) => (
+                    <th
+                      key={h}
+                      className="whitespace-nowrap px-4 py-3 font-black tabular-nums text-exam-text"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {brief.table.rows.map((row) => (
+                  <tr key={row[0]}>
+                    {row.map((cell, c) => (
+                      <td
+                        key={c}
+                        className={`whitespace-nowrap px-4 py-3 tabular-nums ${
+                          c === 0 ? "font-bold text-exam-text" : "text-exam-muted"
+                        }`}
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {brief.note && (
+          <p className="mt-5 border-t border-exam-line pt-4 text-[13px] leading-relaxed text-exam-muted">
+            {brief.note}
+          </p>
+        )}
+    </section>
+  );
+}
+
+/* ───────────────────────── 문항 한 덩이 ───────────────────────── */
+
+/**
+ * 발문 · 보기 · 답 쓰는 칸.
+ *
+ * 세트면 이것이 한 쪽에 여럿 선다. 낱개면 하나뿐이다 — 어느 쪽이든 그리는 것은 같고,
+ * 다른 것은 머리줄에 번호를 세우는가뿐이다.
+ */
+function QuestionBody({
+  q,
+  subject,
+  studentId,
+  value,
+  focus,
+}: {
+  q: Question;
+  subject: SubjectId;
+  studentId: string;
+  value: number | string | undefined;
+  /** 이동판에서 방금 고른 문항인가 — 그러면 제 자리로 화면을 끌어온다 */
+  focus: boolean;
+}) {
+  const box = useRef<HTMLElement>(null);
+
+  /* 같은 쪽 안의 문항을 골랐을 때도 화면이 움직여야 한다. 쪽 번호는 그대로라
+     아무것도 다시 그려지지 않으므로, 끌어오는 일은 이쪽에서 한다 */
+  useEffect(() => {
+    /* 부드럽게 굴리지 않는다 — 시간을 재는 시험이고, 2천 픽셀을 애니메이션으로 넘기는
+       동안 다음 문항을 또 누르면 두 굴림이 겹쳐 엉뚱한 자리에 선다 */
+    if (focus) box.current?.scrollIntoView({ block: "start" });
+  }, [focus]);
+
+  return (
+    <section ref={box} className="scroll-mt-2 px-6 py-7 lg:px-10 lg:py-9">
+        <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
+          <p className="text-[13px] font-semibold text-exam-text">
+            <span className="tabular-nums">{q.no}</span>번
+            <span className="ml-2 font-medium text-exam-muted">
+              {q.type === "essay" ? "서술형" : "객관식"}
+            </span>
+          </p>
+          <p className="text-[12px] font-medium tabular-nums text-exam-muted">
+            {q.level} {levelOf(q.level).name}
+          </p>
+        </div>
+
+        <h1 className="mt-5 whitespace-pre-line text-[19px] font-bold leading-[1.75] text-exam-text md:text-[21px]">
+          {q.stem}
+        </h1>
+
+        {q.type === "choice" ? (
+          <fieldset className="mt-7">
+            <legend className="sr-only">보기 선택</legend>
+            <ul className="grid gap-2">
+              {q.choices?.map((c, i) => {
+                const on = value === i;
+                return (
+                  <li key={c}>
+                    {/* 고른 보기는 면을 물들이지 않고 테두리와 글자 굵기로 세운다.
+                        답안지에 형광펜을 칠하지는 않는다. */}
+                    <label
+                      className={`flex cursor-pointer items-start gap-4 rounded-[6px] border p-4 transition-colors ${
+                        on
+                          ? "border-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
+                          : "border-exam-line hover:border-exam-muted"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={q.id}
+                        value={i}
+                        checked={on}
+                        onChange={() => setAnswer(studentId, subject, q.id, i)}
+                        className="sr-only"
+                      />
+                      <span
+                        aria-hidden
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
+                          on
+                            ? "border-exam-text bg-exam-text text-white"
+                            : "border-exam-line text-exam-muted"
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                      <span
+                        className={`text-[15px] leading-[1.7] ${
+                          on ? "font-semibold text-exam-text" : "text-exam-text"
+                        }`}
+                      >
+                        {c}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </fieldset>
+        ) : (
+          <div className="mt-7">
+            {q.guide && (
+              <ol className={`mb-4 space-y-2 p-5 ${panel}`}>
+                <li className={eyebrow}>이렇게 써 보세요</li>
+                {q.guide.map((g, i) => (
+                  <li key={g} className="flex gap-2.5 text-[14px] leading-relaxed text-exam-text">
+                    <span className="font-bold tabular-nums text-exam-muted">{i + 1}.</span>
+                    {g}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <textarea
+              rows={9}
+              value={typeof value === "string" ? value : ""}
+              onChange={(e) => setAnswer(studentId, subject, q.id, e.target.value)}
+              placeholder={q.placeholder}
+              aria-label="서술형 답안"
+              className="w-full rounded-md border border-exam-line bg-exam-panel px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-brand-500"
+            />
+            <p className="mt-2 text-right text-[12px] tabular-nums text-exam-muted">
+              {(typeof value === "string" ? value : "").trim().length}자
+            </p>
+          </div>
+        )}
+
+        <p className="mt-6 border-t border-exam-line pt-4 text-[12px] leading-relaxed text-exam-muted">
+          답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다. 제출한 뒤에는 문항마다 왜 그렇게
+          답했는지(또는 왜 풀지 못했는지) 적는 단계가 이어집니다.
+        </p>
+    </section>
   );
 }

@@ -253,7 +253,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
               key={m.label}
               href={m.href}
               aria-current={m.href === current ? "page" : undefined}
-              title={`${m.label} · ${m.sid}`}
+              title={m.label}
               className={`flex w-full flex-col items-center gap-1 rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === current
                   ? "bg-soft-primary-soft text-soft-primary"

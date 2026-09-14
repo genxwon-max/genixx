@@ -156,7 +156,11 @@ const sciMagnet = {
   note: "정답을 외워서 쓰는 것보다 왜 그렇게 생각했는지가 중요합니다.",
 };
 
-export const questions: Question[] = [
+/*
+ * 묶음 열쇠(setId)는 여기서 적지 않는다 — 같은 자료를 쓰는 문항끼리 lib/exam.ts의
+ * withSets가 매긴다. 두 곳에 적어 두면 자료를 바꿔 끼우고 열쇠는 그대로 두는 날이 온다.
+ */
+export const questions: Omit<Question, "setId">[] = [
   /* ═════════════════ 국어 (언어) ═════════════════ */
 
   /* ── S1 지각 ── */

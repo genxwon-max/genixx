@@ -11,6 +11,6 @@ export const metadata = { title: "문항 상세" };
 export default async function Admin2ItemDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   /* key를 문항 번호로 준다. 같은 경로 꼴 안에서 문항만 갈아 끼우면 React가 컴포넌트를
-     그대로 두어, 앞 문항에서 쓰던 검수 체크와 메모가 다음 문항 화면에 그대로 남는다. */
+     그대로 두어, 앞 문항에서 쓰던 검수 체크와 승인 뒤 관리의 까닭이 다음 문항 화면에 그대로 남는다. */
   return <ItemDetail key={id} id={id} />;
 }

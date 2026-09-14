@@ -6,6 +6,8 @@ import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable"
 import { Status } from "@/components/admin2/ui";
 import { accountTone, n } from "@/lib/admin2";
 import {
+  maskMail,
+  maskPhone,
   userStateLabel,
   userStateOptions,
   type ParentRow,
@@ -104,7 +106,9 @@ const parentCols: Col<ParentRow>[] = [
     nowrap: true,
     hide: "md",
     value: (r) => r.contact,
-    cell: (r) => <span className="a2-mono a2-t-sm">{r.contact}</span>,
+    /* 목록은 여러 사람을 한꺼번에 펴 보는 자리라 가린다. 온전한 값은 상세에서 본다.
+       검색(value)은 온전한 값으로 걸린다 — 메일 주소로 사람을 찾는 일이 실제로 있다 */
+    cell: (r) => <span className="a2-mono a2-t-sm">{maskMail(r.contact)}</span>,
   },
   {
     key: "phone",
@@ -113,7 +117,7 @@ const parentCols: Col<ParentRow>[] = [
     nowrap: true,
     hide: "lg",
     value: (r) => r.phone,
-    cell: (r) => <span className="a2-mono a2-t-sm">{r.phone}</span>,
+    cell: (r) => <span className="a2-mono a2-t-sm">{maskPhone(r.phone)}</span>,
   },
   // 지역: 거르개로 좁히는 칸이라 정렬(=검색)을 달지 않는다
   {
@@ -198,7 +202,7 @@ const teacherCols: Col<TeacherRow>[] = [
     nowrap: true,
     hide: "md",
     value: (r) => r.contact,
-    cell: (r) => <span className="a2-mono a2-t-sm">{r.contact}</span>,
+    cell: (r) => <span className="a2-mono a2-t-sm">{maskMail(r.contact)}</span>,
   },
   // 학교는 정렬을 남겨 둔다 — 같은 학교 교사가 몇인지 묶어 보는 일이 실제로 있다
   {

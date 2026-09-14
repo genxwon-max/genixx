@@ -49,12 +49,30 @@ import {
 export type DirectoryPatch = {
   /** 회원·학생 계정 상태 */
   state?: UserState;
+  /** 회원 이름 */
+  name?: string;
+  /** 회원 이메일 (원본은 가려진 채로 온다) */
+  contact?: string;
+  /** 학부모 연락처 */
+  phone?: string;
+  /** 교사 소속 학교 */
+  school?: string;
+  /** 교사 담당 학급 수 */
+  classes?: number;
+  /** 교사 담당 학생 수 */
+  charge?: number;
+  /** 가입일 */
+  joinedAt?: string;
   /** 회원 지역 */
   region?: string;
   /** 학생 학년 */
   grade?: string;
   /** 학생 접속코드 — 재발급하면 바뀐다 */
   code?: string;
+  /** 기관 종류 */
+  kind?: OrgRow["kind"];
+  /** 기관에 소속된 학생 수 */
+  students?: number;
   /** 기관 계약 상태 */
   contract?: OrgRow["contract"];
   /** 기관 계약 만료일 */
@@ -124,9 +142,30 @@ export function patchOf(patches: DirectoryPatches, id: string): DirectoryPatch {
    그 줄이 아직 「활성」으로 서 있다 — 눌러서 고친 것이 화면에 안 돌아오는 콘솔은
    고친 것 자체를 못 믿게 만든다. */
 
+/**
+ * 회원 상세에서 고친 값을 명부 줄에 덮는다.
+ *
+ * 갈래마다 없는 칸은 undefined로 남으므로 `?? row.x`가 알아서 씨앗을 쓴다 — 학부모에게
+ * school을 덮어도 그 줄에는 그 칸이 없어 아무 일도 일어나지 않는다. 여기 빠뜨린 칸이
+ * 하나라도 있으면 상세에서 고친 이름이 목록에서는 옛 이름으로 서게 된다.
+ */
 function overlayMember<T extends ParentRow | TeacherRow>(row: T, p?: DirectoryPatch): T {
   if (!p) return row;
-  return { ...row, state: p.state ?? row.state, region: p.region ?? row.region };
+  const next: Record<string, unknown> = { ...row };
+  for (const k of [
+    "state",
+    "name",
+    "contact",
+    "phone",
+    "school",
+    "region",
+    "classes",
+    "charge",
+    "joinedAt",
+  ] as const) {
+    if (p[k] != null && k in row) next[k] = p[k];
+  }
+  return next as T;
 }
 
 function overlayStudent(row: StudentRow, p?: DirectoryPatch): StudentRow {
@@ -134,8 +173,11 @@ function overlayStudent(row: StudentRow, p?: DirectoryPatch): StudentRow {
   return {
     ...row,
     state: p.state ?? row.state,
+    name: p.name ?? row.name,
+    school: p.school ?? row.school,
     grade: p.grade ?? row.grade,
     code: p.code ?? row.code,
+    joinedAt: p.joinedAt ?? row.joinedAt,
   };
 }
 
@@ -143,6 +185,10 @@ function overlayOrg(row: OrgRow, p?: DirectoryPatch): OrgRow {
   if (!p) return row;
   return {
     ...row,
+    name: p.name ?? row.name,
+    kind: p.kind ?? row.kind,
+    region: p.region ?? row.region,
+    students: p.students ?? row.students,
     contract: p.contract ?? row.contract,
     until: p.until ?? row.until,
     manager: p.manager ?? row.manager,

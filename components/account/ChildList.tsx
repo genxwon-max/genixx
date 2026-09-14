@@ -268,10 +268,12 @@ export default function ChildList() {
       )}
 
       <div className={`${card} mt-4 p-5`}>
-        <p className="text-[14px] font-black text-soft-ink">아이는 따로 가입하지 않습니다</p>
+        <p className="text-[14px] font-black text-soft-ink">만 14세를 기준으로 갈립니다</p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
-          만 14세 이상이어도 마찬가지입니다. 동의의 주체만 아이 본인으로 바뀔 뿐, 계정은 이 보호자
-          계정 하나입니다. 아이 화면에서는 결제 정보나 형제자매의 결과가 보이지 않습니다.
+          만 14세 미만 아이는 이 계정 안의 프로필로 남고, 법정대리인이신 보호자께서 동의하셔야
+          응시가 열립니다. 만 14세 이상이면 아이가 자기 이름으로 가입해 본인 동의로 진행할 수 있고,
+          그때는 이 계정과 이어서 결과를 함께 보시게 됩니다. 어느 쪽이든 아이 화면에서는 결제
+          정보나 형제자매의 결과가 보이지 않습니다.
         </p>
       </div>
     </>

@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { ChevronDown } from "./Icons";
 
-export type FaqItem = { q: string; a: string };
+/**
+ * 답은 글 한 줄이 기본이고, 서식이 있으면 `html`로 온다.
+ *
+ * 콘솔에서 답을 마크다운·HTML로도 쓸 수 있게 되면서(lib/contentStore.ts) 그린 결과를
+ * 받을 자리가 필요해졌다. 소독은 넘기는 쪽에서 renderDetail이 끝내 둔다(lib/richText.ts).
+ */
+export type FaqItem = { q: string; a: string; html?: string };
 
 export default function Faq({ items }: { items: FaqItem[] }) {
   const [open, setOpen] = useState<number | null>(0);
@@ -35,9 +41,16 @@ export default function Faq({ items }: { items: FaqItem[] }) {
             </h3>
             {expanded && (
               <div className="px-5 pb-6 md:px-6">
-                <p className="type-body rounded-xl bg-brand-50/70 px-5 py-4 text-slate-600">
-                  {item.a}
-                </p>
+                {item.html ? (
+                  <div
+                    className="type-body prose-faq rounded-xl bg-brand-50/70 px-5 py-4 text-slate-600"
+                    dangerouslySetInnerHTML={{ __html: item.html }}
+                  />
+                ) : (
+                  <p className="type-body rounded-xl bg-brand-50/70 px-5 py-4 text-slate-600">
+                    {item.a}
+                  </p>
+                )}
               </div>
             )}
           </li>

@@ -1,89 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowRight, CheckIcon } from "@/components/Icons";
-import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "@/components/account/ui";
+import SignupDone from "@/components/account/SignupDone";
 
 export const metadata: Metadata = {
   title: "가입 완료",
+  description: "회원가입이 끝났습니다. 로그인하면 자녀 등록으로 이어집니다. (ACC-01-3)",
   robots: { index: false, follow: false },
 };
 
-const next = [
-  {
-    step: "1",
-    title: "자녀 등록",
-    desc: "이름과 생년월일을 넣고 동의하시면 됩니다. 학교·학년은 나중에 채우셔도 됩니다.",
-    href: "/my/children/new",
-  },
-  {
-    step: "2",
-    title: "접속코드 발급 후 응시",
-    desc: "발급된 8자리 코드와 생년월일로 아이가 응시 화면에 들어갑니다.",
-    href: "/exam",
-  },
-];
-
-/** 가입 완료 — 학부모 경로 */
+/** ACC-01-3 가입 완료 — 학부모 경로. 세션은 여기서 만들지 않고 로그인을 권한다 */
 export default function SignupDonePage() {
-  return (
-    <>
-      <div className={`${card} ${cardPad} text-center`}>
-        <span
-          aria-hidden
-          className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"
-        >
-          <CheckIcon className="h-7 w-7" />
-        </span>
-        <h1 className="mt-5 text-[26px] font-black tracking-tight text-soft-ink">
-          가입이 끝났습니다
-        </h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-soft-muted">
-          이제 자녀를 등록하면 진단을 신청할 수 있습니다. 아래 순서대로 진행하시면 됩니다.
-        </p>
-      </div>
-
-      <AccHead id="ACC-03" title="다음에 할 일" />
-
-      <ol className="space-y-3">
-        {next.map((n) => (
-          <li key={n.step}>
-            <Link
-              href={n.href}
-              className="group flex items-center gap-4 rounded-xl border border-soft-line bg-slate-50 px-5 py-4 transition-colors hover:border-soft-primary"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-soft-ink text-[14px] font-black text-white">
-                {n.step}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-black text-soft-ink">{n.title}</span>
-                <span className="mt-1 block text-[13px] leading-relaxed text-soft-muted">
-                  {n.desc}
-                </span>
-              </span>
-              <ArrowRight className="h-5 w-5 shrink-0 text-soft-muted transition-colors group-hover:text-soft-primary-dark" />
-            </Link>
-          </li>
-        ))}
-      </ol>
-
-      <div className="mt-4">
-        <LegalNote title="아이 정보는 필요한 시점에만 받습니다">
-          <p>
-            가입 단계에서는 아이 정보를 받지 않았습니다. 자녀를 등록하실 때, 그때 필요한 항목만
-            단계적으로 여쭤봅니다.
-          </p>
-        </LegalNote>
-      </div>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <Link href="/my/children/new" className={btnPrimary}>
-          자녀 등록 시작하기
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-        <Link href="/my/account" className={`${btnGhost} w-full`}>
-          내 정보 설정
-        </Link>
-      </div>
-    </>
-  );
+  return <SignupDone />;
 }

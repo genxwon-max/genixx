@@ -2,35 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { themeOf, type Variant } from "@/lib/authVariant";
+import { themeOf } from "@/lib/authVariant";
 
 /**
  * 로그인 / 회원가입 전환 탭.
  * 폼 상단에 붙고 아래로 가로선이 지나간다. 선택된 쪽만 굵은 글씨 + 파란 밑줄.
  *
- * 정본 경로(/login · /signup/type)와 비교용 시안 경로(/login1 · /signup2 …)가
- * 함께 있으므로, 지금 있는 자리에 맞는 짝으로 링크를 건다.
+ * 두 주소는 각각 하나뿐이다 — /login 과 /signup/type. 한때는 시안 비교용으로
+ * /login1·/login2·/signup1·/signup2가 함께 있어서 「지금 있는 자리에 맞는 짝」을
+ * 계산했지만, 둥글둥글로 확정하면서 그 갈래를 지웠다.
  */
-function useHrefs() {
-  const pathname = usePathname();
-  // mypage를 my보다 먼저 둔다 — 순서가 바뀌면 /mypage1이 /my 짝으로 잡힌다
-  const m = /^\/(login|signup|mypage|org|my)([12])$/.exec(pathname);
-  const suffix = m ? m[2] : "";
-  return {
-    onSignup: pathname.startsWith("/signup"),
-    loginHref: suffix ? `/login${suffix}` : "/login",
-    signupHref: suffix ? `/signup${suffix}` : "/signup/type",
-    isVariantRoute: Boolean(suffix),
-  };
-}
 
-export default function AuthTabs({ variant }: { variant: Variant }) {
-  const t = themeOf(variant);
-  const { onSignup, loginHref, signupHref } = useHrefs();
+const t = themeOf(2);
+
+export default function AuthTabs() {
+  const pathname = usePathname();
+  const onSignup = pathname.startsWith("/signup");
 
   const tabs = [
-    { href: loginHref, label: "로그인", active: !onSignup },
-    { href: signupHref, label: "회원가입", active: onSignup },
+    { href: "/login", label: "로그인", active: !onSignup },
+    { href: "/signup/type", label: "회원가입", active: onSignup },
   ];
 
   return (
@@ -51,43 +42,21 @@ export default function AuthTabs({ variant }: { variant: Variant }) {
   );
 }
 
-/** 두 시안을 오가는 스위치 (비교용 — 하나로 확정되면 지운다) */
-export function VariantSwitch({
-  variant,
-  kind,
-}: {
-  variant: Variant;
-  kind: "login" | "signup" | "org" | "my" | "mypage";
-}) {
-  const t = themeOf(variant);
-  const { isVariantRoute } = useHrefs();
-  const base = `/${kind}`;
-
+/**
+ * 단계가 바뀔 때 자리가 밀리지 않도록, 되돌아가기 줄은 **늘 같은 높이를 차지한다.**
+ * 버튼이 없을 때도 빈 줄로 남겨 둔다. 로그인·회원가입 두 화면이 같은 자리를 쓴다.
+ */
+export function BackRow({ onClick, label }: { onClick?: () => void; label?: string }) {
   return (
-    <div className={`mt-8 flex flex-wrap items-center justify-center gap-2 text-[13px] ${t.muted}`}>
-      {isVariantRoute ? (
-        <>
-          <span>
-            시안 {t.id} · {t.label}
-          </span>
-          <Link
-            href={`${base}${t.other}`}
-            className="font-bold underline underline-offset-2 hover:opacity-80"
-          >
-            시안 {t.other} · {themeOf(t.other).label} 보기 →
-          </Link>
-        </>
-      ) : (
-        <>
-          <span>다른 시안 보기</span>
-          <Link href={`${base}1`} className="font-bold underline underline-offset-2">
-            시안 1 · 전문가
-          </Link>
-          <span aria-hidden>·</span>
-          <Link href={`${base}2`} className="font-bold underline underline-offset-2">
-            시안 2 · 둥글둥글
-          </Link>
-        </>
+    <div className="flex h-6 items-center">
+      {onClick && (
+        <button
+          type="button"
+          onClick={onClick}
+          className={`text-[13px] font-semibold ${t.muted} hover:underline`}
+        >
+          ← {label ?? "이전으로"}
+        </button>
       )}
     </div>
   );

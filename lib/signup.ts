@@ -156,7 +156,7 @@ export const fieldsByType: Record<MemberTypeId, Field[]> = {
       placeholder: "20120315",
       required: true,
       half: true,
-      hint: "만 14세 미만은 보호자 계정으로 등록해야 합니다.",
+      hint: "만 14세 미만은 학생 단독으로 가입을 완료할 수 없고, 법정대리인 동의 후 이용할 수 있습니다.",
     },
     {
       name: "grade",
@@ -239,7 +239,7 @@ export const consents: Consent[] = [
     id: "guardian",
     label: "만 14세 미만 자녀 법정대리인 동의",
     detail:
-      "개인정보보호법 제22조의2에 따라 자녀 등록 시 휴대폰 본인인증과 함께 법정대리인 동의를 수취합니다.",
+      "개인정보보호법 제22조의2에 따라 자녀 등록 시 휴대폰 본인인증과 함께 법정대리인 동의를 수취합니다. 기관이 대신 동의할 수 없으며, 법정대리인 본인이 확인해야 합니다.",
     required: true,
     parentOnly: true,
   },

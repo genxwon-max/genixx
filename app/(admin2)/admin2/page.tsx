@@ -4,7 +4,7 @@ import { change, conversionRate, lastMonth, thisMonth, totalMembers } from "@/li
 import { caseTone, n } from "@/lib/admin2";
 import { Body, Kpi, PageHead, Panel, SeedNote, Status } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
-import RoundsProgress, { CurrentRoundKpi, CurrentRoundMeta } from "./RoundsProgress";
+import RoundsProgress, { CurrentRoundKpi } from "./RoundsProgress";
 import Waiting from "./Waiting";
 
 export const metadata = { title: "대시보드" };
@@ -48,7 +48,6 @@ export default function Admin2Home() {
     <>
       <PageHead
         title="대시보드"
-        meta={<CurrentRoundMeta />}
         actions={
           <>
             <Link href="/admin2/rounds" className="a2-btn">

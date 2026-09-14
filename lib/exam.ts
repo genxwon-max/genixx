@@ -1,7 +1,23 @@
 // 문항 본문은 분량이 커서 따로 뒀다. 여기는 얼개와 셈만 둔다.
-import { questions } from "./examQuestions";
+import { questions as authored } from "./examQuestions";
 
-export { questions };
+/**
+ * 같은 자료(brief)를 쓰는 문항에 같은 묶음 열쇠를 매긴다.
+ *
+ * 자료 객체는 examQuestions.ts에서 상수 하나를 여러 문항이 나눠 쓴다(korStory 등).
+ * 그 **객체 신원**이 곧 「같은 글을 읽는가」이므로, 그것으로 묶으면 손으로 적어 둔 값과
+ * 어긋날 일이 없다. 앞으로 문항을 붙일 때 자료를 복사해 붙이면 다른 묶음이 되는데,
+ * 그것도 뜻대로다 — 글자가 같아도 따로 실린 자료라면 따로 읽히는 것이 맞다.
+ */
+function withSets(list: Omit<Question, "setId">[]): Question[] {
+  const key = new Map<Brief, string>();
+  return list.map((q) => {
+    if (!key.has(q.brief)) key.set(q.brief, `${q.subject}-S${key.size + 1}`);
+    return { ...q, setId: key.get(q.brief)! };
+  });
+}
+
+export const questions: Question[] = withSets(authored);
 
 /**
  * 응시 존(ASM) 문항 정의.
@@ -118,6 +134,19 @@ export type Question = {
   subject: SubjectId;
   /** 과목 내 순번 (1~10) */
   no: number;
+  /**
+   * 함께 읽는 자료를 나눠 쓰는 묶음의 열쇠 — **한 화면에 함께 서는 문항들**.
+   *
+   * 세트를 두는 까닭은 하나다. 자료를 두 번 읽히지 않고 묻는 층을 올린다 — 같은 글을
+   * 놓고 「무엇이라고 했나」(S1)를 묻고 이어서 「왜 그런가」(S3)를 묻는다. 그러려면 그
+   * 자료를 붙들어 둔 채 문항을 내려가야 하고, 한 문항씩 넘기면 2번을 풀다가 자료를 보러
+   * 되돌아가게 된다.
+   *
+   * 값은 손으로 적지 않고 **같은 자료(brief)를 쓰는 문항끼리 묶어** 매긴다(withSets).
+   * 자료를 나눠 쓰는 것과 세트인 것이 이 자료에서는 같은 말이고, 두 곳에 적어 두면
+   * 언젠가 둘이 갈린다. 문항 하나뿐인 묶음은 그냥 낱개로 선다.
+   */
+  setId: string;
   /** S위계 — 목록 순서도 이 순서를 따른다 */
   level: Level;
   type: "choice" | "essay";
@@ -137,6 +166,41 @@ export const QUESTIONS_PER_SUBJECT = 10;
 
 export function questionsOf(subject: SubjectId) {
   return questions.filter((q) => q.subject === subject);
+}
+
+/**
+ * 응시 화면이 한 번에 그리는 단위 — **쪽**.
+ *
+ * 한 쪽은 세트 하나(자료 + 문항 여럿)이거나 낱개 문항 하나다. 이동·제출은 이 단위로
+ * 움직이고, 답과 채점은 여전히 문항 단위다 — 아이가 넘기는 것과 우리가 세는 것이
+ * 다른 층이라는 뜻이다.
+ *
+ * 쪽의 차례는 **그 쪽 첫 문항의 순번**이 정한다. 자료를 나눠 쓰는 문항이 흩어져 있어도
+ * 한 쪽으로 모이므로 전체 순번은 촘촘하지 않게 되지만, 아이가 보는 차례(1쪽 → 2쪽)는
+ * 그대로 앞에서 뒤로 간다.
+ */
+export type Page = { id: string; brief: Brief; items: Question[] };
+
+export function pagesOf(subject: SubjectId): Page[] {
+  const list = questionsOf(subject);
+  const order: string[] = [];
+  const bag = new Map<string, Question[]>();
+  for (const q of list) {
+    if (!bag.has(q.setId)) {
+      bag.set(q.setId, []);
+      order.push(q.setId);
+    }
+    bag.get(q.setId)!.push(q);
+  }
+  return order.map((id) => {
+    const items = bag.get(id)!.slice().sort((a, b) => a.no - b.no);
+    return { id, brief: items[0].brief, items };
+  });
+}
+
+/** 이 문항이 몇 쪽에 있는가 — 문항 이동판이 번호를 눌렀을 때 갈 곳 */
+export function pageIndexOf(subject: SubjectId, q: Question) {
+  return pagesOf(subject).findIndex((pg) => pg.id === q.setId);
 }
 
 /** 문항 이동판이 쓰는 묶음 — 위계별로 갈라 준다 */

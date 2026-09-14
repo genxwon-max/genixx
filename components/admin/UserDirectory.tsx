@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { contractLabel, userActions, type OrgRow, type UserActionKind } from "@/lib/admin";
 import {
   examStateLabel,
+  maskMail,
+  maskPhone,
   orgDirectory,
   parents,
   students,
@@ -147,8 +149,8 @@ function ParentList({ onDone }: { onDone: (m: string) => void }) {
       hide: "md",
       cell: (r) => (
         <>
-          <span className="tabular-nums">{r.contact}</span>
-          <span className="mt-0.5 block adm-t-sm">{r.phone} · 일부 가림</span>
+          <span className="tabular-nums">{maskMail(r.contact)}</span>
+          <span className="mt-0.5 block adm-t-sm">{maskPhone(r.phone)} · 일부 가림</span>
         </>
       ),
     },
@@ -349,7 +351,7 @@ function StudentList() {
       />
 
       <p className="mt-4 adm-t-md leading-relaxed text-exam-muted">
-        학생은 따로 가입하지 않습니다. 보호자 계정 안의 프로필로 등록되고, 여기 접속코드와
+        만 14세 미만 학생은 따로 가입하지 않습니다. 보호자 계정 안의 프로필로 등록되고, 여기 접속코드와
         생년월일로 응시 화면에 들어갑니다. 생년월일은 이 목록에 싣지 않습니다 —{" "}
         <b className="text-exam-text">사유를 남기고 여는 개인정보 열람</b>에서만 보입니다.
       </p>
@@ -391,7 +393,7 @@ function TeacherList({ onDone }: { onDone: (m: string) => void }) {
       cell: (r) => <span className="font-bold text-exam-text">{r.name}</span>,
     },
     { key: "school", head: "소속 학교", cell: (r) => r.school },
-    { key: "contact", head: "연락처", hide: "lg", cell: (r) => r.contact },
+    { key: "contact", head: "연락처", hide: "lg", cell: (r) => maskMail(r.contact) },
     { key: "classes", head: "학급", align: "right", hide: "md", cell: (r) => `${r.classes}반` },
     { key: "charge", head: "담당 학생", align: "right", cell: (r) => `${r.charge}명` },
     { key: "state", head: "상태", cell: (r) => <Badge {...userStateLabel[r.state]} /> },

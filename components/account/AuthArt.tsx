@@ -131,3 +131,41 @@ export function EmptyChild({ className = "", accent = "#365eef" }: Props) {
     </svg>
   );
 }
+
+/**
+ * 학생 — 책상 앞에 앉아 자기 화면을 여는 모습.
+ *
+ * 보호자와 함께 그린 PersonalArt와 구분되어야 해서 사람을 한 명만 둔다. 학생이
+ * 자기 이름으로 가입한다는 것이 이 카드의 요지이기 때문이다. 성별을 읽히지 않도록
+ * 머리 모양은 단순한 덩어리로 두고, 손에는 응시 화면(태블릿)을 들려 준다.
+ */
+export function StudentArt({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="학생">
+      <ellipse cx="100" cy="126" rx="58" ry="7" fill={accent} opacity="0.1" />
+
+      {/* 책상 */}
+      <rect x="46" y="104" width="108" height="7" rx="3.5" fill={accent} opacity="0.25" />
+      <path d="M56 111v13M144 111v13" stroke={accent} strokeWidth="4" strokeLinecap="round" opacity="0.25" />
+
+      {/* 몸 */}
+      <path d="M76 104V84a24 24 0 0 1 48 0v20Z" fill={accent} />
+      {/* 얼굴 */}
+      <circle cx="100" cy="54" r="16" fill="#fbd7bf" />
+      <path d="M84 52a16 16 0 0 1 32 0c0-12-6-17-16-17s-16 5-16 17Z" fill="#3f3d56" />
+      <rect x="92" y="68" width="16" height="9" rx="4" fill="#fbd7bf" />
+
+      {/* 태블릿 — 응시 화면 */}
+      <rect x="84" y="88" width="32" height="24" rx="4" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      <path d="M90 96h20M90 102h13" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+
+      {/* 책 세 권 — 작은 크기에서도 「학생」으로 읽히도록 가방 대신 책을 쌓는다 */}
+      <rect x="26" y="94" width="34" height="6" rx="2" fill="#f7b23b" />
+      <rect x="29" y="88" width="28" height="6" rx="2" fill="#4fc08d" />
+      <rect x="24" y="82" width="32" height="6" rx="2" fill={accent} opacity="0.55" />
+
+      {/* 별 — 재능 신호 */}
+      <path d="M160 44l3.2 7.4L171 54l-7.8 2.6L160 64l-3.2-7.4L149 54l7.8-2.6Z" fill="#4fc08d" />
+    </svg>
+  );
+}

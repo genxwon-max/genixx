@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   ageFromBirth,
   CONSENT_AGE,
+  MAJORITY_AGE,
   purposeConsents,
   signupTypeOf,
   type PurposeConsent,
@@ -13,7 +14,8 @@ import {
 import { patchSignupDraft, useSignupDraft } from "@/lib/signupStore";
 import { useHydrated } from "@/lib/examStore";
 import { signIn } from "@/lib/authStore";
-import { themeOf, type Variant } from "@/lib/authVariant";
+import { addStudents } from "@/lib/roster";
+import { themeOf } from "@/lib/authVariant";
 
 /**
  * ACC-01 회원가입 정보 입력 — 둥글둥글(시안 2). 한 장짜리 화면이다.
@@ -24,16 +26,26 @@ import { themeOf, type Variant } from "@/lib/authVariant";
  *   간편 가입 — 이메일(읽기 전용) · 이름 · 휴대폰 본인인증 · 약관
  *   아이디 가입 — 아이디 · 비밀번호 · 비밀번호 확인 · 이름 · 휴대폰 본인인증 · 약관
  *
- * 역할(학부모·교사·기관담당자)은 묻지 않는다. 앞 화면(/signup2)에서 이미 골랐다.
+ * 역할(학생·학부모·기관 담당자)은 묻지 않는다. 앞 화면(/signup/type)에서 이미 골랐다.
  * 그 자리에 **휴대폰 본인인증**이 들어간다.
  *
  * 본인인증은 **NICE아이디 휴대폰본인확인**으로 넘긴다. 주민등록번호는 우리 화면을
  * 지나가지 않고, 인증이 끝나면 확인된 휴대폰 번호와 생년월일만 돌려받아 저장한다
  * (개인정보보호법 제24조의2).
- * **만 14세 판정도 이 값으로 한다.** 스스로 고르게 하지 않는다.
+ * **만 나이 판정도 이 값으로 한다.** 스스로 고르게 하지 않는다.
+ *
+ * 나이는 두 군데서 갈린다 —
+ *   · 학생이 만 14세 미만이면 **단독 가입을 여기서 멈추고** 법정대리인 동의 경로로 잇는다.
+ *     "가입 불가"가 아니다. 앞 화면의 연령 확인을 지나왔더라도, 본인확인이 돌려준 값이
+ *     최종 판정이므로 여기서 한 번 더 본다.
+ *   · 학부모·법정대리인과 기관 담당자는 성년(만 19세)이어야 한다. 법정대리인 동의를 할
+ *     사람이 미성년자일 수는 없기 때문이다.
  *
  * ⚠ 비밀번호는 화면 상태에만 두고 어디에도 저장하지 않는다 (인증 서버가 없는 시안이다).
  */
+
+/** 시안 2「둥글둥글」로 확정했다. 가입 화면은 이 톤 하나만 쓴다. */
+const t = themeOf(2);
 
 const idRe = /^[a-z][a-z0-9_]{3,19}$/;
 
@@ -45,9 +57,10 @@ const takenIds = ["admin", "genixx", "genix", "parent", "teacher", "test", "mast
 
 /** 본인확인기관이 돌려줬다고 가정하는 값 — 시연에서 두 갈래를 다 볼 수 있게 둔다 */
 type PassResult = { birth: string; phone: string };
-const passDemo: { key: "adult" | "minor"; label: string; result: PassResult }[] = [
-  { key: "adult", label: "인증 완료 (성인)", result: { birth: "19900112", phone: "01012345678" } },
-  { key: "minor", label: "인증 완료 (만 13세)", result: { birth: "20130320", phone: "01098761234" } },
+const passDemo: { key: "adult" | "teen" | "child"; label: string; result: PassResult }[] = [
+  { key: "adult", label: "성인", result: { birth: "19900112", phone: "01012345678" } },
+  { key: "teen", label: "만 16세", result: { birth: "20090820", phone: "01055556666" } },
+  { key: "child", label: "만 13세", result: { birth: "20130320", phone: "01098761234" } },
 ];
 
 /** 간편 가입 제공자 표식 */
@@ -91,7 +104,6 @@ function Row({
   hint,
   error,
   ok,
-  variant,
   children,
 }: {
   id: string;
@@ -100,10 +112,8 @@ function Row({
   error?: string;
   /** 통과했음을 알리는 초록 한 줄 */
   ok?: string;
-  variant: Variant;
   children: React.ReactNode;
 }) {
-  const t = themeOf(variant);
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className={`text-[14px] font-semibold ${t.muted}`}>
@@ -158,8 +168,7 @@ function RightCheck({
 
 /* ── 본체 ── */
 
-export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
-  const t = themeOf(variant);
+export default function SignupFlow() {
   const router = useRouter();
   const hydrated = useHydrated();
   const draft = useSignupDraft();
@@ -194,7 +203,7 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
       <div className={`min-h-full ${t.page}`}>
         <div className="container-x py-20 text-center">
           <p className="text-[16px] font-bold">회원 유형을 먼저 골라 주세요.</p>
-          <Link href="/signup2" className={`${t.btnQuiet} mt-5`}>
+          <Link href="/signup/type" className={`${t.btnQuiet} mt-5`}>
             유형 선택으로 돌아가기
           </Link>
         </div>
@@ -212,9 +221,16 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
   const pw2Ok = pw.length > 0 && pw === pw2;
   const nameOk = name.trim().length >= 2;
 
+  const isStudent = draft.type === "student";
   const age = pass ? ageFromBirth(pass.birth) : null;
-  const underAge = age !== null && age < CONSENT_AGE;
-  const phoneVerified = passState === "done" && pass !== null && !underAge;
+  /** 학생이 만 14세 미만 — 단독으로 가입을 끝낼 수 없다 */
+  const needsGuardian = isStudent && age !== null && age < CONSENT_AGE;
+  /** 학부모·기관은 성년이어야 한다 */
+  const needsAdult = !isStudent && age !== null && age < MAJORITY_AGE;
+  /** 만 14세 이상이지만 아직 미성년 — 가입은 되고 결제만 갈린다 */
+  const minorContract = isStudent && age !== null && age >= CONSENT_AGE && age < MAJORITY_AGE;
+  const blocked = needsGuardian || needsAdult;
+  const phoneVerified = passState === "done" && pass !== null && !blocked;
 
   const requiredIds = purposeConsents.filter((c) => c.required).map((c) => c.id);
   const termsOk = requiredIds.every((id) => agreed.includes(id));
@@ -245,14 +261,44 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
       consents: agreed,
       verified: true,
     });
-    signIn({
-      role: draft.type === "parent" ? "parent" : draft.type === "teacher" ? "teacher" : "director",
-      name: name.trim(),
-      provider: draft.provider,
-      email: draft.email || undefined,
-      loginId: social ? undefined : loginId,
-      approved: !type.needsApproval,
-    });
+
+    // 만 14세 이상 학생은 자기 이름으로 프로필을 갖는다. 보호자 계정 하위가 아니라
+    // owner "self"로 명부에 오르고, 동의 상태는 「학생 본인 가입 완료」에서 시작한다.
+    if (isStudent) {
+      const [created] = addStudents(
+        [{ name: name.trim(), birth: pass.birth }],
+        "self",
+        name.trim(),
+      );
+      signIn({
+        role: "student",
+        name: name.trim(),
+        provider: draft.provider,
+        email: draft.email || undefined,
+        loginId: social ? undefined : loginId,
+        studentId: created.id,
+        approved: true,
+      });
+      router.push(type.next);
+      return;
+    }
+
+    // 학부모는 여기서 세션을 만들지 않는다. 가입과 로그인은 다른 일이고, 방금 정한
+    // 아이디·비밀번호를 한 번은 써 봐야 다음에 혼자 돌아올 수 있다. 가입 완료
+    // 화면(/signup/done)이 로그인할지 묻는다.
+    //
+    // 학생은 위에서 이미 갈라져 나갔고(응시로 곧장 이어져야 한다), 교사·기관은
+    // 승인 대기 화면이 자기 신청 상태를 보여 주는 자리라 세션이 있어야 한다.
+    if (draft.type !== "parent") {
+      signIn({
+        role: draft.type === "teacher" ? "teacher" : "director",
+        name: name.trim(),
+        provider: draft.provider,
+        email: draft.email || undefined,
+        loginId: social ? undefined : loginId,
+        approved: !type.needsApproval,
+      });
+    }
     router.push(type.needsApproval ? "/my/pending" : type.next);
   };
 
@@ -266,7 +312,7 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
           <div className="mt-8 flex flex-col gap-6">
             {/* 계정 — 간편 가입은 읽기 전용, 아이디 가입은 직접 만든다 */}
             {social ? (
-              <Row id="email" label="이메일" variant={variant} ok="계정이 인증되었습니다.">
+              <Row id="email" label="이메일" ok="계정이 인증되었습니다.">
                 <div className="relative">
                   <input
                     id="email"
@@ -289,7 +335,6 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
                 <Row
                   id="loginId"
                   label="아이디"
-                  variant={variant}
                   error={
                     idStatus === "taken"
                       ? "이미 사용 중인 아이디입니다. 다른 아이디를 입력해 주세요."
@@ -329,7 +374,6 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
                 <Row
                   id="pw"
                   label="비밀번호"
-                  variant={variant}
                   error={tried && !pwOk ? "조건을 채워 주세요." : undefined}
                   hint={
                     <>
@@ -363,7 +407,6 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
                 <Row
                   id="pw2"
                   label="비밀번호 확인"
-                  variant={variant}
                   error={tried && !pw2Ok ? "비밀번호가 서로 다릅니다." : undefined}
                   ok={pw2Ok ? "비밀번호가 일치합니다." : undefined}
                 >
@@ -393,7 +436,6 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
             <Row
               id="name"
               label="이름"
-              variant={variant}
               error={tried && !nameOk ? "이름을 입력해 주세요." : undefined}
             >
               <input
@@ -459,24 +501,65 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
               )}
 
               {/* 결과는 한 줄로만 알린다. 확인된 값은 화면에 늘어놓지 않는다 */}
-              {passState === "done" && pass && !underAge && (
+              {passState === "done" && pass && !blocked && (
                 <p className="text-[13px] font-semibold text-emerald-600">
                   ✓ 휴대폰 본인인증이 완료되었습니다.
                 </p>
               )}
 
-              {passState === "done" && pass && underAge && (
-                <div className="flex flex-col items-start gap-2">
-                  <p className="text-[14px] font-bold">
-                    만 {CONSENT_AGE}세 미만은 가입할 수 없습니다.
+              {/* 학생이 만 14세 미만 — 가입을 막는 것이 아니라 동의 경로로 잇는다 */}
+              {passState === "done" && pass && needsGuardian && (
+                <div className="flex flex-col items-start gap-2.5 rounded-[14px] border border-soft-line bg-soft-primary-soft p-5">
+                  <p className="text-[15px] font-bold">
+                    만 {CONSENT_AGE}세 미만 학생은 혼자 회원가입을 완료할 수 없습니다
                   </p>
                   <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-                    학생은 따로 가입하지 않고, 보호자가 발급한 접속코드와 생년월일로 응시 화면에
-                    들어갑니다.
+                    가입이 막힌 것이 아닙니다. 법정대리인의 동의가 완료되면 서비스를 이용할 수
+                    있습니다. 아래 세 가지 중 하나를 고르시면 됩니다.
                   </p>
-                  <Link href="/login/student" className={`${t.btnQuiet} mt-2`}>
-                    접속코드로 응시하러 가기
+                  <div className="mt-1 flex w-full flex-col gap-2">
+                    <Link href="/signup/guardian" className={t.btnPrimary}>
+                      법정대리인에게 동의 요청 보내기
+                    </Link>
+                    <Link href="/signup/type?stage=method&type=parent" className={t.btnNeutral}>
+                      법정대리인 계정으로 자녀 등록하기
+                    </Link>
+                    <Link href="/login/student" className={t.btnNeutral}>
+                      기관에서 받은 응시코드 입력하기
+                    </Link>
+                  </div>
+                  <p className={`text-[12.5px] leading-[1.7] ${t.muted}`}>
+                    응시코드를 넣으면 먼저 보호자 동의 상태를 확인합니다. 동의가 끝나 있으면 바로
+                    응시로 이어집니다.
+                  </p>
+                </div>
+              )}
+
+              {/* 학부모·기관 담당자가 미성년으로 확인된 경우 */}
+              {passState === "done" && pass && needsAdult && (
+                <div className="flex flex-col items-start gap-2">
+                  <p className="text-[14px] font-bold">
+                    {type.label} 계정은 성년만 만들 수 있습니다
+                  </p>
+                  <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
+                    법정대리인 동의와 기관 운영은 만 {MAJORITY_AGE}세 이상이어야 할 수 있습니다.
+                    학생 본인이시라면 학생으로 가입해 주세요.
+                  </p>
+                  <Link href="/signup/type" className={`${t.btnQuiet} mt-2`}>
+                    회원 유형 다시 고르기
                   </Link>
+                </div>
+              )}
+
+              {/* 만 14세 이상 미성년 학생 — 가입은 되고 결제만 갈린다 */}
+              {passState === "done" && pass && minorContract && (
+                <div className="rounded-[14px] border border-soft-line bg-slate-50 p-4">
+                  <p className="text-[13.5px] font-bold">결제는 보호자와 함께 진행합니다</p>
+                  <p className={`mt-1.5 text-[13px] leading-[1.7] ${t.muted}`}>
+                    무료 가입·응시는 본인이 하실 수 있습니다. 다만 만 {MAJORITY_AGE}세 미만은 민법상
+                    미성년자라, 유료 상품 결제와 정기구독은 학부모 계정에서 진행하거나 법정대리인
+                    동의를 따로 받습니다(민법 제5조).
+                  </p>
                 </div>
               )}
             </div>
@@ -539,13 +622,13 @@ export default function SignupFlow({ variant = 2 }: { variant?: Variant }) {
           </div>
 
           <p className={`mt-6 text-center text-[13px] ${t.muted}`}>
-            <Link href="/signup2" className="hover:underline">
+            <Link href="/signup/type" className="hover:underline">
               가입 수단 다시 고르기
             </Link>
             <span aria-hidden className="mx-2.5 text-soft-line">
               |
             </span>
-            <Link href="/login2" className="hover:underline">
+            <Link href="/login" className="hover:underline">
               로그인
             </Link>
           </p>

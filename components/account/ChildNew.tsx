@@ -85,6 +85,8 @@ export default function ChildNew() {
   });
   const [agreed, setAgreed] = useState<string[]>([]);
   const [kidsNoticeRead, setKidsNoticeRead] = useState(false);
+  /** 만 14세 이상 자녀에게 보내는 가입 초대 링크를 복사했는가 */
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [tried, setTried] = useState(false);
   const [issued, setIssued] = useState<{
     name: string;
@@ -338,13 +340,43 @@ export default function ChildNew() {
             </div>
           )}
 
-          {/* 만 14세 이상 — 본인 동의 예약 안내 */}
+          {/* 만 14세 이상 — 본인 가입이 더 깔끔하다 */}
           {route === "self" && (
-            <p className="mt-4 rounded-lg bg-slate-50 px-5 py-4 text-[14px] leading-relaxed text-soft-ink">
-              만 {CONSENT_AGE}세 이상이라 법정대리인 동의를 받지 않습니다. 대신 아이가 접속코드로
-              처음 들어올 때 <b>본인 동의 화면</b>이 먼저 뜨고, 아이가 동의해야 응시가 시작됩니다.
-              보호자는 결제와 리포트 열람 주체로 그대로 남습니다.
-            </p>
+            <div className="mt-4 rounded-lg bg-slate-50 px-5 py-4">
+              <p className="text-[14px] leading-relaxed text-soft-ink">
+                만 {CONSENT_AGE}세 이상이라 법정대리인 동의를 받지 않습니다. 아이가{" "}
+                <b>본인 계정으로 직접 가입</b>하는 쪽이 가장 깔끔합니다. 보호자가 대신 전체 계정을
+                만드시기보다, 아이에게 가입을 안내하고 두 계정을 잇는 것을 권합니다.
+              </p>
+              <p className="mt-2 text-[14px] leading-relaxed text-soft-ink">
+                지금 그대로 등록하셔도 됩니다. 그때는 아이가 접속코드로 처음 들어올 때{" "}
+                <b>본인 동의 화면</b>이 먼저 뜨고, 아이가 동의해야 응시가 시작됩니다. 결과를
+                보호자와 공유할지도 아이가 직접 정합니다.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}/signup/type?stage=age&type=student`;
+                    void navigator.clipboard?.writeText(url);
+                    setInviteCopied(true);
+                  }}
+                  className={btnGhost}
+                >
+                  {inviteCopied ? "초대 링크를 복사했습니다" : "학생에게 가입 초대 링크 복사"}
+                </button>
+                <Link
+                  href="/signup/type?stage=age&type=student"
+                  className="text-[13px] font-bold text-soft-primary-dark underline"
+                >
+                  학생 가입 화면 열기 ›
+                </Link>
+              </div>
+              <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
+                아이가 이 링크로 본인 동의를 마치고 계정을 만들면, 발급된 접속코드로 이 계정과
+                이어서 결과를 함께 보실 수 있습니다.
+              </p>
+            </div>
           )}
 
           <ul className="mt-5 border-t border-soft-line">

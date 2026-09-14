@@ -3,10 +3,11 @@
 import { useSyncExternalStore } from "react";
 import type { StaffRoleId } from "./admin";
 import {
+  LEVELS,
   checkStandardCode,
   levelAllowed,
   levelSpecs,
-  makeItemCode,
+  SUBJECT_LETTER,
   submitChecklist,
   subskillsOf,
   tagBCoord,
@@ -15,10 +16,18 @@ import {
   type TalentId,
 } from "./blueprint";
 import { pickSample } from "./itemBank";
+import type { DetailMode } from "./richText";
 import { auditItem, auditRejection } from "./itemAudit";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
+ *
+ * ── 이름 ──
+ * **문항**(Question)은 분류를 지고 채점되는 낱개다. 성취기준·재능 축·인지단계·난이도가
+ * 여기 붙는다. **묶음**(ItemDraft)은 그 문항들을 담는 그릇이고, 단일이면 문항 하나,
+ * 세트면 보기 하나에 문항 둘 이상을 담는다. 저장소·목록·주소가 다루는 낱개는 묶음이라
+ * (IT-2601), 화면에서 「문항 은행」·「문항 상세」라고 부르는 것도 묶음 쪽이다.
+ * 아래 주석에서 둘을 갈라야 할 때는 「묶음」이라고 적는다.
  *
  * 두 화면이 같은 목록을 보고 서로의 결과를 받는다는 것이 이 콘솔의 요점이라, 상태를
  * 한곳에 두고 양쪽에서 고친다. 출제자가 제출하면 검수 목록에 뜨고, 검수자가 반려하면
@@ -41,42 +50,120 @@ export type ItemState = "draft" | "submitted" | "rejected" | "approved" | "retir
 export type ItemOrigin = "human" | "ai";
 
 /**
- * 문제 유형. 채점 방식이 갈리므로 문항을 쓸 때 가장 먼저 정한다.
+ * 문항 유형. 채점 방식이 갈리므로 문항을 쓸 때 가장 먼저 정한다.
  *  · 객관식 — 보기 중 하나. AI가 전수 채점한다.
+ *  · OX — 맞다·아니다 둘 중 하나. 객관식의 보기가 둘로 고정된 꼴이다.
  *  · 단답형 — 짧은 답. 표기 흔들림을 허용 답안으로 흡수한다.
  *  · 서술형 — 몇 문장. AI 1차 채점 뒤 저신뢰 건을 사람이 본다(EXP-04-2).
  *  · 논술형 — 한 편의 글. 루브릭으로 사람이 채점하고 이중 채점 표본을 둔다.
+ *  · 이미지 첨부 — 답을 그림·사진으로 올린다. 손으로 그리고 찍어 올리는 문항이다.
  */
-export type ItemType = "choice" | "short" | "descriptive" | "essay";
+export type ItemType = "choice" | "ox" | "short" | "descriptive" | "essay" | "image";
 
-export const itemTypes: { id: ItemType; label: string; desc: string; scoring: string }[] = [
-  {
-    id: "choice",
-    label: "객관식",
-    desc: "보기 중 하나를 고릅니다",
-    scoring: "AI 전수 채점",
-  },
+/* 무엇을 쓰는 유형인지는 위 주석에 적어 두었다. 목록에는 이름만 세운다 — 여섯 개를
+   나란히 놓으면 이름이 곧 뜻이고, 줄마다 풀어 쓴 말은 고르는 데 보태는 것이 없었다.
+   scoring은 옛 콘솔(components/admin/ItemCard.tsx)의 고르개가 아직 적는다. */
+export const itemTypes: {
+  id: ItemType;
+  label: string;
+  /** 문항 ID의 유형 자리에 들어가는 한 글자 (codePrefix) */
+  letter: string;
+  scoring: string;
+}[] = [
+  { id: "choice", label: "객관식", letter: "C", scoring: "AI 전수 채점" },
+  { id: "ox", label: "OX", letter: "O", scoring: "AI 전수 채점" },
   {
     id: "short",
     label: "단답형",
-    desc: "낱말이나 수를 씁니다",
+    letter: "A",
     scoring: "허용 답안 대조 후 불일치만 사람이 확인",
   },
   {
     id: "descriptive",
     label: "서술형",
-    desc: "두세 문장으로 씁니다",
+    letter: "D",
     scoring: "AI 1차 채점 → 신뢰도 0.75 미만은 사람 배정",
   },
   {
     id: "essay",
     label: "논술형",
-    desc: "한 편의 글로 씁니다",
+    letter: "E",
     scoring: "루브릭 기반 사람 채점 + 이중 채점 표본",
   },
+  { id: "image", label: "이미지 첨부", letter: "I", scoring: "루브릭 기반 사람 채점" },
 ];
 
 export const typeLabel = (id: ItemType) => itemTypes.find((t) => t.id === id)?.label ?? id;
+
+/**
+ * OX의 보기는 고정이다. 출제자가 「맞다」·「아니다」를 매번 타이핑할 이유가 없다.
+ *
+ * ⚠ 이 값을 문항(Question.choices)에 **담지 않는다**. 담아 두면 유형을 OX로 옮길 때
+ *   적어 둔 보기를 덮어써야 하고, 라디오 묶음은 방향키로 지나가기만 해도 그 덮어쓰기가
+ *   돈다 — 서술형을 고르려고 OX를 통과하는 것만으로 보기 넉 줄이 날아갔다.
+ *   보기는 그대로 두고, 화면과 채점이 볼 때만 choicesOf가 갈아 끼운다.
+ */
+export const OX_CHOICES = ["맞다", "아니다"];
+
+/**
+ * 이 문항가 실제로 세우는 보기.
+ *
+ * OX는 유형이 보기를 정하므로 문항에 담긴 값을 보지 않는다. 객관식으로 되돌아오면
+ * 적어 둔 보기가 손대지 않은 채로 다시 선다.
+ */
+export function choicesOf(q: Pick<Question, "type" | "choices">): string[] {
+  return q.type === "ox" ? OX_CHOICES : q.choices;
+}
+
+/** 보기를 세우는 유형인가 */
+export const hasChoices = (t: ItemType) => t === "choice" || t === "ox";
+
+/** 채점 루브릭이 있어야 하는 유형인가 — 사람이 채점하는 것들 */
+export const needsRubric = (t: ItemType) => t === "descriptive" || t === "essay" || t === "image";
+
+/**
+ * 묶음 구성 — 단일이냐 세트냐.
+ *
+ * 세트는 자료 하나를 함께 읽고 그 위에서 두 문항 이상을 묻는 꼴이다. 재능 진단에서
+ * 이 구성이 필요한 까닭은, 한 문항으로는 S1(지각)만 재고 끝나는 자료가 문항을 겹쳐
+ * 물으면 S1 → S3까지 한 자료 안에서 올라갈 수 있기 때문이다. 자료를 두 번 읽히지
+ * 않으므로 아이가 지문 읽기에 쓰는 시간도 준다.
+ *
+ * ⚠ 세트라도 회차 편성판이 담는 낱개는 **묶음 하나**다. 배점은 안의 문항마다 매기되
+ *   묶음 쪽에는 그 합이 선다(summaryOf) — 합이 아니면 검사지 총점이 세트마다 어긋난다.
+ */
+export type ItemForm = "single" | "set";
+
+/* 단일은 문항 하나(지문은 있어도 되고 없어도 된다), 세트는 보기 하나에 문항 둘 이상.
+   화면에는 이름 둘만 세운다 — 두 낱말이 스스로 설명하는 것에 곁들이는 말을 붙이면
+   읽을 것만 늘어난다 */
+export const itemForms: { id: ItemForm; label: string }[] = [
+  { id: "single", label: "단일" },
+  { id: "set", label: "세트" },
+];
+
+/**
+ * 예상 난이도 b — 넷 중에서 고른다.
+ *
+ * 아무 수나 받던 칸이었다. 그런데 출제자가 손으로 적은 b는 −0.35처럼 정밀해 보이기만
+ * 할 뿐 근거가 없고, 사람마다 같은 문항에 다른 눈금을 매겨 회차 사이에 비교가 되지
+ * 않았다. 실제로 물어야 하는 것은 「이 학년에게 쉬운가 어려운가」 넷 중 하나다.
+ * 진짜 b는 응시 결과로 다시 추정한다(문항반응이론) — 여기 값은 그 전까지 쓰는 어림이다.
+ */
+/* 눈금의 뜻 — 그 학년이 맞히는 비율로 잡는다.
+     -1.5 거의 다 맞힘 · -1 절반을 넘겨 맞힘 · 1 절반이 안 됨 · 1.5 상위권만 맞힘
+   화면에는 이름과 b값만 세운다. 넷을 나란히 놓으면 순서가 곧 뜻이라, 줄마다 풀어 쓴
+   말은 고르는 데 보태는 것이 없었다. */
+export const difficulties: { b: number; label: string }[] = [
+  { b: -1.5, label: "아주 쉬움" },
+  { b: -1, label: "쉬움" },
+  { b: 1, label: "어려움" },
+  { b: 1.5, label: "아주 어려움" },
+];
+
+/** 사람이 넷 중에서 고른 값인가 */
+export const difficultyPicked = (b: number | null) =>
+  b !== null && difficulties.some((d) => d.b === b);
 
 /**
  * 문항에 딸린 파일.
@@ -138,14 +225,111 @@ export type ItemComment = {
   text: string;
 };
 
+/**
+ * 문항 하나 — 분류를 지고 채점되는 낱개. 단일 묶음이면 이것 하나뿐이다.
+ *
+ * 발문을 글 한 칸으로만 받지 않는다. 수학·과학 문항은 그림·수식이 발문 안에 들어가야
+ * 말이 되고, 디자이너가 짜 준 표를 그대로 붙여야 하는 문항도 있다. 상품 상세와 같은
+ * 네 갈래를 그대로 쓴다(lib/richText.ts) — 한 문항은 한 갈래만 쓰고, 마크다운·HTML
+ * 안에서 그림을 넣는 길은 열려 있다.
+ */
+export type Question = {
+  /** 세트 안에서만 유일하면 된다 — 지우고 더해도 순서가 뒤집히지 않게 하는 열쇠 */
+  id: string;
+  type: ItemType;
+  /** 발문 본문. stemMode가 images면 쓰지 않는다 */
+  stem: string;
+  /** 발문을 무엇으로 쓰는가 — 이미지 · 마크다운 · HTML · 일반 텍스트 */
+  stemMode: DetailMode;
+  /** stemMode가 images일 때 차례대로 이어 붙일 그림 (data URL) */
+  stemImages: string[];
+  /** 객관식 보기. OX는 OX_CHOICES로 고정한다 */
+  choices: string[];
+  /** 정답 보기 index */
+  answer: number;
+  /** 오답마다 어떤 오개념을 잡는가 — 보기와 같은 순서 */
+  distractorIntent: string[];
+  /** 단답형 허용 답안 (쉼표로 구분) */
+  shortAnswers: string;
+  /** 서술형 · 논술형 · 이미지 첨부의 채점 기준 */
+  rubric: string;
+  /** 정답 · 채점 해설 */
+  explain: string;
+
+  /* ── 분류 (발주서 §3 문항 카드 ③④⑤) ──────────────────────────────────────
+   *
+   * 세트 안에서도 문항마다 다르다. 한 지문을 놓고 「무엇이라고 했나」(S1)를 묻고 이어서
+   * 「왜 그런가」(S3)를 물으면, 두 문항은 재는 것도 성취기준도 난이도도 다르다. 그것이
+   * 세트를 두는 까닭이기도 하다 — 자료를 두 번 읽히지 않고 단계를 올린다.
+   *
+   * 그래서 이 여덟 칸은 묶음이 아니라 **문항**에 붙는다. 묶음 쪽의 같은 이름 칸들은
+   * 여기서 만든 요약이다(summaryOf · flatten). 단일이면 문항이 하나뿐이라 요약과
+   * 원본이 같은 값이다.
+   *
+   * 과목·학년군·단원·문항 ID는 여기 없다. 그것은 세트가 통째로 공유하는 것이고,
+   * 문항마다 다를 수 있는 값이 아니다.
+   */
+  /** ③ 성취기준 코드 — 없으면 접수 반려(§7.2) */
+  standardCode: string;
+  /** ③ 성취기준 내용 */
+  standardText: string;
+  /** ④ Tag A 세부 — 이 문항가 재는 학력을 한 줄로 */
+  tagADetail: string;
+  /** ④ Tag B 주태그 — 재능 */
+  talent: TalentId;
+  /** ④ Tag B 주태그 — 하위요소 코드 (LANG-01 등) */
+  subskill: string;
+  /** S1 지각 · S2 이해 · S3 생성 · S4 창의 */
+  level: Level;
+  /**
+   * ⑤ 예상 난이도 b — difficulties 넷 중 하나. null이면 **아직 아무도 안 골랐다**.
+   *
+   * 한동안 단계 앵커값(levelSpecs[level].b)을 기본값으로 넣어 두고 「그 값이 넷 안에
+   * 있으면 고른 것」으로 봤다. 그런데 S1의 앵커가 -1.5, S4가 1.5라 고르개 값과 그대로
+   * 겹친다 — 두 단계에서는 아무도 손대지 않은 문항이 「아주 쉬움」·「아주 어려움」을
+   * 골라 둔 것으로 읽혔고, 제출을 막는 검사도 조용히 통과했다. 값 하나로 「없음」까지
+   * 나타내려 한 것이 잘못이라 형을 나눈다.
+   */
+  b: number | null;
+  /**
+   * ⑤ 배점 — 사람이 직접 적는다. 0이면 아직 안 적은 것이다.
+   *
+   * 한동안 인지단계에서 따라오게 했다(§1 단계별 배점). 이제는 새 문항이 단계의 기본 배점
+   * (levelSpecs[level].points)으로 시작할 뿐, 단계를 바꿔도 적어 둔 값을 덮지 않는다.
+   */
+  points: number;
+};
+
+/** 문항에도 있고 문항에도 있는 칸 — 문항 쪽은 요약이다 */
+export type QuestionTags = Pick<
+  Question,
+  "standardCode" | "standardText" | "tagADetail" | "talent" | "subskill" | "level" | "b" | "points"
+>;
+
 export type ItemDraft = {
   id: string;
   /** 문항 코드 — 사람이 부르는 이름 */
   code: string;
   subject: "국어" | "수학" | "과학";
   grade: string;
-  /** 지문·자료 (없을 수 있다) */
+  /** 단일이냐 세트냐 */
+  form: ItemForm;
+  /** 지문·자료 — 세트에서는 「보기」로, 두 문항 이상이 함께 읽는다 */
   passage: string;
+  /** 지문을 무엇으로 쓰는가 (lib/richText.ts) */
+  passageMode: DetailMode;
+  /** passageMode가 images일 때 차례대로 이어 붙일 그림 */
+  passageImages: string[];
+  /**
+   * 문항들 — 단일이면 하나, 세트면 둘 이상.
+   *
+   * 아래 납작한 칸(stem · choices · answer · explain …)은 **questions[0]의 거울**이다.
+   * 지우지 않고 두는 까닭은 옛 콘솔(components/admin/ItemCard.tsx)과 목록 열두 곳이
+   * 아직 그 칸을 직접 읽고 쓰기 때문이다. 두 벌을 손으로 맞추면 반드시 어긋나므로
+   * 저장으로 나가는 길목 하나(patchItem)에서만 맞춘다 — syncQuestions 주석 참고.
+   */
+  questions: Question[];
+  /* ── 아래 여덟 칸은 questions[0]의 거울이다. 직접 고치지 말고 questions를 고친다 ── */
   /** 발문 */
   stem: string;
   choices: string[];
@@ -188,7 +372,7 @@ export type ItemDraft = {
   /** ④ Tag B 부태그 — 두 영역을 불가피하게 걸칠 때만. 점수는 주태그에만 귀속(§6 운용규칙②) */
   subTalent?: TalentId;
   subSubskill?: string;
-  /** ⑤ 배점 — 단계에서 자동으로 따라온다 */
+  /** ⑤ 배점 — 문항들의 배점을 더한 요약(summaryOf). 고치는 것은 문항 쪽이다 */
   points: number;
   /** ⑤ 예상 난이도 b 모수 — 단계 앵커값에서 시작해 출제자가 조정 */
   b: number;
@@ -240,6 +424,17 @@ export type ItemDraft = {
    * 기록에서 가장 중요한 값이라 자리를 갈라 둔다.
    */
   aiAudit?: AiAudit;
+  /**
+   * 문항을 만든 때.
+   *
+   * updatedAt과 갈라 둔다. 목록에서 「언제 들어온 문항인가」를 묻는 것과 「마지막으로
+   * 손댄 게 언제인가」를 묻는 것은 다른 질문이고, 한 칸으로 합치면 오래전에 만들어 두고
+   * 어제 오타 하나 고친 문항이 어제 만든 문항처럼 맨 위에 선다.
+   *
+   * 옛 저장분과 씨앗에는 이 값이 없다. 채워 넣을 때 updatedAt을 쓴다 — 만든 뒤 한 번도
+   * 안 고친 문항에는 정확하고, 고친 문항에는 「그 이전」이라는 뜻으로 읽어도 틀리지 않다.
+   */
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -272,12 +467,28 @@ export const AI_REVIEWER = "AI 검수";
 
 /** 반려 사유 — 코드로 고르게 해서 출제자가 무엇을 고쳐야 하는지 바로 알게 한다 */
 export const rejectCodes = [
-  { id: "content", label: "내용 오류", desc: "교과 내용이 틀렸거나 근거가 약합니다" },
-  { id: "answer", label: "정답 불명확", desc: "정답이 둘 이상으로 읽히거나 근거가 부족합니다" },
+  {
+    id: "content",
+    label: "내용 오류",
+    desc: "교과 내용이 틀렸거나 근거가 약합니다",
+  },
+  {
+    id: "answer",
+    label: "정답 불명확",
+    desc: "정답이 둘 이상으로 읽히거나 근거가 부족합니다",
+  },
   { id: "wording", label: "발문 모호", desc: "묻는 바가 분명하지 않습니다" },
-  { id: "grade", label: "학년 부적합", desc: "해당 학년이 읽기에 어렵거나 쉽습니다" },
+  {
+    id: "grade",
+    label: "학년 부적합",
+    desc: "해당 학년이 읽기에 어렵거나 쉽습니다",
+  },
   { id: "bias", label: "편향 우려", desc: "성·지역·문화·SES 편향이 보입니다" },
-  { id: "tag", label: "태깅 불일치", desc: "이중태그나 S위계가 문항과 맞지 않습니다" },
+  {
+    id: "tag",
+    label: "태깅 불일치",
+    desc: "이중태그나 S위계가 문항과 맞지 않습니다",
+  },
 ] as const;
 
 export type RejectCode = (typeof rejectCodes)[number]["id"];
@@ -288,11 +499,27 @@ export const rejectLabel = (id: RejectCode) => rejectCodes.find((c) => c.id === 
 export const reviewChecks = [
   {
     id: "content",
-    label: "1차 내용",
+    label: "1차 내용 검수",
     desc: "교과 정확성 · 발문 명료성 · 정답 유일성 · 학년 이독성",
   },
-  { id: "tagging", label: "2차 태깅", desc: "이중태그와 S위계가 문항이 실제로 재는 것과 맞는가" },
-  { id: "ethics", label: "3차 윤리·편향", desc: "성·지역·문화·SES 편향, 아동 정서 적합성" },
+  {
+    /*
+     * 2차는 **교차검증**이다 — 한 사람이 태그가 맞나 보는 것이 아니라, 교육과정 전문가와
+     * 뇌과학 자문위원이 **서로 모른 채 각자 태깅한 뒤** 그 둘이 같은지를 본다.
+     *
+     * 한 사람이 보면 출제자가 적어 둔 태그를 읽고 「그럴듯하다」로 끝난다(앵커링). 태그는
+     * 리포트의 재능 좌표를 그대로 정하는 값이라, 그럴듯함으로 통과시키면 좌표가 조용히
+     * 기운다. 두 사람이 독립으로 붙이고 어긋난 것만 사람이 다시 보는 것이 요점이다.
+     */
+    id: "tagging",
+    label: "2차 태깅 교차검증",
+    desc: "교육과정 전문가 + 뇌과학 자문위원 독립 태깅",
+  },
+  {
+    id: "ethics",
+    label: "3차 윤리·편향 검수",
+    desc: "성·지역·문화·SES 편향 · 아동 정서 적합성 · 특수교육 대상 접근성",
+  },
 ] as const;
 
 export type ReviewCheckId = (typeof reviewChecks)[number]["id"];
@@ -316,7 +543,10 @@ export type CheckReason = { id: string; text: string };
 export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: CheckReason[] }> = {
   content: {
     pass: [
-      { id: "c-p-fact", text: "교과 내용이 정확하고 근거가 지문 안에 있습니다" },
+      {
+        id: "c-p-fact",
+        text: "교과 내용이 정확하고 근거가 지문 안에 있습니다",
+      },
       { id: "c-p-one", text: "정답이 하나로만 성립합니다" },
       { id: "c-p-clear", text: "발문이 한 가지로만 읽힙니다" },
       { id: "c-p-grade", text: "학년 어휘와 문장 길이가 무리 없습니다" },
@@ -327,27 +557,55 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       { id: "c-b-fact", text: "교과 내용에 사실 오류가 있습니다" },
       { id: "c-b-multi", text: "정답이 둘 이상 성립합니다" },
       { id: "c-b-vague", text: "발문이 두 가지로 읽힙니다" },
-      { id: "c-b-distractor", text: "오답 보기가 답이 될 수 없을 만큼 뻔하거나 의도가 겹칩니다" },
+      {
+        id: "c-b-distractor",
+        text: "오답 보기가 답이 될 수 없을 만큼 뻔하거나 의도가 겹칩니다",
+      },
       { id: "c-b-grade", text: "학년에 비해 어휘·문장이 어렵습니다" },
       { id: "c-b-explain", text: "해설이 답만 말하고 까닭을 말하지 않습니다" },
     ],
   },
   tagging: {
     pass: [
-      { id: "t-p-standard", text: "성취기준이 문항이 실제로 묻는 것과 맞습니다" },
-      { id: "t-p-talent", text: "재능 축과 세부 기능이 문항이 재는 능력과 맞습니다" },
+      {
+        id: "t-p-standard",
+        text: "성취기준이 문항이 실제로 묻는 것과 맞습니다",
+      },
+      {
+        id: "t-p-talent",
+        text: "재능 축과 세부 기능이 문항이 재는 능력과 맞습니다",
+      },
       { id: "t-p-level", text: "S단계가 요구하는 조작 수준과 발문이 맞습니다" },
       { id: "t-p-spec", text: "형식·배점·b모수가 단계 명세대로입니다" },
       { id: "t-p-band", text: "학년군이 지문과 보기 수준에 맞습니다" },
       { id: "t-p-single", text: "두 축이 겹치지 않고 하나로 읽힙니다" },
+      {
+        id: "t-p-cross",
+        text: "교육과정 전문가와 뇌과학 자문위원의 독립 태깅이 일치합니다",
+      },
+      {
+        id: "t-p-resolved",
+        text: "두 태깅이 갈렸지만 근거를 맞춰 한 값으로 정리했습니다",
+      },
     ],
     block: [
-      { id: "t-b-standard", text: "성취기준이 문항이 실제로 묻는 것과 다릅니다" },
+      {
+        id: "t-b-standard",
+        text: "성취기준이 문항이 실제로 묻는 것과 다릅니다",
+      },
       { id: "t-b-talent", text: "재능 축이 문항이 재는 능력과 다릅니다" },
       { id: "t-b-subskill", text: "세부 기능이 더 맞는 것으로 따로 있습니다" },
       { id: "t-b-level", text: "S단계가 발문의 조작 수준과 어긋납니다" },
       { id: "t-b-spec", text: "형식·배점·b모수가 단계 명세와 다릅니다" },
-      { id: "t-b-mixed", text: "한 문항이 두 축을 같이 재고 있어 점수 해석이 안 됩니다" },
+      {
+        id: "t-b-mixed",
+        text: "한 문항이 두 축을 같이 재고 있어 점수 해석이 안 됩니다",
+      },
+      {
+        id: "t-b-cross",
+        text: "두 사람의 독립 태깅이 갈리고 어느 쪽이 맞는지 정하지 못했습니다",
+      },
+      { id: "t-b-onlyone", text: "독립 태깅이 한 사람 것만 들어왔습니다" },
     ],
   },
   ethics: {
@@ -358,14 +616,33 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       { id: "e-p-emotion", text: "아동 정서에 부담이 되는 소재가 없습니다" },
       { id: "e-p-label", text: "아이를 규정하지 않고 수행만 묻습니다" },
       { id: "e-p-belief", text: "특정 종교·정치색이 드러나지 않습니다" },
+      {
+        id: "e-p-a11y",
+        text: "특수교육 대상 아동도 풀 수 있습니다 — 그림·색에만 기대지 않고 글로도 읽힙니다",
+      },
     ],
     block: [
-      { id: "e-b-ses", text: "가정 형편(SES)이 드러나거나 있어야 풀리는 소재입니다" },
+      {
+        id: "e-b-ses",
+        text: "가정 형편(SES)이 드러나거나 있어야 풀리는 소재입니다",
+      },
       { id: "e-b-gender", text: "성 역할을 고정하는 표현이 있습니다" },
       { id: "e-b-region", text: "특정 지역·문화의 경험이 있어야 풀립니다" },
       { id: "e-b-emotion", text: "아동 정서에 부담이 될 수 있는 소재입니다" },
       { id: "e-b-label", text: "아이의 특성을 규정하는 표현이 있습니다" },
       { id: "e-b-belief", text: "특정 종교·정치색이 드러납니다" },
+      {
+        id: "e-b-a11y-visual",
+        text: "그림·색을 봐야만 풀립니다 — 저시력·색약 아동이 답할 수 없습니다",
+      },
+      {
+        id: "e-b-a11y-read",
+        text: "읽기 보조가 필요한 아동에게 발문이 너무 길거나 문장이 겹칩니다",
+      },
+      {
+        id: "e-b-a11y-time",
+        text: "손 조작·속도를 요구해 시간 연장으로도 메우기 어렵습니다",
+      },
     ],
   },
 };
@@ -614,7 +891,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
           { id: "tagging", ok: true, reason: "t-p-standard", note: "" },
           { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
         ],
-        text: "정답 유일성과 학년 이독성 모두 문제 없습니다. 승인합니다.",
+        text: "정답 유일성과 학년 이독성 모두 문항 없습니다. 승인합니다.",
       },
     ],
     comments: [
@@ -623,7 +900,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
         by: "이검수",
         role: "reviewer",
         kind: "approve",
-        text: "정답 유일성과 학년 이독성 모두 문제 없습니다. 승인합니다.",
+        text: "정답 유일성과 학년 이독성 모두 문항 없습니다. 승인합니다.",
       },
     ],
     updatedAt: "2026-08-09 11:30",
@@ -866,7 +1143,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     ],
     retiredAt: "2026-07-30 14:05",
     retiredBy: "송준영",
-    retireReason: "26A 회차 정답률 96% — 변별이 되지 않아 회차에서 뺍니다. 문항 자체에 오류는 없습니다.",
+    retireReason:
+      "26A 회차 정답률 96% — 변별이 되지 않아 회차에서 뺍니다. 문항 자체에 오류는 없습니다.",
     comments: [],
     updatedAt: "2026-08-08 11:00",
   },
@@ -928,7 +1206,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "같은 무리의 낱말을 비슷한 말로 보는 혼동",
     ],
     answer: 1,
-    explain: "정답 ②. '고치다'와 '수리하다'는 바꾸어 써도 뜻이 통합니다. ①은 반대말, ③④는 뜻이 다릅니다.",
+    explain:
+      "정답 ②. '고치다'와 '수리하다'는 바꾸어 써도 뜻이 통합니다. ①은 반대말, ③④는 뜻이 다릅니다.",
     guidance:
       "바꾸어 써도 뜻이 통하는지만 봅니다. 문장 속 쓰임의 차이를 묻기 시작하면 S2로 이탈합니다.",
     type: "choice",
@@ -975,7 +1254,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     answer: 0,
     explain:
       "정답 ①. '과일'이 '사과'를 포함하듯 '옷'이 '바지'를 포함합니다. 나머지는 반대·나열·비슷한 말이라 포함이 아닙니다.",
-    guidance: "까닭까지 함께 고르게 해 관계의 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
+    guidance:
+      "까닭까지 함께 고르게 해 관계의 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -1020,7 +1300,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     ],
     answer: 0,
     explain: "정답 ①. 첫 문장이 주장이고 나머지 세 문장은 그 까닭을 밝히는 뒷받침 문장입니다.",
-    guidance: "지문은 네 문장을 넘기지 않습니다. 중심 문장이 문단 첫머리에만 오지 않도록 회차마다 자리를 바꿉니다.",
+    guidance:
+      "지문은 네 문장을 넘기지 않습니다. 중심 문장이 문단 첫머리에만 오지 않도록 회차마다 자리를 바꿉니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -1310,7 +1591,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "상태 변화의 방향을 뒤집어 보는 오개념",
     ],
     answer: 0,
-    explain: "정답 ①. 끓는 동안 물속에서 기포가 생겨 올라오고, 물의 양은 줄며 온도는 더 오르지 않습니다.",
+    explain:
+      "정답 ①. 끓는 동안 물속에서 기포가 생겨 올라오고, 물의 양은 줄며 온도는 더 오르지 않습니다.",
     guidance:
       "탐색적 측정 영역입니다 — 점수 비교 대상이 아님을 메타에 유지합니다. 관찰한 것을 고르는 데까지만 묻습니다.",
     type: "choice",
@@ -1369,7 +1651,8 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "원인을 물이 아닌 병 쪽으로 옮기는 오개념",
     ],
     answer: 0,
-    explain: "정답 ①. 물은 얼면 부피가 늘어납니다. 무게는 그대로이고 병 속으로 드나든 것도 없습니다.",
+    explain:
+      "정답 ①. 물은 얼면 부피가 늘어납니다. 무게는 그대로이고 병 속으로 드나든 것도 없습니다.",
     guidance:
       "탐색적 측정 영역입니다 — 점수 비교 대상이 아님을 메타에 유지합니다. 오답 ②는 부피와 무게를 가르는 자리라 반드시 남깁니다.",
     type: "choice",
@@ -1504,7 +1787,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
   },
 ];
 
-const SEED: ItemDraft[] = SEED_RAW.map(fill);
+const SEED: ItemDraft[] = withCodes(SEED_RAW.map(fill));
 
 const KEY = "genixx.items";
 const EVENT = "genixx:items-change";
@@ -1520,35 +1803,236 @@ let cacheValue: ItemDraft[] = SEED;
  * 채워 넣는 값은 기본값일 뿐 「작성됨」이 아니다 — 성취기준 코드는 비워 두어
  * 체크리스트에서 걸리게 한다.
  */
+/* ── 납작한 칸 ↔ questions 맞추기 ──────────────────────────────────────────
+ *
+ * 문항 하나가 문항 여럿을 담게 되면서 발문·보기·정답·해설이 questions로 옮겨 갔다.
+ * 그런데 옛 콘솔(components/admin/ItemCard.tsx)과 목록·검수·편성 화면 열두 곳이
+ * 아직 item.stem · item.type을 직접 읽는다. 그 화면들을 한꺼번에 갈아엎지 않고
+ * 살려 두려면 두 벌이 있어야 하고, 두 벌이 있으면 반드시 어긋난다.
+ *
+ * 그래서 어긋날 자리를 하나로 모은다 — **저장으로 나가는 길목(patchItem)에서만**
+ * 맞춘다. questions를 건드린 patch면 questions가 이기고(→ 납작한 칸을 다시 만든다),
+ * 납작한 칸을 건드린 patch면 그쪽이 이긴다(→ 첫 문항에 되붙인다). 한 번의 저장에서
+ * 양쪽을 같이 고치는 화면은 없으므로 「어느 쪽이 이기나」로 헷갈릴 일이 없다.
+ */
+
+/**
+ * questions[0]이 곧 이 값들이다.
+ *
+ * 세트에서도 첫 문항의 것을 그대로 올린다. 「대표값」이라 부를 만한 것이 달리 없고,
+ * 목록에서 문항 한 줄을 볼 때 궁금한 것은 대개 그 세트가 무엇으로 시작하는가이다.
+ * 문항마다 다를 수 있다는 것은 목록의 유형 칸이 「세트 3문 · 서술형 · OX」로 알린다.
+ */
+const MIRRORED = [
+  "type",
+  "stem",
+  "choices",
+  "answer",
+  "distractorIntent",
+  "shortAnswers",
+  "rubric",
+  "explain",
+  "standardCode",
+  "standardText",
+  "tagADetail",
+  "talent",
+  "subskill",
+] as const;
+
+type Mirrored = Pick<ItemDraft, (typeof MIRRORED)[number]>;
+
+/**
+ * 세트를 문항 한 줄로 줄인 값 — 첫 문항를 그대로 올릴 수 없는 셋.
+ *
+ *   단계   가장 높은 것. 세트는 그 안에서 제일 어려운 문항만큼 요구한다.
+ *   b모수  평균. 회차 편성이 난이도를 고르게 섞을 때 보는 값이다.
+ *   배점   합. 이것만은 반드시 합이어야 한다 — 첫 문항의 배점을 올리면 검사지
+ *          총점이 세트 하나마다 어긋나고, 그 오차는 채점이 끝난 뒤에나 드러난다.
+ *
+ * 단일 문항은 문항이 하나라 셋 다 그 문항의 값과 같다.
+ */
+/* 단계 차례는 blueprint의 LEVELS를 그대로 쓴다. 여기서 배열을 하나 더 세우면 안 된다 —
+   SEED가 이 파일 위쪽에서 fill()을 부르는데, 그 시점에 아래쪽 const는 아직 서지 않았다
+   (TDZ). import은 본문보다 먼저 서므로 안전하다. */
+export function summaryOf(qs: Question[]): Pick<ItemDraft, "level" | "b" | "points"> {
+  const level = qs.reduce(
+    (hi, q) => (LEVELS.indexOf(q.level) > LEVELS.indexOf(hi) ? q.level : hi),
+    qs[0].level,
+  );
+  const points = qs.reduce((sum, q) => sum + q.points, 0);
+  /* 고른 것만 평균 낸다. 아무도 안 골랐으면 단계 앵커값을 세운다 — 문항 쪽 b는 목록과
+     회차 편성이 숫자로 읽는 칸이라 비울 수가 없다. 「골랐는가」를 물어야 하는 자리는
+     묶음이 아니라 문항이고, 그건 difficultyPicked(q.b)가 답한다.
+     소수 둘째 자리에서 끊는 것은 셋으로 나눈 평균이 -0.16666…으로 저장되면 목록의
+     난이도 칸이 문항마다 자릿수가 달라지기 때문이다 */
+  const picked = qs.map((q) => q.b).filter((v): v is number => v !== null);
+  const b =
+    picked.length > 0
+      ? Math.round((picked.reduce((sum, v) => sum + v, 0) / picked.length) * 100) / 100
+      : levelSpecs[level].b;
+  return { level, b, points };
+}
+
+/** 납작한 칸을 문항 하나로 옮긴 것 */
+function questionOf(raw: Partial<ItemDraft>, n: number, tags: QuestionTags): Question {
+  return {
+    id: `q${n + 1}`,
+    type: (raw.type ?? "choice") as ItemType,
+    stem: raw.stem ?? "",
+    stemMode: "text",
+    stemImages: [],
+    /* OX여도 「맞다·아니다」를 담지 않는다 — OX_CHOICES 주석 참고 */
+    choices: raw.choices ?? ["", "", "", ""],
+    answer: raw.answer ?? 0,
+    distractorIntent: raw.distractorIntent ?? [],
+    shortAnswers: raw.shortAnswers ?? "",
+    rubric: raw.rubric ?? "",
+    explain: raw.explain ?? "",
+    ...tags,
+  };
+}
+
+/**
+ * 저장분에 없던 칸을 메운다.
+ *
+ * 분류가 문항에만 있던 시절의 저장분은 문항에 그 칸이 없다. 그때는 문항이 이고 있던
+ * 값을 그대로 물려준다 — 세트라도 그 시절에는 전부 한 벌뿐이었으므로 틀리지 않는다.
+ */
+function fillQuestion(q: Partial<Question>, n: number, tags: QuestionTags): Question {
+  const level = q.level ?? tags.level;
+  return {
+    id: q.id || `q${n + 1}`,
+    type: (q.type ?? "choice") as ItemType,
+    stem: q.stem ?? "",
+    stemMode: q.stemMode ?? "text",
+    stemImages: q.stemImages ?? [],
+    choices: q.choices ?? ["", "", "", ""],
+    answer: q.answer ?? 0,
+    distractorIntent: q.distractorIntent ?? [],
+    shortAnswers: q.shortAnswers ?? "",
+    rubric: q.rubric ?? "",
+    explain: q.explain ?? "",
+    standardCode: q.standardCode ?? tags.standardCode,
+    standardText: q.standardText ?? tags.standardText,
+    tagADetail: q.tagADetail ?? tags.tagADetail,
+    talent: q.talent ?? tags.talent,
+    subskill: q.subskill ?? tags.subskill,
+    level,
+    b: q.b ?? tags.b,
+    /* 문항에 적힌 배점이 없으면 단계의 기본 배점으로 시작한다. 물려받은 배점을 쓰지 않는
+       것은 그것이 세트 전체의 합일 수 있어서다 — 그대로 쓰면 문항 하나가 세트 총점을
+       이고 앉는다 */
+    points: q.points ?? levelSpecs[level].points,
+  };
+}
+
+/** 거울에 올릴 칸만 뽑아 낸다. Question과 ItemDraft 양쪽이 다 들어온다 */
+function flatten(q: Mirrored): Mirrored {
+  return {
+    type: q.type,
+    stem: q.stem,
+    choices: q.choices,
+    answer: q.answer,
+    distractorIntent: q.distractorIntent,
+    shortAnswers: q.shortAnswers,
+    rubric: q.rubric,
+    explain: q.explain,
+    standardCode: q.standardCode,
+    standardText: q.standardText,
+    tagADetail: q.tagADetail,
+    talent: q.talent,
+    subskill: q.subskill,
+  };
+}
+
+/**
+ * 저장 직전에 두 벌을 맞춘다.
+ *
+ * 단일로 되돌리면 2번 이후 문항을 여기서 떨어뜨린다. 화면에서 미리 알려 주고
+ * (「저장하면 n개가 사라집니다」) 실제로 지우는 것은 여기 한 곳뿐이다.
+ */
+/**
+ * 문항 쪽 파생값을 문항들에서 다시 만든다 — 거울 · 요약 · 표시용 태그 한 벌.
+ *
+ * 읽을 때(fill)와 쓸 때(syncQuestions)가 이 함수 하나를 부른다. 한동안 fill이 따로
+ * 조립했는데, 그러다 distractorIntent 한 줄이 거울을 덮어써서 첫 문항의 오답 의도가
+ * 읽을 때마다 빈 배열로 돌아갔다. 조립하는 자리가 둘이면 반드시 어긋난다.
+ */
+function derive(item: ItemDraft): ItemDraft {
+  const first = item.questions[0];
+  const next: ItemDraft = {
+    ...item,
+    ...flatten(first),
+    /* 납작한 보기 칸에는 화면이 실제로 세우는 것을 적는다(OX면 맞다·아니다) */
+    choices: choicesOf(first),
+    ...summaryOf(item.questions),
+  };
+  return { ...next, ...syncTags(next) };
+}
+
+function syncQuestions(next: ItemDraft, patch: Partial<ItemDraft>): ItemDraft {
+  let out = next;
+
+  if (!patch.questions && MIRRORED.some((k) => k in patch)) {
+    /* 옛 콘솔이 납작한 칸을 고친 경우. 첫 문항에 되붙인다.
+       ⚠ level·b·points는 되붙이지 않는다 — 그 셋은 문항들에서 만든 요약이라, 되돌려
+         쓰면 세트 총점이 문항 하나의 배점으로 내려앉는다. 그래서 단계를 바꾸는 길은
+         setLevel 하나뿐이고, 그 함수가 문항을 직접 고친다. */
+    const [first, ...rest] = out.questions;
+    out = { ...out, questions: [{ ...first, ...flatten(out) }, ...rest] };
+  }
+
+  /* 단일로 되돌리면 2번 이후를 떨어뜨린다. 요약을 만들기 전에 해야 총점이 맞는다 */
+  if (out.form === "single" && out.questions.length > 1) {
+    out = { ...out, questions: [out.questions[0]] };
+  }
+
+  return derive(out);
+}
+
 function fill(raw: Partial<ItemDraft>): ItemDraft {
   const level = (raw.level ?? "S1") as Level;
   const spec = levelSpecs[level];
   const talent = (raw.talent ?? "LANG") as TalentId;
   const band = (raw.band ?? "3-4") as GradeBand;
-  return {
-    ...(raw as ItemDraft),
-    band,
-    unit: raw.unit ?? "",
-    unitNo: raw.unitNo ?? "",
+  /* 분류가 문항에만 있던 시절의 값. 문항에 그 칸이 없으면 이걸 물려준다 */
+  const tags: QuestionTags = {
     standardCode: raw.standardCode ?? "",
     standardText: raw.standardText ?? "",
     tagADetail: raw.tagADetail ?? raw.tagA ?? "",
     talent,
     subskill: raw.subskill ?? subskillsOf(talent)[0].code,
-    points: raw.points ?? spec.points,
-    b: raw.b ?? spec.b,
+    level,
+    /* 앵커값을 채워 넣지 않는다 — 아무도 안 고른 것과 「아주 쉬움」을 고른 것이
+       같은 값이 되면 제출 검사가 뚫린다(Question.b 주석) */
+    b: raw.b ?? null,
+    points: spec.points,
+  };
+  /* 세트가 없던 시절의 문항은 납작한 칸만 갖고 있다. 그 칸들을 문항 하나로 옮긴다 */
+  const questions =
+    raw.questions && raw.questions.length > 0
+      ? raw.questions.map((q, n) => fillQuestion(q, n, tags))
+      : [questionOf(raw, 0, tags)];
+  return derive({
+    ...(raw as ItemDraft),
+    form: raw.form ?? (questions.length > 1 ? "set" : "single"),
+    passage: raw.passage ?? "",
+    passageMode: raw.passageMode ?? "text",
+    passageImages: raw.passageImages ?? [],
+    questions,
+    band,
+    unit: raw.unit ?? "",
+    unitNo: raw.unitNo ?? "",
     anchor: raw.anchor ?? false,
     guidance: raw.guidance ?? "",
-    distractorIntent: raw.distractorIntent ?? [],
     checks: raw.checks ?? [],
-    tagA: raw.tagA ?? "",
-    tagB: raw.tagB ?? "",
     comments: raw.comments ?? [],
     origin: raw.origin ?? "human",
     reviews: raw.reviews ?? [],
     assets: raw.assets ?? [],
     correctRate: raw.correctRate ?? null,
-  };
+    createdAt: raw.createdAt ?? raw.updatedAt ?? "",
+  });
 }
 
 function read(): ItemDraft[] {
@@ -1557,7 +2041,9 @@ function read(): ItemDraft[] {
   if (raw === cacheRaw) return cacheValue;
   cacheRaw = raw;
   try {
-    cacheValue = raw ? mergeSeed((JSON.parse(raw) as Partial<ItemDraft>[]).map(fill)) : SEED;
+    cacheValue = raw
+      ? withCodes(mergeSeed((JSON.parse(raw) as Partial<ItemDraft>[]).map(fill)))
+      : SEED;
   } catch {
     cacheValue = SEED;
   }
@@ -1604,7 +2090,16 @@ function now() {
 }
 
 export function patchItem(id: string, patch: Partial<ItemDraft>) {
-  write(read().map((i) => (i.id === id ? { ...i, ...patch, updatedAt: now() } : i)));
+  /* 코드까지 다시 매겨서 담는다. read()가 어차피 다시 매기므로 화면은 어느 쪽이든 같지만,
+     담긴 것과 읽은 것이 다르면 저장소를 직접 열어 본 사람이 「과목은 과학인데 코드는 M」인
+     문항을 보게 된다. 붙일 때 서버로 나가는 것도 이 값이다 */
+  write(
+    withCodes(
+      read().map((i) =>
+        i.id === id ? syncQuestions({ ...i, ...patch, updatedAt: now() }, patch) : i,
+      ),
+    ),
+  );
 }
 
 export function addItem(author: string, authorName: string): ItemDraft {
@@ -1647,9 +2142,10 @@ export function addItem(author: string, authorName: string): ItemDraft {
  *
  * 대신 두 가지를 지킨다.
  *
- *  1) 상태는 draft로 들어간다. 만들자마자 검수로 넘기는 길은 없다. 출제자가 열어
- *     보고 제출 전 체크리스트(§9)를 직접 짚어야 제출 칸이 열린다 — 「사람이 한 번도
- *     안 읽은 문항」이 검수 목록에 쌓이는 것을 여기서 막는다.
+ *  1) 상태는 draft로 들어간다. 만들자마자 검수로 넘기는 길은 없다. 제출 단추는 문항
+ *     상세에만 있어서 누군가 그 문항을 열어야 넘어간다 — 「사람이 한 번도 안 연 문항」이
+ *     검수 목록에 쌓이는 것을 여기서 막는다. 옛 콘솔은 거기에 더해 제출 전 체크리스트(§9)를
+ *     직접 짚게 한다(missingFields). 슈퍼 관리자 콘솔은 그 판을 걷었다(missingContent).
  *  2) origin에 ai를 남긴다. 검수자가 AI 산출물인 줄 알고 봐야 한다.
  *
  * 문항 자체는 lib/itemBank.ts에 미리 써 둔 본에서 꺼낸다. 실제 서비스라면 그 자리에
@@ -1662,8 +2158,18 @@ export function addItem(author: string, authorName: string): ItemDraft {
  */
 
 export type GenerateSpec = {
+  /**
+   * 단일이냐 세트냐.
+   *
+   * 세트면 뽑은 문항을 **보기 하나 아래 묶어** 초안 한 장으로 만든다. 자료를 두 번
+   * 읽히지 않고 단계를 올려 묻는 것이 세트를 두는 까닭이라, 단계 차례(S1 → S4)로
+   * 안에 세운다.
+   */
+  form: ItemForm;
   subject: ItemDraft["subject"];
   band: GradeBand;
+  /** 예상 난이도 b — difficulties 넷 중 하나 */
+  b: number;
   talent: TalentId;
   subskill: string;
   unit: string;
@@ -1686,13 +2192,21 @@ export function checkSpec(spec: GenerateSpec): string[] {
   const bad: string[] = [];
   const total = countOf(spec.counts);
 
-  if (total === 0) bad.push("생성할 문항 수를 한 단계 이상 적어 주세요.");
+  if (total === 0) bad.push("단계마다 뽑을 문항 수를 한 칸 이상 적어 주세요.");
   if (total > GENERATE_MAX) bad.push(`한 번에 ${GENERATE_MAX}문항까지 뽑을 수 있습니다.`);
-  if (!spec.unit.trim()) bad.push("단원 이름을 적어 주세요.");
-  if (!/\d/.test(spec.unitNo)) bad.push("단원 번호를 숫자로 적어 주세요. 문항 ID에 들어갑니다.");
+  /* 세트는 보기 하나를 함께 읽고 그 위에서 둘 이상을 묻는 꼴이다. 하나짜리 세트는
+     단일과 같은 것인데, 그렇게 만들어 두면 편성판이 그것을 세트로 세고 배점 합도
+     세트 규칙으로 잡는다 */
+  if (spec.form === "set" && total < 2) bad.push("세트는 두 문항 이상이어야 합니다.");
+  if (!difficultyPicked(spec.b)) bad.push("난이도를 골라 주세요.");
 
-  const code = checkStandardCode(spec.standardCode, spec.band);
-  if (!code.ok) bad.push(code.why);
+  /* 단원과 성취기준 코드는 비워 둘 수 있다 — 생성한 뒤 문항을 보고 붙이는 편이 맞는
+     자리가 많다. 다만 **적었으면 맞아야 한다**. 틀린 코드가 붙은 문항은 안 붙은 문항
+     보다 나쁘다: 검수에서 맞는 줄 알고 지나간다 */
+  if (spec.standardCode.trim()) {
+    const code = checkStandardCode(spec.standardCode, spec.band);
+    if (!code.ok) bad.push(code.why);
+  }
 
   /* 재능 축마다 다룰 수 있는 단계가 다르다 — 자기-성찰은 S4가 없다 */
   for (const level of LEVELS_ALL) {
@@ -1713,69 +2227,128 @@ const LEVELS_ALL: Level[] = ["S1", "S2", "S3", "S4"];
  */
 export function generateItems(spec: GenerateSpec, author: string, authorName: string): ItemDraft[] {
   const list = read();
-  const made: ItemDraft[] = [];
 
-  let serial = list.filter((i) => i.subject === spec.subject).length;
-
+  /* 뽑을 것을 단계 차례로 편다. 세트 안에서도 S1 → S4로 서야 한 자료를 놓고 단계를
+     올려 물을 수 있다 — 그것이 세트를 두는 까닭이다 */
+  const picks: { level: Level; k: number; n: number }[] = [];
   for (const level of LEVELS_ALL) {
     const n = spec.counts[level] ?? 0;
-    for (let k = 0; k < n; k += 1) {
-      serial += 1;
-      const s = levelSpecs[level];
-      const type = typeForLevel[level];
-      const sample = pickSample(spec.subject, level, k);
+    for (let k = 0; k < n; k += 1) picks.push({ level, k, n });
+  }
+  if (picks.length === 0) return [];
 
-      const item = fill({
-        id: `IT-AI-${Date.now().toString(36).toUpperCase()}-${serial}`,
-        code: makeItemCode(spec.band, spec.subject, spec.unitNo, level, serial),
-        subject: spec.subject,
-        band: spec.band,
-        grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
-        passage: sample.passage ?? "",
+  /** 출제자가 열었을 때 무엇부터 봐야 하는지 */
+  const guidanceOf = (level: Level, k: number, n: number, inSet: boolean) => {
+    const s = levelSpecs[level];
+    return [
+      "AI가 만든 문항입니다. 그대로 두지 말고 아래를 확인하고 고쳐 주세요.",
+      `· 태깅 — 고른 축(${spec.talent} · ${spec.subskill})이 이 문항이 실제로 재는 것과 맞는가`,
+      spec.standardCode.trim()
+        ? `· 성취기준 — ${spec.standardCode.trim()}의 내용과 아래 성취기준 내용이 맞는가`
+        : "· 성취기준 — 아직 비어 있습니다. 문항을 보고 코드를 붙여 주세요",
+      `· 단계 — ${s.rule}`,
+      `· 금지 — ${s.deny}`,
+      inSet ? "· 세트입니다. 보기 하나를 함께 읽는 문항인지, 앞 문항의 답이 뒷 문항에 새지 않는지 볼 것" : "",
+      !inSet && n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
+      spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  };
+
+  /** 뽑은 것 하나를 문항 한 칸으로 */
+  const questionOf = (pick: { level: Level; k: number }, order: number) => {
+    const s = levelSpecs[pick.level];
+    const sample = pickSample(spec.subject, pick.level, pick.k);
+    return {
+      sample,
+      q: {
+        id: `q${order + 1}`,
+        type: typeForLevel[pick.level],
         stem: sample.stem,
+        stemMode: "text" as const,
+        stemImages: [],
         choices: sample.choices ?? ["", "", "", ""],
         answer: sample.answer ?? 0,
         explain: sample.explain,
-        type,
         shortAnswers: sample.shortAnswers ?? "",
         rubric: sample.rubric ?? "",
-        assets: [],
-        version: 1,
-        unit: spec.unit.trim(),
-        unitNo: spec.unitNo.trim(),
+        distractorIntent: sample.distractorIntent ?? [],
         standardCode: spec.standardCode.trim(),
         standardText: sample.standardText,
         tagADetail: sample.tagADetail,
         talent: spec.talent,
         subskill: spec.subskill,
+        level: pick.level,
+        /* 사람이 고른 난이도를 그대로 쓴다. 단계 앵커값을 몰래 넣어 두면 「아무도 안
+           고른 것」과 구별되지 않는다(Question.b 주석) */
+        b: spec.b,
         points: s.points,
-        b: s.b,
-        anchor: false,
-        /* 출제자가 열었을 때 무엇부터 봐야 하는지. 태깅을 먼저 적는 것은, 축은
-           사람이 고르고 문항은 본에서 나오므로 둘이 어긋날 수 있는 자리라서다. */
-        guidance: [
-          "AI가 만든 문항입니다. 그대로 두지 말고 아래를 확인하고 고쳐 주세요.",
-          `· 태깅 — 고른 축(${spec.talent} · ${spec.subskill})이 이 문항이 실제로 재는 것과 맞는가`,
-          `· 성취기준 — ${spec.standardCode.trim()}의 내용과 아래 성취기준 내용이 맞는가`,
-          `· 단계 — ${s.rule}`,
-          `· 금지 — ${s.deny}`,
-          n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
-          spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        distractorIntent: sample.distractorIntent ?? [],
-        level,
-        author,
-        authorName,
-        state: "draft",
-        origin: "ai",
-        aiBrief: spec.brief.trim(),
-        comments: [],
-        reviews: [],
-        updatedAt: now(),
-      });
+      },
+    };
+  };
 
+  const stamp = Date.now().toString(36).toUpperCase();
+  const base = {
+    code: "",
+    subject: spec.subject,
+    band: spec.band,
+    grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
+    assets: [],
+    version: 1,
+    unit: spec.unit.trim(),
+    unitNo: spec.unitNo.trim(),
+    standardCode: spec.standardCode.trim(),
+    talent: spec.talent,
+    subskill: spec.subskill,
+    b: spec.b,
+    anchor: false,
+    author,
+    authorName,
+    state: "draft" as const,
+    origin: "ai" as const,
+    aiBrief: spec.brief.trim(),
+    comments: [],
+    reviews: [],
+    updatedAt: now(),
+  };
+
+  let serial = list.filter((i) => i.subject === spec.subject).length;
+  const made: ItemDraft[] = [];
+
+  if (spec.form === "set") {
+    /* 세트는 한 장이다. 보기는 첫 문항의 지문을 쓴다 — 뒤 문항의 지문은 버리지 않고
+       발문 앞에 붙이지도 않는다. 한 자료를 함께 읽는 것이 세트이므로, 자료가 여럿이면
+       그것은 세트가 아니라 낱개 여럿이다 */
+    const built = picks.map((pick, i) => questionOf(pick, i));
+    serial += 1;
+    const item = fill({
+      ...base,
+      id: `IT-AI-${stamp}-${serial}`,
+      form: "set",
+      passage: built[0].sample.passage ?? "",
+      questions: built.map((b) => b.q),
+      standardText: built[0].sample.standardText,
+      tagADetail: built[0].sample.tagADetail,
+      level: built[0].q.level,
+      guidance: guidanceOf(built[0].q.level, 0, built.length, true),
+    });
+    made.push({ ...item, ...syncTags(item) });
+  } else {
+    for (const pick of picks) {
+      serial += 1;
+      const built = questionOf(pick, 0);
+      const item = fill({
+        ...base,
+        id: `IT-AI-${stamp}-${serial}`,
+        form: "single",
+        passage: built.sample.passage ?? "",
+        questions: [built.q],
+        standardText: built.sample.standardText,
+        tagADetail: built.sample.tagADetail,
+        level: pick.level,
+        guidance: guidanceOf(pick.level, pick.k, pick.n, false),
+      });
       made.push({ ...item, ...syncTags(item) });
     }
   }
@@ -1798,14 +2371,104 @@ export const typeForLevel: Record<Level, ItemType> = {
   S4: "essay",
 };
 
+/**
+ * 인지단계를 바꾼다 — 옛 콘솔(components/admin/ItemCard.tsx)이 부른다.
+ *
+ * 문항 쪽 level·points는 이제 문항들에서 만드는 요약이라, 거기에 값을 밀어 넣으면
+ * 다음 저장에서 그대로 다시 계산되어 사라진다. 그래서 **첫 문항**를 고친다.
+ *
+ * ⚠ 첫 문항만 고친다. 옛 콘솔에는 세트라는 개념이 없어서 몇 번 문항를 말하는지
+ *   가리킬 방법이 없다. 세트의 2번 이후는 새 콘솔의 문항 상세에서 고친다.
+ */
 export function setLevel(id: string, level: Level) {
-  const spec = levelSpecs[level];
+  const item = read().find((i) => i.id === id);
+  if (!item) return;
+  /* 형식만 따라온다. b모수와 배점은 덮지 않는다 — 둘 다 사람이 고르고 적는 값이라, 단계를
+     한 번 바꾼 것만으로 앵커값·기본 배점으로 돌아가 있으면 아무 말 없이 고친 것이 사라진다.
+     b는 난이도를 넷 중에서 고르게 바꿨을 때, 배점은 새 콘솔에서 직접 적게 바꿨을 때 뺐다 */
   patchItem(id, {
-    level,
-    type: typeForLevel[level],
-    points: spec.points,
-    b: spec.b,
+    questions: item.questions.map((q, n) =>
+      n === 0 ? { ...q, level, type: typeForLevel[level] } : q,
+    ),
   });
+}
+
+/* ── 문항 다루기 (화면이 초안 위에서 쓰는 순수 함수들) ──────────────────────
+   저장소를 건드리지 않는다. 문항 상세는 저장을 누를 때만 저장하므로, 문항을 더하고
+   지우는 것도 저장 전까지는 화면 안의 값이어야 한다. */
+
+/** 세트 안에서 겹치지 않는 다음 열쇠 */
+export function nextQuestionId(list: Question[]) {
+  let n = list.length + 1;
+  const used = new Set(list.map((q) => q.id));
+  while (used.has(`q${n}`)) n += 1;
+  return `q${n}`;
+}
+
+/**
+ * 세트에 붙일 새 문항.
+ *
+ * 분류는 **바로 앞 문항에서 물려받는다**. 세트는 같은 자료를 놓고 묻는 것이라 성취기준과
+ * 재능 축이 같은 경우가 대부분이고, 다르면 그 자리에서 고치면 된다. 빈 채로 두면 문항을
+ * 더할 때마다 성취기준 코드부터 다시 찾아 적어야 한다.
+ *
+ * 단계와 난이도까지 물려받는 것은 조금 다른 까닭이다 — 세트로 단계를 올릴 생각이면
+ * 앞 문항가 어디였는지가 그 자리에서 보여야 무엇을 올릴지 정할 수 있다.
+ */
+export function blankQuestion(list: Question[], type: ItemType = "choice"): Question {
+  const prev = list[list.length - 1];
+  /* 앞 문항에 적어 둔 배점을 물려받는다. 단계를 물려받는 것과 같은 까닭이고, 앞 문항이
+     없거나 비워 두었으면 단계의 기본 배점으로 시작한다.
+     ⚠ 문항 쪽에 실어 보낸다. fillQuestion은 태그 쪽 배점을 읽지 않는다 — 옛 납작한 문항을
+       풀 때 그 자리에 세트 총점이 들어 있을 수 있어서다 */
+  const points =
+    prev && prev.points > 0 ? prev.points : levelSpecs[prev?.level ?? "S1"].points;
+  return fillQuestion({ id: nextQuestionId(list), type, points }, list.length, {
+    standardCode: prev?.standardCode ?? "",
+    standardText: prev?.standardText ?? "",
+    tagADetail: "",
+    talent: prev?.talent ?? "LANG",
+    subskill: prev?.subskill ?? subskillsOf(prev?.talent ?? "LANG")[0].code,
+    level: prev?.level ?? "S1",
+    b: prev?.b ?? null,
+    points,
+  });
+}
+
+/**
+ * 유형을 바꾼다.
+ *
+ * **적어 둔 글은 하나도 지우지 않는다.** 한동안 OX로 갈 때 보기를 「맞다·아니다」로
+ * 갈아 끼우고 돌아올 때 빈 넉 칸으로 되돌렸는데, 유형 고르개가 라디오 묶음이 되고 나서
+ * 그것이 그대로 사고가 됐다 — 라디오는 방향키가 지나가는 항목을 실제로 고르므로,
+ * 객관식에서 서술형까지 세 칸 내려가는 동안 OX를 통과하면서 보기 넉 줄과 오답 의도가
+ * 소리 없이 날아갔다. 되돌아와도 살아나지 않는다.
+ *
+ * 그래서 보기는 저장해 둔 채로 두고, 화면과 채점이 볼 때만 choicesOf가 갈아 끼운다.
+ * 여기서 손대는 것은 정답 자리 하나뿐이다 — OX는 보기가 둘이라 3번을 정답으로 둔 채
+ * 넘어가면 없는 보기를 가리키게 된다. 이건 다시 누르면 그만이고, 무엇보다 화면에 보인다.
+ */
+export function retypeQuestion(q: Question, type: ItemType): Question {
+  if (q.type === type) return q;
+  return type === "ox" ? { ...q, type, answer: Math.min(q.answer, 1) } : { ...q, type };
+}
+
+/** 목록의 유형 칸 — 세트는 안에 든 유형을 모아 적는다 */
+export function typeTextOf(i: ItemDraft) {
+  const kinds = [...new Set(i.questions.map((q) => q.type))].map(typeLabel).join(" · ");
+  return kinds || typeLabel(i.type);
+}
+
+/**
+ * 목록의 구성 칸 — 단일인가 세트인가, 세트면 몇 문항인가.
+ *
+ * 한동안 유형 칸에 「세트 3문 · 서술형 · OX」로 함께 적었는데, 그러면 그 칸이 두 가지를
+ * 답하느라 어느 쪽도 훑을 수 없다. 세트를 찾을 때는 「세트」만, 형식을 볼 때는 유형만
+ * 보면 되도록 칸을 가른다. 문항 수를 함께 적는 것은 그것이 세트에서 가장 먼저 묻는
+ * 것이기 때문이다 — 회차에 담을 때 몇 칸을 먹는지가 거기서 정해진다.
+ */
+export function formTextOf(i: ItemDraft) {
+  return i.form === "set" ? `세트 ${i.questions.length}문항` : "단일";
 }
 
 /**
@@ -1816,18 +2479,89 @@ export function setLevel(id: string, level: Level) {
  * 않는다.
  */
 export function syncTags(item: ItemDraft): Pick<ItemDraft, "tagA" | "tagB"> {
-  const a = [item.standardCode, item.tagADetail].filter(Boolean).join(" ");
-  const b = tagBCoord(item.talent, item.subskill, item.level);
+  const first = item.questions[0];
+  const rest = item.questions.length - 1;
+
+  /* ⚠ 좌표는 **첫 문항의 단계**로 짓는다. 문항 쪽 level은 세트에서 가장 높은 것이라,
+       그걸 첫 문항의 축·세부기능과 붙이면 어느 문항도 서 있지 않은 좌표가 나온다.
+       자기-성찰 축은 S4를 다루지 않는데, 「자기-성찰 S1 + 언어-기호 S4」 세트가
+       「INTRA-01·S4」라는 blueprint가 금지한 좌표로 저장되던 자리다. */
+  const coord = tagBCoord(first.talent, first.subskill, first.level);
   const sub =
     item.subTalent && item.subSubskill
-      ? ` (부: ${tagBCoord(item.subTalent, item.subSubskill, item.level)})`
+      ? ` (부: ${tagBCoord(item.subTalent, item.subSubskill, first.level)})`
       : "";
-  return { tagA: a, tagB: `${b}${sub}` };
+
+  /* 세트는 한 줄로 줄일 수 없다. 첫 문항를 적고 몇 문이 더 있는지를 덧붙인다 —
+     목록에서 「이 세트가 무엇으로 시작하는가」는 답이 되고, 나머지를 대표한다고
+     거짓말하지는 않는다. 온전한 것은 문항 목록이 보여 준다. */
+  const tail = rest > 0 ? ` 외 ${rest}문` : "";
+  const codes = new Set(item.questions.map((q) => q.standardCode).filter(Boolean));
+  const a =
+    rest > 0 && codes.size > 1
+      ? `${first.standardCode} 외 ${codes.size - 1}개 성취기준`
+      : [first.standardCode, first.tagADetail].filter(Boolean).join(" ");
+
+  return { tagA: a, tagB: `${coord}${sub}${tail}` };
 }
 
-/** 문항 ID를 지금 값으로 다시 매긴다 — 학년군·교과·단원·단계가 바뀌면 코드도 바뀐다 */
-export function suggestCode(item: ItemDraft, serial: number) {
-  return makeItemCode(item.band, item.subject, item.unitNo, item.level, serial);
+/* ───────────────────────── 문항 ID ─────────────────────────
+ *
+ *   연월일 - 학년 - 과목 - 문항 유형 - 단계 - 일련번호
+ *   260904 -  34  -  K  -    C    -  S1 -   001
+ *
+ * 사람이 손으로 적던 칸이었다. 그런데 손으로 적으면 반드시 어긋난다 — 학년군을 5~6으로
+ * 옮기고 코드의 앞자리는 그대로 두거나, 같은 번호를 두 문항이 갖거나, 아예 비워 둔 채로
+ * 검수까지 올라갔다. 코드에 담긴 것이 전부 문항 안에 이미 있는 값이라, 적게 할 이유가
+ * 없다. 읽을 때마다 다시 만든다.
+ *
+ * ⚠ 그래서 코드는 **변한다**. 학년군이나 단계를 고치면 코드도 따라 바뀐다 — 그게 코드에
+ *   그 값들을 넣는 이유다. 변하지 않는 열쇠는 id(IT-2601)이고, 주소와 기록이 쓰는 것도
+ *   그쪽이다.
+ *
+ * ⚠ 세트는 **첫 문항의** 유형과 단계로 짓는다. 문항 쪽 level은 세트에서 가장 높은 것이라
+ *   첫 문항의 유형과 짝지으면 어느 문항에도 없는 조합이 된다(syncTags와 같은 까닭).
+ */
+
+/**
+ * 일련번호를 뺀 앞부분. 이것이 같은 문항끼리 번호를 나눠 가진다.
+ *
+ * ⚠ 유형 한 글자는 itemTypes에서 꺼낸다. 여기에 Record를 따로 세우면 안 된다 — SEED가
+ *   이 파일 위쪽에서 withCodes를 부르는데, 그 시점에 아래쪽 const는 아직 서지 않았다(TDZ).
+ *   itemTypes는 파일 맨 앞이라 안전하다.
+ */
+export function codePrefix(item: ItemDraft): string {
+  const first = item.questions[0];
+  /* 만든 날. 씨앗과 옛 저장분에는 createdAt이 없어 updatedAt으로 메운다(fill) */
+  const day = (item.createdAt || item.updatedAt || "").replace(/\D/g, "").slice(2, 8);
+  const grade = item.band.replace("-", "");
+  const subject = SUBJECT_LETTER[item.subject] ?? "X";
+  const type = itemTypes.find((t) => t.id === first.type)?.letter ?? "X";
+  return `${day || "000000"}-${grade}-${subject}-${type}-${first.level}`;
+}
+
+/**
+ * 목록 전체에 코드를 매긴다.
+ *
+ * 일련번호는 **앞부분이 같은 것끼리** 1부터 센다. 만든 차례(createdAt, 같으면 id)로
+ * 줄을 세워 매기므로, 새 문항이 목록 맨 앞에 꽂혀도 이미 매긴 번호가 밀리지 않는다 —
+ * 번호가 밀리면 어제 인쇄한 문항 목록이 오늘 틀린 것이 된다.
+ */
+function withCodes(list: ItemDraft[]): ItemDraft[] {
+  const order = [...list].sort(
+    (a, b) => (a.createdAt || "").localeCompare(b.createdAt || "") || a.id.localeCompare(b.id),
+  );
+  const used = new Map<string, number>();
+  const made = new Map<string, string>();
+  for (const item of order) {
+    const prefix = codePrefix(item);
+    const n = (used.get(prefix) ?? 0) + 1;
+    used.set(prefix, n);
+    made.set(item.id, `${prefix}-${String(n).padStart(3, "0")}`);
+  }
+  return list.map((item) =>
+    item.code === made.get(item.id) ? item : { ...item, code: made.get(item.id)! },
+  );
 }
 
 /** 제출 — 검수 목록으로 넘어간다. 제출 후에는 출제자가 고칠 수 없다(EXP-02-5). */
@@ -1855,6 +2589,9 @@ export function reviseApproved(id: string): ItemDraft | null {
     version: origin.version + 1,
     revisionOf: origin.code || origin.id,
     comments: [],
+    /* 만든 때를 지금으로 둔다. 원본의 날짜를 물려받으면 코드의 연월일과 일련번호가
+       원본과 같아져 두 문항이 같은 이름을 갖는다 */
+    createdAt: now(),
     updatedAt: now(),
   };
   write([copy, ...list]);
@@ -2017,7 +2754,16 @@ export function rejectItem(
     state: "rejected",
     reviews: [
       ...item.reviews,
-      { at, by, round: item.reviews.length + 1, verdict: "reject", checks, code, text, self },
+      {
+        at,
+        by,
+        round: item.reviews.length + 1,
+        verdict: "reject",
+        checks,
+        code,
+        text,
+        self,
+      },
     ],
     reviewDraft: undefined,
     comments: [...item.comments, { at, by, role: "reviewer", kind: "reject", code, text }],
@@ -2040,7 +2786,15 @@ export function approveItem(
     state: "approved",
     reviews: [
       ...item.reviews,
-      { at, by, round: item.reviews.length + 1, verdict: "approve", checks, text, self },
+      {
+        at,
+        by,
+        round: item.reviews.length + 1,
+        verdict: "approve",
+        checks,
+        text,
+        self,
+      },
     ],
     reviewDraft: undefined,
     comments: [...item.comments, { at, by, role: "reviewer", kind: "approve", text }],
@@ -2059,13 +2813,7 @@ export function approveItem(
  * 확정된(승인) 문항만 앵커가 된다. 아직 검수를 안 지난 문항을 등화 기준으로 삼으면
  * 그 회차의 잣대 자체가 검증되지 않은 것이 된다. 공개된 적이 있는 문항도 안 된다.
  */
-export function setAnchor(
-  id: string,
-  on: boolean,
-  by: string,
-  role: StaffRoleId,
-  reason: string,
-) {
+export function setAnchor(id: string, on: boolean, by: string, role: StaffRoleId, reason: string) {
   const item = read().find((i) => i.id === id);
   if (!item) return null;
   if (on && (item.state !== "approved" || item.disclosed)) return null;
@@ -2073,7 +2821,13 @@ export function setAnchor(
     anchor: on,
     comments: [
       ...item.comments,
-      { at: now(), by, role, kind: "note", text: `${on ? "앵커 지정" : "앵커 해제"} — ${reason}` },
+      {
+        at: now(),
+        by,
+        role,
+        kind: "note",
+        text: `${on ? "앵커 지정" : "앵커 해제"} — ${reason}`,
+      },
     ],
   });
   return item;
@@ -2082,25 +2836,32 @@ export function setAnchor(
 /**
  * 승인된 문항을 회차에서 뺀다.
  *
- * 지우지 않는다. 상태만 바꾸고 까닭을 남긴다 — 이 문항으로 이미 판정한 결과가
- * 있는데 문항이 사라지면 그 판정을 설명할 길이 없어진다. 되돌릴 수도 있어야 해서
- * 까닭을 코멘트로도 남겨 둔다.
+ * 지우지 않는다. 상태만 바꾸고 누가 언제 뺐는지를 남긴다 — 이 문항으로 이미 판정한
+ * 결과가 있는데 문항이 사라지면 그 판정을 설명할 길이 없어진다. 되돌릴 수도 있어야 해서
+ * 코멘트로도 남겨 둔다.
+ *
+ * 까닭은 받으면 적고, 없어도 뺀다. 옛 콘솔은 까닭을 받는 대화상자를 거치지만, 슈퍼 관리자
+ * 콘솔은 문항 상세 머리의 사용 스위치 하나로 켜고 끈다(app/(admin2)/admin2/items/[id]).
+ * 되돌리는 것도 같은 스위치 한 번이라, 까닭 칸이 문턱이 되면 스위치가 스위치 노릇을 못 한다.
  */
-export function retireItem(id: string, by: string, role: StaffRoleId, reason: string) {
+export function retireItem(id: string, by: string, role: StaffRoleId, reason = "") {
   const item = read().find((i) => i.id === id);
   if (!item || item.state !== "approved") return null;
   patchItem(id, {
     state: "retired",
     retiredAt: now(),
     retiredBy: by,
-    retireReason: reason,
-    comments: [...item.comments, { at: now(), by, role, kind: "note", text: `사용 중지 — ${reason}` }],
+    retireReason: reason || undefined,
+    comments: [
+      ...item.comments,
+      { at: now(), by, role, kind: "note", text: reason ? `사용 중지 — ${reason}` : "사용 중지" },
+    ],
   });
   return item;
 }
 
 /** 사용 중지한 문항을 다시 쓴다 */
-export function restoreItem(id: string, by: string, role: StaffRoleId, reason: string) {
+export function restoreItem(id: string, by: string, role: StaffRoleId, reason = "") {
   const item = read().find((i) => i.id === id);
   if (!item || item.state !== "retired") return null;
   patchItem(id, {
@@ -2108,7 +2869,10 @@ export function restoreItem(id: string, by: string, role: StaffRoleId, reason: s
     retiredAt: undefined,
     retiredBy: undefined,
     retireReason: undefined,
-    comments: [...item.comments, { at: now(), by, role, kind: "note", text: `다시 씀 — ${reason}` }],
+    comments: [
+      ...item.comments,
+      { at: now(), by, role, kind: "note", text: reason ? `다시 씀 — ${reason}` : "다시 씀" },
+    ],
   });
   return item;
 }
@@ -2156,35 +2920,102 @@ export function removeAsset(id: string, assetId: string) {
  * 반려되므로(§7.2) 학년군 범위까지 함께 본다.
  */
 export function missingFields(i: ItemDraft) {
-  const out: string[] = [];
-  if (!i.code.trim()) out.push("문항 ID");
-  if (!i.unit.trim()) out.push("단원");
+  const out = missingContent(i);
 
-  const std = checkStandardCode(i.standardCode, i.band);
-  if (!std.ok) out.push("성취기준 코드");
-  if (!i.standardText.trim()) out.push("성취기준 내용");
-  if (!i.tagADetail.trim()) out.push("Tag A 세부");
-
-  if (!levelAllowed(i.talent, i.level)) out.push("Tag B 단계 범위");
-
-  if (!i.stem.trim()) out.push("발문");
-  if (!i.explain.trim()) out.push("정답 · 채점");
   if (!i.guidance.trim()) out.push("출제자 유의사항");
-
-  if (i.type === "choice") {
-    if (!i.choices.every((c) => c.trim())) out.push("보기");
-    // 오답마다 어떤 오개념을 잡는지 적지 않으면 변별도가 죽는다(§1.1)
-    const bad = i.choices.some(
-      (c, n) => c.trim() && n !== i.answer && !i.distractorIntent[n]?.trim(),
-    );
-    if (bad) out.push("오답 의도");
-  }
-  if (i.type === "short" && !i.shortAnswers.trim()) out.push("허용 답안");
-  if ((i.type === "descriptive" || i.type === "essay") && !i.rubric.trim()) out.push("루브릭");
 
   const left = submitChecklist.filter((c) => !c.auto && !i.checks.includes(c.id)).length;
   if (left > 0) out.push(`체크리스트 ${left}항목`);
 
+  return out;
+}
+
+/**
+ * 문항 자체에 모자란 것 — 출제자 유의사항 · 체크리스트를 뺀 나머지.
+ *
+ * 슈퍼 관리자 콘솔(app/(admin2)/admin2/items/[id])은 「제출 준비」 판을 걷었다. 출제자가
+ * 검수자에게 건네는 말과 스스로 짚는 목록은 역할이 나뉜 옛 콘솔의 장치이고, 쓰고 검수하는
+ * 사람이 한 사람인 콘솔에서는 칸만 늘렸다. 판을 걷고 문턱을 그대로 두면 제출 단추가
+ * 영영 켜지지 않으므로, 그 콘솔은 이것으로 문턱을 잰다. 옛 콘솔은 missingFields 그대로다.
+ */
+export function missingContent(i: ItemDraft) {
+  const out: string[] = [];
+  /* 문항 ID는 저장소가 매긴다(withCodes). 사람이 채우는 칸이 아니라 여기서 보지 않는다 */
+  if (!i.unit.trim()) out.push("단원");
+
+  /* 세트는 자료와 문항 수가 성립 조건이다. 보기 없는 세트는 문항 둘을 붙여 놓은
+     것일 뿐이고, 문항이 하나뿐인 세트는 단일이라고 부르는 게 맞다 */
+  if (i.form === "set") {
+    if (passageIsEmpty(i)) out.push("세트 보기");
+    if (i.questions.length < 2) out.push("세트 문항 2개 이상");
+  }
+
+  /* 분류는 문항마다 본다. 세트 안에서 단계가 갈리는 것이 세트를 두는 까닭이라,
+     문항 한 벌만 보면 2번 문항의 빈 성취기준을 아무도 못 잡는다 */
+  for (const [n, q] of i.questions.entries()) {
+    /* 단일이면 「발문」, 세트면 「2번 발문」 — 어느 문항가 비었는지 알아야 고칠 수 있다 */
+    const tag = i.form === "set" ? `${n + 1}번 ` : "";
+    out.push(...missingInQuestion(q, tag, i.band));
+  }
+
+  return out;
+}
+
+/** 발문이 비었는가 — 갈래마다 「비었다」의 뜻이 다르다 */
+export function stemIsEmpty(q: Question) {
+  return q.stemMode === "images" ? q.stemImages.length === 0 : q.stem.trim() === "";
+}
+
+/**
+ * 목록 한 줄에 세울 발문.
+ *
+ * 갈래마다 「글」이 있는 자리가 달라서 q.stem만 읽으면 이미지로 쓴 문항이 죄다 빈 줄로
+ * 선다. 표기(마크다운 #, HTML 태그)는 걷어 낸다 — 목록에서 `## 다음 중`을 읽어야 할
+ * 이유가 없다.
+ */
+export function stemSummary(q: Question): string {
+  if (q.stemMode === "images") {
+    return q.stemImages.length > 0 ? `그림 ${q.stemImages.length}장` : "";
+  }
+  return q.stem
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[#*`>_[\]]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** 지문이 비었는가 */
+export function passageIsEmpty(i: ItemDraft) {
+  return i.passageMode === "images" ? i.passageImages.length === 0 : i.passage.trim() === "";
+}
+
+/** 문항 하나에 모자란 것 */
+function missingInQuestion(q: Question, tag: string, band: GradeBand): string[] {
+  const out: string[] = [];
+
+  if (!checkStandardCode(q.standardCode, band).ok) out.push(`${tag}성취기준 코드`);
+  if (!q.standardText.trim()) out.push(`${tag}성취기준 내용`);
+  if (!q.tagADetail.trim()) out.push(`${tag}Tag A 세부`);
+  if (!levelAllowed(q.talent, q.level)) out.push(`${tag}Tag B 단계 범위`);
+  if (!difficultyPicked(q.b)) out.push(`${tag}난이도`);
+  /* 배점은 사람이 적는 칸이라 비울 수 있다. 0점 문항은 맞혀도 총점에 아무것도 보태지 않는다 */
+  if (!(q.points > 0)) out.push(`${tag}배점`);
+
+  if (stemIsEmpty(q)) out.push(`${tag}발문`);
+  if (!q.explain.trim()) out.push(`${tag}정답 · 해설`);
+
+  if (q.type === "choice") {
+    if (!q.choices.every((c) => c.trim())) out.push(`${tag}보기`);
+    // 오답마다 어떤 오개념을 잡는지 적지 않으면 변별도가 죽는다(§1.1)
+    const bad = q.choices.some(
+      (c, n) => c.trim() && n !== q.answer && !q.distractorIntent[n]?.trim(),
+    );
+    if (bad) out.push(`${tag}오답 의도`);
+  }
+  /* OX는 오답 의도를 받지 않는다. 틀린 쪽이 하나뿐이라 「어떤 오개념을 잡는가」가
+     곧 발문이 묻는 것과 같아진다 — 같은 말을 두 번 적게 하는 칸이 된다 */
+  if (q.type === "short" && !q.shortAnswers.trim()) out.push(`${tag}허용 답안`);
+  if (needsRubric(q.type) && !q.rubric.trim()) out.push(`${tag}루브릭`);
   return out;
 }
 
@@ -2195,6 +3026,11 @@ export function itemReady(i: ItemDraft) {
 /** 성취기준 코드 진단 — 폼에서 칸 아래에 그대로 띄운다 */
 export function standardIssue(i: ItemDraft) {
   return checkStandardCode(i.standardCode, i.band);
+}
+
+/** 문항 하나의 성취기준 코드 진단 — 학년군은 문항이 쥐고 있어 따로 받는다 */
+export function questionStandardIssue(q: Question, band: GradeBand) {
+  return checkStandardCode(q.standardCode, band);
 }
 
 export const stateLabel: Record<ItemState, string> = {

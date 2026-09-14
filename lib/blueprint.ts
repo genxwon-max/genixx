@@ -28,7 +28,7 @@ export type LevelSpec = {
   define: string;
   /** 형식 (§1 고정 매핑) */
   format: string;
-  /** 배점 */
+  /** 기본 배점 — 새 문항이 처음 받는 값. 배점은 문항마다 사람이 고쳐 적는다 */
   points: number;
   /** 채점 방식 */
   scoring: string;
@@ -534,7 +534,7 @@ export const ANCHOR_RATIO = 0.3;
 
 /* ───────────────────────── 문항 ID (§3 ①) ───────────────────────── */
 
-const SUBJECT_LETTER: Record<string, string> = { 국어: "K", 수학: "M", 과학: "S" };
+export const SUBJECT_LETTER: Record<string, string> = { 국어: "K", 수학: "M", 과학: "S" };
 
 /**
  * 학년 + 교과 + 단원 - 단계 - 일련번호 (예: 4K02-S2-001)

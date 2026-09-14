@@ -219,6 +219,18 @@ export const legalLinks: SubMenu[] = [
     desc: "AI 채점 범위와 사람 최종 확정 원칙",
   },
   { id: "PUB-08-5", label: "환불·청약철회 규정", href: "/legal/refund", desc: "전자상거래법 기준" },
+  {
+    id: "PUB-08-6",
+    label: "운영정책",
+    href: "/legal/operation",
+    desc: "회차 운영·정정·제재의 실제 기준",
+  },
+  {
+    id: "PUB-08-7",
+    label: "청소년보호정책",
+    href: "/legal/youth",
+    desc: "이용자 대부분이 미성년자라 전제로 두는 것",
+  },
 ];
 
 /**
@@ -238,6 +250,30 @@ export const legalGroup: MenuGroup = {
 export const publicMenu: MenuGroup[] = [...menu, legalGroup];
 
 /**
+ * 푸터 맨 위 정책 띠 — 공개 사이트와 계정 존이 같은 목록을 쓴다.
+ *
+ * legalLinks와 따로 두는 까닭은 이 띠가 「법적 고지 모음」이 아니라 **푸터에서 늘
+ * 같은 자리에 서는 줄**이기 때문이다. 그래서 법적 고지가 아닌 회사소개와 광고제휴가
+ * 여기 함께 서고, 순서도 국내 서비스가 관행처럼 쓰는 차례를 따른다.
+ *
+ * 개인정보처리방침만 굵게 세운다. 다른 것보다 중요해서가 아니라 표시 의무다.
+ *
+ * AI 이용·행동로그 고지와 아동용 눈높이 고지는 이 띠에 세우지 않는다. 둘 다 이
+ * 서비스에만 있는 고지라 관행의 차례에 끼면 줄만 길어지고, 정작 읽어야 할 사람은
+ * 푸터를 훑다가 만나는 것이 아니라 동의 화면과 결과 화면에서 만난다. 문서는 그대로
+ * 남아 있고 /legal 허브(legalLinks)에서 찾을 수 있다.
+ */
+export const policyLinks: { href: string; label: string; strong?: boolean }[] = [
+  { href: "/about", label: "회사소개" },
+  { href: "/legal/terms", label: "이용약관" },
+  { href: "/legal/operation", label: "운영정책" },
+  { href: "/legal/privacy", label: "개인정보처리방침", strong: true },
+  { href: "/legal/youth", label: "청소년보호정책" },
+  { href: "/partner/ads", label: "광고제휴" },
+  { href: "/legal/refund", label: "환불·청약철회 규정" },
+];
+
+/**
  * 헤더 상단 유틸 바로 내리는 갈래.
  *
  * 일곱을 한 줄에 늘어놓으면 1240px 컨테이너에서 로고·CTA와 부딪친다. 학부모가
@@ -249,7 +285,7 @@ export const utilMenuIds: string[] = ["PUB-06", "PUB-07", "PUB-08"];
 /**
  * 회원 유형.
  * ⚠ 가입 화면(ACC-01-1)이 쓰는 정본은 `lib/account.ts`의 `signupTypes`다.
- *   사이트맵 5장이 "학부모 / 교사 / 기관담당자 3분기, 학생은 독립 가입 경로 없음"으로
+ *   가입 화면은 "학생 / 학부모·법정대리인 / 기관 담당자" 세 갈래로 열린다. 예전 사이트맵이
  *   정하고 있어 학생 항목을 두지 않는다. 여기 목록은 홍보 페이지 설명용으로만 남긴다.
  */
 export const memberTypes = [
@@ -282,9 +318,9 @@ export const memberTypes = [
     label: "학생",
     tagline: "발급받은 접속코드로 응시합니다",
     detail:
-      "학생은 따로 가입하지 않습니다. 보호자 계정 안의 프로필로 등록되고, 8자리 접속코드와 생년월일로 응시 화면에 들어갑니다. 만 14세 이상이면 동의를 본인이 하되 계정은 그대로 보호자 계정 하나입니다.",
+      "만 14세 이상이면 학생이 직접 가입해 본인 동의로 응시합니다. 만 14세 미만은 학생 혼자 가입을 끝낼 수 없고, 법정대리인 동의가 확인되면 프로필이 열립니다. 그때는 8자리 접속코드와 생년월일로 응시 화면에 들어갑니다.",
     tone: "bg-surface-sky text-brand-600",
-    badge: "가입 없음",
+    badge: "만 14세 이상 본인 가입",
   },
 ] as const;
 

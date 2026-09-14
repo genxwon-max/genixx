@@ -37,7 +37,7 @@ export default function PartnerContactPage() {
   return (
     <>
       <PageHero
-        eyebrow="PUB-07-1 · 기관 도입 문의"
+        eyebrow="기관 도입 문의"
         title={
           <>
             학교와 기관을 위한

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { inquiries, inquiryStates, type InquiryRow } from "@/lib/admin";
+import { type Inquiry } from "@/lib/inquiryStore";
 import type { Tone } from "@/lib/admin2";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status, Tag } from "@/components/admin2/ui";
@@ -23,7 +25,7 @@ import { Status, Tag } from "@/components/admin2/ui";
  *   무엇인가 (문의 ID)
  *     → 어디로 들어왔나 (채널)  → 무엇에 대한 것인가 (분류)  → 내용 (제목)
  *     → 누가 (작성자)          → 얼마나 기다렸나 (대기)
- *     → 지금 어떤가 (상태)      → 약속을 넘겼나 (목표 초과)  → 동작
+ *     → 지금 어떤가 (상태)      → 동작
  * 채널·분류를 제목 앞에 세운 것은 이 둘이 곧 「누가 답해야 하는 문의인가」라서다.
  * 기관 도입은 영업이 받고 접속코드·개인정보는 운영이 받는다. 제목을 먼저 읽고 나서
  * 담당을 되짚는 것보다, 담당을 보고 제목으로 내려가는 쪽이 한 줄당 눈이 덜 움직인다.
@@ -32,23 +34,25 @@ import { Status, Tag } from "@/components/admin2/ui";
  *  · 작성자 연락처·메일 칸: 원본(lib/admin.ts)에 아예 없다. 빈 칸을 세워 두면
  *    「아직 안 들어온 값」으로 읽히고, 그러면 채우라는 요구가 따라온다. 작성자 이름도
  *    개인은 이미 김**** 로 가려진 채 오고, 이 화면에서 그 이상을 풀지 않는다.
- *  · 담당자 칸: 미배정/처리중을 가르는 값이 상태 하나뿐이라 담당자 데이터가 없다.
- *    배정 기능이 붙을 때 상태 칸 오른쪽에 끼워 넣을 자리다.
+ *  · 담당자 칸: 답한 사람은 상세의 처리 기록에 남는다. 목록에 세우면 답변 완료 줄에만
+ *    이름이 서고 나머지는 빈 칸이라, 다섯 줄에 하나만 채워진 칸이 된다.
+ *  · 목표 초과 칸: 「무엇부터 여나」를 고르는 값이라 머리의 탭이 맡는다. 표에도 세우면
+ *    같은 것을 두 번 읽게 되고, 바로 옆 대기 칸이 이미 같은 말을 하고 있다.
  *  · inquiryStates[].className: 기존 /admin의 팔레트 클래스(text-rose-600 …)라
  *    이 콘솔에서 쓰지 않는다. label만 가져다 쓰고 색은 Status의 tone으로만 간다.
  */
 
 /** 상태 → 색. 단계가 풀리는 방향을 그대로 danger → warn → ok로 둔다.
- *  미배정을 danger로 잡은 것은 「아직 아무도 안 맡은 것」이 이 화면에서 제일 먼저
+ *  대기를 danger로 잡은 것은 「아직 아무도 답하지 않은 것」이 이 화면에서 제일 먼저
  *  새는 자리이기 때문이다. 처리중은 사람이 붙어 있으니 한 단계 눅인다. */
-const STATE_TONE: Record<InquiryRow["state"], Tone> = {
+export const STATE_TONE: Record<InquiryRow["state"], Tone> = {
   new: "danger",
   working: "warn",
   answered: "ok",
 };
 
 /** 거르개 차림표와 기본 차례가 함께 쓰는 순서 — 문의가 흘러가는 단계 그대로.
- *  가나다순으로 두면 「답변 완료」가 「미배정」보다 위에 서서 단계를 못 읽는다. */
+ *  가나다순으로 두면 「답변 완료」가 「대기」보다 위에 서서 단계를 못 읽는다. */
 const STATE_ORDER: InquiryRow["state"][] = ["new", "working", "answered"];
 
 /** 채널도 순서를 못 박는다. 개인 문의가 절대다수라 위에 두고, 기관 도입을 아래에 둔다 */
@@ -77,18 +81,12 @@ const waitHours = (r: InquiryRow) => {
  * 깬 줄은 아래로 밀린다. 이 표를 여는 이유가 「지금 누구를 화나게 하고 있나」이므로
  * 넘긴 줄을 무조건 맨 위로 올린다 — 초과는 되돌릴 수 없는 유일한 값이고, 나머지는
  * 기다리면 나아지는 값이다.
- * 그다음이 단계인 것은 미배정이 곧 아무도 안 맡은 줄이라서고, 같은 단계에서는 오래
+ * 그다음이 단계인 것은 대기가 곧 아무도 답하지 않은 줄이라서고, 같은 단계에서는 오래
  * 기다린 쪽이 먼저다.
  *
  * DataTable에 기본 정렬 prop이 없으므로 여기서 미리 정렬해 넘긴다(사람이 머리 행을
  * 누르기 전에는 정렬을 건드리지 않으므로 넘긴 순서가 그대로 첫 화면이 된다).
  */
-const ROWS = [...inquiries].sort(
-  (a, b) =>
-    Number(b.overdue) - Number(a.overdue) ||
-    STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state) ||
-    waitHours(b) - waitHours(a),
-);
 
 const COLS: Col<InquiryRow>[] = [
   {
@@ -132,10 +130,16 @@ const COLS: Col<InquiryRow>[] = [
     width: "100%",
     clip: true,
     value: (r) => r.title,
+    // 제목이 상세로 가는 문이다. 오른쪽 끝 단추와 같은 곳으로 가지만, 표를 훑는 눈이
+    // 멈추는 자리가 제목이라 거기서 바로 열 수 있어야 한다 — 이 콘솔의 다른 목록도 같다
     cell: (r) => (
-      <span className="text-(--a2-ink)" title={r.title}>
+      <Link
+        href={`/admin2/inquiries/${r.id}`}
+        className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
+        title={r.title}
+      >
         {r.title}
-      </span>
+      </Link>
     ),
   },
   {
@@ -171,51 +175,38 @@ const COLS: Col<InquiryRow>[] = [
     nowrap: true,
     cell: (r) => <Status tone={STATE_TONE[r.state]}>{inquiryStates[r.state].label}</Status>,
   },
-  {
-    // 목표 초과: 상태와 같은 줄에 점이 둘 서지만, 넘긴 줄이 다섯에 하나꼴이라 시끄럽지 않다.
-    // 넘기지 않은 줄에 muted 점을 세우면 온 표에 회색 점이 깔려 정작 붉은 점이 안 보인다
-    key: "overdue",
-    head: "목표 초과",
-    width: "6rem",
-    nowrap: true,
-    cell: (r) =>
-      r.overdue ? (
-        <span title="접수 후 24시간 응답 목표를 넘긴 문의">
-          <Status tone="danger">초과</Status>
-        </span>
-      ) : (
-        <span className="text-(--a2-ink-4)">—</span>
-      ),
-  },
-  {
-    key: "reply",
-    head: "동작",
-    width: "4.5rem",
-    nowrap: true,
-    // ⚠ 문의 상세·답변 화면이 아직 없어 지금은 자리만 잡아 둔다. 붙일 때 이 단추를
-    //   /admin2/inquiries/[id] 링크로 바꾸면 된다. 답변 완료 줄에도 같은 단추를 남기는 것은
-    //   지난 답변을 다시 읽고 덧붙이는 자리가 결국 같은 화면이기 때문이다.
-    //   admin2.css의 규칙대로 hover에서만 나타나게 두지 않는다
-    cell: () => (
-      <button type="button" className="a2-btn a2-btn-sm" title="문의 답변 화면 열기">
-        답변
-      </button>
-    ),
-  },
 ];
+
+/*
+ * 동작 칸.
+ *
+ * 답을 목록 아래에서 펴던 때는 이 칸이 「답변」과 「닫기」를 가려 적어야 해서 컴포넌트 안에서
+ * 매번 지었다. 지금은 제 주소로 가는 문이라 다른 칸과 같은 모듈 바깥 상수다.
+ *
+ * 답변 완료 줄에도 같은 단추를 남긴다. 지난 답을 다시 읽고 고쳐 보내는 자리가 결국 같은
+ * 화면이라, 줄마다 갈 데가 있고 없고를 가르면 훑는 눈이 그 자리에서 한 번 멈춘다.
+ */
+const ACT_COL: Col<Inquiry> = {
+  key: "reply",
+  head: "동작",
+  width: "4.5rem",
+  nowrap: true,
+  cell: (r) => (
+    <Link
+      href={`/admin2/inquiries/${r.id}`}
+      className="a2-btn a2-btn-sm"
+      aria-label={`${r.id} 답변`}
+    >
+      답변
+    </Link>
+  ),
+};
 
 /* 거르개 차림표는 실제로 등장한 값에서만 뽑는다. 골라도 0줄이 나오는 선택지가 하나라도
    있으면 거르개 전체를 못 믿게 된다 */
+/* 상태와 목표 초과는 머리의 탭이 맡는다(InquiriesView). 같은 조건을 두 군데서 걸면
+   탭에서 「처리중」을 고른 채 거르개에서 「대기」를 골라 0줄이 나온다 */
 const FILTERS: Filter<InquiryRow>[] = [
-  {
-    id: "state",
-    label: "상태",
-    options: STATE_ORDER.filter((s) => inquiries.some((i) => i.state === s)).map((s) => ({
-      value: s,
-      label: inquiryStates[s].label,
-    })),
-    match: (r, v) => r.state === v,
-  },
   {
     id: "channel",
     label: "채널",
@@ -225,27 +216,36 @@ const FILTERS: Filter<InquiryRow>[] = [
     })),
     match: (r, v) => r.channel === v,
   },
-  {
-    // 「목표 안쪽만」은 두지 않는다. 아무도 찾지 않는 묶음이라 차림표만 길어진다
-    id: "overdue",
-    label: "목표",
-    options: [{ value: "over", label: "초과만" }],
-    match: (r, v) => (v === "over" ? r.overdue : true),
-  },
 ];
 
-export default function InquiriesTable() {
+/**
+ * 기본 차례(목표 초과 → 대기 → 오래 기다린 순)로 세운다.
+ *
+ * 목록이 이제 저장소를 덮어쓴 값이라(lib/inquiryStore.ts) 상수로 둘 수 없다 — 답을
+ * 보내는 순간 상태가 바뀌므로 그때 차례도 다시 서야 한다. 부르는 쪽에서 세운다.
+ */
+export function sortInquiries(rows: Inquiry[]): Inquiry[] {
+  return [...rows].sort(
+    (a, b) =>
+      Number(b.overdue) - Number(a.overdue) ||
+      STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state) ||
+      waitHours(b) - waitHours(a),
+  );
+}
+
+const ALL_COLS: Col<Inquiry>[] = [...(COLS as Col<Inquiry>[]), ACT_COL];
+
+export default function InquiriesTable({ rows, empty }: { rows: Inquiry[]; empty: string }) {
   return (
     <DataTable
-      rows={ROWS}
-      cols={COLS}
+      rows={rows}
+      cols={ALL_COLS}
       getKey={(r) => r.id}
-      filters={FILTERS}
+      filters={FILTERS as Filter<Inquiry>[]}
       searchHint="문의 ID · 제목 · 작성자 · 분류"
-      empty="조건에 맞는 문의가 없습니다."
-      // 넘긴 순서가 무엇인지 적어 둔다. 적지 않으면 머리 행의 정렬 화살표가 전부 꺼져
-      // 있는데 줄 차례는 접수순이 아니어서, 표가 고장 난 것처럼 읽힌다
-      toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기본 차례 · 목표 초과 → 미배정 → 오래 기다린 순</span>}
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

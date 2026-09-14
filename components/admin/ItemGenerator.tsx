@@ -9,6 +9,7 @@ import {
   GENERATE_MAX,
   checkSpec,
   countOf,
+  difficulties,
   generateItems,
   typeForLevel,
   typeLabel,
@@ -57,6 +58,9 @@ export default function ItemGenerator() {
   const [standardCode, setStandardCode] = useState("");
   const [counts, setCounts] = useState<Record<Level, number>>(EMPTY_COUNTS);
   const [brief, setBrief] = useState("");
+  /* 난이도는 사람이 고른다. 단계 앵커값을 몰래 넣으면 「아무도 안 고른 것」과
+     구별되지 않는다(lib/itemStore.ts Question.b 주석) */
+  const [b, setB] = useState<number>(difficulties[1].b);
   const [errors, setErrors] = useState<string[]>([]);
 
   const subskills = subskillsOf(talent);
@@ -75,8 +79,11 @@ export default function ItemGenerator() {
   };
 
   const spec: GenerateSpec = {
+    /* 옛 콘솔에는 세트를 만드는 길이 없다 — 세트는 admin2의 출제 화면에서 만든다 */
+    form: "single",
     subject,
     band,
+    b,
     talent,
     subskill,
     unit,
@@ -147,6 +154,16 @@ export default function ItemGenerator() {
               onChange={(v) => setBand(v as GradeBand)}
             />
             <p className={`${a.hint} mt-2`}>{gradeBands.find((g) => g.id === band)!.note}</p>
+          </Field>
+
+          {/* 난이도는 사람이 고른다 — 단계 앵커값을 넣어 두면 아무도 안 고른 것과 같아진다 */}
+          <Field label="예상 난이도">
+            <Radios
+              name="difficulty"
+              value={String(b)}
+              options={difficulties.map((d) => ({ value: String(d.b), label: `${d.b} · ${d.label}` }))}
+              onChange={(v) => setB(Number(v))}
+            />
           </Field>
 
           <Field label="재능 축 (Tag B)">

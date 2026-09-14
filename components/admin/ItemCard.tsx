@@ -23,7 +23,6 @@ import {
   stateLabel,
   stateTone,
   submitItem,
-  suggestCode,
   syncTags,
   useItems,
   withdrawItem,
@@ -62,7 +61,8 @@ const subjects = ["국어", "수학", "과학"] as const;
  * 출제자가 자기가 어디를 쓰고 있는지 잃지 않는다.
  *
  * 규칙 중 화면이 대신 지킬 수 있는 것은 화면이 지킨다 —
- *  · 단계를 고르면 형식·배점·b모수가 따라온다(§1 고정 매핑). 형식을 먼저 고르고
+ *  · 단계를 고르면 형식이 따라온다(§1 고정 매핑). 배점과 b모수는 새 콘솔의 문항 상세에서
+ *    사람이 적고 고르며, 단계를 바꿔도 덮지 않는다(lib/itemStore.ts의 setLevel). 형식을 먼저 고르고
  *    단계를 끼워 맞추는 길은 열지 않는다 — 발주서가 「판별 → 형식」 순서를 못 박았다.
  *  · 성취기준 코드는 학년군 접두까지 본다. 코드가 없거나 학년군을 벗어나면
  *    접수 반려되므로(§7.2) 제출을 막는다.
@@ -115,7 +115,6 @@ export default function ItemCard({ id }: { id: string }) {
   const talent = talents.find((t) => t.id === item.talent)!;
   const sub = subskillOf(item.subskill);
   const std = standardIssue(item);
-  const serial = items.filter((i) => i.level === item.level).length;
 
   return (
     <div className="pb-16">
@@ -278,24 +277,20 @@ export default function ItemCard({ id }: { id: string }) {
           </div>
 
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <Field label="문항 ID" className="flex-1 basis-56">
+            {/* 저장소가 매긴다(lib/itemStore.ts의 withCodes). 손으로 적게 두면 친 값이
+                다음 읽기에서 조용히 덮여 사라진다 */}
+            <Field
+              label="문항 ID"
+              className="flex-1 basis-56"
+              hint="연월일 · 학년 · 과목 · 문제 유형 · 단계 · 일련번호 — 자동으로 매깁니다"
+            >
               <input
                 value={item.code}
-                onChange={(e) => set({ code: e.target.value })}
-                disabled={!editable}
-                placeholder="4K02-S2-001"
+                readOnly
+                disabled
                 className={`${a.input} font-black tabular-nums`}
               />
             </Field>
-            {editable && (
-              <Button
-                variant="outline"
-                onClick={() => set({ code: suggestCode(item, serial) })}
-                title="지금 학년군·교과·단원·단계로 다시 매깁니다"
-              >
-                자동으로 매기기
-              </Button>
-            )}
             <label className="flex min-h-11 items-center gap-2.5 adm-t-sm text-exam-text">
               <input
                 type="checkbox"
@@ -313,7 +308,7 @@ export default function ItemCard({ id }: { id: string }) {
         <Section
           no="②"
           title="인지단계"
-          note="S1~S4 중 하나. 단계를 고르면 형식·배점·b모수가 따라옵니다."
+          note="S1~S4 중 하나. 단계를 고르면 형식이 따라옵니다."
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {LEVELS.map((l) => {
@@ -499,7 +494,10 @@ export default function ItemCard({ id }: { id: string }) {
                       const t = e.target.value as TalentId | "";
                       set(
                         t
-                          ? { subTalent: t, subSubskill: subskillsOf(t)[0].code }
+                          ? {
+                              subTalent: t,
+                              subSubskill: subskillsOf(t)[0].code,
+                            }
                           : { subTalent: undefined, subSubskill: undefined },
                       );
                     }}
@@ -563,7 +561,7 @@ export default function ItemCard({ id }: { id: string }) {
         <Section no="⑤" title="문항형식 · 배점 · b모수" note="단계별 고정 매핑 + 예상 난이도">
           <p className="adm-t-md font-bold text-exam-text">{formatLine(item.level)}</p>
           <p className="mt-1.5 adm-t-sm text-exam-muted">
-            형식과 배점은 단계에서 따라옵니다. 형식을 먼저 정하고 단계를 끼워 맞추지 않습니다 —
+            형식은 단계에서 따라옵니다. 형식을 먼저 정하고 단계를 끼워 맞추지 않습니다 —
             판별이 먼저, 형식은 그 결과입니다.
           </p>
 
@@ -582,22 +580,30 @@ export default function ItemCard({ id }: { id: string }) {
                 ))}
               </select>
             </Field>
-            <Field label="배점">
+            {/* 배점과 b모수는 이제 문제(Question)에서 만드는 값이다 — 배점은 문제마다 직접
+                적고 b는 넷 중에서 고른다. 세트면 배점은 합, b는 평균이라 문항 쪽에
+                써넣을 수가 없다. 여기서 고칠 수 있게 두면 친 숫자가 다음 저장에서 조용히
+                되돌아가므로, 읽기만 하고 어디서 고치는지를 적어 둔다.
+                (lib/itemStore.ts의 summaryOf) */}
+            <Field label="배점" hint="새 콘솔의 문제 상세에서 적습니다">
               <input
                 type="number"
                 value={item.points}
-                onChange={(e) => set({ points: Number(e.target.value) })}
-                disabled={!editable}
+                readOnly
+                disabled
                 className={`${a.input} tabular-nums`}
               />
             </Field>
-            <Field label="예상 난이도 b" hint={`${item.level} 앵커 ${spec.b}`}>
+            <Field
+              label="예상 난이도 b"
+              hint={`${item.level} 앵커 ${spec.b} · 새 콘솔의 문제 상세에서 고릅니다`}
+            >
               <input
                 type="number"
                 step="0.1"
                 value={item.b}
-                onChange={(e) => set({ b: Number(e.target.value) })}
-                disabled={!editable}
+                readOnly
+                disabled
                 className={`${a.input} tabular-nums`}
               />
             </Field>
@@ -1012,7 +1018,9 @@ function AssetBox({ item, disabled }: { item: ItemDraft; disabled: boolean }) {
     void take(
       shots.map(
         (f, n) =>
-          new File([f], `붙여넣은 그림 ${item.assets.length + n + 1}.png`, { type: f.type }),
+          new File([f], `붙여넣은 그림 ${item.assets.length + n + 1}.png`, {
+            type: f.type,
+          }),
       ),
     );
   };

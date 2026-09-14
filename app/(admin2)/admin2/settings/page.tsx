@@ -55,13 +55,6 @@ export default function Admin2Settings() {
     <>
       <PageHead
         title="시스템 설정"
-        meta={
-          <>
-            <span className="a2-mono">{stub.id}</span>
-            <span aria-hidden>·</span>
-            <span>이 화면은 읽기 전용입니다. 값을 바꾸려면 배포가 필요합니다.</span>
-          </>
-        }
       />
 <Body>
 

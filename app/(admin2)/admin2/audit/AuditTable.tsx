@@ -138,34 +138,23 @@ const cols: Col<AuditRow>[] = [
   },
 ];
 
+/* 개인정보 열람 여부는 머리의 탭이 맡는다(AuditView). 같은 조건을 두 군데서 걸면
+   탭에서 「개인정보 열람」을 고른 채 거르개에서 「그 외」를 골라 0줄이 나온다 */
 const filters: Filter<AuditRow>[] = [
   { id: "role", label: "역할", options: roleOptions, match: (r, v) => r.role === v },
-  /* 개인정보 열람만 — 이 콘솔에서 가장 자주 쓸 거르개다. 반대쪽(「그 외」)도 함께 둔 것은,
-     감사에서 「사유 없이 일어난 일은 무엇인가」를 묻는 일이 그만큼 잦기 때문이다.
-     사유 유무는 곧 열람 여부이므로 판정은 reason 한 칸으로 끝난다 */
-  {
-    id: "pii",
-    label: "개인정보",
-    options: [
-      { value: "pii", label: "열람 기록만" },
-      { value: "rest", label: "그 외" },
-    ],
-    match: (r, v) => (v === "pii" ? r.reason !== null : r.reason === null),
-  },
 ];
 
-export default function AuditTable() {
+export default function AuditTable({ rows, empty }: { rows: AuditRow[]; empty: string }) {
   return (
     <DataTable
-      rows={auditLog}
+      rows={rows}
       cols={cols}
       filters={filters}
       getKey={(r) => r.id}
       searchHint="행위자 · 동작 · 대상 · 사유"
-      empty="조건에 맞는 기록이 없습니다."
-      /* 고칠 수 없다는 약속을 표 바로 위에 적어 둔다. 이 화면에 「수정」·「삭제」 단추가
-         없는 것이 실수가 아니라 설계라는 뜻이고, 표 아래 각주로 내리면 아무도 안 읽는다 */
-      toolbarExtra={<span className="a2-t-xs text-(--a2-ink-4)">기록은 추가만 됩니다 · 고치거나 지울 수 없습니다</span>}
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

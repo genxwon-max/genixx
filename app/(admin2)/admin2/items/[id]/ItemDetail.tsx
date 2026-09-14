@@ -3,45 +3,39 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  LEVELS,
-  formatLine,
-  gradeBands,
-  levelAllowed,
-  levelSpecs,
-  subskillOf,
-  subskillsOf,
-  submitChecklist,
-  talents,
-  type GradeBand,
-  type Level,
-  type TalentId,
-} from "@/lib/blueprint";
-import { itemTone, toneColor } from "@/lib/admin2";
+import { checkStandardCode, gradeBands, type GradeBand } from "@/lib/blueprint";
+import { itemTone } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { roundsOf, useForms } from "@/lib/formStore";
 import {
-  addComment,
-  missingFields,
+  blankQuestion,
+  itemForms,
+  missingContent,
   patchItem,
   rejectLabel,
   restoreItem,
   retireItem,
   reviseApproved,
   setAnchor,
-  setLevel,
-  standardIssue,
   stateLabel,
   submitItem,
-  suggestCode,
-  syncTags,
-  typeLabel,
   useItems,
   withdrawItem,
+  type ItemComment,
   type ItemDraft,
+  type ItemForm,
+  type Question,
 } from "@/lib/itemStore";
-import { Body, DescList, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
+import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
+import { Body, FormRow, PageHead, Panel, SeedNote, Status, Switch, Tag } from "@/components/admin2/ui";
+import BodyEditor from "@/components/admin2/BodyEditor";
+import ItemPreview from "@/components/admin2/ItemPreview";
 import ReviewPanel from "./ReviewPanel";
+import {
+  QuestionBodyRows,
+  QuestionCoreRows,
+  QuestionList,
+  QuestionTagRows,
+} from "./QuestionEditor";
 
 /**
  * ADM-04-1 문항 상세 — 등록 · 수정 · 검수를 한 장에서.
@@ -49,43 +43,119 @@ import ReviewPanel from "./ReviewPanel";
  * 기존 콘솔은 이 셋을 세 화면으로 갈라 두었다(출제 워크벤치 · 문항 카드 · 검수
  * 워크벤치). 역할이 넷이라 서로의 화면을 안 보는 것이 옳았기 때문이다. 이 콘솔은
  * **슈퍼 관리자 한 사람**만 쓰므로 가릴 것이 없고, 오히려 「고쳐 놓고 바로 승인」이
- * 한 화면에서 끝나야 한다. 왼쪽이 문항, 오른쪽이 상태와 검수다.
+ * 한 화면에서 끝나야 한다.
+ *
+ * ── 차례 ──
+ * 맨 위에 검수 이력 — 무엇이 걸렸나. 기록이 없으면 서지 않는다.
+ *   ① 문항 구성  단일인가 세트인가
+ *   ② 분류      단일일 때만. 과목 · 학년군 · 배점 · 인지단계 · 난이도
+ *   ③ 문항      무슨 자료를 읽히고 무엇을 묻나 (세트는 목록 → 문항 상세)
+ *   ④ 세부 분류  단일일 때만. 단원 · 문항 ID · 성취기준 · 재능 축 · 하위요소
+ * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 앵커 판.
+ * 사용 · 사용 중지는 판이 아니라 머리의 스위치가 맡는다.
+ *
+ * ── 분류를 문항 앞뒤로 가른다 ──
+ * 한 판에 열세 줄이 서 있어서 문항을 쓰러 온 사람이 발문 칸까지 한 화면을 넘겨야 했다.
+ * 그런데 그 열세 줄은 정하는 때가 다르다. 단계와 난이도를 모르고는 발문을 쓸 수 없지만,
+ * 성취기준 코드와 하위요소는 다 쓴 문항을 보고 찾아 붙이는 것이 실제 차례다. 그래서
+ * 쓰기 전에 정할 다섯만 문항 위에 두고, 나머지는 문항 아래로 내린다.
+ *
+ * ── 제출 준비 · 상태 · 메모를 걷었다 ──
+ * 출제자 유의사항과 제출 전 체크리스트는 출제자와 검수자가 다른 사람인 옛 콘솔의 장치다.
+ * 이 콘솔은 쓰는 사람이 곧 검수하는 사람이라 칸만 늘었다. 판을 걷으면서 제출 문턱에서도
+ * 뺐다(lib/itemStore.ts의 missingContent) — 판은 없는데 문턱은 남아 있으면 제출 단추가
+ * 영영 켜지지 않는다. 상태는 머리에 이미 서 있고, 반려됐다는 한 줄만 맨 위로 옮겼다.
+ * 메모는 쓰는 칸만 걷었다 — 거기 쌓인 기록(반려 사유 · 앵커 지정과 다시 쓰기의 까닭)은
+ * 검수 이력에 함께 편다. 기록까지 걷으면 반려 사유가 이 콘솔 어디에도 보이지 않는 문항이 생긴다.
+ *
+ * 문항 구성이 맨 앞인 것은 그 하나가 **아래를 통째로 바꾸기** 때문이다. 세트면 함께
+ * 읽을 보기가 있어야 하고, 문항이 하나가 아니라 목록이 되고, 문항마다 따로 들어가 볼
+ * 것이 생긴다. 다 채워 놓고 뒤늦게 세트로 돌리면 지금까지 적은 것이 어느 문항의
+ * 것인지부터 다시 정해야 한다.
+ *
+ * ── 분류는 세트 바깥에 세우지 않는다 ──
+ * 분류는 묶음이 아니라 **문항**에 붙는다(lib/itemStore.ts의 Question). 단일이면 문항이
+ * 하나뿐이라 바깥에 세워도 뜻이 통하지만, 세트에서는 성취기준도 단계도 난이도도
+ * 문항마다 다르다 — 바깥에 한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다.
+ * 그래서 세트에서는 이 판을 아예 세우지 않고, 문항 하나로 들어간 화면에 세운다. 거기서
+ * 단일과 같은 차례로 선다 — 분류 → 문항 → 세부 분류. 판마다 세트가 함께 쓰는 것(과목·
+ * 학년군 / 단원·문항 ID)이 먼저 서고 그 문항만의 것이 뒤따르며, 어느 쪽이 함께 걸리는
+ * 값인지 판 맨 위에 적어 둔다.
+ *
+ * ── 이름표는 왼쪽, 예외 없이 ──
+ * 칸 위에 이름을 얹으면 한 줄이 두 줄을 먹어서, 분류만으로 화면 한 장이 넘어갔다.
+ * 옆으로 돌리면 훑을 때 눈이 왼쪽 한 줄만 타고 내려가면 되고, 무엇을 안 채웠는지도
+ * 한눈에 보인다(components/admin2/ui.tsx의 FormRow · admin2.css의 a2-form-lg).
+ *
+ * 그래서 판이 줄었다. 난이도·문항 구성·지문은 각각 판 하나에 칸 하나뿐이었는데, 이름표를
+ * 왼쪽으로 돌리자 판 제목과 이름표가 같은 말을 두 번 하게 됐다. 난이도는 분류 줄에,
+ * 지문은 문항 판의 첫 줄로 들어갔다. 맨 위 문항 구성은 판 제목 없이 줄 하나만 세운다.
+ *
+ * ── 세트는 목록 ──
+ * 세트 안의 문항을 죄다 펼쳐 놓으면 셋만 되어도 화면이 스무 칸을 넘어가 지금 몇 번을
+ * 고치는지 알 수 없다. 문항 은행이 「목록에서 골라 상세로 들어간다」로 푸는 것과 같은
+ * 문제라 같은 방식으로 푼다. 들어간 화면도 이 컴포넌트가 그리므로 초안(draft)이 그대로
+ * 남는다 — 주소를 나누면 들어가는 순간 안 저장한 것이 날아간다.
  *
  * 고칠 수 있는 때를 상태가 정한다 — 작성 중 · 반려됨만 열린다. 검수 대기와 승인됨은
  * 잠근다. 제출한 뒤에 내용이 바뀌면 검수자가 본 것과 승인된 것이 달라지고, 승인 뒤에
- * 바뀌면 그 문항으로 이미 판정한 아이의 결과를 설명할 수 없다. 승인본을 고칠 때는
- * 원본을 두고 새 판을 뜬다.
+ * 바뀌면 그 문항으로 이미 판정한 아이의 결과를 설명할 수 없다.
  *
- * ⚠ 저장은 칸을 떠날 때가 아니라 글자를 칠 때마다 일어난다(patchItem). 저장 단추를
- *   두지 않은 까닭은 하나다 — 문항 하나를 채우는 데 십수 분이 걸리는데, 그 사이에
- *   다른 문항을 열어 보는 일이 실제로 잦다.
+ * 저장은 **저장을 누를 때만** 한다. 잊는 것은 나가는 길목에서 막는다
+ * (components/admin2/EditGuard.tsx).
+ *
+ * ⚠ 검수로 제출하는 것은 **저장된 문항**을 보낸다. 그래서 손댄 채로는 제출할 수 없게
+ *   막는다 — 화면에 보이는 것과 검수자가 받는 것이 다르면 그 검수는 무의미하다.
  */
+
+/** 한 세트에 담을 수 있는 문항 수 — 넘으면 아이가 한 자리에서 다 못 푼다 */
+const SET_MAX = 8;
+
 export default function ItemDetail({ id }: { id: string }) {
   const items = useItems();
-  const forms = useForms();
   const prefs = useAdminPrefs();
   const router = useRouter();
   const [reason, setReason] = useState("");
-  const [memo, setMemo] = useState("");
+  /** 고치는 중인 값. null이면 손대지 않았다는 뜻이다 */
+  const [draft, setDraft] = useState<Partial<ItemDraft> | null>(null);
+  /** 세트에서 들어가 있는 문항. null이면 목록을 보고 있다 */
+  const [openQ, setOpenQ] = useState<string | null>(null);
+  /** 응시 화면 미리보기를 띄웠는가 */
+  const [preview, setPreview] = useState(false);
 
   const item = items.find((i) => i.id === id);
+  /** 화면이 그리는 값 — 저장된 문항 위에 고치는 중인 값을 덮는다 */
+  const view = item && draft ? { ...item, ...draft } : item;
 
-  if (!item) {
+  const dirty = draft !== null;
+  const cancel = () => setDraft(null);
+  /* 파생값(거울·요약·표시용 태그)은 저장소가 만든다(lib/itemStore.ts의 derive).
+     한동안 여기서 syncTags를 불렀는데, 초안에는 questions만 들어 있고 납작한 분류 칸은
+     저장된 옛 값이라, 방금 고친 성취기준이 아니라 고치기 전 값으로 태그가 만들어졌다 —
+     태그가 언제나 저장 한 번을 뒤따라왔다. */
+  const save = () => {
+    if (!item || !draft) return;
+    patchItem(item.id, draft);
+    setDraft(null);
+  };
+  const guard = useUnsavedGuard(dirty, save);
+
+  if (!item || !view) {
     return (
       <>
         <PageHead
           title="문항을 찾지 못했습니다"
-          actions={
+          back={
             <Link href="/admin2/items" className="a2-btn">
-              문항 은행
+              ← 이전으로
             </Link>
           }
         />
         <Body>
           <Panel title="없는 문항">
             <p className="a2-t-sm text-(--a2-ink-2)">
-              <span className="a2-mono">{id}</span> 문항이 이 브라우저의 저장소에 없습니다. 다른 기기에서 만든
-              문항이거나 주소가 잘못되었습니다.
+              <span className="a2-mono">{id}</span> 문항이 이 브라우저의 저장소에 없습니다. 다른
+              기기에서 만든 문항이거나 주소가 잘못되었습니다.
             </p>
           </Panel>
         </Body>
@@ -93,636 +163,622 @@ export default function ItemDetail({ id }: { id: string }) {
     );
   }
 
-  const editable = item.state === "draft" || item.state === "rejected";
+  const editable = view.state === "draft" || view.state === "rejected";
+  const locked = !editable;
+  /** 사용 스위치를 켜고 끌 수 있는가 — 검수를 지난 문항만 */
+  const switchable = view.state === "approved" || view.state === "retired";
   const by = prefs.staffName || "운영자";
-  const spec = levelSpecs[item.level];
-  const std = standardIssue(item);
-  const missing = missingFields(item);
-  const ready = missing.length === 0;
-  const shipped = roundsOf(item.id, forms);
-  const talent = talents.find((t) => t.id === item.talent)!;
+  /** 화면에 적는 「남은 것」은 지금 보이는 값 기준. 제출 문턱은 저장된 값 기준이다 */
+  const missing = missingContent(view);
+  const ready = missingContent(item).length === 0;
 
-  /** 고친 값을 저장한다. 표시용 태그(tagA·tagB)는 값이 바뀔 때마다 다시 만든다 */
+  /** 고친 값을 초안에 담아 둔다. 저장소로 나가는 것은 save()뿐이다 */
   const set = (patch: Partial<ItemDraft>) => {
     if (!editable) return;
-    const next = { ...item, ...patch };
-    patchItem(item.id, { ...patch, ...syncTags(next) });
+    setDraft((d) => ({ ...(d ?? {}), ...patch }));
   };
 
-  const choiceType = item.type === "choice";
-  const needsRubric = item.type === "descriptive" || item.type === "essay";
+  const qs = view.questions;
+  const setQuestions = (next: Question[]) => set({ questions: next });
+  const setQuestion = (k: number, next: Question) =>
+    setQuestions(qs.map((x, n) => (n === k ? next : x)));
+  /** 세트를 단일로 되돌리면 저장할 때 2번 이후가 떨어진다. 미리 알려 준다 */
+  const dropping = view.form === "single" ? qs.length - 1 : 0;
 
-  return (
+  /* 학년군을 바꾸면 성취기준 코드가 범위를 벗어난다. 코드는 문항 아래 세부 분류 판에 있어
+     바꾼 자리에서 보이지 않으므로 학년군 칸에도 적는다. 다른 학년군이었다면 맞았을 코드만
+     센다 — 비었거나 형식이 틀린 코드는 학년군을 바꿔서 생긴 일이 아니다 */
+  const bandBroken = qs.filter(
+    (q) =>
+      !checkStandardCode(q.standardCode, view.band).ok &&
+      gradeBands.some((g) => g.id !== view.band && checkStandardCode(q.standardCode, g.id).ok),
+  ).length;
+
+  /* 검수 이력에 메모를 함께 편다. 메모를 쓰는 판은 걷었지만 거기 쌓인 기록은 걷지 않는다 —
+     반려 사유만 comments에 들고 있는 문항이 있고(검수 기록이 생기기 전에 반려된 IT-2602),
+     앵커 지정·다시 쓰기의 까닭은 comments에만 남는다. 검수판에서 승인·반려하면 같은 말이
+     reviews와 comments 양쪽에 남으므로, 짝이 있는 것은 검수 기록 쪽 한 번만 세운다 */
+  const mirrored = (c: ItemComment) =>
+    c.kind !== "note" &&
+    view.reviews.some((r) => r.at === c.at && r.verdict === c.kind && r.text === c.text);
+  const loose = view.comments.filter((c) => !mirrored(c));
+  const notes = loose.length;
+  const history = [
+    ...view.reviews.map((r) => ({ at: r.at, review: r, comment: undefined, key: `r-${r.at}-${r.round}` })),
+    ...loose.map((c, k) => ({ at: c.at, review: undefined, comment: c, key: `c-${c.at}-${k}` })),
+  ]
+    .map((e, k) => ({ ...e, k }))
+    /* 새것이 위. 같은 시각이면 나중에 쌓인 것이 위 — at은 「YYYY-MM-DD HH:MM」이라 글자로 견준다 */
+    .sort((a, b) => (a.at === b.at ? b.k - a.k : a.at < b.at ? 1 : -1));
+
+  const saveBar = editable ? <PageSaveBar dirty={dirty} onSave={save} onCancel={cancel} /> : null;
+
+  /* 세트가 통째로 함께 쓰는 칸 — 둘로 갈라 분류 판과 세부 분류 판의 앞머리에 각각 선다.
+     단일이면 문항 상세에, 세트면 문항 하나로 들어간 화면에 선다. 세트 바깥 화면에는
+     세우지 않는다. 거기서는 어느 문항의 분류인지 말할 수가 없다. */
+  const sharedCoreRows = (
+    <>
+      <FormRow label="과목" req>
+        <select
+          className="a2-select a2-input-lg"
+          value={view.subject}
+          disabled={locked}
+          onChange={(e) => set({ subject: e.target.value as ItemDraft["subject"] })}
+        >
+          {["국어", "수학", "과학"].map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </FormRow>
+
+      <FormRow
+        label="학년군"
+        req
+        hint={
+          bandBroken > 0 ? (
+            <span style={{ color: "var(--a2-danger)" }}>
+              {view.form === "set"
+                ? `이 세트 문항의 성취기준 코드 ${bandBroken}개가`
+                : "아래 세부 분류의 성취기준 코드가"}{" "}
+              이 학년군 범위를 벗어납니다.
+            </span>
+          ) : undefined
+        }
+      >
+        <select
+          className="a2-select a2-input-lg"
+          value={view.band}
+          disabled={locked}
+          onChange={(e) => {
+            const band = e.target.value as GradeBand;
+            set({
+              band,
+              grade: band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
+            });
+          }}
+        >
+          {gradeBands.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.label}
+            </option>
+          ))}
+        </select>
+      </FormRow>
+    </>
+  );
+
+  const sharedDetailRows = (
+    <>
+      <FormRow label="단원" req>
+        <input
+          className="a2-input a2-input-lg"
+          value={view.unit}
+          disabled={locked}
+          onChange={(e) => set({ unit: e.target.value })}
+          placeholder="낱말의 의미 관계"
+        />
+      </FormRow>
+
+      <FormRow label="단원 번호">
+        <input
+          className="a2-input a2-input-lg a2-mono"
+          value={view.unitNo}
+          disabled={locked}
+          onChange={(e) => set({ unitNo: e.target.value })}
+          placeholder="02"
+        />
+      </FormRow>
+
+      {/* 손으로 적는 칸이 아니다. 코드에 담기는 것이 전부 이 화면의 다른 칸에
+          이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID).
+          과목·학년군·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
+          적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
+      <FormRow label="문항 ID">
+        <span className="a2-mono a2-t-md font-bold text-(--a2-ink)">
+          {view.code || "저장하면 매겨집니다"}
+        </span>
+      </FormRow>
+    </>
+  );
+
+  /* ── 세트에서 문항 하나로 들어간 화면 ──
+     목록으로 돌아가는 것은 주소가 아니라 이 상태 하나다. 초안이 그대로 남아야 하므로
+     라우터를 태우지 않는다 — 태우면 들어가는 순간 안 저장한 것을 물어봐야 한다 */
+  const openIndex = openQ ? qs.findIndex((q) => q.id === openQ) : -1;
+  if (view.form === "set" && openIndex >= 0) {
+    return (
       <>
         <PageHead
-          title={item.code || "문항 ID 미정"}
-          meta={
-            <>
-              <Status tone={itemTone[item.state]}>{stateLabel[item.state]}</Status>
-              <span aria-hidden>·</span>
-              <span>
-                {item.subject} · {item.band} · {item.level} {spec.name} · {typeLabel(item.type)}
-              </span>
-              <span aria-hidden>·</span>
-              <span className="a2-mono">
-                v{item.version} · {item.updatedAt}
-              </span>
-              {item.origin === "ai" && <Tag accent>AI 초안</Tag>}
-            </>
+          title={`문항 ${openIndex + 1}`}
+          back={
+            <button type="button" className="a2-btn" onClick={() => setOpenQ(null)}>
+              ← 문항 목록
+            </button>
           }
           actions={
-            <>
-              <Link href="/admin2/items" className="a2-btn">
-                목록
-              </Link>
-              {editable && (
-                <button
-                  type="button"
-                  className="a2-btn a2-btn-primary"
-                  disabled={!ready}
-                  title={ready ? undefined : `${missing.join(" · ")}이(가) 남았습니다`}
-                  onClick={() => submitItem(item.id)}
-                >
-                  검수로 제출
-                </button>
-              )}
-              {item.state === "submitted" && (
-                <button type="button" className="a2-btn" onClick={() => withdrawItem(item.id)}>
-                  제출 회수
-                </button>
-              )}
-              {item.state === "approved" && (
-                <button
-                  type="button"
-                  className="a2-btn"
-                  onClick={() => {
-                    const next = reviseApproved(item.id);
-                    if (next) router.push(`/admin2/items/${next.id}`);
-                  }}
-                >
-                  새 판으로 고치기
-                </button>
-              )}
-            </>
+            <span className="a2-t-xs text-(--a2-ink-4)">
+              <span className="a2-mono">{view.code || "문항 ID 미정"}</span> · 세트 {qs.length}문
+            </span>
           }
         />
         <Body>
+          <div className="grid gap-4">
+            <Panel title="분류" flush>
+              <p className="a2-note m-4 mb-0">
+                <span>
+                  과목 · 학년군은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은 세트의 다른
+                  문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
+                </span>
+              </p>
+              <div className="a2-form a2-form-lg mt-4">
+                {sharedCoreRows}
+                <QuestionCoreRows
+                  key={`core-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                />
+              </div>
+            </Panel>
 
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-            {/* ── 왼쪽: 문항 ── */}
-            <div className="grid gap-3">
-              <Panel title="분류" meta="발주서 §2 · §7">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="a2-field">
-                    <span className="a2-label">과목</span>
-                    <select
-                      className="a2-select"
-                      value={item.subject}
-                      disabled={!editable}
-                      onChange={(e) => set({ subject: e.target.value as ItemDraft["subject"] })}
-                    >
-                      {["국어", "수학", "과학"].map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                  </label>
+            <Panel title="문항" flush>
+              <div className="a2-form a2-form-lg">
+                <QuestionBodyRows
+                  key={`body-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                />
+              </div>
+            </Panel>
 
-                  <label className="a2-field">
-                    <span className="a2-label">학년군</span>
-                    <select
-                      className="a2-select"
-                      value={item.band}
-                      disabled={!editable}
-                      onChange={(e) => {
-                        const band = e.target.value as GradeBand;
-                        set({
-                          band,
-                          grade: band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
-                        });
-                      }}
-                    >
-                      {gradeBands.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+            <Panel title="세부 분류" flush>
+              <p className="a2-note m-4 mb-0">
+                <span>
+                  단원 · 단원 번호 · 문항 ID는 <b>세트 전체</b>가 함께 씁니다. 그 아래는 이
+                  문항만의 값입니다.
+                </span>
+              </p>
+              <div className="a2-form a2-form-lg mt-4">
+                {sharedDetailRows}
+                <QuestionTagRows
+                  key={`tags-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
+                  band={view.band}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                />
+              </div>
+            </Panel>
+          </div>
+          {saveBar}
+        </Body>
+        <LeaveDialog guard={guard} />
+      </>
+    );
+  }
 
-                  <label className="a2-field">
-                    <span className="a2-label">단원</span>
-                    <input
-                      className="a2-input"
-                      value={item.unit}
-                      disabled={!editable}
-                      onChange={(e) => set({ unit: e.target.value })}
-                      placeholder="낱말의 의미 관계"
-                    />
-                  </label>
+  return (
+    <>
+      <PageHead
+        title={view.code || "문항 ID 미정"}
+        back={
+          <Link href="/admin2/items" className="a2-btn">
+            ← 이전으로
+          </Link>
+        }
+        actions={
+          <>
+            {/* 사용 여부 — 승인됨과 사용 중지를 오간다. 문항 상태와 따로 노는 값이 아니다.
+                「사용 중지」라는 상태가 이미 회차 편성에서 문항을 빼는 자리라, 켜고 끄는 값을
+                하나 더 두면 승인됨인데 비사용인 문항이 생겨 둘 중 무엇을 믿을지 정해야 한다.
 
-                  <label className="a2-field">
-                    <span className="a2-label">단원 번호</span>
-                    <input
-                      className="a2-input a2-mono"
-                      value={item.unitNo}
-                      disabled={!editable}
-                      onChange={(e) => set({ unitNo: e.target.value })}
-                      placeholder="02"
-                    />
-                    <span className="a2-hint">문항 ID 가운데 두 자리에 들어갑니다.</span>
-                  </label>
+                아래 판에 두지 않고 머리에 세운다. 승인된 문항은 판이 전부 잠겨 있어서, 문항을
+                열고 하는 일이 사실상 이것 하나인데 그 스위치가 판 열 개 밑에 있으면 찾으러
+                내려가야 한다. 승인 전 문항에도 꺼진 채로 세워 두고 까닭을 적는다 — 자리가
+                있다 없다 하면 승인하고 나서야 스위치가 있다는 것을 안다.
 
-                  {/* 단계를 고르면 형식·배점·b모수가 따라온다(§1 고정 매핑). 손으로 못 고친다 —
-                      단계와 형식이 어긋나면 검수 2차 태깅에서 그대로 반려된다 */}
-                  <label className="a2-field">
-                    <span className="a2-label">인지단계</span>
-                    <select
-                      className="a2-select"
-                      value={item.level}
-                      disabled={!editable}
-                      onChange={(e) => editable && setLevel(item.id, e.target.value as Level)}
-                    >
-                      {LEVELS.map((l) => (
-                        <option key={l} value={l} disabled={!levelAllowed(item.talent, l)}>
-                          {l} {levelSpecs[l].name}
-                          {levelAllowed(item.talent, l) ? "" : " — 이 축은 출제 불가"}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="a2-hint">{formatLine(item.level)}</span>
-                  </label>
+                까닭을 묻지 않는다. 되돌리는 것도 스위치 한 번이고, 누가 언제 껐는지는 검수
+                이력에 메모로 남는다(lib/itemStore.ts retireItem) */}
+            <span
+              className="mr-2 flex items-center gap-1.5"
+              title={switchable ? undefined : "승인된 문항만 켜고 끌 수 있습니다"}
+            >
+              <span className="a2-t-xs text-(--a2-ink-4)" aria-hidden>
+                사용
+              </span>
+              <Switch
+                label="사용"
+                on={view.state === "approved"}
+                disabled={!switchable}
+                onChange={(on) =>
+                  on ? restoreItem(view.id, by, prefs.role) : retireItem(view.id, by, prefs.role)
+                }
+              />
+            </span>
+            <span className="mr-1 flex items-center gap-1.5">
+              <span className="a2-t-xs text-(--a2-ink-4)">상태</span>
+              <Status tone={itemTone[view.state]}>{stateLabel[view.state]}</Status>
+            </span>
+            {/* 검수하는 사람이 가장 자주 누르는 단추라 나가는 문들보다 왼쪽에 둔다.
+                지금 화면의 값(초안 포함)으로 띄운다 — 저장하기 전에 「이렇게 보이는가」를
+                보는 것이 미리보기의 일이다 */}
+            <button type="button" className="a2-btn" onClick={() => setPreview(true)}>
+              미리보기
+            </button>
+            {editable && (
+              <button
+                type="button"
+                className="a2-btn"
+                disabled={!ready || dirty}
+                title={
+                  dirty
+                    ? "먼저 저장해 주세요 — 검수자는 저장된 문항을 받습니다"
+                    : ready
+                      ? undefined
+                      : `${missingContent(item).join(" · ")}이(가) 남았습니다`
+                }
+                onClick={() => submitItem(view.id)}
+              >
+                검수로 제출
+              </button>
+            )}
+            {view.state === "submitted" && (
+              <button type="button" className="a2-btn" onClick={() => withdrawItem(view.id)}>
+                제출 회수
+              </button>
+            )}
+            {view.state === "approved" && (
+              <button
+                type="button"
+                className="a2-btn"
+                onClick={() => {
+                  const next = reviseApproved(view.id);
+                  if (next) router.push(`/admin2/items/${next.id}`);
+                }}
+              >
+                새 판으로 고치기
+              </button>
+            )}
+          </>
+        }
+      />
 
-                  <div className="a2-field">
-                    <span className="a2-label">문항 ID</span>
-                    <div className="flex gap-1.5">
-                      <input
-                        className="a2-input a2-mono"
-                        value={item.code}
-                        disabled={!editable}
-                        onChange={(e) => set({ code: e.target.value })}
-                        placeholder="4K02-S1-001"
-                      />
-                      <button
-                        type="button"
-                        className="a2-btn shrink-0"
-                        disabled={!editable}
-                        onClick={() =>
-                          set({
-                            code: suggestCode(
-                              item,
-                              items.filter((i) => i.subject === item.subject && i.level === item.level).length + 1,
-                            ),
-                          })
-                        }
-                      >
-                        다시 매기기
-                      </button>
-                    </div>
-                    <span className="a2-hint">학년군 · 교과 · 단원 · 단계 · 일련번호</span>
-                  </div>
+      <Body>
+        <div className="grid gap-4">
+          {/* 잠긴 까닭을 맨 위에 적는다. 아래 칸이 전부 회색인데 왜인지가 없으면
+              고치는 길이 없는 문항으로 읽힌다 */}
+          {locked && (
+            <p className="a2-note">
+              <span>
+                {view.state === "submitted"
+                  ? "검수 대기 중인 문항은 잠깁니다. 고치려면 위에서 제출을 회수하세요."
+                  : view.state === "retired"
+                    ? "사용 중지된 문항입니다 — 회차 편성 후보에 오르지 않습니다. 다시 쓰려면 위의 사용 스위치를 켜세요."
+                    : "승인된 문항은 잠깁니다. 고치려면 위에서 새 판을 뜨세요 — 원본은 그대로 둡니다."}
+                {/* 누가 언제 껐는지 — 「승인 뒤 관리」 판 맨 아래에 있던 줄을 스위치와 함께
+                    위로 올린다. 스위치만 올리고 이 줄을 두고 오면 끈 기록이 판째 사라진다 */}
+                {view.state === "retired" && view.retiredAt && (
+                  <>
+                    <br />
+                    {view.retiredAt} · {view.retiredBy}
+                    {view.retireReason && ` — ${view.retireReason}`}
+                  </>
+                )}
+              </span>
+            </p>
+          )}
+          {/* 상태 판과 함께 걷힌 한 줄을 여기로 옮긴다. 반려된 문항은 머리의 「반려됨」만으로는
+              무엇을 고칠지가 바로 아래 검수 이력에 있다는 것이 보이지 않는다 */}
+          {view.state === "rejected" && (
+            <p className="a2-note" style={{ borderLeftColor: "var(--a2-danger)" }}>
+              <span>
+                반려된 문항입니다. 아래 검수 이력의 소견대로 고친 뒤 다시 제출하면 검수 목록으로
+                돌아갑니다.
+              </span>
+            </p>
+          )}
 
-                  <label className="a2-field">
-                    <span className="a2-label">성취기준 코드 (Tag A)</span>
-                    <input
-                      className="a2-input a2-mono"
-                      value={item.standardCode}
-                      disabled={!editable}
-                      onChange={(e) => set({ standardCode: e.target.value })}
-                      placeholder="[4국04-02]"
-                      aria-invalid={!std.ok}
-                    />
-                    <span className="a2-hint" style={std.ok ? undefined : { color: toneColor.danger }}>
-                      {std.ok ? "형식·학년군 확인됨" : std.why}
-                    </span>
-                  </label>
-
-                  <label className="a2-field sm:col-span-2">
-                    <span className="a2-label">성취기준 내용</span>
-                    <input
-                      className="a2-input"
-                      value={item.standardText}
-                      disabled={!editable}
-                      onChange={(e) => set({ standardText: e.target.value })}
-                      placeholder="낱말과 낱말의 의미 관계를 파악한다."
-                    />
-                  </label>
-
-                  <label className="a2-field sm:col-span-2">
-                    <span className="a2-label">Tag A 세부 — 이 문항이 재는 학력을 한 줄로</span>
-                    <input
-                      className="a2-input"
-                      value={item.tagADetail}
-                      disabled={!editable}
-                      onChange={(e) => set({ tagADetail: e.target.value })}
-                      placeholder="비슷한 말 짝 식별"
-                    />
-                  </label>
-
-                  <label className="a2-field">
-                    <span className="a2-label">재능 축 (Tag B)</span>
-                    <select
-                      className="a2-select"
-                      value={item.talent}
-                      disabled={!editable}
-                      onChange={(e) => {
-                        /* 축을 바꾸면 하위요소는 그 축의 것으로 갈아 끼운다. 그대로 두면
-                           LANG-01이 수리-논리 문항에 붙어 좌표가 통째로 어긋난다. */
-                        const next = e.target.value as TalentId;
-                        set({ talent: next, subskill: subskillsOf(next)[0].code });
-                      }}
-                    >
-                      {talents.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    {talent.scopeNote && <span className="a2-hint">{talent.scopeNote}</span>}
-                  </label>
-
-                  <label className="a2-field">
-                    <span className="a2-label">하위요소</span>
-                    <select
-                      className="a2-select"
-                      value={item.subskill}
-                      disabled={!editable}
-                      onChange={(e) => set({ subskill: e.target.value })}
-                    >
-                      {subskillsOf(item.talent).map((s) => (
-                        <option key={s.code} value={s.code}>
-                          {s.code} {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="a2-hint">
-                      {subskillOf(item.subskill)?.grid[item.level] ?? "—"}
-                    </span>
-                  </label>
-                </div>
-              </Panel>
-
-              <Panel title="문항" meta="발주서 §3 문항 카드">
-                <div className="grid gap-2">
-                  <label className="a2-field">
-                    <span className="a2-label">지문 · 자료 (없으면 비워 둡니다)</span>
-                    <textarea
-                      className="a2-textarea"
-                      rows={3}
-                      value={item.passage}
-                      disabled={!editable}
-                      onChange={(e) => set({ passage: e.target.value })}
-                    />
-                  </label>
-
-                  <label className="a2-field">
-                    <span className="a2-label">발문</span>
-                    <textarea
-                      className="a2-textarea"
-                      rows={2}
-                      value={item.stem}
-                      disabled={!editable}
-                      onChange={(e) => set({ stem: e.target.value })}
-                      placeholder="다음 중 두 낱말의 뜻이 서로 비슷한 것은?"
-                    />
-                  </label>
-
-                  {choiceType && (
-                    <div className="a2-field">
-                      <span className="a2-label">보기 · 정답 · 오답이 잡는 오개념</span>
-                      <ul className="mt-1 space-y-1.5">
-                        {item.choices.map((c, k) => (
-                          <li key={k} className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1.5">
-                            <label className="flex items-center gap-1.5 pl-0.5">
-                              <input
-                                type="radio"
-                                name="answer"
-                                checked={item.answer === k}
-                                disabled={!editable}
-                                onChange={() => set({ answer: k })}
-                                aria-label={`${k + 1}번을 정답으로`}
-                              />
-                              <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{k + 1}</span>
-                            </label>
-                            <input
-                              className="a2-input"
-                              value={c}
-                              disabled={!editable}
-                              onChange={(e) =>
-                                set({ choices: item.choices.map((x, n) => (n === k ? e.target.value : x)) })
-                              }
-                              placeholder={`${k + 1}번 보기`}
-                            />
-                            <input
-                              className="a2-input"
-                              value={item.distractorIntent[k] ?? ""}
-                              disabled={!editable || item.answer === k}
-                              onChange={(e) => {
-                                const next = [...item.distractorIntent];
-                                while (next.length < item.choices.length) next.push("");
-                                next[k] = e.target.value;
-                                set({ distractorIntent: next });
-                              }}
-                              placeholder={item.answer === k ? "정답 — 적지 않습니다" : "이 오답이 잡는 오개념"}
-                            />
+          {/* ── 검수 이력 ──
+              맨 위에 둔다. 검수를 거친 문항을 여는 까닭은 대개 「무엇이 걸렸나」를 보고
+              고치러 온 것이라, 소견이 입력 칸 아래에 있으면 고칠 곳과 고칠 까닭 사이를
+              스크롤로 오가야 한다. 기록이 하나도 없으면 판째 세우지 않는다 — 「아직 검수를
+              거치지 않았습니다」 한 줄이 작성 중인 문항마다 맨 위 자리를 차지한다 */}
+          {history.length > 0 && (
+            <Panel
+              title="검수 이력"
+              meta={`${view.reviews.length}회${notes > 0 ? ` · 메모 ${notes}건` : ""}`}
+              flush
+            >
+              <ul className="divide-y divide-(--a2-line)">
+                {history.map(({ review: r, comment: c, key }) =>
+                  c ? (
+                    <li key={key} className="p-4">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        {c.kind === "note" ? (
+                          <span className="a2-t-sm font-semibold text-(--a2-ink-3)">메모</span>
+                        ) : (
+                          <Status tone={c.kind === "approve" ? "ok" : "danger"}>
+                            {c.kind === "approve"
+                              ? "승인"
+                              : `반려 · ${c.code ? rejectLabel(c.code) : "사유 없음"}`}
+                          </Status>
+                        )}
+                        <span className="a2-t-sm text-(--a2-ink-2)">{c.by}</span>
+                        <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{c.at}</span>
+                      </div>
+                      <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
+                    </li>
+                  ) : r ? (
+                    <li key={key} className="p-4">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Status tone={r.verdict === "approve" ? "ok" : "danger"}>
+                          {r.verdict === "approve"
+                            ? "승인"
+                            : `반려 · ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
+                        </Status>
+                        <span className="a2-t-sm text-(--a2-ink-2)">
+                          {r.round}차 · {r.by}
+                        </span>
+                        <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{r.at}</span>
+                        {r.machine && <Tag>기계</Tag>}
+                        {r.self && (
+                          <span className="a2-t-xs font-bold" style={{ color: "var(--a2-danger)" }}>
+                            자가 검수
+                          </span>
+                        )}
+                      </div>
+                      <ul className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
+                        {r.checks.map((c) => (
+                          <li
+                            key={c.id}
+                            className="a2-t-xs"
+                            style={{
+                              color: c.ok ? "var(--a2-ok)" : "var(--a2-danger)",
+                            }}
+                          >
+                            {c.id === "content" ? "내용" : c.id === "tagging" ? "태깅" : "윤리"}{" "}
+                            {c.ok === null ? "—" : c.ok ? "통과" : "걸림"}
                           </li>
                         ))}
                       </ul>
-                      <span className="a2-hint">
-                        오답마다 무엇을 잡는지 적지 않으면 변별이 죽습니다(§1.1). 정답 칸은 비워 둡니다.
-                      </span>
-                    </div>
-                  )}
+                      <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
+                    </li>
+                  ) : null,
+                )}
+              </ul>
+            </Panel>
+          )}
 
-                  {item.type === "short" && (
-                    <label className="a2-field">
-                      <span className="a2-label">허용 답안 — 쉼표로 나눠 적습니다</span>
+          {/* ── ① 무엇부터 정하나 ──
+              단일이냐 세트냐를 맨 위에 세운다. 이 하나가 아래를 전부 바꾸기 때문이다 —
+              세트면 함께 읽을 보기가 있어야 하고, 문항이 하나가 아니라 목록이 되고,
+              문항마다 따로 들어가 볼 것이 생긴다. 분류부터 채워 놓고 뒤늦게 세트로 돌리면
+              지금까지 채운 것이 어느 문항의 것인지부터 다시 정해야 한다.
+
+              판 제목을 달지 않았다. 줄 이름표가 이미 「문항 구성」이라, 제목을 달면
+              같은 말이 위아래로 두 번 선다 */}
+          <Panel flush>
+            <div className="a2-form a2-form-lg">
+              <FormRow label="문항 구성" req>
+                <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
+                  {itemForms.map((f) => (
+                    <label key={f.id} className="a2-choice">
                       <input
-                        className="a2-input"
-                        value={item.shortAnswers}
-                        disabled={!editable}
-                        onChange={(e) => set({ shortAnswers: e.target.value })}
-                        placeholder="늘어난다, 커진다, 증가한다"
-                      />
-                      <span className="a2-hint">표기 흔들림을 여기서 흡수해야 AI 자동채점이 같은 답을 잡습니다.</span>
-                    </label>
-                  )}
-
-                  {needsRubric && (
-                    <label className="a2-field">
-                      <span className="a2-label">채점 루브릭 — 인정 예 · 불인정 예를 함께</span>
-                      <textarea
-                        className="a2-textarea"
-                        rows={4}
-                        value={item.rubric}
-                        disabled={!editable}
-                        onChange={(e) => set({ rubric: e.target.value })}
-                        placeholder={"근거 1점 + 일반화 1점 + 정당화 1점\n인정 예: …\n불인정 예: …"}
-                      />
-                    </label>
-                  )}
-
-                  <label className="a2-field">
-                    <span className="a2-label">정답 · 채점 해설</span>
-                    <textarea
-                      className="a2-textarea"
-                      rows={3}
-                      value={item.explain}
-                      disabled={!editable}
-                      onChange={(e) => set({ explain: e.target.value })}
-                      placeholder="정답 ②. 까닭까지 함께 적습니다."
-                    />
-                  </label>
-
-                  <label className="a2-field">
-                    <span className="a2-label">출제자 유의사항</span>
-                    <textarea
-                      className="a2-textarea"
-                      rows={3}
-                      value={item.guidance}
-                      disabled={!editable}
-                      onChange={(e) => set({ guidance: e.target.value })}
-                      placeholder="바꾸어 써도 뜻이 통하는지만 봅니다. 쓰임의 차이를 묻기 시작하면 S2로 이탈합니다."
-                    />
-                  </label>
-                </div>
-              </Panel>
-
-              <Panel title="제출 전 체크리스트" meta="발주서 §9">
-                <ul className="grid gap-1">
-                  {submitChecklist.map((c) => {
-                    /* 자동으로 보는 둘은 사람이 켜고 끄지 못한다. 켤 수 있게 두면 코드가
-                       틀린 채로 체크만 켜고 제출하는 길이 열린다 */
-                    const auto =
-                      c.id === "code" ? std.ok : c.id === "tagb" ? levelAllowed(item.talent, item.level) : null;
-                    const on = c.auto ? !!auto : item.checks.includes(c.id);
-                    return (
-                      <li key={c.id}>
-                        <label className="flex items-start gap-2 py-0.5">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5"
-                            checked={on}
-                            readOnly={c.auto}
-                            disabled={c.auto || !editable}
-                            onChange={() => {
-                              if (c.auto) return;
-                              set({
-                                checks: item.checks.includes(c.id)
-                                  ? item.checks.filter((x) => x !== c.id)
-                                  : [...item.checks, c.id],
-                              });
-                            }}
-                          />
-                          <span className="a2-t-sm text-(--a2-ink-2)">
-                            {c.text}
-                            {c.auto && (
-                              <span className="ml-1.5 a2-t-xs text-(--a2-ink-4)">
-                                자동 확인 · {on ? "통과" : "아직"}
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </Panel>
-            </div>
-
-            {/* ── 오른쪽: 상태 · 검수 · 이력 ── */}
-            <div className="grid content-start gap-3">
-              <Panel title="상태" meta={item.origin === "ai" ? "AI가 낸 초안" : "사람이 쓴 문항"}>
-                <DescList
-                  rows={[
-                    { k: "상태", v: <Status tone={itemTone[item.state]}>{stateLabel[item.state]}</Status> },
-                    { k: "출제자", v: `${item.authorName} (${item.author})` },
-                    { k: "형식 · 배점", v: `${typeLabel(item.type)} · ${item.points}점 · b≈${item.b}` },
-                    {
-                      k: "Tag B 좌표",
-                      v: <span className="a2-t-sm">{item.tagB || "—"}</span>,
-                    },
-                    {
-                      k: "앵커",
-                      v: item.anchor ? <Tag accent>앵커</Tag> : <span className="text-(--a2-ink-4)">아님</span>,
-                    },
-                    {
-                      k: "정답률",
-                      v:
-                        item.correctRate == null ? (
-                          <span className="text-(--a2-ink-4)">미출제</span>
-                        ) : (
-                          <span className="a2-num">{item.correctRate}%</span>
-                        ),
-                    },
-                    {
-                      k: "나간 회차",
-                      v: shipped.length ? shipped.join(" · ") : <span className="text-(--a2-ink-4)">없음</span>,
-                    },
-                  ]}
-                />
-
-                {editable && missing.length > 0 && (
-                  <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-warn)" }}>
-                    제출까지 남은 것 — {missing.join(" · ")}
-                  </p>
-                )}
-                {item.state === "rejected" && (
-                  <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-danger)" }}>
-                    반려된 문항입니다. 아래 검수 소견대로 고친 뒤 다시 제출하면 검수 목록으로 돌아갑니다.
-                  </p>
-                )}
-                {item.state === "approved" && (
-                  <p className="a2-note mt-2">
-                    승인된 문항은 잠깁니다. 회차 편성에서 이 문항을 검사지에 담을 수 있습니다.
-                  </p>
-                )}
-              </Panel>
-
-              {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
-                  짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
-              {item.state === "submitted" && <ReviewPanel key={item.id} item={item} />}
-
-              {(item.state === "approved" || item.state === "retired") && (
-                <Panel title="승인 뒤 관리" meta="까닭이 기록에 남습니다">
-                  <label className="a2-field">
-                    <span className="a2-label">까닭</span>
-                    <textarea
-                      className="a2-textarea"
-                      rows={2}
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="예: 26A 회차 정답률 96% — 변별이 되지 않아 회차에서 뺍니다"
-                    />
-                  </label>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {item.state === "approved" && (
-                      <>
-                        <button
-                          type="button"
-                          className="a2-btn"
-                          disabled={reason.trim().length < 5 || !!item.disclosed}
-                          title={item.disclosed ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다" : undefined}
-                          onClick={() => {
-                            setAnchor(item.id, !item.anchor, by, prefs.role, reason.trim());
-                            setReason("");
-                          }}
-                        >
-                          {item.anchor ? "앵커 해제" : "앵커로 지정"}
-                        </button>
-                        <button
-                          type="button"
-                          className="a2-btn a2-btn-danger"
-                          disabled={reason.trim().length < 5}
-                          onClick={() => {
-                            retireItem(item.id, by, prefs.role, reason.trim());
-                            setReason("");
-                          }}
-                        >
-                          사용 중지
-                        </button>
-                      </>
-                    )}
-                    {item.state === "retired" && (
-                      <button
-                        type="button"
-                        className="a2-btn"
-                        disabled={reason.trim().length < 5}
-                        onClick={() => {
-                          restoreItem(item.id, by, prefs.role, reason.trim());
-                          setReason("");
+                        type="radio"
+                        name="item-form"
+                        checked={view.form === f.id}
+                        disabled={locked}
+                        onChange={() => {
+                          /* 세트로 넘어가는데 문항이 하나뿐이면 빈 문항을 하나 붙여 둔다 —
+                             「두 개 이상」이 세트의 성립 조건이라, 빈 채로 두면 저장하자마자
+                             모자란 것 목록에 걸린다 */
+                          const form = f.id as ItemForm;
+                          set({
+                            form,
+                            questions:
+                              form === "set" && qs.length < 2 ? [...qs, blankQuestion(qs)] : qs,
+                          });
                         }}
-                      >
-                        다시 쓰기
-                      </button>
-                    )}
-                  </div>
-                  {item.retireReason && (
-                    <p className="a2-note mt-2">
-                      {item.retiredAt} · {item.retiredBy} — {item.retireReason}
-                    </p>
-                  )}
-                </Panel>
-              )}
-
-              <Panel title="검수 이력" meta={`${item.reviews.length}회`} flush>
-                {item.reviews.length === 0 ? (
-                  <p className="p-3 a2-t-sm text-(--a2-ink-4)">아직 검수를 거치지 않았습니다.</p>
-                ) : (
-                  <ul className="divide-y divide-(--a2-line)">
-                    {[...item.reviews].reverse().map((r) => (
-                      <li key={`${r.at}-${r.round}`} className="p-2.5">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <Status tone={r.verdict === "approve" ? "ok" : "danger"}>
-                            {r.verdict === "approve" ? "승인" : `반려 · ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
-                          </Status>
-                          <span className="a2-t-sm text-(--a2-ink-2)">
-                            {r.round}차 · {r.by}
-                          </span>
-                          <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{r.at}</span>
-                          {r.machine && <Tag>기계</Tag>}
-                          {r.self && (
-                            <span className="a2-t-xs font-bold" style={{ color: "var(--a2-danger)" }}>
-                              자가 검수
-                            </span>
-                          )}
-                        </div>
-                        <ul className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5">
-                          {r.checks.map((c) => (
-                            <li key={c.id} className="a2-t-xs" style={{ color: c.ok ? "var(--a2-ok)" : "var(--a2-danger)" }}>
-                              {c.id === "content" ? "내용" : c.id === "tagging" ? "태깅" : "윤리"}{" "}
-                              {c.ok === null ? "—" : c.ok ? "통과" : "걸림"}
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="mt-1 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Panel>
-
-              <Panel title="메모" meta="상태를 바꾸지 않습니다">
-                <textarea
-                  className="a2-textarea"
-                  rows={2}
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                  placeholder="반려까지는 아니지만 짚어 둘 것"
-                />
-                <div className="mt-1.5 flex justify-end">
-                  <button
-                    type="button"
-                    className="a2-btn"
-                    disabled={memo.trim().length < 2}
-                    onClick={() => {
-                      addComment(item.id, by, prefs.role, memo.trim());
-                      setMemo("");
-                    }}
-                  >
-                    메모 남기기
-                  </button>
+                      />
+                      {f.label}
+                    </label>
+                  ))}
                 </div>
-                {item.comments.length > 0 && (
-                  <ul className="mt-2 divide-y divide-(--a2-line) border-t border-(--a2-line)">
-                    {[...item.comments].reverse().map((c, k) => (
-                      <li key={`${c.at}-${k}`} className="py-1.5">
-                        <p className="a2-t-xs text-(--a2-ink-4)">
-                          <span className="a2-mono">{c.at}</span> · {c.by} ·{" "}
-                          {c.kind === "reject" ? "반려" : c.kind === "approve" ? "승인" : "메모"}
-                        </p>
-                        <p className="whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
-                      </li>
-                    ))}
-                  </ul>
+                {dropping > 0 && (
+                  <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
+                    <span>
+                      단일로 두면 저장할 때 2번 이후 문항 <b>{dropping}개</b>가 사라집니다.
+                      되돌리려면 세트를 다시 고르거나 취소를 누르세요.
+                    </span>
+                  </p>
                 )}
-              </Panel>
+              </FormRow>
             </div>
-          </div>
+          </Panel>
 
-        </Body>
+          {/* ── ② 쓰기 전에 정할 것 ──
+              단일일 때만 선다. 세트에서는 분류가 문항마다 다르므로(단계도 난이도도) 바깥에
+              한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다. 세트의 분류는 문항
+              하나로 들어간 화면에 있다 */}
+          {view.form === "single" && (
+            <Panel title="분류" flush>
+              <div className="a2-form a2-form-lg">
+                {sharedCoreRows}
+                <QuestionCoreRows
+                  q={qs[0]}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(0, next)}
+                />
+              </div>
+            </Panel>
+          )}
+
+          {/* ── ③ 무엇을 읽히고 무엇을 묻나 ──
+              단일이면 지문 → 유형 → 발문 → 보기 → 해설이 한 줄기로 이어진다. 세트면
+              지문이 곧 「문항들이 함께 읽는 것」이라 목록 바로 위가 제자리다 */}
+          <Panel title="문항" meta={view.form === "set" ? `${qs.length}문항` : undefined} flush>
+            <div className="a2-form a2-form-lg">
+              <FormRow
+                label={view.form === "set" ? "보기 · 지문" : "지문 · 자료"}
+                req={view.form === "set"}
+              >
+                <BodyEditor
+                  name="passage-mode"
+                  value={{
+                    mode: view.passageMode,
+                    body: view.passage,
+                    images: view.passageImages,
+                  }}
+                  disabled={locked}
+                  rows={8}
+                  onChange={(patch) =>
+                    set({
+                      passageMode: patch.mode ?? view.passageMode,
+                      passage: patch.body ?? view.passage,
+                      passageImages: patch.images ?? view.passageImages,
+                    })
+                  }
+                />
+              </FormRow>
+              {view.form === "single" && (
+                <QuestionBodyRows
+                  key={qs[0].id}
+                  q={qs[0]}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(0, next)}
+                />
+              )}
+            </div>
+            {view.form === "set" && (
+              <>
+                <QuestionList
+                  questions={qs}
+                  disabled={locked}
+                  max={SET_MAX}
+                  onOpen={setOpenQ}
+                  onMove={(k, dir) => {
+                    const next = [...qs];
+                    [next[k + dir], next[k]] = [next[k], next[k + dir]];
+                    setQuestions(next);
+                  }}
+                  onRemove={(k) => setQuestions(qs.filter((_, n) => n !== k))}
+                  onAdd={() => {
+                    /* 더하고 바로 들어간다. 목록에 빈 줄만 하나 늘려 놓으면 그다음에 할 일이
+                       「수정하기를 누른다」 하나뿐이라, 그 한 번을 여기서 대신 누른다 */
+                    const made = blankQuestion(qs);
+                    setQuestions([...qs, made]);
+                    setOpenQ(made.id);
+                  }}
+                />
+                {qs.length < 2 && (
+                  <p className="a2-note m-4 mt-0" style={{ borderLeftColor: "var(--a2-warn)" }}>
+                    <span>세트는 문항이 두 개 이상이어야 합니다.</span>
+                  </p>
+                )}
+              </>
+            )}
+          </Panel>
+
+          {/* ── ④ 쓰고 나서 붙일 것 ──
+              단일일 때만 선다(까닭은 ②와 같다). 성취기준 코드와 하위요소는 다 쓴 문항을
+              보고 찾아 붙이는 것이라 문항 아래가 제자리다 */}
+          {view.form === "single" && (
+            <Panel title="세부 분류" flush>
+              <div className="a2-form a2-form-lg">
+                {sharedDetailRows}
+                <QuestionTagRows
+                  q={qs[0]}
+                  band={view.band}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(0, next)}
+                />
+              </div>
+            </Panel>
+          )}
+
+          {/* 제출 준비 판과 함께 이 줄이 사라지면, 제출 단추가 왜 꺼져 있는지 말해 주는 곳이
+              꺼진 단추의 풍선 도움말 하나만 남는다 — 꺼진 단추에는 풍선이 뜨지 않는
+              브라우저도 있다. 판은 걷되 줄은 입력 칸이 끝나는 자리에 남긴다 */}
+          {editable && missing.length > 0 && (
+            <p className="a2-note" style={{ borderLeftColor: "var(--a2-warn)" }}>
+              <span>제출까지 남은 것 — {missing.join(" · ")}</span>
+            </p>
+          )}
+
+          {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
+              짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
+          {view.state === "submitted" && <ReviewPanel key={view.id} item={item} />}
+
+          {/* 사용 중지·다시 쓰기는 머리의 사용 스위치로 올라갔다. 이 판에는 앵커만 남는다.
+              앵커는 까닭을 그대로 받는다 — 회차를 건너 같은 잣대로 쓰겠다는 결정이라, 켜고
+              끄는 스위치처럼 가볍게 오가는 값이 아니다 */}
+          {view.state === "approved" && (
+            <Panel title="앵커" flush>
+              <div className="a2-form a2-form-lg">
+                <FormRow label="까닭" req>
+                  <textarea
+                    className="a2-textarea a2-textarea-lg"
+                    rows={3}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="예: 세 회차 정답률이 40~60%로 고르게 나와 등화 기준으로 둡니다"
+                  />
+                  <span className="flex w-full flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="a2-btn"
+                      disabled={reason.trim().length < 5 || !!view.disclosed}
+                      title={
+                        view.disclosed
+                          ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다"
+                          : undefined
+                      }
+                      onClick={() => {
+                        setAnchor(view.id, !view.anchor, by, prefs.role, reason.trim());
+                        setReason("");
+                      }}
+                    >
+                      {view.anchor ? "앵커 해제" : "앵커로 지정"}
+                    </button>
+                  </span>
+                </FormRow>
+              </div>
+            </Panel>
+          )}
+
+        </div>
+
+        {/* 저장은 오른쪽 아래에 붙여 둔다 — 회원·학생·기관 상세와 같은 자리다.
+            판이 열 개를 넘어서 판마다 저장 줄을 두면 그 판만 저장하는 것으로 읽힌다 */}
+        {saveBar}
+      </Body>
+
+      <LeaveDialog guard={guard} />
+      {preview && <ItemPreview item={view} onClose={() => setPreview(false)} />}
       <SeedNote>
-        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항 API로 갈아 끼웁니다. 형식 ·
-        배점 · b모수는 인지단계에서 자동으로 따라오며 손으로 고칠 수 없습니다 — 발주서 §1 고정 매핑입니다.
+        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항 API로 갈아 끼웁니다.
+        발문·지문에 넣은 그림은 파일 서버가 붙기 전까지 문항 안에 통째로 들어갑니다.
       </SeedNote>
     </>
   );

@@ -68,7 +68,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           <EmptyChild className="mx-auto h-32 w-auto" accent="#365eef" />
           <p className="mt-6 text-[18px] font-bold">등록된 학생이 없어요.</p>
           <p className={`mx-auto mt-2.5 max-w-md text-[14px] leading-[1.7] ${t.muted}`}>
-            아이를 등록하면 접속코드가 발급됩니다. 아이는 따로 가입하지 않고, 그 코드와 생년월일로
+            아이를 등록하면 접속코드가 발급됩니다. 만 14세 미만 아이는 따로 가입하지 않고, 그 코드와 생년월일로
             응시 화면에 들어갑니다.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-2.5">

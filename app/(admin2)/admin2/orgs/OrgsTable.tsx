@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { contractLabel, type OrgRow } from "@/lib/admin";
-import { contractTone, n, pct } from "@/lib/admin2";
+import { contractTone, n } from "@/lib/admin2";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { Bar, Status, Tag } from "@/components/admin2/ui";
+import { Status, Tag } from "@/components/admin2/ui";
 
 /**
  * ADM-07 기관 목록의 표.
@@ -16,10 +16,13 @@ import { Bar, Status, Tag } from "@/components/admin2/ui";
  * ── 칸 순서 ──
  *  ID · 이름          어느 기관인지 (문의·감사 로그가 ID로 오므로 ID가 맨 앞)
  *  종류 · 지역 · 담당자  누구이고 누구에게 전화하는지
- *  학생수 · 응시권      규모와 남은 자리 — 이 화면을 여는 실제 이유
+ *  학생수            규모
  *  계약 상태 · 만료일    언제 끊기는지. 결론이므로 오른쪽 끝
  *
  * ── 일부러 뺀 것 ──
+ *  · 응시권 사용/배정: 위 탭이 「응시권 90%↑」로 급한 곳을 이미 모아 주고, 몇 석이
+ *    남았는지는 상세에서 막대와 함께 본다. 열두 칸짜리 표에서 한 칸을 두 값(사용·배정)과
+ *    막대에 내주고 있었다.
  *  · 담당자 연락처·기관 주소: 목록에서 훑을 값이 아니고, 원문 연락처는 이 콘솔의
  *    목록 화면에 두지 않는다. 필요하면 상세에서 사유를 남기고 연다.
  *  · 결제·청구 이력: 응시권 배정으로 이미 규모가 읽히고, 금액은 정산 화면의 몫이다.
@@ -28,7 +31,7 @@ import { Bar, Status, Tag } from "@/components/admin2/ui";
  *    회원·학생 목록과 줄에서 손이 가는 자리가 달라진다.
  */
 
-export default function OrgsTable({ rows, tightAt }: { rows: OrgRow[]; tightAt: number }) {
+export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: string }) {
   const cols = useMemo<Col<OrgRow>[]>(
     () => [
       {
@@ -85,37 +88,6 @@ export default function OrgsTable({ rows, tightAt }: { rows: OrgRow[]; tightAt: 
         cell: (o) => <span className={o.students ? "" : "text-(--a2-ink-4)"}>{n(o.students)}</span>,
       },
       {
-        /* 응시권 — 이 화면에서 제일 급한 칸.
-           소진율이 tightAt(%)을 넘으면 곧 자리가 모자라므로 셋을 겹쳐 눈에 띄게 한다.
-            ① 앞에 빨간 점을 세운다(면을 칠하지 않는 이 콘솔에서 쓸 수 있는 가장 센 표시)
-            ② 사용/배정 숫자를 --a2-danger로 물들이고 굵게 — 점만으로는 흑백에서 사라진다
-            ③ 정렬 값을 사용량이 아니라 소진율로 둔다. 머리를 한 번 눌러 내림차순으로
-               놓으면 급한 기관이 통째로 맨 위에 모인다.
-               (500석 중 100석 쓴 곳보다 50석 중 48석 쓴 곳이 먼저다) */
-        key: "seats",
-        head: "응시권 사용/배정",
-        width: "12rem",
-        num: true,
-        nowrap: true,
-        value: (o) => pct(o.seats[0], o.seats[1]),
-        cell: (o) => {
-          const [used, total] = o.seats;
-          const tight = pct(used, total) >= tightAt;
-          return (
-            <span
-              className="inline-flex items-center justify-end gap-2"
-              title={tight ? `응시권 소진 ${tightAt}% 이상 — 배정을 늘려야 합니다` : undefined}
-            >
-              {tight && <span aria-hidden className="a2-dot" style={{ color: "var(--a2-danger)" }} />}
-              <span style={tight ? { color: "var(--a2-danger)", fontWeight: 600 } : undefined}>
-                {n(used)} / {n(total)}
-              </span>
-              <Bar value={used} total={total} width="3rem" />
-            </span>
-          );
-        },
-      },
-      {
         key: "contract",
         head: "계약 상태",
         width: "6rem",
@@ -147,22 +119,13 @@ export default function OrgsTable({ rows, tightAt }: { rows: OrgRow[]; tightAt: 
         ),
       },
     ],
-    [tightAt],
+    [],
   );
 
+  /* 계약 상태는 머리의 탭이 맡는다(OrgsView). 같은 조건을 두 군데서 걸면 탭에서
+     「만료」를 고른 채 거르개에서 「계약중」을 골라 0줄이 나온다 */
   const filters = useMemo<Filter<OrgRow>[]>(
     () => [
-      {
-        id: "contract",
-        label: "계약",
-        // 종류 목록은 데이터에서 뽑고, 계약 상태는 contractLabel의 순서(계약중·시범·만료)를
-        // 그대로 쓴다 — 이 순서 자체가 급한 정도라 가나다순으로 흐트러뜨리지 않는다
-        options: (Object.keys(contractLabel) as OrgRow["contract"][]).map((c) => ({
-          value: c,
-          label: contractLabel[c].label,
-        })),
-        match: (o, v) => o.contract === v,
-      },
       {
         id: "kind",
         label: "종류",
@@ -186,7 +149,9 @@ export default function OrgsTable({ rows, tightAt }: { rows: OrgRow[]; tightAt: 
       // 넘겨야 하므로, 이 표는 한 쪽에 다 세운다
       pageSize={50}
       searchHint="기관명 · ID · 담당자 · 지역"
-      empty="조건에 맞는 기관이 없습니다."
+      empty={empty}
+      // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
+      showCount={false}
     />
   );
 }

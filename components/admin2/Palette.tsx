@@ -125,8 +125,12 @@ export default function Palette({ onClose }: { onClose: () => void }) {
                   i === at ? "bg-(--a2-accent-soft)" : ""
                 }`}
               >
-                <span className="a2-t-xs w-11 shrink-0 text-(--a2-ink-4)">{it.group}</span>
-                <span className="a2-t font-semibold text-(--a2-ink)">{it.label}</span>
+                {/* 그룹 이름이 여섯 자까지 온다(「리포트 관리」). w-11(44px)로는 다섯 자부터
+                    넘쳐 옆의 화면 이름 위로 겹쳐 그려졌다 — 폭을 늘리고 넘치면 줄인다 */}
+                <span className="a2-t-xs w-14 shrink-0 truncate text-(--a2-ink-4)" title={it.group}>
+                  {it.group}
+                </span>
+                <span className="a2-t min-w-0 truncate font-semibold text-(--a2-ink)">{it.label}</span>
                 <span className="a2-mono ml-auto a2-t-xs text-(--a2-ink-4)">{it.code}</span>
               </button>
             </li>

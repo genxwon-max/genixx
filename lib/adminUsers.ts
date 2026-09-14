@@ -1,9 +1,13 @@
 /**
  * 사용자·운영자 디렉터리(ADM-02 / ADM-03)의 예시 데이터.
  *
- * ⚠ 전부 화면 설계를 위한 가짜 데이터입니다. 실존 인물이 아니며, 연락처는 처음부터
- *   가려진 형태로만 만듭니다 — 관리자 화면 설계본에 온전한 연락처 문자열이 남아 있을
- *   이유가 없습니다.
+ * ⚠ 전부 화면 설계를 위한 가짜 데이터입니다. 실존 인물이 아닙니다.
+ *
+ * 연락처는 **온전한 값으로 만들고, 가리는 일은 그리는 쪽에서** 한다. 한동안 가려진
+ * 형태로만 만들었는데(관리자 설계본에 온전한 연락처가 남아 있을 이유가 없다는 이유였다),
+ * 그러면 상세 화면에서 관리자가 전화를 걸 수도 메일을 보낼 수도 없다. 목록은 여러
+ * 사람을 한꺼번에 펴 보는 자리라 계속 가리고, 상세는 한 사람을 붙들고 일하는 자리라
+ * 편다 — maskMail·maskPhone이 그 경계다.
  *
  * 목록을 20명씩 끊어 보고 10·50·100으로 바꿔 보려면 표본이 두 자리로는 모자란다.
  * 그렇다고 수백 줄을 손으로 적을 수도 없어서, **씨앗 고정 난수**로 만든다. 모듈은
@@ -149,13 +153,67 @@ const MAIL_HEADS = [
   "za",
 ] as const;
 
-/** 연락처는 처음부터 가린 채로 만든다 */
-function maskedMail(r: () => number) {
-  return `${pick(r, MAIL_HEADS)}****@${pick(r, MAILS)}`;
+/** 아이디 뒷마디. 앞 두 글자와 짝을 이뤄 그럴듯한 아이디를 만든다 */
+const MAIL_TAILS = [
+  "min",
+  "young",
+  "hee",
+  "jun",
+  "seo",
+  "won",
+  "kyung",
+  "ha",
+  "rin",
+  "bin",
+  "sol",
+  "eun",
+  "gyu",
+  "chan",
+  "yeon",
+  "hyun",
+  "na",
+  "joo",
+  "tae",
+  "wook",
+] as const;
+
+/* 난수는 예전과 **같은 횟수만** 뽑는다. 한 번이라도 더 뽑으면 씨앗이 뒤로 밀려 이름·
+   지역·날짜가 통째로 다른 명부가 되고, 화면을 대조하던 사람이 전부 다시 봐야 한다.
+   그래서 뒷마디와 번호는 앞에서 뽑은 자리(i)에서 만들어 낸다. */
+function fullMail(r: () => number) {
+  const i = Math.floor(r() * MAIL_HEADS.length);
+  const domain = pick(r, MAILS);
+  return `${MAIL_HEADS[i]}${MAIL_TAILS[i]}${10 + i * 3}@${domain}`;
 }
 
-function maskedPhone(r: () => number) {
-  return `010-${String(Math.floor(r() * 9000) + 1000).slice(0, 2)}**-****`;
+function fullPhone(r: () => number) {
+  const head = Math.floor(r() * 9000) + 1000;
+  return `010-${head}-${String((head * 7919) % 10000).padStart(4, "0")}`;
+}
+
+/**
+ * 목록에서 쓰는 가림. 성만 남긴다 — 김○○.
+ *
+ * components/admin/StudentTable.tsx 안에 갇혀 있던 것을 올렸다. 가림 함수 셋이 한 자리에
+ * 있어야 「목록은 가리고 상세는 편다」가 규약으로 지켜진다 — 화면마다 제 것을 지으면
+ * 어느 화면은 성만 남기고 어느 화면은 가운데만 가리는 상태가 된다.
+ */
+export function maskName(v: string) {
+  return v.length < 2 ? v : `${v[0]}${"○".repeat(v.length - 1)}`;
+}
+
+/** 목록에서 쓰는 가림. 아이디 앞 두 글자만 남긴다 */
+export function maskMail(v: string) {
+  const at = v.indexOf("@");
+  if (at < 1) return v;
+  return `${v.slice(0, 2)}****${v.slice(at)}`;
+}
+
+/** 목록에서 쓰는 가림. 국번 앞 두 자리만 남긴다 */
+export function maskPhone(v: string) {
+  const p = v.split("-");
+  if (p.length !== 3) return v;
+  return `${p[0]}-${p[1].slice(0, 2)}**-****`;
 }
 
 /** YYYY-MM-DD. 2025-06-01부터 days일 뒤 */
@@ -216,8 +274,8 @@ function makeParents(count: number): Omit<ParentRow, "kids">[] {
     return {
       id: `M-1${String(100 + i * 7).padStart(5, "0")}`,
       name,
-      contact: maskedMail(r),
-      phone: maskedPhone(r),
+      contact: fullMail(r),
+      phone: fullPhone(r),
       region: pick(r, REGIONS),
       state,
       joinedAt: dateFrom(Math.floor(r() * 430)),
@@ -324,7 +382,7 @@ function makeTeachers(count: number): TeacherRow[] {
     return {
       id: `T-3${String(100 + i * 5).padStart(5, "0")}`,
       name,
-      contact: maskedMail(r),
+      contact: fullMail(r),
       school: pick(r, SCHOOLS),
       region: pick(r, REGIONS),
       classes: 1 + Math.floor(r() * 3),
