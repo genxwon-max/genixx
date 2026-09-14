@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { detailModes, renderDetail, type DetailMode } from "@/lib/richText";
 import { IMAGE_MAX_BYTES, dataUrlBytes, shrinkImage } from "@/lib/productStore";
+import GrowTextarea from "./GrowTextarea";
 
 /**
  * 글 한 덩이를 쓰는 칸 — **갈래를 고르고 그 갈래로 쓴다**(글 · 마크다운 · HTML · 그림).
@@ -37,6 +38,8 @@ export default function BodyEditor({
   disabled,
   rows = 6,
   placeholder,
+  flush = false,
+  onPaste,
   onChange,
 }: {
   /**
@@ -50,6 +53,18 @@ export default function BodyEditor({
   disabled: boolean;
   rows?: number;
   placeholder?: string;
+  /**
+   * 문항 카드(.a2-card)의 칸 안에 설 때 — 조각 사이 여백을 걷고 선으로만 가른다.
+   *
+   * 여백을 유틸리티(mt-3)로 주면 카드의 규칙이 그것을 못 이긴다(admin2.css는 @layer
+   * components라 유틸리티가 이긴다). 그래서 갈래를 따로 둔다.
+   *
+   * 글 칸도 적은 만큼 늘어난다(GrowTextarea) — 문항 상세의 다른 글 칸과 같게. 회차 공지처럼
+   * 카드 밖에 선 칸은 rows 높이에 스크롤을 그대로 둔다.
+   */
+  flush?: boolean;
+  /** 글 칸에 붙여 넣을 때 — 발문 칸이 ①~⑤ 보기를 갈라 보기 칸으로 보낸다(QuestionEditor) */
+  onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
   onChange: (patch: Partial<BodyValue>) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -95,9 +110,11 @@ export default function BodyEditor({
   const html = renderDetail(mode, body, images);
 
   return (
-    <div className="w-full">
+    <div className={flush ? "a2-body-flush w-full" : "w-full"}>
       {/* 갈래 고르개 — 무엇으로 쓸지가 먼저 정해져야 아래 칸이 정해진다 */}
-      <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
+      <div
+        className={`flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1${flush ? " a2-cell-pad" : ""}`}
+      >
         {detailModes.map((m) => (
           <label key={m.id} className="a2-choice">
             <input
@@ -113,7 +130,7 @@ export default function BodyEditor({
       </div>
 
       {mode === "images" ? (
-        <div className="mt-3 grid gap-2">
+        <div className={flush ? "a2-cell-pad grid gap-2" : "mt-3 grid gap-2"}>
           {images.length === 0 ? (
             <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 올린 그림이 없습니다.</p>
           ) : (
@@ -158,6 +175,16 @@ export default function BodyEditor({
             </ul>
           )}
         </div>
+      ) : flush ? (
+        <GrowTextarea
+          className={`a2-textarea a2-textarea-lg ${mode === "text" ? "" : "a2-mono"}`}
+          rows={rows}
+          value={body}
+          disabled={disabled}
+          placeholder={placeholder}
+          onPaste={onPaste}
+          onChange={(e) => onChange({ body: e.target.value })}
+        />
       ) : (
         <textarea
           className={`a2-textarea a2-textarea-lg mt-3 ${mode === "text" ? "" : "a2-mono"}`}
@@ -165,11 +192,12 @@ export default function BodyEditor({
           value={body}
           disabled={disabled}
           placeholder={placeholder}
+          onPaste={onPaste}
           onChange={(e) => onChange({ body: e.target.value })}
         />
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className={`flex flex-wrap items-center gap-2 ${flush ? "a2-cell-pad" : "mt-2"}`}>
         <button
           type="button"
           className="a2-btn"
@@ -191,7 +219,7 @@ export default function BodyEditor({
       </div>
 
       {preview && mode !== "images" && (
-        <div className="mt-2 w-full">
+        <div className={flush ? "a2-cell-pad w-full" : "mt-2 w-full"}>
           {html.trim() === "" ? (
             <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 채운 것이 없습니다.</p>
           ) : (

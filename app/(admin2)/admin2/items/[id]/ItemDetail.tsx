@@ -3,19 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { checkStandardCode, gradeBands, type GradeBand } from "@/lib/blueprint";
+import { checkStandardCode, gradeBands, levelAllowed, type Level } from "@/lib/blueprint";
 import { itemTone } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
 import {
+  SET_MAX,
   blankQuestion,
   itemForms,
-  missingContent,
+  levelCountsOf,
+  levelInsertAt,
+  missingSubmit,
   patchItem,
+  questionHasContent,
   rejectLabel,
   restoreItem,
   retireItem,
   reviseApproved,
   setAnchor,
+  setLevelCount,
   stateLabel,
   submitItem,
   useItems,
@@ -26,47 +31,50 @@ import {
   type Question,
 } from "@/lib/itemStore";
 import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
-import { Body, FormRow, PageHead, Panel, SeedNote, Status, Switch, Tag } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, Panel, Status, Switch, Tag } from "@/components/admin2/ui";
 import BodyEditor from "@/components/admin2/BodyEditor";
+import GrowTextarea from "@/components/admin2/GrowTextarea";
 import ItemPreview from "@/components/admin2/ItemPreview";
+import BandUnitRows from "./BandUnitRows";
+import LevelCounts from "./LevelCounts";
 import ReviewPanel from "./ReviewPanel";
-import {
-  QuestionBodyRows,
-  QuestionCoreRows,
-  QuestionList,
-  QuestionTagRows,
-} from "./QuestionEditor";
+import SubmitChecklist from "./SubmitChecklist";
+import { QuestionClassRows, QuestionContentRows, QuestionList } from "./QuestionEditor";
 
 /**
  * ADM-04-1 문항 상세 — 등록 · 수정 · 검수를 한 장에서.
  *
  * 기존 콘솔은 이 셋을 세 화면으로 갈라 두었다(출제 워크벤치 · 문항 카드 · 검수
  * 워크벤치). 역할이 넷이라 서로의 화면을 안 보는 것이 옳았기 때문이다. 이 콘솔은
- * **슈퍼 관리자 한 사람**만 쓰므로 가릴 것이 없고, 오히려 「고쳐 놓고 바로 승인」이
- * 한 화면에서 끝나야 한다.
+ * 쓰는 화면과 검수하는 화면을 가르지 않는다 — 「고쳐 놓고 바로 승인」이 한 화면에서
+ * 끝나야 한다.
  *
- * ── 차례 ──
+ * ── 차례는 문항 카드의 차례 ──
  * 맨 위에 검수 이력 — 무엇이 걸렸나. 기록이 없으면 서지 않는다.
  *   ① 문항 구성  단일인가 세트인가
- *   ② 분류      단일일 때만. 과목 · 학년군 · 배점 · 인지단계 · 난이도
- *   ③ 문항      무슨 자료를 읽히고 무엇을 묻나 (세트는 목록 → 문항 상세)
- *   ④ 세부 분류  단일일 때만. 단원 · 문항 ID · 성취기준 · 재능 축 · 하위요소
+ *   ② 분류      단일일 때만. 문항 ID · 학년군 · 교과 단원 · 인지단계 · Tag A · Tag B ·
+ *               형식 · 난이도|배점
+ *   ③ 문항      지문 · 문항 · 정답·채점 기준 · 인정|불인정 예 · 재능 평가 관점 ·
+ *               오답 설계 의도 (세트는 지문 아래 목록 → 문항 상세)
+ *   ④ 제출 전 자가 체크리스트  열네 줄 · 제출 확인 · 출제자 유의|검토 요청
  * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 앵커 판.
  * 사용 · 사용 중지는 판이 아니라 머리의 스위치가 맡는다.
  *
- * ── 분류를 문항 앞뒤로 가른다 ──
- * 한 판에 열세 줄이 서 있어서 문항을 쓰러 온 사람이 발문 칸까지 한 화면을 넘겨야 했다.
- * 그런데 그 열세 줄은 정하는 때가 다르다. 단계와 난이도를 모르고는 발문을 쓸 수 없지만,
- * 성취기준 코드와 하위요소는 다 쓴 문항을 보고 찾아 붙이는 것이 실제 차례다. 그래서
- * 쓰기 전에 정할 다섯만 문항 위에 두고, 나머지는 문항 아래로 내린다.
+ * 한동안 분류를 문항 앞뒤로 갈라(쓰기 전에 정할 다섯 / 쓰고 나서 붙일 세부 분류) 세웠다.
+ * 문항을 쓰는 출제위원이 종이 문항 카드를 옆에 펴 놓고 옮겨 적는데 화면 차례가 카드와
+ * 달라서, 칸을 찾아 화면을 오르내렸다. 카드의 차례로 되돌린다. 「세부 분류」 판은 없어지고
+ * 그 줄은 분류 판으로 올라갔다. 단원 번호 줄은 걷었다 — 교과 단원을 목록에서 고르면 따라온다.
  *
- * ── 제출 준비 · 상태 · 메모를 걷었다 ──
- * 출제자 유의사항과 제출 전 체크리스트는 출제자와 검수자가 다른 사람인 옛 콘솔의 장치다.
- * 이 콘솔은 쓰는 사람이 곧 검수하는 사람이라 칸만 늘었다. 판을 걷으면서 제출 문턱에서도
- * 뺐다(lib/itemStore.ts의 missingContent) — 판은 없는데 문턱은 남아 있으면 제출 단추가
- * 영영 켜지지 않는다. 상태는 머리에 이미 서 있고, 반려됐다는 한 줄만 맨 위로 옮겼다.
- * 메모는 쓰는 칸만 걷었다 — 거기 쌓인 기록(반려 사유 · 앵커 지정과 다시 쓰기의 까닭)은
- * 검수 이력에 함께 편다. 기록까지 걷으면 반려 사유가 이 콘솔 어디에도 보이지 않는 문항이 생긴다.
+ * ── 체크리스트와 출제자 유의사항을 되돌렸다 ──
+ * 한때 이 콘솔은 쓰는 사람이 곧 검수하는 사람이라고 보고 두 판을 걷었다. 그런데 문항을 쓰는
+ * 것은 전문가단의 출제위원이고 검수는 따로 한다 — 출제위원이 무엇을 짚고 이름을 걸었는지가
+ * 검수자에게 건너가야 한다. 그래서 판을 되돌리고 제출 문턱에도 넣었다(lib/itemStore.ts
+ * missingSubmit). 문턱에서 뺀 판을 돌려놓지 않은 채 문턱만 두면 제출 단추가 영영 안 켜지고,
+ * 판만 두고 문턱에서 빼면 짚지 않고도 낸다 — 둘은 늘 같이 간다.
+ *
+ * 상태 판과 메모 쓰는 칸은 걷은 그대로다. 상태는 머리에 이미 서 있고, 반려됐다는 한 줄만 맨
+ * 위로 옮겼다. 메모에 쌓인 기록(반려 사유 · 앵커 지정과 다시 쓰기의 까닭)은 검수 이력에 함께
+ * 편다. 기록까지 걷으면 반려 사유가 이 콘솔 어디에도 보이지 않는 문항이 생긴다.
  *
  * 문항 구성이 맨 앞인 것은 그 하나가 **아래를 통째로 바꾸기** 때문이다. 세트면 함께
  * 읽을 보기가 있어야 하고, 문항이 하나가 아니라 목록이 되고, 문항마다 따로 들어가 볼
@@ -78,9 +86,9 @@ import {
  * 하나뿐이라 바깥에 세워도 뜻이 통하지만, 세트에서는 성취기준도 단계도 난이도도
  * 문항마다 다르다 — 바깥에 한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다.
  * 그래서 세트에서는 이 판을 아예 세우지 않고, 문항 하나로 들어간 화면에 세운다. 거기서
- * 단일과 같은 차례로 선다 — 분류 → 문항 → 세부 분류. 판마다 세트가 함께 쓰는 것(과목·
- * 학년군 / 단원·문항 ID)이 먼저 서고 그 문항만의 것이 뒤따르며, 어느 쪽이 함께 걸리는
- * 값인지 판 맨 위에 적어 둔다.
+ * 단일과 같은 차례로 선다 — 분류 → 문항. 분류 판에는 세트가 함께 쓰는 것(문항 ID ·
+ * 학년군 · 교과 단원)이 먼저 서고 그 문항만의 것이 뒤따르며, 어느 쪽이 함께 걸리는 값인지
+ * 판 맨 위에 적어 둔다. 지문과 체크리스트는 세트가 통째로 쥐므로 바깥 화면에 선다.
  *
  * ── 이름표는 왼쪽, 예외 없이 ──
  * 칸 위에 이름을 얹으면 한 줄이 두 줄을 먹어서, 분류만으로 화면 한 장이 넘어갔다.
@@ -90,6 +98,7 @@ import {
  * 그래서 판이 줄었다. 난이도·문항 구성·지문은 각각 판 하나에 칸 하나뿐이었는데, 이름표를
  * 왼쪽으로 돌리자 판 제목과 이름표가 같은 말을 두 번 하게 됐다. 난이도는 분류 줄에,
  * 지문은 문항 판의 첫 줄로 들어갔다. 맨 위 문항 구성은 판 제목 없이 줄 하나만 세운다.
+ * 늘 맞춰 보는 두 칸(난이도 · 배점, 인정 예 · 불인정 예)은 한 줄에 반반으로 선다(FormRowPair).
  *
  * ── 세트는 목록 ──
  * 세트 안의 문항을 죄다 펼쳐 놓으면 셋만 되어도 화면이 스무 칸을 넘어가 지금 몇 번을
@@ -108,8 +117,14 @@ import {
  *   막는다 — 화면에 보이는 것과 검수자가 받는 것이 다르면 그 검수는 무의미하다.
  */
 
-/** 한 세트에 담을 수 있는 문항 수 — 넘으면 아이가 한 자리에서 다 못 푼다 */
-const SET_MAX = 8;
+/** 고쳐도 제출 확인을 풀지 않는 칸 — 문항 내용이 아니라 확인에 딸린 것들 */
+const ATTEST_KEYS = new Set<string>([
+  "checks",
+  "signedBy",
+  "signedAt",
+  "guidance",
+  "reviewRequest",
+]);
 
 export default function ItemDetail({ id }: { id: string }) {
   const items = useItems();
@@ -122,13 +137,23 @@ export default function ItemDetail({ id }: { id: string }) {
   const [openQ, setOpenQ] = useState<string | null>(null);
   /** 응시 화면 미리보기를 띄웠는가 */
   const [preview, setPreview] = useState(false);
+  /** 고친 내용 때문에 제출 확인이 풀렸는가 — 체크리스트 판이 까닭을 적는다 */
+  const [unsigned, setUnsigned] = useState(false);
 
   const item = items.find((i) => i.id === id);
   /** 화면이 그리는 값 — 저장된 문항 위에 고치는 중인 값을 덮는다 */
   const view = item && draft ? { ...item, ...draft } : item;
 
   const dirty = draft !== null;
-  const cancel = () => setDraft(null);
+  const cancel = () => {
+    /* 세트의 문항 화면에 들어가 있었으면 목록으로 나온다. 열어 둔 열쇠(q3)를 남겨 두면, 취소로
+       q3이 사라진 뒤 다음에 더하는 문항이 같은 열쇠를 받아 목록에서 +만 눌렀는데 그 문항 화면으로
+       넘어간다. 「저장된 문항이면 남는다」로 가르지 않는다 — 뺀 문항의 열쇠를 새 문항이 다시 받으면
+       (q5를 빼고 문항 추가) 취소한 뒤 엉뚱한 저장된 문항 화면에 선다 */
+    setOpenQ(null);
+    setDraft(null);
+    setUnsigned(false);
+  };
   /* 파생값(거울·요약·표시용 태그)은 저장소가 만든다(lib/itemStore.ts의 derive).
      한동안 여기서 syncTags를 불렀는데, 초안에는 questions만 들어 있고 납작한 분류 칸은
      저장된 옛 값이라, 방금 고친 성취기준이 아니라 고치기 전 값으로 태그가 만들어졌다 —
@@ -168,27 +193,51 @@ export default function ItemDetail({ id }: { id: string }) {
   /** 사용 스위치를 켜고 끌 수 있는가 — 검수를 지난 문항만 */
   const switchable = view.state === "approved" || view.state === "retired";
   const by = prefs.staffName || "운영자";
-  /** 화면에 적는 「남은 것」은 지금 보이는 값 기준. 제출 문턱은 저장된 값 기준이다 */
-  const missing = missingContent(view);
-  const ready = missingContent(item).length === 0;
+  /** 제출 문턱은 저장된 값 기준이다 — 검수자는 저장된 문항을 받는다 */
+  const ready = missingSubmit(item).length === 0;
 
-  /** 고친 값을 초안에 담아 둔다. 저장소로 나가는 것은 save()뿐이다 */
+  /**
+   * 고친 값을 초안에 담아 둔다. 저장소로 나가는 것은 save()뿐이다.
+   *
+   * 제출 확인한 뒤 **문항 내용**을 고치면 확인을 푼다(signedAt). 출제위원의 서명은 그때 본
+   * 내용에 한 것이라, 발문 한 글자를 고친 문항에 그 서명이 붙어 나가면 서명이 아무것도
+   * 보증하지 않는다. 체크는 남긴다 — 다시 확인하는 것은 한 번 누르면 된다.
+   * 체크리스트 · 서명 · 출제자 유의 · 검토 요청은 내용이 아니라서 풀지 않는다.
+   */
   const set = (patch: Partial<ItemDraft>) => {
     if (!editable) return;
-    setDraft((d) => ({ ...(d ?? {}), ...patch }));
+    const content = Object.keys(patch).some((k) => !ATTEST_KEYS.has(k));
+    const unsign = content && view.signedAt !== "";
+    if (unsign) setUnsigned(true);
+    if (patch.signedAt) setUnsigned(false);
+    setDraft((d) => ({ ...(d ?? {}), ...patch, ...(unsign ? { signedAt: "" } : {}) }));
   };
 
   const qs = view.questions;
   const setQuestions = (next: Question[]) => set({ questions: next });
   const setQuestion = (k: number, next: Question) =>
     setQuestions(qs.map((x, n) => (n === k ? next : x)));
-  /** 세트를 단일로 되돌리면 저장할 때 2번 이후가 떨어진다. 미리 알려 준다 */
-  const dropping = view.form === "single" ? qs.length - 1 : 0;
 
-  /* 학년군을 바꾸면 성취기준 코드가 범위를 벗어난다. 코드는 문항 아래 세부 분류 판에 있어
-     바꾼 자리에서 보이지 않으므로 학년군 칸에도 적는다. 다른 학년군이었다면 맞았을 코드만
-     센다 — 비었거나 형식이 틀린 코드는 학년군을 바꿔서 생긴 일이 아니다 */
-  const bandBroken = qs.filter(
+  /* 세트의 단계별 문항 수 — 문항 구성 줄에서 − / +로 고친다(lib/itemStore.ts setLevelCount).
+     빠지는 문항에 적어 둔 것이 있으면 먼저 묻는다. 수만 보고 누르는 칸이라, 어느 문항이
+     빠지는지는 눌러 보기 전에 보이지 않는다 */
+  const levelCounts = levelCountsOf(qs);
+  const changeLevelCount = (level: Level, count: number) => {
+    const dropping = qs.filter((q) => q.level === level).slice(count);
+    if (
+      dropping.some(questionHasContent) &&
+      !window.confirm(`${level}의 마지막 문항에 적어 둔 내용이 있습니다. 이 문항을 뺄까요?`)
+    ) {
+      return;
+    }
+    setQuestions(setLevelCount(qs, level, count));
+  };
+
+  /* 학년군을 바꾸면 성취기준 코드가 범위를 벗어난다. 세트면 코드가 문항마다 들어간 화면에
+     있어 바꾼 자리에서 보이지 않으므로 학년군 칸에도 적는다. 다른 학년군이었다면 맞았을
+     코드만 센다 — 비었거나 형식이 틀린 코드는 학년군을 바꿔서 생긴 일이 아니다 */
+  /* 단일로 돌려 둔 세트의 2번 이후는 화면에 없고 저장할 때 떨어진다 — 세지 않는다 */
+  const bandBroken = (view.form === "single" ? qs.slice(0, 1) : qs).filter(
     (q) =>
       !checkStandardCode(q.standardCode, view.band).ok &&
       gradeBands.some((g) => g.id !== view.band && checkStandardCode(q.standardCode, g.id).ok),
@@ -213,91 +262,39 @@ export default function ItemDetail({ id }: { id: string }) {
 
   const saveBar = editable ? <PageSaveBar dirty={dirty} onSave={save} onCancel={cancel} /> : null;
 
-  /* 세트가 통째로 함께 쓰는 칸 — 둘로 갈라 분류 판과 세부 분류 판의 앞머리에 각각 선다.
+  /* 세트가 통째로 함께 쓰는 칸 — 분류 판의 앞머리에 선다.
      단일이면 문항 상세에, 세트면 문항 하나로 들어간 화면에 선다. 세트 바깥 화면에는
-     세우지 않는다. 거기서는 어느 문항의 분류인지 말할 수가 없다. */
-  const sharedCoreRows = (
+     세우지 않는다. 거기서는 어느 문항의 분류인지 말할 수가 없다.
+
+     과목 줄은 없다. 교과 단원을 고르면 과목이 따라온다 — 둘을 따로 고르게 두면
+     「수학 · 생생하게 표현해요」가 생길 수 있다. */
+  const sharedRows = (
     <>
-      <FormRow label="과목" req>
-        <select
-          className="a2-select a2-input-lg"
-          value={view.subject}
-          disabled={locked}
-          onChange={(e) => set({ subject: e.target.value as ItemDraft["subject"] })}
-        >
-          {["국어", "수학", "과학"].map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+      {/* 손으로 적는 칸이 아니다. 코드에 담기는 것이 전부 이 화면의 다른 칸에
+          이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID).
+          학년군·과목·형식·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
+          적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
+      <FormRow label="문항 ID">
+        <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
+          {view.code || "저장하면 매겨집니다"}
+        </span>
       </FormRow>
 
-      <FormRow
-        label="학년군"
-        req
-        hint={
+      <BandUnitRows
+        value={view}
+        disabled={locked}
+        bandHint={
           bandBroken > 0 ? (
             <span style={{ color: "var(--a2-danger)" }}>
               {view.form === "set"
                 ? `이 세트 문항의 성취기준 코드 ${bandBroken}개가`
-                : "아래 세부 분류의 성취기준 코드가"}{" "}
+                : "아래 Tag A의 성취기준 코드가"}{" "}
               이 학년군 범위를 벗어납니다.
             </span>
           ) : undefined
         }
-      >
-        <select
-          className="a2-select a2-input-lg"
-          value={view.band}
-          disabled={locked}
-          onChange={(e) => {
-            const band = e.target.value as GradeBand;
-            set({
-              band,
-              grade: band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
-            });
-          }}
-        >
-          {gradeBands.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.label}
-            </option>
-          ))}
-        </select>
-      </FormRow>
-    </>
-  );
-
-  const sharedDetailRows = (
-    <>
-      <FormRow label="단원" req>
-        <input
-          className="a2-input a2-input-lg"
-          value={view.unit}
-          disabled={locked}
-          onChange={(e) => set({ unit: e.target.value })}
-          placeholder="낱말의 의미 관계"
-        />
-      </FormRow>
-
-      <FormRow label="단원 번호">
-        <input
-          className="a2-input a2-input-lg a2-mono"
-          value={view.unitNo}
-          disabled={locked}
-          onChange={(e) => set({ unitNo: e.target.value })}
-          placeholder="02"
-        />
-      </FormRow>
-
-      {/* 손으로 적는 칸이 아니다. 코드에 담기는 것이 전부 이 화면의 다른 칸에
-          이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID).
-          과목·학년군·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
-          적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
-      <FormRow label="문항 ID">
-        <span className="a2-mono a2-t-md font-bold text-(--a2-ink)">
-          {view.code || "저장하면 매겨집니다"}
-        </span>
-      </FormRow>
+        onChange={set}
+      />
     </>
   );
 
@@ -326,45 +323,28 @@ export default function ItemDetail({ id }: { id: string }) {
             <Panel title="분류" flush>
               <p className="a2-note m-4 mb-0">
                 <span>
-                  과목 · 학년군은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은 세트의 다른
-                  문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
+                  문항 ID · 학년군 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은
+                  세트의 다른 문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
                 </span>
               </p>
-              <div className="a2-form a2-form-lg mt-4">
-                {sharedCoreRows}
-                <QuestionCoreRows
-                  key={`core-${qs[openIndex].id}`}
-                  q={qs[openIndex]}
-                  disabled={locked}
-                  onChange={(next: Question) => setQuestion(openIndex, next)}
-                />
-              </div>
-            </Panel>
-
-            <Panel title="문항" flush>
-              <div className="a2-form a2-form-lg">
-                <QuestionBodyRows
-                  key={`body-${qs[openIndex].id}`}
-                  q={qs[openIndex]}
-                  disabled={locked}
-                  onChange={(next: Question) => setQuestion(openIndex, next)}
-                />
-              </div>
-            </Panel>
-
-            <Panel title="세부 분류" flush>
-              <p className="a2-note m-4 mb-0">
-                <span>
-                  단원 · 단원 번호 · 문항 ID는 <b>세트 전체</b>가 함께 씁니다. 그 아래는 이
-                  문항만의 값입니다.
-                </span>
-              </p>
-              <div className="a2-form a2-form-lg mt-4">
-                {sharedDetailRows}
-                <QuestionTagRows
-                  key={`tags-${qs[openIndex].id}`}
+              <div className="a2-form a2-form-lg a2-card mt-4">
+                {sharedRows}
+                <QuestionClassRows
+                  key={`class-${qs[openIndex].id}`}
                   q={qs[openIndex]}
                   band={view.band}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                />
+              </div>
+            </Panel>
+
+            {/* 지문은 세트가 함께 읽는 것이라 목록 화면에 있다 */}
+            <Panel title="문항" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                <QuestionContentRows
+                  key={`content-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(openIndex, next)}
                 />
@@ -436,7 +416,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     ? "먼저 저장해 주세요 — 검수자는 저장된 문항을 받습니다"
                     : ready
                       ? undefined
-                      : `${missingContent(item).join(" · ")}이(가) 남았습니다`
+                      : `${missingSubmit(item).join(" · ")}이(가) 남았습니다`
                 }
                 onClick={() => submitItem(view.id)}
               >
@@ -466,38 +446,10 @@ export default function ItemDetail({ id }: { id: string }) {
 
       <Body>
         <div className="grid gap-4">
-          {/* 잠긴 까닭을 맨 위에 적는다. 아래 칸이 전부 회색인데 왜인지가 없으면
-              고치는 길이 없는 문항으로 읽힌다 */}
-          {locked && (
-            <p className="a2-note">
-              <span>
-                {view.state === "submitted"
-                  ? "검수 대기 중인 문항은 잠깁니다. 고치려면 위에서 제출을 회수하세요."
-                  : view.state === "retired"
-                    ? "사용 중지된 문항입니다 — 회차 편성 후보에 오르지 않습니다. 다시 쓰려면 위의 사용 스위치를 켜세요."
-                    : "승인된 문항은 잠깁니다. 고치려면 위에서 새 판을 뜨세요 — 원본은 그대로 둡니다."}
-                {/* 누가 언제 껐는지 — 「승인 뒤 관리」 판 맨 아래에 있던 줄을 스위치와 함께
-                    위로 올린다. 스위치만 올리고 이 줄을 두고 오면 끈 기록이 판째 사라진다 */}
-                {view.state === "retired" && view.retiredAt && (
-                  <>
-                    <br />
-                    {view.retiredAt} · {view.retiredBy}
-                    {view.retireReason && ` — ${view.retireReason}`}
-                  </>
-                )}
-              </span>
-            </p>
-          )}
-          {/* 상태 판과 함께 걷힌 한 줄을 여기로 옮긴다. 반려된 문항은 머리의 「반려됨」만으로는
-              무엇을 고칠지가 바로 아래 검수 이력에 있다는 것이 보이지 않는다 */}
-          {view.state === "rejected" && (
-            <p className="a2-note" style={{ borderLeftColor: "var(--a2-danger)" }}>
-              <span>
-                반려된 문항입니다. 아래 검수 이력의 소견대로 고친 뒤 다시 제출하면 검수 목록으로
-                돌아갑니다.
-              </span>
-            </p>
-          )}
+          {/* 맨 위의 상태 안내 줄(「검수 대기 중인 문항은 잠깁니다…」 · 「승인된 문항은 잠깁니다…」 ·
+              「사용 중지된 문항입니다…」 · 「반려된 문항입니다…」)은 걷었다. 상태는 머리에 서 있고,
+              푸는 길(제출 회수 · 새 판으로 고치기 · 사용 스위치)도 머리의 단추가 말한다. 누가 언제
+              사용을 껐는지와 반려 소견은 바로 아래 검수 이력에 남는다(retireItem · rejectItem) */}
 
           {/* ── 검수 이력 ──
               맨 위에 둔다. 검수를 거친 문항을 여는 까닭은 대개 「무엇이 걸렸나」를 보고
@@ -521,21 +473,29 @@ export default function ItemDetail({ id }: { id: string }) {
                           <Status tone={c.kind === "approve" ? "ok" : "danger"}>
                             {c.kind === "approve"
                               ? "승인"
-                              : `반려 · ${c.code ? rejectLabel(c.code) : "사유 없음"}`}
+                              : c.code
+                                ? `반려 · ${rejectLabel(c.code)}`
+                                : "반려"}
                           </Status>
                         )}
                         <span className="a2-t-sm text-(--a2-ink-2)">{c.by}</span>
                         <span className="a2-mono a2-t-xs text-(--a2-ink-4)">{c.at}</span>
                       </div>
-                      <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
+                      {c.text && (
+                        <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{c.text}</p>
+                      )}
                     </li>
                   ) : r ? (
                     <li key={key} className="p-4">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        {/* 검수판이 반려 사유 코드를 받지 않게 된 뒤의 반려는 코드가 없다. 「사유 없음」으로
+                            적으면 까닭 없이 돌려보낸 것으로 읽힌다 — 어느 갈래에서 반려했는지는 아래에 선다 */}
                         <Status tone={r.verdict === "approve" ? "ok" : "danger"}>
                           {r.verdict === "approve"
                             ? "승인"
-                            : `반려 · ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
+                            : r.code
+                              ? `반려 · ${rejectLabel(r.code)}`
+                              : "반려"}
                         </Status>
                         <span className="a2-t-sm text-(--a2-ink-2)">
                           {r.round}차 · {r.by}
@@ -558,11 +518,13 @@ export default function ItemDetail({ id }: { id: string }) {
                             }}
                           >
                             {c.id === "content" ? "내용" : c.id === "tagging" ? "태깅" : "윤리"}{" "}
-                            {c.ok === null ? "—" : c.ok ? "통과" : "걸림"}
+                            {c.ok === null ? "—" : c.ok ? "확인" : "반려"}
                           </li>
                         ))}
                       </ul>
-                      <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
+                      {r.text && (
+                        <p className="mt-1.5 whitespace-pre-line a2-t-sm text-(--a2-ink-2)">{r.text}</p>
+                      )}
                     </li>
                   ) : null,
                 )}
@@ -579,9 +541,9 @@ export default function ItemDetail({ id }: { id: string }) {
               판 제목을 달지 않았다. 줄 이름표가 이미 「문항 구성」이라, 제목을 달면
               같은 말이 위아래로 두 번 선다 */}
           <Panel flush>
-            <div className="a2-form a2-form-lg">
+            <div className="a2-form a2-form-lg a2-card">
               <FormRow label="문항 구성" req>
-                <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
+                <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
                   {itemForms.map((f) => (
                     <label key={f.id} className="a2-choice">
                       <input
@@ -605,28 +567,40 @@ export default function ItemDetail({ id }: { id: string }) {
                     </label>
                   ))}
                 </div>
-                {dropping > 0 && (
-                  <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
-                    <span>
-                      단일로 두면 저장할 때 2번 이후 문항 <b>{dropping}개</b>가 사라집니다.
-                      되돌리려면 세트를 다시 고르거나 취소를 누르세요.
-                    </span>
-                  </p>
+                {/* 세트를 단일로 돌리면 저장할 때 2번 이후 문항이 떨어진다. 그 예고를 칸 아래에
+                    적어 두었다가 걷었다 — 되돌리는 길(세트 다시 고르기 · 취소)은 저장 전까지 열려 있다 */}
+                {/* 세트면 단계마다 몇 문항인지 — 지금 든 문항을 센 값이다. 늘리는 단계는 새 문항이
+                    분류를 물려받을 문항의 재능 축이 다룰 수 있는 것만 연다(자기-성찰은 S4가 없다).
+                    그 문항은 저장소가 끼울 자리를 고르는 것과 같은 셈으로 찾는다(levelInsertAt) */}
+                {view.form === "set" && (
+                  <LevelCounts
+                    counts={levelCounts}
+                    total={qs.length}
+                    min={1}
+                    max={SET_MAX}
+                    allowed={(l) => {
+                      const { from } = levelInsertAt(qs, l);
+                      return !!from && levelAllowed(from.talent, l);
+                    }}
+                    disabled={locked}
+                    onChange={changeLevelCount}
+                  />
                 )}
               </FormRow>
             </div>
           </Panel>
 
-          {/* ── ② 쓰기 전에 정할 것 ──
+          {/* ── ② 분류 ──
               단일일 때만 선다. 세트에서는 분류가 문항마다 다르므로(단계도 난이도도) 바깥에
               한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다. 세트의 분류는 문항
               하나로 들어간 화면에 있다 */}
           {view.form === "single" && (
             <Panel title="분류" flush>
-              <div className="a2-form a2-form-lg">
-                {sharedCoreRows}
-                <QuestionCoreRows
+              <div className="a2-form a2-form-lg a2-card">
+                {sharedRows}
+                <QuestionClassRows
                   q={qs[0]}
+                  band={view.band}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(0, next)}
                 />
@@ -635,16 +609,17 @@ export default function ItemDetail({ id }: { id: string }) {
           )}
 
           {/* ── ③ 무엇을 읽히고 무엇을 묻나 ──
-              단일이면 지문 → 유형 → 발문 → 보기 → 해설이 한 줄기로 이어진다. 세트면
-              지문이 곧 「문항들이 함께 읽는 것」이라 목록 바로 위가 제자리다 */}
+              단일이면 지문 → 문항 → 정답 · 채점 기준 → 오답 설계 의도가 한 줄기로 이어진다.
+              세트면 지문이 곧 「문항들이 함께 읽는 것」이라 목록 바로 위가 제자리다 */}
           <Panel title="문항" meta={view.form === "set" ? `${qs.length}문항` : undefined} flush>
-            <div className="a2-form a2-form-lg">
+            <div className="a2-form a2-form-lg a2-card">
               <FormRow
-                label={view.form === "set" ? "보기 · 지문" : "지문 · 자료"}
+                label={view.form === "set" ? "보기 · 지문" : "지문"}
                 req={view.form === "set"}
               >
                 <BodyEditor
                   name="passage-mode"
+                  flush
                   value={{
                     mode: view.passageMode,
                     body: view.passage,
@@ -662,7 +637,7 @@ export default function ItemDetail({ id }: { id: string }) {
                 />
               </FormRow>
               {view.form === "single" && (
-                <QuestionBodyRows
+                <QuestionContentRows
                   key={qs[0].id}
                   q={qs[0]}
                   disabled={locked}
@@ -700,31 +675,23 @@ export default function ItemDetail({ id }: { id: string }) {
             )}
           </Panel>
 
-          {/* ── ④ 쓰고 나서 붙일 것 ──
-              단일일 때만 선다(까닭은 ②와 같다). 성취기준 코드와 하위요소는 다 쓴 문항을
-              보고 찾아 붙이는 것이라 문항 아래가 제자리다 */}
-          {view.form === "single" && (
-            <Panel title="세부 분류" flush>
-              <div className="a2-form a2-form-lg">
-                {sharedDetailRows}
-                <QuestionTagRows
-                  q={qs[0]}
-                  band={view.band}
-                  disabled={locked}
-                  onChange={(next: Question) => setQuestion(0, next)}
-                />
-              </div>
-            </Panel>
-          )}
-
-          {/* 제출 준비 판과 함께 이 줄이 사라지면, 제출 단추가 왜 꺼져 있는지 말해 주는 곳이
-              꺼진 단추의 풍선 도움말 하나만 남는다 — 꺼진 단추에는 풍선이 뜨지 않는
-              브라우저도 있다. 판은 걷되 줄은 입력 칸이 끝나는 자리에 남긴다 */}
-          {editable && missing.length > 0 && (
-            <p className="a2-note" style={{ borderLeftColor: "var(--a2-warn)" }}>
-              <span>제출까지 남은 것 — {missing.join(" · ")}</span>
-            </p>
-          )}
+          {/* ── ④ 제출 전 자가 체크리스트 ──
+              단일이든 세트든 바깥 화면 맨 아래에 한 벌. 서명은 문항 하나가 아니라 이 묶음
+              통째에 하는 것이다 — 세트의 「앞 문항이 뒤 문항의 답을 노출하지 않는가」는
+              문항 하나로 들어간 화면에서는 짚을 수가 없다 */}
+          {/* 「제출까지 남은 것」 줄은 걷었다. 체크리스트 판 바로 아래에서 칸 이름 열 개를 한 줄로
+              다시 읽혀, 판의 맨 끝이 안내문이 되었다. 무엇이 남았는지는 꺼진 「검수로 제출」
+              단추의 풍선 도움말이 말한다 */}
+          {/* 검수 대기 중에는 체크리스트를 걷는다. 검수자가 짚을 것은 아래 검수판이고, 출제위원이
+              짚은 열네 줄은 이미 제출 문턱에서 다 켜진 채 넘어온다. 출제자 유의 · 검토 요청만 남긴다 */}
+          <SubmitChecklist
+            item={view}
+            signer={by}
+            unsigned={unsigned}
+            disabled={locked}
+            reviewing={view.state === "submitted"}
+            onChange={set}
+          />
 
           {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
               짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
@@ -737,7 +704,7 @@ export default function ItemDetail({ id }: { id: string }) {
             <Panel title="앵커" flush>
               <div className="a2-form a2-form-lg">
                 <FormRow label="까닭" req>
-                  <textarea
+                  <GrowTextarea
                     className="a2-textarea a2-textarea-lg"
                     rows={3}
                     value={reason}
@@ -776,10 +743,6 @@ export default function ItemDetail({ id }: { id: string }) {
 
       <LeaveDialog guard={guard} />
       {preview && <ItemPreview item={view} onClose={() => setPreview(false)} />}
-      <SeedNote>
-        문항은 이 브라우저에만 저장됩니다(lib/itemStore.ts). 붙일 때는 문항 API로 갈아 끼웁니다.
-        발문·지문에 넣은 그림은 파일 서버가 붙기 전까지 문항 안에 통째로 들어갑니다.
-      </SeedNote>
     </>
   );
 }

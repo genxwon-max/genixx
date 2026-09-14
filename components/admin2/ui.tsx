@@ -321,6 +321,156 @@ export function FormRow({
   );
 }
 
+/* ── 한 줄을 반반으로 — 이름·칸 두 벌을 나란히 ──
+ *
+ * 문항 카드에서 늘 같이 읽는 둘(난이도 · 배점, 인정 예 · 불인정 예)에만 쓴다. 따로 두 줄로
+ * 세우면 하나를 고치고 다른 하나를 보러 줄을 오르내리게 되고, 둘을 맞춰 보는 것이 그 칸들의
+ * 일이다.
+ *
+ * 왼쪽 이름표는 위아래 줄의 이름표와 같은 기둥에 선다. 가운데 이름표는 그보다 좁다 — 둘 다
+ * 기둥 폭으로 잡으면 입력 칸 둘이 이름표 둘에 밀려 반의 반이 된다. 좁은 화면(admin2.css
+ * .a2-form-pair)에서는 두 줄로 되돌린다.
+ */
+type Half = {
+  label: React.ReactNode;
+  req?: boolean;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+};
+
+export function FormRowPair({ left, right }: { left: Half; right: Half }) {
+  return (
+    <div className="a2-form-row a2-form-pair">
+      <div className={`a2-form-label${left.req ? " a2-form-req" : ""}`}>{left.label}</div>
+      <div className="a2-form-field">
+        {left.children}
+        {left.hint && <span className="a2-hint">{left.hint}</span>}
+      </div>
+      <div className={`a2-form-label a2-form-label-mid${right.req ? " a2-form-req" : ""}`}>
+        {right.label}
+      </div>
+      <div className="a2-form-field">
+        {right.children}
+        {right.hint && <span className="a2-hint">{right.hint}</span>}
+      </div>
+    </div>
+  );
+}
+
+/* ── 한 줄 안에 이름을 한 번 더 가른다 ──
+ *
+ * 「재능 평가 관점」처럼 이름 하나 아래 칸이 둘 셋 딸린 줄. 종이 문항 카드가 왼쪽 칸을 합쳐
+ * 두는 자리다. 칸마다 줄을 따로 세우면 둘이 한 묶음이라는 것이 사라지고, 이름 없이 칸만
+ * 쌓으면 채운 뒤에는 어느 칸이 무엇인지 알 수 없다(자리표시 글은 채우는 순간 사라진다).
+ *
+ * FormRow의 칸 안에서만 쓴다.
+ */
+export function SubRows({ children }: { children: React.ReactNode }) {
+  return <div className="a2-subrows">{children}</div>;
+}
+
+export function SubRow({
+  label,
+  req = false,
+  hint,
+  children,
+}: {
+  label: React.ReactNode;
+  req?: boolean;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="a2-subrow">
+      <div className={`a2-subrow-label${req ? " a2-form-req" : ""}`}>{label}</div>
+      <div className="a2-subrow-field">
+        {children}
+        {hint && <span className="a2-hint">{hint}</span>}
+      </div>
+    </div>
+  );
+}
+
+/* ── 머리 띠를 얹은 칸 — 이름이 왼쪽이 아니라 위에 선다 ──
+ *
+ * 긴 글 여러 덩이를 한 묶음으로 쓰는 자리(정답 · 채점 기준 → 모범답안 · 부분점수)에 쓴다.
+ * 이름표를 왼쪽 기둥에 두면 그 기둥 폭만큼 글 칸이 좁아지는데, 모범답안은 한 줄에 마흔 자가
+ * 넘는 문장이라 좁히면 줄이 두 배로 접힌다. 종이 문항 카드도 이 칸만 머리 띠를 위에 얹는다.
+ *
+ * FormRow와 같은 .a2-form 안에 섞어 세운다.
+ */
+export function FormBlock({
+  title,
+  req = false,
+  children,
+}: {
+  title: React.ReactNode;
+  req?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="a2-form-block">
+      <div className={`a2-form-block-head${req ? " a2-form-req" : ""}`}>{title}</div>
+      <div className="a2-form-block-body">{children}</div>
+    </div>
+  );
+}
+
+/** 머리 띠 칸 둘을 나란히 — 인정 예 · 불인정 예처럼 맞춰 보는 둘 */
+export function FormBlockPair({
+  left,
+  right,
+}: {
+  left: { title: React.ReactNode; req?: boolean; children: React.ReactNode };
+  right: { title: React.ReactNode; req?: boolean; children: React.ReactNode };
+}) {
+  return (
+    <div className="a2-form-block-pair">
+      <FormBlock title={left.title} req={left.req}>
+        {left.children}
+      </FormBlock>
+      <FormBlock title={right.title} req={right.req}>
+        {right.children}
+      </FormBlock>
+    </div>
+  );
+}
+
+/** 머리 띠 칸 안의 한 덩이 — 한 단 옅은 띠를 얹는다 */
+export function BlockPart({
+  title,
+  req = false,
+  hint,
+  children,
+}: {
+  title: React.ReactNode;
+  req?: boolean;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="a2-block-part">
+      <div className={`a2-block-part-head${req ? " a2-form-req" : ""}`}>{title}</div>
+      {children}
+      {hint && <span className="a2-hint">{hint}</span>}
+    </div>
+  );
+}
+
+/* ── 칸 안에서 이름을 글 앞에 붙인 한 줄 ──
+ *
+ * 「성취기준 코드: [4국05-04] …」처럼 한 칸 안에 이름 붙은 줄 여럿을 쌓는 자리. SubRow처럼
+ * 이름에 면을 깔지 않는다 — 종이 카드에서도 이 이름들은 칸의 이름이 아니라 글의 머리다.
+ */
+export function CellLine({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="a2-cell-line">
+      <span className="a2-cell-line-label">{label}</span>
+      <div className="a2-cell-line-field">{children}</div>
+    </div>
+  );
+}
+
 /* ── 켜고 끄는 스위치 ──
    누르는 **즉시** 저장소에 걸리는 두 값짜리에만 쓴다. 저장 단추를 거쳐야 나가는 칸은 체크
    (.a2-choice)로 둔다 — 공지의 노출처럼. 한 화면에 둘이 섞여 서도 「이건 누르면 바로 걸린다」가

@@ -5,6 +5,8 @@ import {
   OX_CHOICES,
   difficulties,
   difficultyPicked,
+  formatIssue,
+  hasChoices,
   itemTypes,
   needsRubric,
   questionStandardIssue,
@@ -16,21 +18,53 @@ import {
 } from "@/lib/itemStore";
 import {
   LEVELS,
+  codeSamples,
   levelAllowed,
   levelSpecs,
   subskillsOf,
+  talentOf,
   talents,
   type GradeBand,
   type Level,
   type TalentId,
 } from "@/lib/blueprint";
 import { toneColor } from "@/lib/admin2";
+import { splitPastedItem } from "@/lib/choicePaste";
 import BodyEditor from "@/components/admin2/BodyEditor";
-import { FormRow } from "@/components/admin2/ui";
+import GrowTextarea from "@/components/admin2/GrowTextarea";
+import {
+  BlockPart,
+  CellLine,
+  FormBlock,
+  FormBlockPair,
+  FormRow,
+  FormRowPair,
+  SubRow,
+  SubRows,
+} from "@/components/admin2/ui";
 
 /**
- * 문항 상세의 본문 — 세트의 문항 목록 · 문항 하나의 분류 줄 · 세부 분류 줄 · 내용 줄.
+ * 문항 상세의 본문 — 세트의 문항 목록 · 문항 하나의 분류 줄 · 문항 줄.
  * 지문·발문 편집기는 components/admin2/BodyEditor.tsx에 있다.
+ *
+ * ── 줄의 차례는 문항 카드의 차례다 ──
+ * 출제위원이 받는 종이 문항 카드와 같은 차례로 선다. 한동안 「쓰기 전에 정할 것 / 쓰고 나서
+ * 붙일 것」으로 분류를 문항 앞뒤로 갈랐는데, 출제위원은 카드를 옆에 펴 놓고 칸을 옮겨
+ * 적는다 — 화면 차례가 카드와 다르면 칸을 찾아 화면을 오르내린다. 그래서 둘로 편다.
+ *
+ *   분류  (문항 ID · 학년군 · 교과 단원은 묶음이 쥔다) 인지단계 · Tag A · Tag B · 형식 · 난이도|배점
+ *   문항  (지문은 묶음이 쥔다) 문항 · 정답·채점 기준 · 인정|불인정 예 ·
+ *         재능 평가 관점 · 오답 설계 의도
+ *
+ * ── 칸은 형식과 상관없이 전부 열어 둔다 ──
+ * 한동안 객관식은 인정·불인정 예와 부분점수 칸을 잠그고 「선택형은 정오로 채점해…」를
+ * 적어 두었다. 출제위원이 선택형에도 채점 메모를 남기고 싶어 해서 잠금을 풀었다. 대신
+ * 선택형에서 비어 있다고 제출을 막지는 않는다(lib/itemStore.ts missingCard) — 필수 표시(*)가
+ * 형식을 따라 붙었다 떨어진다. 유형을 바꿔도 줄이 났다 들었다 하지 않아 카드의 차례는 그대로다.
+ *
+ * ── 칸이 곧 입력이다 ──
+ * 줄은 전부 문항 카드(.a2-card) 안에 선다. 값 칸에 여백을 두지 않고 입력의 테두리를 걷어,
+ * 종이 카드의 칸에 바로 쓰듯 칸의 선이 입력의 테두리 노릇을 한다(admin2.css .a2-card).
  *
  * ── 왜 편집기를 갈래로 나누나 ──
  * 발문을 글 한 칸으로만 받던 때는 수학·과학 문항이 화면에서 성립하지 않았다. 「아래
@@ -185,30 +219,52 @@ export function QuestionList({
   );
 }
 
-type RowProps = {
-  q: Question;
-  /** 성취기준 코드가 맞는지는 학년군을 알아야 본다. 학년군은 세트가 통째로 쥐고 있다 */
-  band: GradeBand;
-  disabled: boolean;
-  onChange: (next: Question) => void;
-};
+const talentName = (id: TalentId) => talents.find((t) => t.id === id)?.name ?? id;
+
+/** 칸 아래 경고 한 줄 — 막는 것은 빨강, 봐 둘 것은 노랑 */
+const Danger = ({ children }: { children: React.ReactNode }) => (
+  <span style={{ color: toneColor.danger }}>{children}</span>
+);
 
 /**
- * 문항 하나의 분류 줄 — 배점 · 인지단계 · 난이도.
+ * 문항 하나의 분류 줄 — 인지단계 · Tag A · Tag B · 형식 · 난이도|배점.
  *
- * 분류는 두 판으로 갈린다. 문항을 쓰기 **전에** 정해야 하는 것(과목 · 학년군 · 배점 ·
- * 인지단계 · 난이도)은 문항 위 「분류」 판에, 문항을 쓰고 **나서** 붙이는 것(단원 · 성취기준 ·
- * 재능 축 …)은 문항 아래 「세부 분류」 판에 선다. 단계와 난이도를 모르고는 발문을 쓸 수
- * 없지만, 성취기준 코드는 다 쓴 문항을 보고 찾아 붙이는 것이 실제 차례다.
+ * 문항 ID · 학년군 · 교과 단원은 이 위에 선다. 그 셋은 묶음이 통째로 쥐는 값이라 문항 상세
+ * (ItemDetail)가 그리고, 세트에서도 문항마다 다르지 않다.
  *
  * 단일이면 문항 상세에, 세트면 목록에서 들어간 문항 상세에 선다. 세트의 바깥 화면에는
  * 분류가 아예 없다 — 분류는 세트가 아니라 그 안의 문항에 붙는 것이라, 바깥에 세우면 어느
  * 문항의 것인지 말할 수 없는 값이 된다. 두 자리가 같은 줄을 쓰는 것이 요점이다 — 단일로
  * 쓰던 사람이 세트로 넘어갔을 때 칸이 다르면 같은 것을 두 번 배워야 한다.
+ *
+ * AI 문항 출제 판(authoring/Generator)도 같은 줄로 뽑을 문항의 분류를 받는다. 생성 판이 따로
+ * 칸을 세웠을 때는 거기서 고른 것과 문항 상세에서 고치는 것의 이름 · 차례가 달랐다.
+ *
+ * ⚠ 문항 카드(.a2-card) 안에서만 쓴다. 입력에 테두리가 없고 칸의 선이 그 노릇을 한다.
  */
-export function QuestionCoreRows({ q, disabled, onChange }: Omit<RowProps, "band">) {
+export function QuestionClassRows({
+  q,
+  band,
+  disabled,
+  withLevel = true,
+  onChange,
+}: {
+  q: Question;
+  /** 성취기준 코드가 맞는지는 학년군을 알아야 본다. 학년군은 세트가 통째로 쥐고 있다 */
+  band: GradeBand;
+  disabled: boolean;
+  /**
+   * 인지단계 · 형식 · 배점 줄을 세우는가. 세트를 한꺼번에 뽑는 생성 판은 끈다 — 단계별 문항 수가
+   * 단계를 정하고, 형식 · 배점은 단계마다 고정 매핑을 따라서 한 벌로 고를 값이 아니다.
+   */
+  withLevel?: boolean;
+  onChange: (next: Question) => void;
+}) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
-  const outOfRange = !levelAllowed(q.talent, q.level);
+  const std = questionStandardIssue(q, band);
+  const outOfRange = withLevel && !levelAllowed(q.talent, q.level);
+  const format = formatIssue(q);
+  const talent = talentOf(q.talent);
 
   /* 치는 중인 글자. 바깥에서 배점이 바뀌면(취소 · 다른 문항) 그 글자는 버리고 값을 그린다 —
      글자가 나타내는 수와 지금 배점이 같을 때만 글자를 믿는다 */
@@ -216,231 +272,301 @@ export function QuestionCoreRows({ q, disabled, onChange }: Omit<RowProps, "band
   const textValue = pointsText === "" || pointsText === "." ? 0 : Number(pointsText);
   const pointsShown = textValue === q.points ? pointsText : q.points === 0 ? "" : String(q.points);
 
+  const difficultyRadios = (
+    <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
+      {difficulties.map((d) => (
+        <label key={d.b} className="a2-choice">
+          <input
+            type="radio"
+            name={`b-${q.id}`}
+            checked={q.b === d.b}
+            disabled={disabled}
+            onChange={() => set({ b: d.b })}
+          />
+          {d.label}
+          <span className="a2-mono font-normal text-(--a2-ink-4)">b {d.b}</span>
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <>
+      {withLevel && (
+        <FormRow label="인지단계" req>
+          <select
+            className="a2-select a2-input-lg a2-select-fit"
+            value={q.level}
+            disabled={disabled}
+            onChange={(e) => set({ level: e.target.value as Level })}
+            aria-invalid={outOfRange}
+            aria-label="인지단계"
+          >
+            {LEVELS.map((l) => (
+              <option key={l} value={l} disabled={!levelAllowed(q.talent, l)}>
+                {l} {levelSpecs[l].name}
+                {levelAllowed(q.talent, l) ? "" : ` — ${talentName(q.talent)} 축은 출제 불가`}
+              </option>
+            ))}
+          </select>
+        </FormRow>
+      )}
+
+      {/* 종이 카드의 Tag A 칸 한 칸을 그대로 옮긴다 — 성취기준 코드(코드 + 내용) · 학습 요소 ·
+          출제 의도를 한 칸 안에 줄로 쌓는다. 줄마다 따로 줄을 세우면 카드의 한 칸이 화면에서
+          세 칸이 된다.
+
+          NCIC 원문 대조 · 2022 개정 코드 확인 체크는 걷었다. 체크리스트 01이 같은 것을 묻는다.
+          코드 형식이 틀렸다는 줄도 칸 아래에 적지 않는다 — 제출 단추의 풍선 도움말이 짚고,
+          학년군을 벗어난 코드는 학년군 줄이 짚는다.
+
+          학습 요소는 옛 「Tag A 세부」 칸(tagADetail)을 그대로 쓴다. 목록·검수 화면이 Tag A 한
+          줄을 그 칸으로 짓는다(lib/itemStore.ts syncTags) */}
+      <FormRow label="Tag A (학력)" req>
+        <CellLine label="성취기준 코드">
+          <div className="a2-cell-split" style={{ gridTemplateColumns: "9rem minmax(0, 1fr)" }}>
+            <input
+              className="a2-input a2-input-lg a2-mono self-center"
+              value={q.standardCode}
+              disabled={disabled}
+              onChange={(e) => set({ standardCode: e.target.value })}
+              placeholder={codeSamples[band][0]}
+              aria-invalid={!std.ok}
+              aria-label="성취기준 코드"
+            />
+            <GrowTextarea
+              line
+              className="a2-textarea a2-textarea-lg"
+              value={q.standardText}
+              disabled={disabled}
+              onChange={(e) => set({ standardText: e.target.value })}
+              aria-label="성취기준 내용"
+            />
+          </div>
+        </CellLine>
+        <CellLine label="학습 요소">
+          <GrowTextarea
+            line
+            className="a2-textarea a2-textarea-lg"
+            value={q.tagADetail}
+            disabled={disabled}
+            onChange={(e) => set({ tagADetail: e.target.value })}
+            aria-label="학습 요소"
+          />
+        </CellLine>
+        <CellLine label="출제 의도">
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={2}
+            value={q.tagAIntent}
+            disabled={disabled}
+            onChange={(e) => set({ tagAIntent: e.target.value })}
+            aria-label="출제 의도"
+          />
+        </CellLine>
+      </FormRow>
+
+      {/* 칸 아래에는 축과 단계가 어긋났을 때만 적는다. 한동안 3원 좌표와 격자 지표를 늘
+          적어 두었는데, 두 고르개가 이미 그 값을 보여 주고 있어 같은 말을 한 번 더 하는 줄이었다 */}
+      <FormRow
+        label="Tag B (재능)"
+        req
+        hint={
+          outOfRange ? (
+            <Danger>
+              {talent.name} 축은 {q.level}을 낼 수 없습니다 — 인지단계를 다시 고르세요.
+            </Danger>
+          ) : undefined
+        }
+      >
+        <div className="a2-cell-split">
+          <select
+            className="a2-select a2-input-lg"
+            value={q.talent}
+            disabled={disabled}
+            aria-invalid={outOfRange}
+            aria-label="재능"
+            onChange={(e) => {
+              /* 축을 바꾸면 하위요소는 그 축의 것으로 갈아 끼운다. 그대로 두면
+                 LANG-01이 수리-논리 문항에 붙어 좌표가 통째로 어긋난다. */
+              const next = e.target.value as TalentId;
+              set({ talent: next, subskill: subskillsOf(next)[0].code });
+            }}
+          >
+            {talents.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="a2-select a2-input-lg"
+            value={q.subskill}
+            disabled={disabled}
+            aria-label="하위요소"
+            onChange={(e) => set({ subskill: e.target.value })}
+          >
+            {subskillsOf(q.talent).map((sk) => (
+              <option key={sk.code} value={sk.code}>
+                {sk.code} {sk.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </FormRow>
+
+      {/* 형식은 단계를 따라 바꾸지 않는다. 적어 둔 보기가 날아가는 사고가 났던 자리라
+          (retypeQuestion) 사람이 고르고, 고정 매핑에서 벗어나면 여기와 체크리스트에 적는다 */}
+      {withLevel && (
+        <FormRow label="형식" req hint={format ? <Danger>{format}</Danger> : undefined}>
+          <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
+            {itemTypes.map((t) => (
+              <label key={t.id} className="a2-choice">
+                <input
+                  type="radio"
+                  name={`type-${q.id}`}
+                  checked={q.type === t.id}
+                  disabled={disabled}
+                  onChange={() => onChange(retypeQuestion(q, t.id as ItemType))}
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </FormRow>
+      )}
+
       {/* 운영자가 직접 적는다. 인지단계를 바꿔도 적어 둔 배점을 덮지 않는다 — 덮으면 단계를
           한 번 고친 것만으로 매겨 둔 배점이 소리 없이 사라진다. 새 문항만 단계의 기본 배점
           (lib/blueprint.ts의 levelSpecs)으로 시작한다.
 
           비운 칸은 0으로 든다. 0 이하는 제출 문턱이 막는다(missingContent).
           칸은 치는 글자를 따로 들고 있다(pointsText) — 숫자만 들고 다시 그리면 「0.5」를 치는
-          도중의 「0」과 「0.」이 0으로 굳어 빈칸이 되고, 소수점을 칠 수가 없다 */}
-      <FormRow
-        label="배점"
-        req
-        hint={
-          q.points > 0 ? undefined : (
-            <span style={{ color: toneColor.danger }}>0보다 큰 배점을 적어야 검수로 제출할 수 있습니다.</span>
-          )
-        }
-      >
-        <span className="flex min-h-10 items-center gap-2">
-          <input
-            type="text"
-            inputMode="decimal"
-            className="a2-input a2-input-lg a2-num"
-            style={{ maxWidth: "8rem" }}
-            value={pointsShown}
-            disabled={disabled}
-            placeholder="0"
-            onChange={(e) => {
-              const raw = e.target.value.trim();
-              /* 숫자와 소수점 하나만 받는다. 다른 글자는 칸에 들이지 않는다 */
-              if (!/^\d*\.?\d*$/.test(raw)) return;
-              setPointsText(raw);
-              set({ points: raw === "" || raw === "." ? 0 : Number(raw) });
-            }}
-            aria-invalid={!(q.points > 0)}
-            aria-label="배점"
-          />
-          <span className="a2-t-sm text-(--a2-ink-3)">점</span>
-        </span>
-      </FormRow>
-
-      <FormRow
-        label="인지단계"
-        req
-        hint={
-          outOfRange ? (
-            <span style={{ color: toneColor.danger }}>
-              아래 세부 분류의 재능 축({talentName(q.talent)})은 {q.level}을 낼 수 없습니다.
-            </span>
-          ) : undefined
-        }
-      >
-        <select
-          className="a2-select a2-input-lg"
-          value={q.level}
-          disabled={disabled}
-          onChange={(e) => set({ level: e.target.value as Level })}
-          aria-invalid={outOfRange}
-        >
-          {LEVELS.map((l) => (
-            <option key={l} value={l} disabled={!levelAllowed(q.talent, l)}>
-              {l} {levelSpecs[l].name}
-              {levelAllowed(q.talent, l) ? "" : ` — ${talentName(q.talent)} 축은 출제 불가`}
-            </option>
-          ))}
-        </select>
-      </FormRow>
-
-      <FormRow label="난이도" req>
-        <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
-          {difficulties.map((d) => (
-            <label key={d.b} className="a2-choice">
-              <input
-                type="radio"
-                name={`b-${q.id}`}
-                checked={q.b === d.b}
-                disabled={disabled}
-                onChange={() => set({ b: d.b })}
-              />
-              {d.label}
-              <span className="a2-mono font-normal text-(--a2-ink-4)">b {d.b}</span>
-            </label>
-          ))}
-        </div>
-      </FormRow>
+          도중의 「0」과 「0.」이 0으로 굳어 빈칸이 되고, 소수점을 칠 수가 없다.
+          0.5점 단위는 고정 매핑에 없지만 칸에서 막지는 않는다 — 형식 칸이 짚는다 */}
+      {!withLevel ? (
+        <FormRow label="난이도" req>
+          {difficultyRadios}
+        </FormRow>
+      ) : (
+        <FormRowPair
+          left={{
+            label: "난이도",
+            req: true,
+            children: difficultyRadios,
+          }}
+          right={{
+            label: "배점",
+            req: true,
+            hint:
+              q.points > 0 ? undefined : (
+                <Danger>0보다 큰 배점을 적어야 검수로 제출할 수 있습니다.</Danger>
+              ),
+            children: (
+              <div className="a2-cell-unit">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="a2-input a2-input-lg a2-num"
+                  value={pointsShown}
+                  disabled={disabled}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    /* 숫자와 소수점 하나만 받는다. 다른 글자는 칸에 들이지 않는다 */
+                    if (!/^\d*\.?\d*$/.test(raw)) return;
+                    setPointsText(raw);
+                    set({ points: raw === "" || raw === "." ? 0 : Number(raw) });
+                  }}
+                  aria-invalid={!(q.points > 0)}
+                  aria-label="배점"
+                />
+                <span>점</span>
+              </div>
+            ),
+          }}
+        />
+      )}
     </>
   );
 }
-
-const talentName = (id: TalentId) => talents.find((t) => t.id === id)?.name ?? id;
 
 /**
- * 문항 하나의 세부 분류 줄 — 성취기준 · 재능 축 · 하위요소.
+ * 문항 하나의 문항 줄 — 문항 · 정답·채점 기준 · 인정|불인정 예 · 재능 평가 관점 ·
+ * 오답 설계 의도.
  *
- * 문항 아래 「세부 분류」 판에 선다(차례의 까닭은 QuestionCoreRows 참조).
+ * 지문은 이 위에 선다. 세트면 문항들이 함께 읽는 것이라 묶음이 쥐고, 문항 상세(ItemDetail)가
+ * 그린다.
  *
- * ⚠ 재능 축과 인지단계가 두 판으로 떨어졌다. 축마다 낼 수 있는 단계가 달라서, 여기서 축을
- *   바꾸면 위 판의 단계가 범위를 벗어날 수 있다 — 붙어 있을 때는 보였지만 이제는 판 하나를
- *   건너야 보이므로 두 칸 모두에 같은 경고를 띄운다.
+ * 정답 · 채점 기준과 인정 · 불인정 예는 이름을 왼쪽이 아니라 **위에** 얹는다(FormBlock).
+ * 모범답안 · 부분점수 · 예시는 한 줄에 마흔 자가 넘는 글이라, 왼쪽 이름 기둥만큼 칸을 좁히면
+ * 줄이 두 배로 접힌다. 종이 문항 카드도 이 칸들만 머리 띠를 위에 얹는다.
  */
-export function QuestionTagRows({ q, band, disabled, onChange }: RowProps) {
+export function QuestionContentRows({
+  q,
+  disabled,
+  onChange,
+}: {
+  q: Question;
+  disabled: boolean;
+  onChange: (next: Question) => void;
+}) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
-  const std = questionStandardIssue(q, band);
-  const outOfRange = !levelAllowed(q.talent, q.level);
+  const choice = q.type === "choice";
+  const picks = hasChoices(q.type);
+
+  /**
+   * 한글에 쓰던 문항을 통째로 붙여 넣으면 발문 · 보기 · 정답으로 가른다(lib/choicePaste.ts).
+   *
+   * 발문 칸에 붙이면 발문 몫은 커서 자리에 들어간다. 보기 칸에 붙이면 발문 몫이 발문을 갈아
+   * 끼운다 — 보기 칸에는 발문을 둘 자리가 없다. ①이 없는 글은 가르지 않고 그대로 붙는다.
+   *
+   * 적어 둔 보기가 있으면 먼저 묻는다. 보기를 갈아 끼우면 보기마다 적은 오답 설계 의도도
+   * 옛 보기를 가리키게 되어 함께 비운다. 보기가 비어 있었으면 의도는 남긴다(보기 수만큼).
+   */
+  const pasteItem = (e: React.ClipboardEvent<HTMLTextAreaElement>, into: "stem" | "choice") => {
+    if (!choice || disabled) return;
+    const split = splitPastedItem(e.clipboardData.getData("text/plain"));
+    if (!split) return;
+    e.preventDefault();
+
+    const el = e.currentTarget;
+    const stem =
+      into === "stem"
+        ? el.value.slice(0, el.selectionStart) + split.stem + el.value.slice(el.selectionEnd)
+        : split.stem || q.stem;
+    const written = q.choices.some((c) => c.trim());
+    const stemReplaced = into === "choice" && split.stem !== "" && q.stem.trim() !== "";
+    if (written || stemReplaced) {
+      const what = [
+        written &&
+          `적어 둔 보기를 붙여 넣은 보기 ${split.choices.length}개로 바꿉니다. ` +
+            "보기마다 적은 오답 설계 의도는 비워집니다.",
+        stemReplaced && "발문도 붙여 넣은 발문으로 바꿉니다.",
+      ].filter(Boolean);
+      if (!window.confirm(`${what.join("\n")}\n\n바꿀까요?`)) return;
+    }
+
+    set({
+      stem,
+      choices: split.choices,
+      answer: split.answer ?? Math.min(q.answer, split.choices.length - 1),
+      distractorIntent: written ? [] : q.distractorIntent.slice(0, split.choices.length),
+    });
+  };
 
   return (
     <>
-      {/* 한 지문을 놓고 「무엇이라고 했나」와 「왜 그런가」를 이어 물으면 두 문항은 재는
-          것도 단계도 다르다 — 그게 세트를 두는 까닭이다 */}
-      <FormRow
-        label="성취기준 코드 (Tag A)"
-        req
-        hint={std.ok ? undefined : <span style={{ color: toneColor.danger }}>{std.why}</span>}
-      >
-        <input
-          className="a2-input a2-input-lg a2-mono"
-          value={q.standardCode}
-          disabled={disabled}
-          onChange={(e) => set({ standardCode: e.target.value })}
-          placeholder="[4국04-02]"
-          aria-invalid={!std.ok}
-        />
-      </FormRow>
-
-      <FormRow label="성취기준 내용" req>
-        <input
-          className="a2-input a2-input-lg"
-          value={q.standardText}
-          disabled={disabled}
-          onChange={(e) => set({ standardText: e.target.value })}
-          placeholder="낱말과 낱말의 의미 관계를 파악한다."
-        />
-      </FormRow>
-
-      <FormRow label="Tag A 세부" req>
-        <input
-          className="a2-input a2-input-lg"
-          value={q.tagADetail}
-          disabled={disabled}
-          onChange={(e) => set({ tagADetail: e.target.value })}
-          placeholder="비슷한 말 짝 식별"
-        />
-      </FormRow>
-
-      <FormRow
-        label="재능 축 (Tag B)"
-        req
-        hint={
-          outOfRange ? (
-            <span style={{ color: toneColor.danger }}>
-              이 축은 위 분류의 인지단계({q.level})를 낼 수 없습니다.
-            </span>
-          ) : undefined
-        }
-      >
-        <select
-          className="a2-select a2-input-lg"
-          value={q.talent}
-          disabled={disabled}
-          aria-invalid={outOfRange}
-          onChange={(e) => {
-            /* 축을 바꾸면 하위요소는 그 축의 것으로 갈아 끼운다. 그대로 두면
-               LANG-01이 수리-논리 문항에 붙어 좌표가 통째로 어긋난다. */
-            const next = e.target.value as TalentId;
-            set({ talent: next, subskill: subskillsOf(next)[0].code });
-          }}
-        >
-          {talents.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </FormRow>
-
-      <FormRow label="하위요소" req>
-        <select
-          className="a2-select a2-input-lg"
-          value={q.subskill}
-          disabled={disabled}
-          onChange={(e) => set({ subskill: e.target.value })}
-        >
-          {subskillsOf(q.talent).map((sk) => (
-            <option key={sk.code} value={sk.code}>
-              {sk.code} {sk.name}
-            </option>
-          ))}
-        </select>
-      </FormRow>
-    </>
-  );
-}
-
-/** 문항 하나의 내용 줄 — 무엇을 어떻게 묻나 */
-export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band">) {
-  const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
-
-  return (
-    <>
-      <FormRow label="문항 유형" req>
-        <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
-          {itemTypes.map((t) => (
-            <label key={t.id} className="a2-choice">
-              <input
-                type="radio"
-                name={`type-${q.id}`}
-                checked={q.type === t.id}
-                disabled={disabled}
-                onChange={() => onChange(retypeQuestion(q, t.id as ItemType))}
-              />
-              {t.label}
-            </label>
-          ))}
-        </div>
-      </FormRow>
-
-      <FormRow label="발문" req>
+      <FormRow label="문항" req>
         {/* 발문은 대개 한두 문장이다. 지문만큼 열어 두면 화면에서 가장 큰 덩어리가
-            대부분 비어 있는 칸이 된다 — 길게 쓸 일이 있으면 오른쪽 아래로 늘린다 */}
+            대부분 비어 있는 칸이 된다 — 세 줄로 시작하고 적은 만큼 늘어난다 */}
         <BodyEditor
           name={`stem-mode-${q.id}`}
           value={{ mode: q.stemMode, body: q.stem, images: q.stemImages }}
           disabled={disabled}
           rows={3}
-          placeholder="다음 중 두 낱말의 뜻이 서로 비슷한 것은?"
+          flush
+          onPaste={(e) => pasteItem(e, "stem")}
           onChange={(patch) =>
             set({
               stemMode: patch.mode ?? q.stemMode,
@@ -449,54 +575,41 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
             })
           }
         />
-      </FormRow>
 
-      {q.type === "choice" && (
-        <FormRow label="보기 · 정답 · 오답 의도" req>
-          <ul className="grid w-full gap-2">
-            {q.choices.map((c, k) => (
-              <li
-                key={k}
-                className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:items-center"
-              >
-                <label className="flex items-center gap-2 pl-0.5">
-                  <input
-                    type="radio"
-                    name={`answer-${q.id}`}
-                    checked={q.answer === k}
-                    disabled={disabled}
-                    onChange={() => set({ answer: k })}
-                    aria-label={`${k + 1}번을 정답으로`}
-                  />
-                  <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{k + 1}</span>
-                </label>
+        {/* 보기는 발문 아래 한 줄에 하나. 정답은 보기 옆에서 고른다 — 아래 정답 칸으로 떼어
+            놓으면 번호만 보고 고르게 되고, 「정답만 혼자 길다」 같은 단서는 보기와 정답이
+            나란히 서 있어야 눈에 걸린다 */}
+        {choice &&
+          q.choices.map((c, k) => (
+            <div key={k} className="a2-cell-split" style={{ gridTemplateColumns: "3rem minmax(0, 1fr)" }}>
+              <label className="flex items-center justify-center gap-1.5">
                 <input
-                  className="a2-input a2-input-lg"
-                  value={c}
+                  type="radio"
+                  name={`answer-${q.id}`}
+                  checked={q.answer === k}
                   disabled={disabled}
-                  placeholder={`${k + 1}번 보기`}
-                  onChange={(e) =>
-                    set({
-                      choices: q.choices.map((x, n) => (n === k ? e.target.value : x)),
-                    })
-                  }
+                  onChange={() => set({ answer: k })}
+                  aria-label={`${k + 1}번을 정답으로`}
                 />
-                <input
-                  className="a2-input a2-input-lg"
-                  value={q.distractorIntent[k] ?? ""}
-                  disabled={disabled || q.answer === k}
-                  placeholder={q.answer === k ? "정답 — 적지 않습니다" : "이 오답이 잡는 오개념"}
-                  onChange={(e) => {
-                    const next = [...q.distractorIntent];
-                    while (next.length < q.choices.length) next.push("");
-                    next[k] = e.target.value;
-                    set({ distractorIntent: next });
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
-          <span className="flex w-full flex-wrap gap-2">
+                <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{k + 1}</span>
+              </label>
+              <GrowTextarea
+                line
+                className="a2-textarea a2-textarea-lg"
+                value={c}
+                disabled={disabled}
+                aria-label={`${k + 1}번 보기`}
+                onPaste={(e) => pasteItem(e, "choice")}
+                onChange={(e) =>
+                  set({
+                    choices: q.choices.map((x, n) => (n === k ? e.target.value : x)),
+                  })
+                }
+              />
+            </div>
+          ))}
+        {choice && (
+          <div className="a2-cell-pad flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="a2-btn"
@@ -519,63 +632,183 @@ export function QuestionBodyRows({ q, disabled, onChange }: Omit<RowProps, "band
             >
               마지막 보기 지우기
             </button>
-          </span>
-        </FormRow>
-      )}
-
-      {q.type === "ox" && (
-        <FormRow label="정답" req>
-          <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1">
-            {OX_CHOICES.map((c, k) => (
-              <label key={c} className="a2-choice">
-                <input
-                  type="radio"
-                  name={`answer-${q.id}`}
-                  checked={q.answer === k}
-                  disabled={disabled}
-                  onChange={() => set({ answer: k })}
-                />
-                {c}
-              </label>
-            ))}
           </div>
-        </FormRow>
-      )}
+        )}
 
-      {q.type === "short" && (
-        <FormRow label="허용 답안" req>
-          <input
-            className="a2-input a2-input-lg"
-            value={q.shortAnswers}
-            disabled={disabled}
-            placeholder="늘어난다, 커진다, 증가한다"
-            onChange={(e) => set({ shortAnswers: e.target.value })}
-          />
-        </FormRow>
-      )}
+        {q.type === "ox" && (
+          <CellLine label="정답">
+            <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
+              {OX_CHOICES.map((c, k) => (
+                <label key={c} className="a2-choice">
+                  <input
+                    type="radio"
+                    name={`answer-${q.id}`}
+                    checked={q.answer === k}
+                    disabled={disabled}
+                    onChange={() => set({ answer: k })}
+                  />
+                  {c}
+                </label>
+              ))}
+            </div>
+          </CellLine>
+        )}
+      </FormRow>
 
-      {needsRubric(q.type) && (
-        <FormRow label="채점 루브릭" req>
-          <textarea
+      <FormBlock title="정답 · 채점 기준" req>
+        {picks && (
+          <BlockPart title="정답">
+            <div className="a2-cell-pad flex items-center a2-t-sm text-(--a2-ink-2)">
+              {q.type === "ox" ? (
+                (OX_CHOICES[q.answer] ?? "—")
+              ) : q.choices[q.answer] !== undefined ? (
+                <span>
+                  <span className="a2-mono font-bold text-(--a2-ink)">{q.answer + 1}번</span>{" "}
+                  {q.choices[q.answer].trim()}
+                </span>
+              ) : (
+                "—"
+              )}
+            </div>
+          </BlockPart>
+        )}
+        {q.type === "short" && (
+          <BlockPart title="허용 답안" req>
+            <GrowTextarea
+              line
+              className="a2-textarea a2-textarea-lg"
+              value={q.shortAnswers}
+              disabled={disabled}
+              onChange={(e) => set({ shortAnswers: e.target.value })}
+              aria-label="허용 답안"
+            />
+          </BlockPart>
+        )}
+        <BlockPart title={picks ? "모범답안" : "모범답안(단답·서술형)"} req>
+          <GrowTextarea
             className="a2-textarea a2-textarea-lg"
-            rows={6}
+            rows={4}
+            value={q.explain}
+            disabled={disabled}
+            onChange={(e) => set({ explain: e.target.value })}
+            aria-label="모범답안"
+          />
+        </BlockPart>
+        <BlockPart title="부분점수/루브릭" req={needsRubric(q.type)}>
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={5}
             value={q.rubric}
             disabled={disabled}
-            placeholder={"근거 1점 + 일반화 1점 + 정당화 1점\n인정 예: …\n불인정 예: …"}
             onChange={(e) => set({ rubric: e.target.value })}
+            aria-label="부분점수/루브릭"
           />
-        </FormRow>
-      )}
+        </BlockPart>
+      </FormBlock>
 
-      <FormRow label="정답 · 해설" req>
-        <textarea
-          className="a2-textarea a2-textarea-lg"
-          rows={5}
-          value={q.explain}
-          disabled={disabled}
-          placeholder="정답 ②. 까닭까지 함께 적습니다."
-          onChange={(e) => set({ explain: e.target.value })}
-        />
+      {/* 「2개 이상」은 머리 띠에 적고, 개수는 체크리스트가 사람에게 묻는다. 선택형이 아닌
+          문항에서 비어 있을 때만 제출이 막힌다(missingCard) */}
+      <FormBlockPair
+        left={{
+          title: "인정 예 (2개 이상)",
+          req: !picks,
+          children: (
+            <GrowTextarea
+              className="a2-textarea a2-textarea-lg"
+              rows={7}
+              value={q.acceptExamples}
+              disabled={disabled}
+              onChange={(e) => set({ acceptExamples: e.target.value })}
+              aria-label="인정 예"
+            />
+          ),
+        }}
+        right={{
+          title: "불인정 예 (2개 이상)",
+          req: !picks,
+          children: (
+            <GrowTextarea
+              className="a2-textarea a2-textarea-lg"
+              rows={7}
+              value={q.rejectExamples}
+              disabled={disabled}
+              onChange={(e) => set({ rejectExamples: e.target.value })}
+              aria-label="불인정 예"
+            />
+          ),
+        }}
+      />
+
+      <FormRow label="재능 평가 관점" req>
+        <SubRows>
+          <SubRow label="인지 처리 위계 구체">
+            <GrowTextarea
+              className="a2-textarea a2-textarea-lg"
+              rows={2}
+              value={q.perspectiveHierarchy}
+              disabled={disabled}
+              onChange={(e) => set({ perspectiveHierarchy: e.target.value })}
+              aria-label="인지 처리 위계 구체"
+            />
+          </SubRow>
+          <SubRow label="인지 능력 관련 수준">
+            <GrowTextarea
+              className="a2-textarea a2-textarea-lg"
+              rows={2}
+              value={q.perspectiveAbility}
+              disabled={disabled}
+              onChange={(e) => set({ perspectiveAbility: e.target.value })}
+              aria-label="인지 능력 관련 수준"
+            />
+          </SubRow>
+        </SubRows>
+      </FormRow>
+
+      {/* 객관식은 보기마다 적는다(distractorIntent) — 미리보기가 보기 밑에 붙이고 검수가 오답마다
+          본다. 보기 글을 옆에 다시 적는 것은 위 문항 칸에서 한참 내려온 자리라 번호만으로는 어느
+          보기의 오개념을 적는지 모르기 때문이다. 보기가 없는 형식은 예상 오답을 글로 적는다
+          (wrongIntent) — 종이 카드에서도 서술형의 이 칸은 글 한 덩이다 */}
+      <FormRow
+        label="오답 설계 의도"
+        req={choice}
+      >
+        {choice ? (
+          q.choices.map((c, k) => (
+            <div key={k} className="a2-cell-split a2-cell-intent">
+              <span className="flex items-center justify-center a2-mono a2-t-sm text-(--a2-ink-3)">
+                {k + 1}
+              </span>
+              {/* 보기 글은 말줄임으로 자르지 않고 접는다. 옆 의도 칸은 적은 만큼 늘어나는데 보기
+                  글만 잘려 있으면, 어느 보기의 오개념을 적는지 한 번에 읽히지 않는다 */}
+              <span className="flex min-w-0 items-center px-3 py-2 a2-t-sm text-(--a2-ink-2)">
+                <span className="min-w-0 break-words">{c.trim() || "—"}</span>
+              </span>
+              <GrowTextarea
+                line
+                className="a2-textarea a2-textarea-lg"
+                value={q.distractorIntent[k] ?? ""}
+                disabled={disabled}
+                placeholder={q.answer === k ? "정답" : undefined}
+                aria-label={`${k + 1}번 오답 설계 의도`}
+                onChange={(e) => {
+                  const next = [...q.distractorIntent];
+                  while (next.length < q.choices.length) next.push("");
+                  next[k] = e.target.value;
+                  set({ distractorIntent: next });
+                }}
+              />
+            </div>
+          ))
+        ) : (
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={3}
+            value={q.wrongIntent}
+            disabled={disabled}
+            onChange={(e) => set({ wrongIntent: e.target.value })}
+            aria-label="오답 설계 의도"
+          />
+        )}
       </FormRow>
     </>
   );

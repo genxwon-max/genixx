@@ -1,49 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import {
-  LEVELS,
-  gradeBands,
-  levelAllowed,
-  levelSpecs,
-  subskillsOf,
-  talents,
-  type GradeBand,
-  type Level,
-  type TalentId,
-} from "@/lib/blueprint";
+import { LEVELS, levelAllowed, levelSpecs, type Level } from "@/lib/blueprint";
 import { useAdminPrefs } from "@/lib/adminStore";
 import {
-  GENERATE_MAX,
+  SET_MAX,
+  blankQuestion,
   checkSpec,
   countOf,
-  difficulties,
-  itemForms,
   generateItems,
+  itemForms,
+  typeForLevel,
   type GenerateSpec,
   type ItemDraft,
   type ItemForm,
+  type Question,
 } from "@/lib/itemStore";
+import GrowTextarea from "@/components/admin2/GrowTextarea";
 import { FormRow, Panel } from "@/components/admin2/ui";
+import BandUnitRows, { type BandUnit } from "../items/[id]/BandUnitRows";
+import LevelCounts from "../items/[id]/LevelCounts";
+import { QuestionClassRows } from "../items/[id]/QuestionEditor";
 
 /**
  * AI 문항 출제 (EXP-02-2) — 출제 화면 안에서 펼치는 판.
  *
- * 왼쪽에 명칭, 오른쪽에 값. 칸을 격자로 늘어놓던 것을 줄로 세운다 — 격자는 칸이 여덟을
- * 넘어가면 어디까지 채웠는지가 눈으로 안 잡히고, 무엇이 필수인지도 칸마다 흩어진다.
- * 줄로 세우면 왼쪽 한 줄만 타고 내려가면 되고, 별표가 붙은 줄만 채우면 끝난다.
+ * ── 문항 상세와 같은 칸으로 받는다 ──
+ * 뽑은 문항은 곧장 문항 상세(ADM-04-1)로 들어가 고친다. 그런데 생성 판은 한동안 제 칸을 따로
+ * 세웠다 — 과목 고르개 · 손으로 적는 단원 · 코드 한 칸짜리 Tag A. 그래서 뽑을 때 고른 것과
+ * 열어서 고치는 것의 이름 · 차례가 달랐고, 손으로 적은 단원은 문항 상세에서 「목록 밖」으로 섰다.
+ * 이제 두 화면이 같은 줄을 쓴다 —
  *
- * ── 필수 다섯 · 선택 넷 ──
- * 필수는 **문항이 무엇인지 정하는 것**들이다 — 구성(단일·세트)·과목·학년·난이도·단계별
- * 문항 수. 이 다섯이 정해지면 뽑을 것이 정해진다.
- * 선택은 **뽑고 나서 붙여도 되는 것**들이다 — Tag A(성취기준)·Tag B(재능 축)·단원·출제
- * 지시. 문항을 보고 나서 코드를 붙이는 편이 맞는 자리가 많아, 여기서 막지 않는다.
+ *   문항 구성   단일 · 세트. 세트면 단계별 문항 수(LevelCounts)
+ *   분류        학년군 · 교과 단원(BandUnitRows) · 인지단계 · Tag A · Tag B · 형식 · 난이도|배점
+ *               (QuestionClassRows)
+ *   출제 지시
  *
- * 규칙은 저장소와 한 벌로 쓴다(lib/itemStore.ts) — 몇 개까지 뽑을 수 있는지, 어떤 축이
- * 어떤 단계를 못 만드는지, 성취기준 코드가 학년군과 맞는지를 여기서 다시 적지 않고
- * checkSpec 하나에 묻는다. 화면과 저장소가 다른 규칙을 보면 화면이 통과시킨 것을
- * 저장소가 막는 날이 온다.
+ * 과목 줄은 없다. 교과 단원을 고르면 과목이 따라온다(문항 상세와 같다).
+ *
+ * ── 단일은 한 문항, 세트는 단계별 수 ──
+ * 단일은 분류 판의 인지단계 · 형식 · 배점 그대로 한 문항을 뽑는다. 세트는 문항 구성 줄에서
+ * S1~S4를 몇 문항씩 담을지 적고, 분류 판에서 인지단계 · 형식 · 배점 줄이 빠진다 — 단계는 그
+ * 수가 정하고, 형식 · 배점은 단계마다 고정 매핑을 따른다. 한동안 단일도 단계별 수를 받아
+ * 낱개 여럿을 한꺼번에 뽑았는데, 그러면 분류 판 한 벌이 서로 다른 단계의 문항 여럿에 걸려
+ * 인지단계 · 형식 줄을 세울 수가 없다.
+ *
+ * 규칙은 저장소와 한 벌로 쓴다(lib/itemStore.ts checkSpec) — 몇 문항까지 담을 수 있는지, 어떤
+ * 축이 어떤 단계를 못 만드는지, 성취기준 코드 · 교과 단원이 학년군과 맞는지를 여기서 다시 적지
+ * 않는다. 화면과 저장소가 다른 규칙을 보면 화면이 통과시킨 것을 저장소가 막는 날이 온다.
  */
+
+const NO_COUNTS: Record<Level, number> = { S1: 0, S2: 0, S3: 0, S4: 0 };
+
 export default function Generator({
   onDone,
   onCancel,
@@ -54,45 +62,58 @@ export default function Generator({
   const prefs = useAdminPrefs();
 
   const [form, setForm] = useState<ItemForm>("single");
-  const [subject, setSubject] = useState<GenerateSpec["subject"]>("국어");
-  const [band, setBand] = useState<GradeBand>("3-4");
-  const [b, setB] = useState<number>(difficulties[1].b);
-  const [talent, setTalent] = useState<TalentId>("LANG");
-  const [subskill, setSubskill] = useState(subskillsOf("LANG")[0].code);
-  const [unit, setUnit] = useState("");
-  const [unitNo, setUnitNo] = useState("");
-  const [standardCode, setStandardCode] = useState("");
-  const [counts, setCounts] = useState<Record<Level, number>>({ S1: 0, S2: 0, S3: 0, S4: 0 });
+  const [place, setPlace] = useState<BandUnit>({
+    band: "3-4",
+    subject: "국어",
+    unit: "",
+    unitNo: "",
+    unitTerm: "",
+  });
+  /* 분류 판이 고치는 값 — 문항 상세와 같은 줄을 쓰려고 문항 한 칸의 꼴로 든다.
+     난이도는 비워 둔 채 시작한다. 미리 골라 두면 「아무도 안 고른 것」과 구별되지 않는다 */
+  const [q, setQ] = useState<Question>(() => blankQuestion([]));
+  const [counts, setCounts] = useState<Record<Level, number>>(NO_COUNTS);
   const [brief, setBrief] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
 
-  const subskills = subskillsOf(talent);
-  const total = countOf(counts);
+  const isSet = form === "set";
+  const total = isSet ? countOf(counts) : 1;
   const spec: GenerateSpec = {
     form,
-    subject,
-    band,
-    b,
-    talent,
-    subskill,
-    unit,
-    unitNo,
-    standardCode,
-    counts,
+    subject: place.subject,
+    band: place.band,
+    unit: place.unit,
+    unitNo: place.unitNo,
+    unitTerm: place.unitTerm,
+    b: q.b,
+    talent: q.talent,
+    subskill: q.subskill,
+    standardCode: q.standardCode,
+    standardText: q.standardText,
+    tagADetail: q.tagADetail,
+    tagAIntent: q.tagAIntent,
+    counts: isSet ? counts : { ...NO_COUNTS, [q.level]: 1 },
+    ...(isSet ? {} : { type: q.type, points: q.points }),
     brief,
   };
 
-  /* 축을 바꾸면 그 축이 못 다루는 단계의 수를 비운다 — 남겨 두면 생성에서 막힌다.
-     막고 나서 「자기-성찰 축은 S4를 만들 수 없습니다」를 읽게 하는 것보다, 고를 수
-     없게 해 두고 칸을 비우는 편이 한 번 덜 막힌다 */
-  const pickTalent = (id: TalentId) => {
-    setTalent(id);
-    setSubskill(subskillsOf(id)[0].code);
-    setCounts((prev) => {
-      const next = { ...prev };
-      for (const l of LEVELS) if (!levelAllowed(id, l)) next[l] = 0;
-      return next;
-    });
+  const pickQ = (next: Question) => {
+    let made = next;
+    /* 단계를 바꾸면 형식 · 배점이 그 단계의 고정 매핑으로 따라온다. 문항 상세는 적어 둔 보기 ·
+       배점을 덮지 않으려고 따라오게 두지 않지만, 여기에는 아직 덮을 것이 없다 */
+    if (next.level !== q.level) {
+      made = { ...made, type: typeForLevel[next.level], points: levelSpecs[next.level].points };
+    }
+    /* 축을 바꾸면 그 축이 못 다루는 단계의 수를 비운다 — 남겨 두면 생성에서 막힌다.
+       막고 나서 「자기-성찰 축은 S4를 만들 수 없습니다」를 읽게 하는 것보다 한 번 덜 막힌다 */
+    if (next.talent !== q.talent) {
+      setCounts((prev) => {
+        const kept = { ...prev };
+        for (const l of LEVELS) if (!levelAllowed(next.talent, l)) kept[l] = 0;
+        return kept;
+      });
+    }
+    setQ(made);
     setErrors([]);
   };
 
@@ -104,197 +125,92 @@ export default function Generator({
 
   return (
     <div className="border-b border-(--a2-line) bg-(--a2-raised) px-3 py-3">
-      <Panel flush>
-        <div className="a2-form a2-form-lg">
-          {/* ── 여기까지가 필수. 다섯이 정해지면 뽑을 것이 정해진다 ── */}
-          <FormRow label="구성" req>
-            <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
-              {itemForms.map((f) => (
-                <label key={f.id} className="a2-choice">
-                  <input
-                    type="radio"
-                    name="gen-form"
-                    checked={form === f.id}
-                    onChange={() => {
-                      setForm(f.id);
-                      setErrors([]);
-                    }}
-                  />
-                  {f.label}
-                </label>
-              ))}
-            </span>
-            {form === "set" && (
-              <span className="a2-t-xs text-(--a2-ink-4)">
-                보기 하나 아래 묶어 초안 한 장으로 나옵니다.
-              </span>
-            )}
-          </FormRow>
-
-          <FormRow label="과목" req>
-            <select
-              className="a2-select a2-input-lg"
-              style={{ maxWidth: "10rem" }}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value as GenerateSpec["subject"])}
-            >
-              {(["국어", "수학", "과학"] as const).map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </FormRow>
-
-          <FormRow label="학년" req>
-            <select
-              className="a2-select a2-input-lg"
-              style={{ maxWidth: "14rem" }}
-              value={band}
-              onChange={(e) => setBand(e.target.value as GradeBand)}
-            >
-              {gradeBands.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-          </FormRow>
-
-          {/* 값을 앞에 세운다 — 문항 목록·문항 상세가 난이도를 b 숫자로 적고 있어서,
-              여기서 말로만 고르면 고른 것과 표에 선 것이 같은 값인지 매번 짚어야 한다.
-              말은 뒤에 흐리게 남긴다: 숫자만으로는 어느 쪽이 어려운 쪽인지 모른다 */}
-          <FormRow label="난이도" req>
-            <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
-              {difficulties.map((d) => (
-                <label key={d.b} className="a2-choice">
-                  <input
-                    type="radio"
-                    name="gen-b"
-                    checked={b === d.b}
-                    onChange={() => {
-                      setB(d.b);
-                      setErrors([]);
-                    }}
-                  />
-                  <span className="a2-mono">{d.b}</span>
-                  <span className="font-normal text-(--a2-ink-4)">{d.label}</span>
-                </label>
-              ))}
-            </span>
-          </FormRow>
-
-          {/* 단계마다 형식·배점이 따라오므로(§1 고정 매핑) 개수만 적으면 나머지는 정해진다 */}
-          <FormRow label="S1–S4" req hint={`한 번에 ${GENERATE_MAX}문항까지 뽑을 수 있습니다.`}>
-            <span className="grid w-full gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
-              {LEVELS.map((l) => {
-                const can = levelAllowed(talent, l);
-                return (
-                  <label key={l} className="a2-field block">
-                    <span className="a2-t-xs text-(--a2-ink-3)">
-                      <span className="a2-mono font-bold text-(--a2-ink-2)">{l}</span>{" "}
-                      {levelSpecs[l].name}
-                    </span>
+      <div className="grid gap-3">
+        <Panel flush>
+          <div className="a2-form a2-form-lg a2-card">
+            <FormRow label="문항 구성" req>
+              <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
+                {itemForms.map((f) => (
+                  <label key={f.id} className="a2-choice">
                     <input
-                      type="number"
-                      className="a2-input"
-                      min={0}
-                      max={GENERATE_MAX}
-                      value={counts[l] || 0}
-                      disabled={!can}
-                      onChange={(e) => {
-                        const v = Math.max(
-                          0,
-                          Math.min(GENERATE_MAX, Math.round(Number(e.target.value) || 0)),
-                        );
-                        setCounts((prev) => ({ ...prev, [l]: v }));
+                      type="radio"
+                      name="gen-form"
+                      checked={form === f.id}
+                      onChange={() => {
+                        setForm(f.id);
                         setErrors([]);
                       }}
                     />
-                    {!can && (
-                      <span className="a2-hint">{talent} 축은 이 단계를 만들 수 없습니다</span>
-                    )}
+                    {f.label}
                   </label>
-                );
-              })}
-            </span>
-          </FormRow>
+                ))}
+              </div>
+              {isSet && (
+                <LevelCounts
+                  counts={counts}
+                  total={total}
+                  min={0}
+                  max={SET_MAX}
+                  allowed={(l) => levelAllowed(q.talent, l)}
+                  disabled={false}
+                  onChange={(l, n) => {
+                    setCounts((prev) => ({ ...prev, [l]: n }));
+                    setErrors([]);
+                  }}
+                />
+              )}
+            </FormRow>
+          </div>
+        </Panel>
 
-          {/* ── 여기부터 선택. 뽑고 나서 문항을 보고 붙여도 되는 것들 ── */}
-          <FormRow label="Tag A">
-            <input
-              className="a2-input a2-input-lg a2-mono"
-              style={{ maxWidth: "11rem" }}
-              value={standardCode}
-              onChange={(e) => setStandardCode(e.target.value)}
-              placeholder={band === "3-4" ? "[4국04-01]" : "[6국04-01]"}
+        <Panel title="분류" flush>
+          <div className="a2-form a2-form-lg a2-card">
+            <BandUnitRows
+              value={place}
+              disabled={false}
+              onChange={(patch) => {
+                setPlace((p) => ({
+                  band: patch.band ?? p.band,
+                  subject: patch.subject ?? p.subject,
+                  unit: patch.unit ?? p.unit,
+                  unitNo: patch.unitNo ?? p.unitNo,
+                  unitTerm: patch.unitTerm ?? p.unitTerm,
+                }));
+                setErrors([]);
+              }}
             />
-            {/* 학년군마다 앞자리가 다르다. 코드를 틀리면 5·6학년군 내용을 3·4학년군에
-                내는 일이 생기므로, 무엇을 기준으로 보는지 여기서 적어 둔다 */}
-            <span className="a2-t-xs text-(--a2-ink-4)">
-              {gradeBands.find((g) => g.id === band)?.note}
-            </span>
-          </FormRow>
+            <QuestionClassRows
+              q={q}
+              band={place.band}
+              disabled={false}
+              withLevel={!isSet}
+              onChange={pickQ}
+            />
+          </div>
+        </Panel>
 
-          <FormRow label="Tag B">
-            <select
-              className="a2-select a2-input-lg"
-              style={{ maxWidth: "13rem" }}
-              value={talent}
-              onChange={(e) => pickTalent(e.target.value as TalentId)}
-            >
-              {talents.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="a2-select a2-input-lg"
-              style={{ maxWidth: "16rem" }}
-              value={subskill}
-              onChange={(e) => setSubskill(e.target.value)}
-            >
-              {subskills.map((v) => (
-                <option key={v.code} value={v.code}>
-                  {v.code} · {v.name}
-                </option>
-              ))}
-            </select>
-          </FormRow>
-
-          <FormRow label="단원">
-            <input
-              className="a2-input a2-input-lg"
-              style={{ maxWidth: "18rem" }}
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="낱말의 의미 관계"
-            />
-            <input
-              className="a2-input a2-input-lg a2-mono"
-              style={{ maxWidth: "6rem" }}
-              value={unitNo}
-              onChange={(e) => setUnitNo(e.target.value)}
-              placeholder="02"
-              aria-label="단원 번호"
-            />
-          </FormRow>
-
-          <FormRow label="출제 지시">
-            <textarea
-              className="a2-textarea"
-              rows={2}
-              value={brief}
-              onChange={(e) => setBrief(e.target.value)}
-              placeholder="소재·주의사항을 적으면 문항마다 유의사항에 그대로 남습니다. 예 — 계절 소재는 피할 것"
-            />
-          </FormRow>
-        </div>
-      </Panel>
+        <Panel flush>
+          <div className="a2-form a2-form-lg a2-card">
+            <FormRow label="출제 지시">
+              <GrowTextarea
+                className="a2-textarea a2-textarea-lg"
+                rows={2}
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="소재·주의사항을 적으면 문항마다 유의사항에 그대로 남습니다. 예 — 계절 소재는 피할 것"
+                aria-label="출제 지시"
+              />
+            </FormRow>
+          </div>
+        </Panel>
+      </div>
 
       {errors.length > 0 && (
-        <ul className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-danger)" }}>
+        /* 한 줄에 하나씩 — a2-note는 가로로 늘어놓는 줄이라, 막힌 까닭 둘셋이 한 줄에 붙어 읽혔다 */
+        <ul
+          className="a2-note mt-2 flex-col gap-0.5"
+          style={{ borderLeftColor: "var(--a2-danger)" }}
+        >
           {errors.map((e) => (
             <li key={e}>{e}</li>
           ))}
@@ -311,7 +227,7 @@ export default function Generator({
           disabled={total === 0}
           onClick={run}
         >
-          {total > 0 ? `${total}문항 생성` : "생성"}
+          {isSet ? (total > 0 ? `세트 ${total}문항 생성` : "생성") : "문항 생성"}
         </button>
       </div>
     </div>

@@ -16,8 +16,12 @@ export default function CommentList({ comments }: { comments: ItemComment[] }) {
         <li key={i} className="border-b border-exam-line py-3.5">
           <p className="adm-t-sm font-bold text-exam-text">
             {c.by} · {c.at}
-            {c.kind === "reject" && c.code && (
-              <span className="ml-2 text-rose-700">반려 — {rejectLabel(c.code)}</span>
+            {/* 새 콘솔 검수판의 반려는 사유 코드가 없을 수 있다. 코드가 없다고 「반려」까지 빼면
+                승인도 반려도 아닌 말로 읽힌다 */}
+            {c.kind === "reject" && (
+              <span className="ml-2 text-rose-700">
+                반려{c.code ? ` — ${rejectLabel(c.code)}` : ""}
+              </span>
             )}
             {c.kind === "approve" && <span className="ml-2 text-emerald-700">승인</span>}
             {c.kind === "note" && <span className="ml-2 text-exam-muted">코멘트</span>}

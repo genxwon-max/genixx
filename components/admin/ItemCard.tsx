@@ -265,7 +265,7 @@ export default function ItemCard({ id }: { id: string }) {
                 className={`${a.input} tabular-nums`}
               />
             </Field>
-            <Field label="단원명">
+            <Field label="교과 단원">
               <input
                 value={item.unit}
                 onChange={(e) => set({ unit: e.target.value })}
@@ -417,7 +417,7 @@ export default function ItemCard({ id }: { id: string }) {
           title="이중태그"
           note="Tag A(학력) 세부 + Tag B(재능 · 하위요소 · 단계) 3원 좌표"
         >
-          <Field label="Tag A 세부 — 이 문항이 재는 학력">
+          <Field label="학습 요소 — 이 문항이 재는 학력">
             <input
               value={item.tagADetail}
               onChange={(e) => set({ tagADetail: e.target.value })}
@@ -707,7 +707,7 @@ export default function ItemCard({ id }: { id: string }) {
           {(item.type === "descriptive" || item.type === "essay") && (
             <div className="mt-4">
               <Field
-                label="루브릭"
+                label="부분점수"
                 hint="배점 항목마다 「인정 예 / 불인정 예」를 함께 적습니다(§9)."
               >
                 <textarea
@@ -723,7 +723,7 @@ export default function ItemCard({ id }: { id: string }) {
           )}
 
           <div className="mt-4">
-            <Field label="정답 · 채점 설명">
+            <Field label="모범답안">
               <textarea
                 value={item.explain}
                 onChange={(e) => set({ explain: e.target.value })}
@@ -757,7 +757,7 @@ export default function ItemCard({ id }: { id: string }) {
         </Section>
 
         {/* 제출 전 체크리스트 */}
-        <Section no="✓" title="제출 전 최종 체크리스트" note="발주서 §9">
+        <Section no="✓" title="Ⅲ. 제출 전 자가 체크리스트" note="전 항목 ☑ 후 제출">
           <ul className="border-t border-exam-line">
             {submitChecklist.map((c) => {
               const auto =

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { assessment } from "@/lib/exam";
 import { levelSpecs } from "@/lib/blueprint";
 import { renderDetail } from "@/lib/richText";
-import { choicesOf, needsRubric, typeLabel, type ItemDraft, type Question } from "@/lib/itemStore";
+import { choicesOf, typeLabel, type ItemDraft, type Question } from "@/lib/itemStore";
 
 /**
  * 문항을 **아이가 보는 그대로** 띄운다 (EXP-03 검수의 미리보기).
@@ -29,8 +29,9 @@ import { choicesOf, needsRubric, typeLabel, type ItemDraft, type Question } from
  *
  * ── 검수하는 사람만 보는 것 ──
  * 이 화면은 아이가 아니라 **검수자**가 연다. 그래서 아이 화면 위에 정답 · 오답 의도 ·
- * 해설 · 허용 답안 · 채점 루브릭 · 출제자 유의사항을 겹쳐 얹는다. 그것들을 보려고 폼으로
- * 되돌아가야 하면 「이 오답이 정말 그 오개념을 잡는가」를 발문 옆에 두고 볼 수가 없다.
+ * 모범답안 · 허용 답안 · 부분점수 · 인정/불인정 예 · 재능 평가 관점 · 출제자 유의를
+ * 겹쳐 얹는다. 그것들을 보려고 폼으로 되돌아가야 하면 「이 오답이 정말 그 오개념을
+ * 잡는가」를 발문 옆에 두고 볼 수가 없다.
  *
  * 겹친 것은 **아이 화면과 다르게 그린다** — 점선 테두리에 이름표를 달아, 지금 보는 것이
  * 시험지에 없는 글이라는 사실이 한눈에 보이게 한다. 머리의 단추로 걷어 내면 아이가 보는
@@ -172,9 +173,9 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
 
             <div className="grid gap-px bg-exam-line">
               {qs.map(one)}
-              {reveal && item.guidance.trim() !== "" && (
-                <section className="bg-exam-panel px-6 py-6 md:px-9">
-                  <Keyed label="출제자 유의사항">{item.guidance}</Keyed>
+              {reveal && (item.guidance.trim() !== "" || item.reviewRequest.trim() !== "") && (
+                <section className="grid gap-3 bg-exam-panel px-6 py-6 md:px-9">
+                  <AuthorNotes item={item} />
                 </section>
               )}
             </div>
@@ -193,9 +194,9 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
             )}
             <div className={`overflow-hidden rounded-[8px] ${hasPassage ? "mt-4" : ""}`}>
               {one(qs[0], 0)}
-              {reveal && item.guidance.trim() !== "" && (
-                <section className="bg-exam-panel px-6 pb-7 md:px-9">
-                  <Keyed label="출제자 유의사항">{item.guidance}</Keyed>
+              {reveal && (item.guidance.trim() !== "" || item.reviewRequest.trim() !== "") && (
+                <section className="grid gap-3 bg-exam-panel px-6 pb-7 md:px-9">
+                  <AuthorNotes item={item} />
                 </section>
               )}
             </div>
@@ -333,19 +334,46 @@ function QuestionBlock({
           {q.type === "short" && q.shortAnswers.trim() !== "" && (
             <Keyed label="허용 답안">{q.shortAnswers}</Keyed>
           )}
-          {needsRubric(q.type) && q.rubric.trim() !== "" && (
-            <Keyed label="채점 루브릭">{q.rubric}</Keyed>
-          )}
           {!writing && (q.answer < 0 || q.answer >= choices.length) && (
             <Keyed label="정답">
               정답 번호({q.answer + 1})가 보기 수({choices.length})를 벗어났습니다. 유형을 바꾸면서 보기가
               줄었을 수 있습니다.
             </Keyed>
           )}
-          {q.explain.trim() !== "" && <Keyed label="정답 · 해설">{q.explain}</Keyed>}
+          {q.explain.trim() !== "" && <Keyed label="모범답안">{q.explain}</Keyed>}
+          {/* 부분점수 · 인정/불인정 예는 형식을 가리지 않고 적은 것이 있으면 그린다. 한동안 쓰는
+              형식에서만 그렸는데, 선택형에도 그 칸을 열어 두어(QuestionEditor) 적은 것이 검수자에게
+              안 보이게 된다. 서술형에서 돌린 문항의 옛 기준도 편집 화면에 그대로 보여 지울 수 있다 */}
+          {q.rubric.trim() !== "" && <Keyed label="부분점수">{q.rubric}</Keyed>}
+          {(q.acceptExamples.trim() !== "" || q.rejectExamples.trim() !== "") && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <Keyed label="인정 예">{q.acceptExamples.trim() || "—"}</Keyed>
+              <Keyed label="불인정 예">{q.rejectExamples.trim() || "—"}</Keyed>
+            </div>
+          )}
+          {(q.perspectiveHierarchy.trim() !== "" || q.perspectiveAbility.trim() !== "") && (
+            <Keyed label="재능 평가 관점">
+              {[
+                q.perspectiveHierarchy.trim() && `인지 처리 위계 — ${q.perspectiveHierarchy.trim()}`,
+                q.perspectiveAbility.trim() && `인지 능력 수준 — ${q.perspectiveAbility.trim()}`,
+              ]
+                .filter(Boolean)
+                .join("\n")}
+            </Keyed>
+          )}
         </div>
       )}
     </section>
+  );
+}
+
+/** 출제위원이 검수자에게 건넨 말 — 출제자 유의와 검토 요청 */
+function AuthorNotes({ item }: { item: ItemDraft }) {
+  return (
+    <>
+      {item.guidance.trim() !== "" && <Keyed label="출제자 유의">{item.guidance}</Keyed>}
+      {item.reviewRequest.trim() !== "" && <Keyed label="검토 요청">{item.reviewRequest}</Keyed>}
+    </>
   );
 }
 

@@ -717,17 +717,21 @@ function History({ reviews }: { reviews: ReviewRecord[] }) {
               <span
                 className={`ml-2 ${r.verdict === "approve" ? "text-emerald-700" : "text-rose-700"}`}
               >
+                {/* 새 콘솔 검수판의 반려는 사유 코드가 없을 수 있다 — 「사유 없음」으로 적으면
+                    까닭 없이 돌려보낸 것으로 읽힌다. 어느 갈래였는지는 아래 3단 줄에 선다 */}
                 {r.verdict === "approve"
                   ? "승인"
-                  : `반려 — ${r.code ? rejectLabel(r.code) : "사유 없음"}`}
+                  : `반려${r.code ? ` — ${rejectLabel(r.code)}` : ""}`}
               </span>
               {/* 누가 본 것인지가 이 기록의 값이다 — 기계와 자가 검수는 반드시 적는다 */}
               {r.machine && <span className="ml-2 text-violet-800">기계 검수</span>}
               {r.self && <span className="ml-2 text-amber-700">본인 출제 문항 자가 검수</span>}
             </p>
-            <p className="mt-1.5 whitespace-pre-line adm-t-md leading-relaxed text-exam-muted">
-              {r.text}
-            </p>
+            {r.text && (
+              <p className="mt-1.5 whitespace-pre-line adm-t-md leading-relaxed text-exam-muted">
+                {r.text}
+              </p>
+            )}
 
             <ul className="mt-2.5 space-y-1">
               {r.checks.map((c) => {
