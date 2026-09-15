@@ -76,6 +76,9 @@
     --a2-side-line: #313c52;
     --a2-side-ink: #c5cddb;
     --a2-side-ink-2: #909aad;
+    /* 맨 위 글자 크기 띠 — 기둥보다 한 단계 어둡다. 같은 색이면 상단 바와 한 덩어리로
+       붙어 그 줄이 상단 바의 윗부분처럼 읽힌다 */
+    --a2-side-0: #121826;
 
     --a2-accent: #2563eb;
     --a2-accent-2: #1d4ed8;
@@ -571,9 +574,10 @@
   .a2-table-wrap.a2-table-fits {
     overflow-x: visible;
   }
-  /* 가로 스크롤을 끈 상자 = 화면이 스크롤포트다. 이때만 상단 바 아래로 내린다 */
+  /* 가로 스크롤을 끈 상자 = 화면이 스크롤포트다. 이때만 상단 바 아래로 내린다.
+     상단 바 위에는 글자 크기 띠가 한 줄 더 있다(--a2-top, .a2-shell 주석) */
   .a2-table-wrap.a2-table-fits .a2-table th {
-    top: 40px;
+    top: calc(40px + var(--a2-top, 0px));
   }
 
   /* ── 쪽 번호 ──
@@ -1752,6 +1756,75 @@
         transparent calc(100% / 22)
       ),
       var(--a2-panel);
+  }
+
+  /* ── 껍데기 · 글자 크기 ──
+     글자 크기는 zoom 하나로 콘솔 전체를 같은 비율로 키운다. /admin처럼 글자만 키우는
+     길(--adm-zoom)은 이 콘솔에서 못 쓴다 — 버튼 28/32px · 입력 32px · 기둥 항목 30px처럼
+     높이를 px로 박은 자리가 많아, 글자만 1.25배가 되면 그 상자 안에서 잘린다.
+
+     글자 크기 띠(.a2-zoombar)는 zoom 바깥에 둔다. 안에 두면 ＋를 누를 때마다 띠와 단추가
+     함께 커져서 다음 ＋가 손 밑에서 비켜난다.
+
+     ⚠ zoom 안에서는 px만이 아니라 vh에도 배율이 곱해진다(Chromium — 1.5배에서 100vh가
+       화면 높이의 1.5배로 섰다). 그래서 zoom 안에서 화면 높이 · 띠 아래 자리를 쓰는 곳은
+       배율로 나눈 두 값(--a2-top · --a2-screen)을 쓴다.
+     ⚠ 두 값을 --a2-zoom과 **같은 요소에** 선언한다. 사용자 속성 안의 var()는 선언한
+       요소에서 풀려 내려가므로, .a2에 적어 두면 껍데기가 바꿔 넣은 배율을 못 보고 1로 굳는다. */
+  .a2-shell {
+    --a2-zoom: 1;
+    --a2-strip: 28px;
+    --a2-top: calc(var(--a2-strip) / var(--a2-zoom));
+    --a2-screen: calc((100vh - var(--a2-strip)) / var(--a2-zoom));
+  }
+  .a2-scaled {
+    zoom: var(--a2-zoom);
+  }
+  .a2-zoombar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    height: var(--a2-strip);
+    padding-inline: 12px;
+    background: var(--a2-side-0);
+    color: var(--a2-side-ink-2);
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+  .a2-zoom-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 20px;
+    border-radius: var(--a2-radius);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--a2-side-ink);
+    transition:
+      background-color 100ms,
+      color 100ms;
+  }
+  .a2-zoom-btn:hover {
+    background: var(--a2-side-2);
+    color: #fff;
+  }
+  .a2-zoom-btn:disabled {
+    cursor: not-allowed;
+    background: transparent;
+    color: #4a556b;
+  }
+  /* 보이는 상자는 띠에 맞춰 작게 두고, 눌리는 넓이는 띠 높이까지 넓힌다 */
+  .a2-zoom-btn::after {
+    content: "";
+    position: absolute;
+    inset: -4px -2px;
   }
 
   /* ── 왼쪽 기둥 ── */

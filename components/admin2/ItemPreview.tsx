@@ -155,9 +155,10 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
         {set ? (
           /* ── 세트 — 왼쪽 자료, 오른쪽 문항 여럿 ──
              자료 칸은 화면에 붙여 둔다(sticky). 오른쪽을 3번까지 내려가도 왼쪽 글이
-             따라와야 「두 번 읽히지 않는다」가 지켜진다 */
+             따라와야 「두 번 읽히지 않는다」가 지켜진다.
+             높이의 100vh는 콘솔 글자 크기(zoom)에 곱해지므로 배율로 나눠 쓴다(admin2.css .a2-shell) */
           <div className="mx-auto grid min-h-full max-w-[80rem] gap-px bg-exam-line lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-            <section className="bg-exam-panel px-6 py-7 md:px-9 md:py-9 lg:sticky lg:top-0 lg:max-h-[calc(100vh-4rem)] lg:self-start lg:overflow-y-auto">
+            <section className="bg-exam-panel px-6 py-7 md:px-9 md:py-9 lg:sticky lg:top-0 lg:max-h-[calc(100vh/var(--a2-zoom,1)-4rem)] lg:self-start lg:overflow-y-auto">
               <p className="text-[12px] font-bold tracking-wide text-exam-muted">함께 읽는 자료</p>
               {hasPassage ? (
                 <div

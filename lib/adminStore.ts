@@ -12,7 +12,9 @@ import type { StaffRoleId } from "./admin";
  *
  * 저장하는 것은 세 가지 —
  *  1) 지금 들어와 있는 운영자 계정(아이디·이름·역할)
- *  2) 글자 크기 배율 (50~60대 사용자가 직접 올려 쓰는 값이라 반드시 기억해야 한다)
+ *  2) 글자 크기 배율 (50~60대 사용자가 직접 올려 쓰는 값이라 반드시 기억해야 한다).
+ *     /admin과 /admin2가 따로 든다 — 기준 글자가 15px과 13px로 달라서, 한 값을 나눠 쓰면
+ *     한쪽에서 맞춰 둔 크기가 다른 쪽에서는 다른 크기가 된다.
  *  3) 임시 비밀번호를 아직 안 바꿨는지 (안내 띠를 띄우기 위한 값)
  *
  * 비밀번호는 담지 않는다 — lib/staffStore.ts의 설명 참조.
@@ -27,6 +29,8 @@ export type AdminPrefs = {
   temp: boolean;
   /** 글자 크기 배율. 1이 기본이고 ZOOM_LEVELS 안의 값만 들어간다 */
   zoom: number;
+  /** /admin2 콘솔의 글자 크기 배율 — zoom과 같은 눈금을 쓴다 */
+  a2Zoom: number;
 };
 
 /**
@@ -58,6 +62,7 @@ const DEFAULT: AdminPrefs = {
   role: "super",
   temp: false,
   zoom: 1,
+  a2Zoom: 1,
 };
 
 const KEY = "genixx.admin";
@@ -115,8 +120,8 @@ export function adminSignIn(account: {
  * 그대로 쓰면 － 나 ＋ 를 빠르게 두 번 눌렀을 때 두 번째가 첫 번째와 같은 값에서
  * 출발해 한 칸만 움직인다.
  */
-export function bumpZoom(dir: 1 | -1) {
-  patchAdminPrefs({ zoom: stepZoom(read().zoom, dir) });
+export function bumpZoom(dir: 1 | -1, key: "zoom" | "a2Zoom" = "zoom") {
+  patchAdminPrefs({ [key]: stepZoom(read()[key], dir) });
 }
 
 export function adminSignOut() {

@@ -254,8 +254,9 @@ export function QuestionClassRows({
   band: GradeBand;
   disabled: boolean;
   /**
-   * 인지단계 · 형식 · 배점 줄을 세우는가. 세트를 한꺼번에 뽑는 생성 판은 끈다 — 단계별 문항 수가
-   * 단계를 정하고, 형식 · 배점은 단계마다 고정 매핑을 따라서 한 벌로 고를 값이 아니다.
+   * 인지단계 · 형식 · 배점 줄을 세우는가. 여러 단계를 한꺼번에 뽑는 생성 판(단일 · 세트 모두)은
+   * 끈다 — 단계별 문항 수가 단계를 정하고, 형식 · 배점은 단계마다 고정 매핑을 따라서 한 벌로 고를
+   * 값이 아니다.
    */
   withLevel?: boolean;
   onChange: (next: Question) => void;

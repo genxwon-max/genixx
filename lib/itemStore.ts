@@ -2300,7 +2300,7 @@ export type GenerateSpec = {
   unit: string;
   unitNo: string;
   standardCode: string;
-  /** 단계별 몇 문항을 뽑을지. 새 콘솔의 단일은 고른 인지단계 하나에 1 */
+  /** 단계별 몇 문항을 뽑을지. 단일이면 문항마다 한 장씩, 세트면 모두 한 장에 담는다 */
   counts: Record<Level, number>;
   /** 소재·주의사항 지시문 */
   brief: string;
@@ -2318,7 +2318,11 @@ export type GenerateSpec = {
   standardText?: string;
   tagADetail?: string;
   tagAIntent?: string;
-  /** 단일의 형식 · 배점. 세트는 단계마다 고정 매핑(typeForLevel · levelSpecs)을 따른다 */
+  /**
+   * 단일의 형식 · 배점. 세트는 단계마다 고정 매핑(typeForLevel · levelSpecs)을 따른다.
+   * 비우면 단일도 고정 매핑을 따른다 — 새 콘솔도 단일에서 여러 단계를 한꺼번에 뽑게 되면서
+   * 지금은 두 콘솔 모두 넘기지 않는다(Generator.tsx 머리 주석).
+   */
   type?: ItemType;
   points?: number;
 };
