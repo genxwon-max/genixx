@@ -23,6 +23,7 @@ import { ensureReport } from "@/lib/reportStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { isAnswered } from "./ExamSession";
 import SectionTitle from "./SectionTitle";
+import StudentOnly from "./StudentOnly";
 import { ArrowRight } from "@/components/Icons";
 import {
   btnGhost,
@@ -55,7 +56,20 @@ const stateText: Record<string, { label: string; className: string }> = {
   none: { label: "미제출", className: "font-bold text-rose-600" },
 };
 
-export default function StatusTable() {
+/**
+ * 과목을 하나씩 응시하는 판.
+ *
+ * 응시 첫 화면(ExamCatalog)에서 평가 카드의 「응시하기」를 누르면 여기로 온다. 머리에는
+ * 고른 평가(회차 · 학년)를 적는다 — 넘겨받지 않으면 예전처럼 지금 회차 이름을 쓴다.
+ */
+export type StatusHeading = {
+  eyebrow: string;
+  title: string;
+  /** 「2026.08.01 ~ 2026.08.31」 */
+  period: string;
+};
+
+export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
@@ -75,30 +89,7 @@ export default function StatusTable() {
 
   // 학생 세션이 아니면 응시 현황을 볼 대상이 없다
   if (hydrated && session && session.role !== "student") {
-    const home = session.role === "director" ? "/my/students" : "/my/children";
-    return (
-      <div className="py-10">
-        <div className={`mx-auto max-w-lg p-8 text-center ${panel}`}>
-          <p className={eyebrow}>학생 화면</p>
-          <h1 className="mt-3 text-[20px] font-bold text-soft-ink">
-            응시 현황은 학생 계정에서 확인합니다
-          </h1>
-          <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
-            학생에게 발급한 접속코드로 들어가면 이 화면이 열립니다. 보호자도 같은 코드로 들어와
-            설문만 진행할 수 있습니다.
-          </p>
-          <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Link href={home} className={btnPrimary}>
-              학생 관리로
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href="/login/student" className={btnGhost}>
-              학생 코드로 접속
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <StudentOnly role={session.role} />;
   }
 
   const openExam = (subject: string) => examWindow(`/exam/session/${subject}`);
@@ -109,13 +100,13 @@ export default function StatusTable() {
       {/* 응시자 정보 */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div>
-          <p className={eyebrow}>ASM-01 · 응시 현황</p>
+          <p className={eyebrow}>{heading?.eyebrow ?? "ASM-01 · 응시 현황"}</p>
           <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
-            {assessment.name} {config.roundLabel} 진단 현황
+            {heading?.title ?? `${assessment.name} ${config.roundLabel} 진단 현황`}
           </h1>
         </div>
         <p className="text-[12px] text-soft-muted">
-          응시 기간 {config.opensAt} ~ {config.closesAt} · 조회 기준{" "}
+          응시 기간 {heading?.period ?? `${config.opensAt} ~ ${config.closesAt}`} · 조회 기준{" "}
           {fmt(new Date().toISOString())}
         </p>
       </div>
@@ -337,7 +328,7 @@ export default function StatusTable() {
             시연용 초기화
           </button>
           {record.finalized ? (
-            <Link href="/exam/result" className={btnPrimary}>
+            <Link href="/exam/report" className={btnPrimary}>
               결과 확인
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -379,7 +370,7 @@ export default function StatusTable() {
               record,
             );
             setAskFinal(false);
-            router.push("/exam/result");
+            router.push("/exam/report");
           }}
         />
       )}

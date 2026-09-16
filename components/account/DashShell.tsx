@@ -6,8 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { roleLabel, signOut, useSession, type Role } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
-import { deadlineDays } from "@/lib/exam";
-import { useExamConfig } from "@/lib/roundStore";
 import { ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
 
@@ -15,8 +13,9 @@ import { LogoLockup } from "@/components/Logo";
  * 로그인 후 회원 존의 껍데기 — 좌측 아이콘 레일 + 상단 상태바.
  *
  * 공개 존(마케팅 헤더 + 푸터)과 다른 껍데기를 쓴다. 로그인한 사람에게 필요한 것은
- * 회사 소개 메뉴가 아니라 「지금 어느 회차이고, 내 자리에서 어디로 갈 수 있는가」다.
- * 그래서 상단에는 회차·마감·역할을, 좌측에는 존 이동만 둔다.
+ * 회사 소개 메뉴가 아니라 「내 자리에서 어디로 갈 수 있는가」다. 그래서 상단에는 등록
+ * 학생 수와 계정만, 좌측에는 존 이동만 둔다. 회차·마감은 뺐다 — 보호자가 손댈 수 없는
+ * 값이라 늘 켜 두면 배경이 되고, 회차는 결과·접수 화면이 저마다 자기 자리에서 말한다.
  *
  * 메뉴는 사이트맵·메뉴 정의서(2026-08-05, 개발발주용)의 P0 화면에서 뽑았다. 화면 ID를
  * 항목마다 적어 두었으니 정의서와 나란히 놓고 대조할 수 있다. 정의서에 있으나 아직
@@ -224,7 +223,6 @@ function Chip({ k, v }: { k: string; v: string }) {
 export default function DashShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hydrated = useHydrated();
-  const config = useExamConfig();
   const session = useSession();
   const roster = useRoster();
 
@@ -235,7 +233,6 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
   const name = session?.name ?? "회원";
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
-  const dday = hydrated ? deadlineDays(new Date(), config.closesAt) : null;
 
   return (
     <div className="flex min-h-full bg-[#f4f6fb] text-soft-ink">
@@ -279,11 +276,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
             </span>
 
             <div className="ml-auto flex items-center gap-3">
-              <Chip k="회차" v={config.roundLabel} />
-              {dday !== null && (
-                <Chip k="응시 마감" v={dday > 0 ? `D-${dday}` : dday === 0 ? "오늘" : "마감"} />
-              )}
-              <Chip k={isOrg ? "등록 학생" : "등록 학생"} v={`${hydrated ? mine.length : 0}명`} />
+              <Chip k="등록 학생" v={`${hydrated ? mine.length : 0}명`} />
               <UserMenu name={name} role={session?.role} />
             </div>
           </div>

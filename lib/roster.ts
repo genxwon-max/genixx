@@ -37,10 +37,27 @@ export type Student = {
   grade?: string;
   /** 반·학급 (학원장 등록 시) */
   klass?: string;
+  /**
+   * 학생 본인 휴대전화. 아이가 자기 전화를 가지고 있을 때만 받는다 — 접속코드를
+   * 보호자를 거치지 않고 바로 보낼 수 있는 곳이라, 없으면 없는 대로 둔다.
+   */
+  phone?: string;
   /** 법정대리인 연락처 */
   guardianPhone?: string;
   /** 법정대리인 성명 — 동의를 받기 위한 최소정보 */
   guardianName?: string;
+  /** 보호자가 등록할 때 적은 선택 항목 (학부모 등록 시) */
+  profile?: ChildProfile;
+  /**
+   * 설문 링크를 문자로 보낸 기록 — 키는 lib/examStore.ts의 SurveyKey.
+   *
+   * 어머니·아버지·교사는 서로 다른 사람이라 연락처가 셋이다. 보호자 연락처
+   * (guardianPhone) 한 칸으로는 담기지 않아 따로 둔다. 다음에 같은 설문을 다시 보낼 때
+   * 번호를 또 치지 않도록 마지막으로 보낸 번호를 기억한다.
+   *
+   * 저장소 타입이 examStore를 물지 않도록 키는 문자열로 둔다.
+   */
+  surveySends?: Record<string, { phone: string; at: string }>;
   /**
    * 보호자 동의 상태. 만 14세 미만은 "temp"에서 출발해 동의가 확인되면 "granted"가
    * 되고, 만 14세 이상 학생이 본인 가입한 경우에는 "self"로 둔다.
@@ -60,6 +77,26 @@ export type Student = {
   /** 등록한 기관·보호자 이름 */
   ownerName: string;
   createdAt: string;
+};
+
+/**
+ * 결과를 더 잘 읽기 위해 받는 선택 항목. 비어 있어도 등록과 응시에는 지장이 없다.
+ * 학교명·학년은 명부 칸(school·grade)에 그대로 두고, 여기에는 그 밖의 값만 담는다.
+ */
+export type ChildProfile = {
+  gender?: string;
+  /** 시·도까지만 */
+  region?: string;
+  interests?: string[];
+  /** 보호자가 관찰한 자녀 특성 — 진단 결과를 해석할 때만 쓴다 */
+  observation?: string;
+  schoolType?: string;
+  /** 가정에서 주로 쓰는 언어 — 국어 지필 해석 보정 */
+  language?: string;
+  devices?: string[];
+  screenTime?: string;
+  learning?: string[];
+  learningNote?: string;
 };
 
 /** 생년월일만 보고 처음 놓일 상태를 고른다. 만 14세 이상은 동의 대기가 없다. */
@@ -177,8 +214,10 @@ export type NewStudent = {
   school?: string;
   grade?: string;
   klass?: string;
+  phone?: string;
   guardianPhone?: string;
   guardianName?: string;
+  profile?: ChildProfile;
 };
 
 /** 여러 명을 한 번에 등록하고 각각 유일한 코드를 발급한다. */
@@ -198,8 +237,10 @@ export function addStudents(rows: NewStudent[], owner: Owner, ownerName: string)
       school: row.school?.trim() || undefined,
       grade: row.grade?.trim() || undefined,
       klass: row.klass?.trim() || undefined,
+      phone: row.phone?.trim() || undefined,
       guardianPhone: row.guardianPhone?.trim() || undefined,
       guardianName: row.guardianName?.trim() || undefined,
+      profile: row.profile,
       consent: initialConsent(row.birth, owner),
       owner,
       ownerName,
@@ -256,6 +297,23 @@ export function revokeGuardianConsent(id: string) {
 /** 기한 안에 처리되지 않은 요청을 만료로 돌린다 */
 export function expireGuardianConsent(id: string) {
   patchStudent(id, { consent: "expired", consentAt: new Date().toISOString() });
+}
+
+/**
+ * 설문 링크를 문자로 보냈다 — 보낸 번호를 그 설문 자리에 적어 둔다.
+ *
+ * ⚠ 실제 발송은 여기서 일어나지 않는다. 화면이 발송 API를 부른 뒤 그 결과를 이 함수로
+ *   남긴다. 붙일 때 순서가 뒤집히지 않도록 「보냈다고 적는 일」만 맡긴다.
+ */
+export function recordSurveySend(id: string, key: string, phone: string) {
+  const student = findById(id);
+  if (!student) return;
+  patchStudent(id, {
+    surveySends: {
+      ...student.surveySends,
+      [key]: { phone: phone.replace(/\D/g, ""), at: new Date().toISOString() },
+    },
+  });
 }
 
 /** 결과를 보호자에게 공유할지 — 학생 본인이 정한다 */

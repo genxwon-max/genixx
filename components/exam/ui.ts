@@ -46,6 +46,16 @@ export const td = "border-b border-slate-100 px-3 py-3.5 text-center text-soft-m
 export const tdStrong =
   "border-b border-slate-100 px-3 py-3.5 text-center font-semibold text-soft-ink";
 
+/* ── 각진 버튼 — 응시 첫 화면(/exam)과 그 확인 창 ──
+   공공 서비스 접수 화면처럼 모서리를 거의 세운다. 알약 모양(rounded-full)은 홍보 화면의
+   말투라, 시험을 고르는 자리에서는 가볍게 읽힌다. 카드만 둥글게 둔다. */
+export const btnBox =
+  "inline-flex items-center justify-center rounded-[4px] bg-soft-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-soft-primary-dark";
+export const btnBoxGhost =
+  "inline-flex items-center justify-center rounded-[4px] border border-soft-line bg-white px-5 py-3 text-sm font-medium text-soft-ink transition-colors hover:bg-slate-50";
+export const btnBoxDisabled =
+  "inline-flex cursor-not-allowed items-center justify-center rounded-[4px] border border-soft-line bg-slate-50 px-5 py-3 text-sm font-medium text-slate-400";
+
 /** 표 안의 작은 버튼 */
 export const btnSm =
   "inline-flex items-center justify-center gap-1 rounded-full bg-soft-primary px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";

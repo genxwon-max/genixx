@@ -147,6 +147,14 @@ export const card = "rounded-[14px] border border-soft-line bg-white";
 export const cardPad = "p-6 sm:p-8";
 export const btnGhost = btnSm;
 
+/* ── 목록 표 ──
+   대시보드 바탕이 #f4f6fb라 표는 흰 면 위에 세우고, 머리 줄만 옅은 회색으로 눌러 둔다.
+   학부모 홈 · 학생 프로필 · 설문이 같은 표를 쓰므로 칸 모양을 여기 한곳에 둔다. */
+export const listTh =
+  "border-b border-soft-line bg-slate-50 px-2.5 py-3 text-center text-[12.5px] font-semibold whitespace-nowrap text-soft-muted";
+export const listTd =
+  "border-b border-slate-100 px-2.5 py-3 text-center text-[13px] text-soft-muted";
+
 export function AccHead({
   title,
   lead,
