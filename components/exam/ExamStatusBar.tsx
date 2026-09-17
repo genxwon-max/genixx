@@ -2,18 +2,23 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { QUESTIONS_PER_SUBJECT, isSubjectId, questionsOf } from "@/lib/exam";
+import { isSubjectId, questionsOf } from "@/lib/exam";
 import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { useExamConfig } from "@/lib/roundStore";
-import { enterFullscreen, leaveFullscreen } from "@/lib/fullscreen";
+import { askExamExit, useExamExitAvailable } from "@/lib/fullscreen";
 import { isAnswered } from "./ExamSession";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-/** 응시 중 화면 오른쪽 위에 붙는 응답 수 · 남은 시간 · 전체화면 토글 */
+/**
+ * 응시 중 화면 오른쪽 위에 붙는 응답 수 · 남은 시간 · 포기하기.
+ *
+ * 전체화면을 끄는 단추는 두지 않는다 — 나가는 길은 「포기하기」 하나고, ESC도 같은 물음을
+ * 연다(lib/fullscreen.ts). 무료 체험은 시계가 없어 「체험 그만하기」만 선다.
+ */
 export default function ExamStatusBar() {
   const pathname = usePathname();
   const hydrated = useHydrated();
@@ -21,7 +26,7 @@ export default function ExamStatusBar() {
   const record = useExamRecord(session?.studentId ?? "demo");
   const config = useExamConfig();
   const [now, setNow] = useState(0);
-  const [full, setFull] = useState(false);
+  const canExit = useExamExitAvailable();
 
   const slug = pathname.startsWith("/exam/session/") ? pathname.split("/")[3] : null;
   const subject = slug && isSubjectId(slug) ? slug : null;
@@ -37,12 +42,9 @@ export default function ExamStatusBar() {
     return () => window.clearInterval(id);
   }, [live]);
 
-  useEffect(() => {
-    const onChange = () => setFull(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
+  if (pathname.startsWith("/exam/session/trial/")) {
+    return canExit ? <ExitLink>체험 그만하기</ExitLink> : null;
+  }
   if (!subject || !rec || !hydrated || !live) return null;
 
   const done = questionsOf(subject).filter((q) => isAnswered(q, rec.answers[q.id])).length;
@@ -61,7 +63,7 @@ export default function ExamStatusBar() {
         </span>
         <span className="text-[14px] font-black tabular-nums text-exam-text">
           {done}
-          <span className="text-exam-muted">/{QUESTIONS_PER_SUBJECT}</span>
+          <span className="text-exam-muted">/{questionsOf(subject).length}</span>
         </span>
       </div>
 
@@ -85,14 +87,23 @@ export default function ExamStatusBar() {
         </span>
       </div>
 
-      <button
-        type="button"
-        onClick={() => (full ? leaveFullscreen() : enterFullscreen())}
-        title={full ? "전체화면 끄기" : "전체화면"}
-        className="rounded-md border border-exam-line bg-exam-panel px-3 py-2 text-[12px] font-bold text-exam-muted transition-colors hover:bg-exam-raised hover:text-exam-text"
-      >
-        {full ? "전체화면 끄기" : "전체화면"}
-      </button>
+      {canExit && <ExitLink>포기하기</ExitLink>}
     </div>
+  );
+}
+
+/** 버튼이 아니라 글 링크로 둔다 — 시험 도중에 눈에 띄게 누를 자리가 아니다 */
+function ExitLink({ children }: { children: string }) {
+  return (
+    <a
+      href="#"
+      onClick={(e) => {
+        e.preventDefault();
+        askExamExit();
+      }}
+      className="ml-2 cursor-pointer whitespace-nowrap text-[13px] font-medium text-exam-muted underline-offset-4 transition-colors hover:text-rose-600 hover:underline"
+    >
+      {children}
+    </a>
   );
 }

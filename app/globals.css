@@ -42,6 +42,8 @@
   --color-exam-line: #ccd5e4;
   --color-exam-text: #1a2242;
   --color-exam-muted: #5e6a88;
+  /* 응시 존 페이지 본문을 담는 판 — 순백(#fff)보다 한 톤 가라앉힌 흰색 */
+  --color-exam-paper: #fbfbfc;
 
   /* 계정 존(ACC) — 공공·영재교육 플랫폼 관행을 따른 별도 팔레트.
      디자인 원본: claude.ai/design "회원가입 및 로그인 디자인" v2.
@@ -91,6 +93,13 @@ body {
   color: #1f2340;
   -webkit-font-smoothing: antialiased;
   word-break: keep-all;
+}
+
+/* 시험지 글꼴 — 자료·발문·보기는 종이 시험지처럼 명조로 짠다.
+   변수는 응시 존 레이아웃(app/(exam)/layout.tsx)에만 걸려 있어 @theme에 두지 않는다 —
+   :root에서 풀면 값이 비어 버린다. 그 밖에서 쓰면 기본 명조로 떨어진다. */
+@utility font-myeongjo {
+  font-family: var(--font-noto-serif-kr), "Noto Serif KR", "Nanum Myeongjo", serif;
 }
 
 /* Reusable page-level helpers */
@@ -473,4 +482,15 @@ body {
   --border: #d9d9d9; /* soft-line */
   --input: #d9d9d9;
   --ring: #365eef;
+}
+
+/* 응시 화면 진자 — 한 주기에 한 번 왕복한다(components/exam/ExamSession.tsx PendulumClip) */
+@keyframes exam-pendulum {
+  0%,
+  100% {
+    transform: rotate(22deg);
+  }
+  50% {
+    transform: rotate(-22deg);
+  }
 }

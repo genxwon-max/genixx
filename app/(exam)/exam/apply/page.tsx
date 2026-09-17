@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ExamCatalog from "@/components/exam/ExamCatalog";
 import ExamGate from "@/components/exam/ExamGate";
+import ExamPaper from "@/components/exam/ExamPaper";
 
 export const metadata: Metadata = {
   title: "접수하기",
@@ -10,10 +11,10 @@ export const metadata: Metadata = {
 
 export default function ApplyPage() {
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-6 py-9 md:px-10 md:py-12">
+    <ExamPaper>
       <ExamGate>
         <ExamCatalog />
       </ExamGate>
-    </div>
+    </ExamPaper>
   );
 }

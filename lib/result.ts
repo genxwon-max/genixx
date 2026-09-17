@@ -6,7 +6,7 @@
  * 결과 화면에서 따로 표기한다.
  */
 
-import { questionsOf, type SubjectId } from "./exam";
+import { answerText, questionsOf, type SubjectId } from "./exam";
 import type { ExamRecord } from "./examStore";
 
 export type AxisId =
@@ -67,8 +67,8 @@ export function scoreSubject(record: ExamRecord, subject: SubjectId) {
   const objective = choice.length ? (correct / choice.length) * 100 : 0;
   const subjective = essay.length
     ? essay.reduce((sum, q) => {
-        const v = rec.answers[q.id];
-        return sum + essayScore(typeof v === "string" ? v : "");
+        /* 괄호 칸 문항은 저장 형식(JSON)이 아니라 쓴 글자로 센다 */
+        return sum + essayScore(answerText(q, rec.answers[q.id]));
       }, 0) / essay.length
     : 0;
 

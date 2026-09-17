@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { GradeBand } from "@/lib/blueprint";
-import { QUESTIONS_PER_SUBJECT, subjects } from "@/lib/exam";
+import { questionCountText, subjects } from "@/lib/exam";
 import { roundStateLabels } from "@/lib/admin";
 import { n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
@@ -218,8 +218,8 @@ export default function NewRoundForm() {
           <div className="a2-form-label">과목당 규격</div>
           <div className="a2-form-field">
             <span className="a2-t-sm text-(--a2-ink-2)">
-              {subjects.map((s) => `${s.short} ${s.limitMin}분`).join(" · ")} · 과목당{" "}
-              <span className="a2-num">{QUESTIONS_PER_SUBJECT}</span>문항
+              {subjects.map((s) => `${s.short} ${s.limitMin}분`).join(" · ")} ·{" "}
+              {questionCountText()}
             </span>
           </div>
         </div>

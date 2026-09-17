@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { examGuideLinks, examMenu } from "@/lib/examNav";
+
+export { examMenu };
 
 /**
  * 응시 존 메뉴 — 접수하기 · 응시하기 · 정답과 해설 · 결과보기.
@@ -15,15 +18,10 @@ import { usePathname } from "next/navigation";
  *
  * 과목 판(/exam/[회차]/[학년])은 응시하기 안의 화면이라 응시하기에 불을 켠다.
  */
-export const examMenu = [
-  { href: "/exam/apply", label: "접수하기" },
-  { href: "/exam", label: "응시하기" },
-  { href: "/exam/answers", label: "정답과 해설" },
-  { href: "/exam/report", label: "결과보기" },
-];
-
 /** 지금 열려 있는 메뉴 — /exam은 다른 것에 걸리지 않을 때의 바닥값이다 */
-export function activeExamHref(pathname: string) {
+export function activeExamHref(pathname: string): string | null {
+  /* 안내 화면(서비스 안내 · 시험 안내)은 메뉴 어느 것에도 속하지 않는다 */
+  if (examGuideLinks.some((l) => pathname === l.href)) return null;
   return (
     examMenu.find(
       (t) => t.href !== "/exam" && (pathname === t.href || pathname.startsWith(`${t.href}/`)),

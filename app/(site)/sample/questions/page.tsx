@@ -9,7 +9,7 @@ import {
   levels,
   questionsOf,
   subjects,
-  QUESTIONS_PER_SUBJECT,
+  questionCountText,
   type SubjectId,
 } from "@/lib/exam";
 import { axes } from "@/lib/result";
@@ -70,7 +70,7 @@ export default function QuestionPreviewPage() {
             {[
               { t: "검사 이름", d: `${assessment.name} (${assessment.ko})` },
               { t: "회차", d: assessment.round },
-              { t: "문항 수", d: `3과목 × ${QUESTIONS_PER_SUBJECT}문항` },
+              { t: "문항 수", d: questionCountText() },
               { t: "제한 시간", d: "과목당 40분" },
             ].map((s) => (
               <div

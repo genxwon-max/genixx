@@ -99,14 +99,55 @@ export const subjects: Subject[] = [
 
 export const SUBJECT_IDS = subjects.map((s) => s.id);
 
+/**
+ * 자료 · 문제에 싣는 사진 한 장.
+ *
+ * `marks`는 사진 위에 그리는 화살표 이름표다(시험지의 「A →」). 사진에 구워 넣지 않고
+ * 따로 그리는 까닭은 글자가 흐려지지 않게 하려는 것이다. 좌표는 사진 크기에 대한 %다 —
+ * (x, y)에 이름을 쓰고 (toX, toY)를 화살표 끝으로 가리킨다.
+ */
+export type Figure = {
+  /** public 경로 */
+  src: string;
+  caption: string;
+  alt: string;
+  /** 이름표 — (toX, toY)가 없으면 화살표 없이 글자만 둔다 */
+  marks?: { label: string; x: number; y: number; toX?: number; toY?: number }[];
+  /** 점선 타원 표시(「흰색 점선으로 표시한 마을」) — 가운데 (x, y), 반지름 (rx, ry), 모두 % */
+  rings?: { x: number; y: number; rx: number; ry: number }[];
+};
+
+/**
+ * 표 자료.
+ *
+ * `groups`는 머리 위에 한 줄 더 얹는 묶음 머리다(「측정 횟수」가 1회 · 2회 · 3회를 덮는 것).
+ * 칸 수만큼 span을 나눠 적고, 빈 머리는 label을 비운다. 칸 안의 줄바꿈은 그대로 줄을 바꾼다.
+ */
+export type Table = {
+  /** 표 위 제목 — 「[측정 결과]」 */
+  caption?: string;
+  head: string[];
+  groups?: { label: string; span: number }[];
+  rows: string[][];
+};
+
 /** 좌측 패널에 들어가는 기본 설명·자료 */
 export type Brief = {
   label: string;
   title: string;
-  /** 문단 단위 본문 */
+  /** 자료 위에 서는 지시문 — 「다음 … 을 읽고 물음에 답하시오.」 (선택) */
+  lead?: string;
+  /**
+   * 문단 단위 본문. 「( ㄱ )」처럼 괄호에 든 자음은 **빈칸 표지**로 읽어 칸 모양으로
+   * 세운다 — 문항이 그 빈칸을 가리켜 묻는다.
+   */
   paragraphs: string[];
+  /** 본문 아래 사진 (선택) */
+  figures?: Figure[];
+  /** 사진을 시간 순서로 읽는가 — 사진 사이에 화살표(⇨)를 세운다 */
+  sequence?: boolean;
   /** 표 형태 자료 (선택) */
-  table?: { head: string[]; rows: string[][] };
+  table?: Table;
   /** 목록 형태 자료 (선택) */
   list?: string[];
   /** 하단 안내 문구 (선택) */
@@ -135,12 +176,11 @@ export type Question = {
   /** 과목 내 순번 (1~10) */
   no: number;
   /**
-   * 함께 읽는 자료를 나눠 쓰는 묶음의 열쇠 — **한 화면에 함께 서는 문항들**.
+   * 함께 읽는 자료를 나눠 쓰는 묶음의 열쇠 — **세트 문항**.
    *
    * 세트를 두는 까닭은 하나다. 자료를 두 번 읽히지 않고 묻는 층을 올린다 — 같은 글을
-   * 놓고 「무엇이라고 했나」(S1)를 묻고 이어서 「왜 그런가」(S3)를 묻는다. 그러려면 그
-   * 자료를 붙들어 둔 채 문항을 내려가야 하고, 한 문항씩 넘기면 2번을 풀다가 자료를 보러
-   * 되돌아가게 된다.
+   * 놓고 「무엇이라고 했나」(S1)를 묻고 이어서 「왜 그런가」(S3)를 묻는다. 응시 화면은
+   * 왼쪽에 그 자료를 붙들어 둔 채 오른쪽 문제만 문제 1 → 문제 2로 넘긴다.
    *
    * 값은 손으로 적지 않고 **같은 자료(brief)를 쓰는 문항끼리 묶어** 매긴다(withSets).
    * 자료를 나눠 쓰는 것과 세트인 것이 이 자료에서는 같은 말이고, 두 곳에 적어 두면
@@ -160,9 +200,153 @@ export type Question = {
   guide?: string[];
   placeholder?: string;
   minLength?: number;
+  /**
+   * 세트 안의 작은 묶음 — 같은 값이 붙은 문제는 **오른쪽에 함께** 선다.
+   *
+   * 세트(setId)는 왼쪽 자료를 나눠 읽는 단위이고, 오른쪽은 기본으로 한 번에 문제 하나다.
+   * 세트 안에서도 두 문제가 한 물음처럼 이어질 때(예: 문제 2 · 3) 같은 group을 붙이면
+   * 그 둘이 한 화면에 선다. 이어 붙은 문제끼리만 묶는다.
+   */
+  group?: string;
+  /**
+   * 작은 묶음의 머리 자료 — 시험지의 「[2 ~ 3] 다음은 …」.
+   *
+   * 묶음의 **첫 문제에만** 적는다. 오른쪽 칸 맨 위, 묶인 문제들 위에 선다. 왼쪽 세트 자료는
+   * 그대로 두고 이 묶음만 따로 읽는 자료다.
+   */
+  groupBrief?: Brief;
+  /** 발문 아래 사진 (선택) — 문제에만 딸린 그림 */
+  figures?: Figure[];
+  /** 발문 아래 표 (선택) */
+  table?: Table;
+  /**
+   * 발문 아래 움직이는 자료 — 지금은 진자 하나뿐이다(「아래 동영상을 보고 주기를 재시오」).
+   * 영상 파일 대신 화면에서 정해진 주기로 흔들어 보인다. 재생 단추를 눌러야 움직인다 —
+   * 아이가 초시계를 준비한 뒤 시작하게 하려는 것이다.
+   */
+  clip?: { kind: "pendulum"; periodSec: number; caption: string };
+  /**
+   * 괄호 칸 — 시험지의 「○ 차이점 : (        )」처럼 칸마다 따로 답하는 문제.
+   *
+   * 있으면 긴 글 칸 하나 대신 이름 붙은 칸을 여럿 연다. 답은 칸 순서대로 담은 배열을
+   * 문자열로 굳혀 저장한다(joinBlanks) — 응시 기록의 답 자리가 `number | string`이라서다.
+   *
+   * 칸마다 모양을 고른다 —
+   *   options  있으면 글을 쓰지 않고 그중 하나를 고른다(「○ ⓐ - ( ㄱ~ㄹ )」, 「동의 여부」)
+   *   short    짧은 값 하나(「방위각 : (   ° )」) — suffix로 단위를 붙인다
+   *   없으면   한 문장 이상 쓰는 칸
+   */
+  blanks?: Blank[];
+  /** 채점 기준 — 학생 화면에는 내보이지 않는다 */
+  scoring?: string[];
+  /** 예시 답 — 칸이 있으면 칸 순서대로 */
+  sampleAnswer?: string[];
 };
 
-export const QUESTIONS_PER_SUBJECT = 10;
+export type Blank = {
+  label: string;
+  placeholder?: string;
+  options?: string[];
+  short?: boolean;
+  suffix?: string;
+  /**
+   * 문장 속 칸 — 「강물은 {}보다 {}에서 더 빠르게 흐른다.」의 {}마다 짧은 칸을 연다.
+   * 칸들의 값은 SLOT으로 이어 이 칸 하나의 답으로 둔다.
+   */
+  template?: string;
+  /** 그려서 답하는 칸 — 밑그림 경로(빈 문자열이면 흰 종이). 그린 그림은 이미지 데이터 주소로 둔다 */
+  draw?: string;
+  /** 비워 두어도 되는 칸 — 「그림을 그려서 설명해도 됩니다」 */
+  optional?: boolean;
+};
+
+/** 문장 속 칸들의 값을 잇는 구분자 */
+export const SLOT = String.fromCharCode(31);
+
+/** 문장 속 칸의 수 */
+export const slotCount = (template: string) => template.split("{}").length - 1;
+
+/** 문장 속 칸들의 값 — 칸 수만큼 */
+export function slotValues(template: string, v: string) {
+  const parts = v.split(SLOT);
+  return Array.from({ length: slotCount(template) }, (_, i) => parts[i] ?? "");
+}
+
+/** 이 칸을 다 채웠는가 */
+export function blankFilled(b: Blank, v: string) {
+  if (b.optional) return true;
+  if (b.template) return slotValues(b.template, v).every((x) => x.trim().length > 0);
+  return v.trim().length > 0;
+}
+
+/** 칸 하나의 답을 읽는 글로 */
+function blankText(b: Blank, v: string) {
+  if (b.draw) return v ? "(그림을 그림)" : "";
+  if (b.template) {
+    const parts = slotValues(b.template, v);
+    if (parts.every((x) => !x.trim())) return "";
+    let k = 0;
+    return b.template.replaceAll("{}", () => `( ${parts[k++].trim() || " "} )`);
+  }
+  return v.trim();
+}
+
+/** 괄호 칸 답을 저장용 문자열로 */
+export function joinBlanks(values: string[]) {
+  return JSON.stringify(values);
+}
+
+/** 저장된 답을 칸 수만큼의 배열로 — 칸 없는 글로 적혀 있으면 첫 칸에 둔다 */
+export function splitBlanks(value: number | string | undefined, count: number): string[] {
+  let list: string[] = [];
+  if (typeof value === "string" && value) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      list = Array.isArray(parsed) ? parsed.map((v) => String(v ?? "")) : [value];
+    } catch {
+      list = [value];
+    }
+  }
+  return Array.from({ length: count }, (_, i) => list[i] ?? "");
+}
+
+/**
+ * 서술형 답을 사람이 읽는 글로 — 칸이 있으면 「차이점: … / 공통점: …」처럼 줄마다 편다.
+ * 해설 · 해석 화면처럼 쓴 답을 그대로 보여 주는 자리에서 쓴다.
+ */
+export function answerText(q: Question, value: number | string | undefined): string {
+  if (typeof value !== "string") return "";
+  if (!q.blanks) return value.trim();
+  const parts = splitBlanks(value, q.blanks.length);
+  if (parts.every((p) => !p.trim())) return "";
+  return q.blanks
+    .map((b, i) => `${b.label || "답"} : ${blankText(b, parts[i]) || "(비움)"}`)
+    .join("\n");
+}
+
+/**
+ * 무료 체험(/exam/try)에서 가입 없이 풀어 보는 문항 수 — **평가 하나의 과목마다**.
+ *
+ * 앞에서부터 이만큼만 열고, 나머지는 회원가입을 권하는 판으로 막는다. 과목마다 세는
+ * 까닭은 보호자가 궁금한 과목이 저마다라서다 — 평가 전체로 세면 국어를 넘기다가 수학은
+ * 한 문항도 못 보고 막힌다.
+ */
+export const FREE_QUESTIONS = 5;
+
+/**
+ * 이 과목의 문항 수.
+ *
+ * 과목마다 문항 수를 고정하지 않는다 — 세트 문항이 붙으면서 과학만 20문항이 되었고,
+ * 앞으로 더 늘 수 있다. 화면은 늘 실제 문항 수를 센다.
+ */
+export const questionCount = (subject: SubjectId) => questionsOf(subject).length;
+
+/** 전 과목 문항 수 */
+export const totalQuestions = () => questions.length;
+
+/** 「국어 10 · 수학 10 · 과학 20문항」 */
+export const questionCountText = () =>
+  `${subjects.map((s) => `${s.short} ${questionCount(s.id)}`).join(" · ")}문항`;
 
 export function questionsOf(subject: SubjectId) {
   return questions.filter((q) => q.subject === subject);
@@ -193,9 +377,45 @@ export function pagesOf(subject: SubjectId): Page[] {
     bag.get(q.setId)!.push(q);
   }
   return order.map((id) => {
-    const items = bag.get(id)!.slice().sort((a, b) => a.no - b.no);
+    const items = bag
+      .get(id)!
+      .slice()
+      .sort((a, b) => a.no - b.no);
     return { id, brief: items[0].brief, items };
   });
+}
+
+/**
+ * 학생이 푸는 차례 — 쪽 차례대로 문항을 늘어놓은 것.
+ *
+ * 학생 화면에는 S위계도, 위계 순으로 매긴 순번(no)도 내보이지 않는다. no는 세트로 묶이면
+ * 한 쪽에 1·3·7번처럼 띄어 서기 때문이다. 학생에게는 이 차례로 「문제 1 · 문제 2 …」를
+ * 붙인다(questionNumbers).
+ */
+export function examOrderOf(subject: SubjectId): Question[] {
+  return pagesOf(subject).flatMap((pg) => pg.items);
+}
+
+/**
+ * 응시 화면이 한 번에 오른쪽에 세우는 문제들 — **화면** 단위로 자른 푸는 차례.
+ *
+ * 기본은 문제 하나가 한 화면이다. 같은 세트 안에서 group이 같은 문제가 이어 붙어 있으면
+ * 그 문제들이 한 화면에 함께 선다. 왼쪽 자료는 세트가 같으면 화면이 바뀌어도 그대로다.
+ */
+export function screensOf(subject: SubjectId): Question[][] {
+  const screens: Question[][] = [];
+  for (const q of examOrderOf(subject)) {
+    const last = screens[screens.length - 1];
+    const head = last?.[0];
+    if (head && q.group && head.group === q.group && head.setId === q.setId) last.push(q);
+    else screens.push([q]);
+  }
+  return screens;
+}
+
+/** 문항 id → 학생에게 보이는 문제 번호(1부터) */
+export function questionNumbers(subject: SubjectId): Map<string, number> {
+  return new Map(examOrderOf(subject).map((q, i) => [q.id, i + 1]));
 }
 
 /** 이 문항이 몇 쪽에 있는가 — 문항 이동판이 번호를 눌렀을 때 갈 곳 */

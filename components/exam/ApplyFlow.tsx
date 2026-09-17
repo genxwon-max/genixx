@@ -15,7 +15,9 @@ export type ApplyAction =
   | { kind: "done"; label: string }
   /** 응시권을 쓰고 접수한다 */
   | { kind: "apply"; label: string }
-  | { kind: "blocked"; label: string };
+  | { kind: "blocked"; label: string }
+  /** 로그인하지 않은 사람 — 접수 대신 무료 체험 창을 연다 */
+  | { kind: "try"; label: string; href: string };
 
 export function applyAction(
   round: CatalogRound,
@@ -100,7 +102,9 @@ export function useApplyFlow(studentId: string) {
         </dl>
 
         <ul className="mt-4 space-y-1 text-[13px] leading-relaxed text-soft-muted">
-          <li>· 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다. 접수한 뒤에는 바꿀 수 없습니다.</li>
+          <li>
+            · 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다. 접수한 뒤에는 바꿀 수 없습니다.
+          </li>
           <li>· 접수한 평가는 응시하기 탭에서 과목별로 따로 응시합니다.</li>
         </ul>
 

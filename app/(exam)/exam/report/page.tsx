@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import ExamGate from "@/components/exam/ExamGate";
 import ReportList from "@/components/exam/ReportList";
+import ExamPaper from "@/components/exam/ExamPaper";
 
 export const metadata: Metadata = {
   title: "결과보기",
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
  */
 export default function ReportPage() {
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-6 py-9 md:px-10 md:py-12">
+    <ExamPaper>
       <ExamGate>
         {/* 펼친 리포트(ResultView)가 ?student= 를 읽는다 — useSearchParams는 경계가 있어야 한다 */}
         <Suspense
@@ -30,6 +31,6 @@ export default function ReportPage() {
           <ReportList />
         </Suspense>
       </ExamGate>
-    </div>
+    </ExamPaper>
   );
 }

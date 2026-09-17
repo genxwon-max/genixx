@@ -25,7 +25,7 @@ export default async function ExamSessionPage({ params }: PageProps<"/exam/sessi
   if (!isSubjectId(subject)) notFound();
 
   return (
-    <ExamGate>
+    <ExamGate padded>
       <ExamSession subject={subject} />
     </ExamGate>
   );

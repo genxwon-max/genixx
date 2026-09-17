@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
 import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
-import { QUESTIONS_PER_SUBJECT, assessment } from "@/lib/exam";
+import { FREE_QUESTIONS, assessment, questionCount } from "@/lib/exam";
 import {
   availabilityLabel,
   dotDate,
@@ -19,6 +19,7 @@ import {
   type TrackId,
 } from "@/lib/examCatalog";
 import { resetStudent } from "@/lib/examStore";
+import { examWindow } from "@/lib/popup";
 import { findById } from "@/lib/roster";
 import { resetWallet } from "@/lib/ticketStore";
 import { applyAction, useApplyFlow, type ApplyAction } from "./ApplyFlow";
@@ -77,6 +78,8 @@ export default function ExamCatalog() {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
   const asGuardian = session?.asGuardian === true;
+  /* 로그인 전 — 접수 대신 무료 체험으로 보낸다(ExamGate가 이 모드로 부른다) */
+  const guest = !session;
   const rounds = useCatalogRounds();
   const { wallet, begin, dialog } = useApplyFlow(studentId);
   const mine = trackFromGrade(findById(studentId)?.grade);
@@ -100,7 +103,13 @@ export default function ExamCatalog() {
         track,
         name: evalName(round.id, track.id, round.label),
         mine: mine === track.id,
-        action: applyAction(round, track.id, wallet, asGuardian),
+        action: guest
+          ? ({
+              kind: "try",
+              label: "무료로 풀어보기",
+              href: `/exam/session/trial/${round.id}/${track.id}`,
+            } as const)
+          : applyAction(round, track.id, wallet, asGuardian),
         onApply: () => begin(round, track.id),
       })),
     )
@@ -108,8 +117,7 @@ export default function ExamCatalog() {
     .filter((it) => status === "all" || it.round.availability === status)
     .filter(
       (it) =>
-        !q ||
-        `${it.name} ${trackLabel(it.track.id)} ${it.track.short}`.toLowerCase().includes(q),
+        !q || `${it.name} ${trackLabel(it.track.id)} ${it.track.short}`.toLowerCase().includes(q),
     )
     .sort(
       (a, b) =>
@@ -135,7 +143,30 @@ export default function ExamCatalog() {
 
   return (
     <div>
-      <PageTitle>접수하기</PageTitle>
+      {guest ? (
+        <PageTitle
+          sub={
+            <>
+              회원가입 없이 보고 싶은 평가를 골라 과목마다 {FREE_QUESTIONS}문항까지 무료로 풀어 볼
+              수 있습니다.
+              <br />
+              전체 문항 응시와 결과 리포트는{" "}
+              <Link href="/signup" className="font-semibold text-soft-primary hover:underline">
+                회원가입
+              </Link>{" "}
+              또는{" "}
+              <Link href="/login" className="font-semibold text-soft-primary hover:underline">
+                로그인
+              </Link>{" "}
+              후 이용할 수 있습니다.
+            </>
+          }
+        >
+          평가 둘러보기
+        </PageTitle>
+      ) : (
+        <PageTitle>접수하기</PageTitle>
+      )}
 
       <div className="mt-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
         <GradeCategory
@@ -404,7 +435,11 @@ function ViewToggle({ view, onPick }: { view: View; onPick: (v: View) => void })
     },
   ];
   return (
-    <div role="group" aria-label="보기 방식" className="inline-flex border border-soft-line bg-white">
+    <div
+      role="group"
+      aria-label="보기 방식"
+      className="inline-flex border border-soft-line bg-white"
+    >
       {opts.map((o, i) => {
         const on = view === o.id;
         return (
@@ -594,6 +629,14 @@ function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => v
       </span>
     );
   }
+  if (action.kind === "try") {
+    /* 실제 응시처럼 별도 창에서 연다 */
+    return (
+      <button type="button" onClick={() => examWindow(action.href)} className={rowBtn}>
+        {action.label}
+      </button>
+    );
+  }
   if (action.kind === "apply") {
     return (
       <button type="button" onClick={onApply} className={rowBtn}>
@@ -644,7 +687,7 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
               <li key={s.id} className="flex items-center justify-between py-2.5 text-[14px]">
                 <span className="font-semibold text-soft-ink">{s.name}</span>
                 <span className="tabular-nums text-soft-muted">
-                  {QUESTIONS_PER_SUBJECT}문항 · {s.minutes}분
+                  {questionCount(s.id)}문항 · {s.minutes}분
                 </span>
               </li>
             ))}
@@ -667,6 +710,14 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
                 {action.label}
               </Link>
             </>
+          ) : action.kind === "try" ? (
+            <button
+              type="button"
+              onClick={() => examWindow(action.href)}
+              className={`${btnBox} w-full`}
+            >
+              {action.label}
+            </button>
           ) : action.kind === "apply" ? (
             <button type="button" onClick={onApply} className={`${btnBox} w-full`}>
               {action.label}

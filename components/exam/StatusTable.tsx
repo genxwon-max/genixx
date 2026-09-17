@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { assessment, QUESTIONS_PER_SUBJECT, questionsOf, subjects } from "@/lib/exam";
+import { assessment, questionCount, questionsOf, subjects } from "@/lib/exam";
 import {
   allSubmitted,
   finalize,
@@ -17,12 +17,14 @@ import {
   type SurveyKey,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
-import { findById, formatCode } from "@/lib/roster";
+import { formatCode, recordSurveySend, useRoster } from "@/lib/roster";
 import { examWindow, surveyWindow } from "@/lib/popup";
+import { phoneText } from "@/components/account/SendCodes";
 import { ensureReport } from "@/lib/reportStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { isAnswered } from "./ExamSession";
 import SectionTitle from "./SectionTitle";
+import Toast from "./Toast";
 import StudentOnly from "./StudentOnly";
 import { ArrowRight } from "@/components/Icons";
 import {
@@ -33,6 +35,7 @@ import {
   btnSmMuted,
   eyebrow,
   govTable,
+  input,
   panel,
   td,
   tdStrong,
@@ -76,7 +79,14 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   const config = useExamConfig();
   const studentId = session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
-  const student = hydrated ? findById(studentId) : null;
+  const roster = useRoster();
+  const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
+  /** 문자를 보낼 설문 — 번호 받는 창이 열려 있다 */
+  const [smsFor, setSmsFor] = useState<SurveyKey | null>(null);
+  /* 명부에 없는 시연 계정도 「보냈다」가 남도록 화면에 따로 적어 둔다 */
+  const [localSends, setLocalSends] = useState<Record<string, { phone: string; at: string }>>({});
+  const sends = { ...student?.surveySends, ...localSends };
+  const [toast, setToast] = useState<string | null>(null);
 
   const [askFinal, setAskFinal] = useState(false);
   const [guardianPick, setGuardianPick] = useState(false);
@@ -141,7 +151,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
       {/* 표 1 — 과목별 평가 */}
       <section className="mt-9">
         <SectionTitle
-          note={`과목마다 따로 응시하며, 한 과목당 ${QUESTIONS_PER_SUBJECT}문항입니다. 제한 시간은 과목마다 다를 수 있어 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
+          note={`과목마다 따로 응시하며, 제한 시간은 과목마다 다를 수 있어 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
         >
           평가 응시 현황
         </SectionTitle>
@@ -195,7 +205,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                         색점은 뜻 없이 눈만 잡아끈다. */}
                     <td className={`${tdStrong} text-left`}>{s.name}</td>
                     <td className={`${td} tabular-nums`}>
-                      {answered}/{QUESTIONS_PER_SUBJECT}
+                      {answered}/{questionCount(s.id)}
                     </td>
                     <td className={`${td} tabular-nums`}>
                       {/* 이미 시작했다면 그 아이가 받은 시간을 적는다. 지금 설정을 적으면
@@ -239,7 +249,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
 
       {/* 표 2 — 설문 */}
       <section className="mt-9">
-        <SectionTitle note="어머니·아버지 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 버튼을 누르면 별도 창이 열립니다.">
+        <SectionTitle note="어머니·아버지 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다.">
           설문 제출 현황
         </SectionTitle>
 
@@ -252,7 +262,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
               <col className="w-[130px]" />
               <col className="w-[100px]" />
               <col className="w-[150px]" />
-              <col className="w-[110px]" />
+              <col className="w-[130px]" />
             </colgroup>
             <thead>
               <tr>
@@ -261,7 +271,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                 <th className={th}>대상</th>
                 <th className={th}>진행상태</th>
                 <th className={th}>제출일시</th>
-                <th className={th}>설문</th>
+                <th className={th}>문자</th>
               </tr>
             </thead>
             <tbody>
@@ -269,6 +279,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                 const meta = surveyMeta[key];
                 const state = record.surveys[key];
                 const st = stateText[state] ?? stateText.none;
+                const sent = sends[key];
                 return (
                   <tr key={key}>
                     {i === 0 && (
@@ -283,13 +294,30 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                     </td>
                     <td className={`${td} tabular-nums`}>{fmt(record.surveyAt[key])}</td>
                     <td className={td}>
-                      <button
-                        type="button"
-                        onClick={() => openSurvey(key)}
-                        className={state === "done" ? btnSmGhost : btnSm}
-                      >
-                        {state === "done" ? "다시 작성" : "설문하기"}
-                      </button>
+                      {state === "done" ? (
+                        <span className={btnSmMuted}>제출됨</span>
+                      ) : sent ? (
+                        /* 이미 보냈으면 보냈다는 표시를 세우고, 다시 보낼 길만 작게 둔다 */
+                        <span className="inline-flex flex-col items-center gap-0.5">
+                          <span className="text-[12px] font-bold text-emerald-700">
+                            발송완료{" "}
+                            <span className="font-medium tabular-nums">
+                              {fmt(sent.at).slice(5, 10).replace("-", ".")}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSmsFor(key)}
+                            className="text-[11px] text-soft-muted underline-offset-2 hover:text-soft-ink hover:underline"
+                          >
+                            다시 보내기
+                          </button>
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => setSmsFor(key)} className={btnSm}>
+                          문자 보내기
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -374,6 +402,26 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
           }}
         />
       )}
+
+      {smsFor && (
+        <SmsDialog
+          label={surveyMeta[smsFor].label}
+          /* 어머니·아버지 설문은 등록 때 받은 보호자 번호에서 출발한다. 교사 번호는 알 수 없다 */
+          initial={
+            sends[smsFor]?.phone ?? (smsFor === "teacher" ? "" : (student?.guardianPhone ?? ""))
+          }
+          onCancel={() => setSmsFor(null)}
+          onSend={(phone) => {
+            /* ⚠ 문자는 아직 나가지 않는다. 발송 API를 붙이면 그 결과가 돌아온 뒤에 기록한다 */
+            if (student) recordSurveySend(student.id, smsFor, phone);
+            setLocalSends((m) => ({ ...m, [smsFor]: { phone, at: new Date().toISOString() } }));
+            setToast(`${phoneText(phone)}로 ${surveyMeta[smsFor].label} 링크를 보냈습니다.`);
+            setSmsFor(null);
+          }}
+        />
+      )}
+
+      <Toast message={toast} onClose={() => setToast(null)} />
 
       {guardianPick && (
         <GuardianDialog
@@ -508,6 +556,74 @@ function GuardianDialog({
           닫기
         </button>
       </div>
+    </div>
+  );
+}
+
+/** 설문 링크를 보낼 휴대전화 번호를 받는 창 */
+function SmsDialog({
+  label,
+  initial,
+  onCancel,
+  onSend,
+}: {
+  label: string;
+  initial: string;
+  onCancel: () => void;
+  onSend: (phone: string) => void;
+}) {
+  const [phone, setPhone] = useState(phoneText(initial));
+  const digits = phone.replace(/\D/g, "");
+  const ok = digits.length >= 10 && digits.length <= 11;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sms-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-5"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (ok) onSend(digits);
+        }}
+        className="w-full max-w-md rounded-[12px] bg-white p-7 shadow-float"
+      >
+        <h2 id="sms-title" className="text-[19px] font-bold text-soft-ink">
+          {label} 링크를 문자로 보냅니다
+        </h2>
+        <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
+          받은 분이 링크를 열면 로그인 없이 바로 설문을 작성할 수 있습니다.
+        </p>
+        <label htmlFor="sms-phone" className="mt-5 block text-[13px] font-bold text-soft-ink">
+          휴대전화 번호
+        </label>
+        <input
+          id="sms-phone"
+          type="tel"
+          inputMode="numeric"
+          autoFocus
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+          placeholder="010-1234-5678"
+          className={`mt-2 tabular-nums ${input}`}
+        />
+        {phone && !ok && (
+          <p className="mt-1.5 text-[12px] text-rose-600">휴대전화 번호를 정확히 입력해 주세요.</p>
+        )}
+        <div className="mt-7 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onCancel} className={btnGhost}>
+            취소
+          </button>
+          <button
+            type="submit"
+            disabled={!ok}
+            className={`${btnPrimary} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            보내기
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

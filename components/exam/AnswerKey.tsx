@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/authStore";
-import { QUESTIONS_PER_SUBJECT, levelOf, questionsOf, subjects, type SubjectId } from "@/lib/exam";
+import { answerText, examOrderOf, subjects, type SubjectId } from "@/lib/exam";
 import { useExamRecord, type ExamRecord } from "@/lib/examStore";
 import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
 import StudentOnly from "./StudentOnly";
@@ -72,7 +72,8 @@ function Sheet({ row, record }: { row: Registration; record: ExamRecord }) {
     (s) => !row.info || row.info.subjects.some((x) => x.id === s.id),
   );
   const [subject, setSubject] = useState<SubjectId>(available[0]?.id ?? "korean");
-  const list = questionsOf(subject);
+  /* 응시 때와 같은 차례·같은 번호(문제 1 · 문제 2 …)로 싣는다. S위계는 보이지 않는다 */
+  const list = examOrderOf(subject);
   const answers = record.subjects[subject].answers;
 
   const choices = list.filter((q) => q.type === "choice");
@@ -95,7 +96,7 @@ function Sheet({ row, record }: { row: Registration; record: ExamRecord }) {
           <p className="mt-2 text-[12px] text-soft-muted">
             최종 제출{" "}
             {record.finalizedAt ? new Date(record.finalizedAt).toLocaleDateString("ko-KR") : "-"} ·
-            과목 {available.length}개 · 과목당 {QUESTIONS_PER_SUBJECT}문항
+            과목 {available.length}개
           </p>
         </div>
       </div>
@@ -129,19 +130,16 @@ function Sheet({ row, record }: { row: Registration; record: ExamRecord }) {
       </p>
 
       <ol className="mt-5 space-y-4">
-        {list.map((q) => {
+        {list.map((q, i) => {
           const mine = answers[q.id];
           return (
             <li key={q.id} className="rounded-[4px] border border-soft-line bg-white px-5 py-5">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <p className="text-[14px] font-bold text-soft-ink">
-                  <span className="tabular-nums">{q.no}</span>번
-                  <span className="ml-2 font-medium text-soft-muted">
-                    {q.type === "essay" ? "서술형" : "객관식"}
-                  </span>
+                  문항 <span className="tabular-nums">{i + 1}</span>
                 </p>
-                <p className="text-[12px] tabular-nums text-soft-muted">
-                  {q.level} {levelOf(q.level).name}
+                <p className="text-[12px] text-soft-muted">
+                  {q.type === "essay" ? "서술형" : "객관식"}
                 </p>
               </div>
 
@@ -205,9 +203,22 @@ function Sheet({ row, record }: { row: Registration; record: ExamRecord }) {
                   <div className="rounded-[4px] border border-slate-100 bg-slate-50 px-4 py-3">
                     <p className="text-[12px] font-bold text-soft-muted">내 답</p>
                     <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-soft-ink">
-                      {typeof mine === "string" && mine.trim() ? mine : "쓰지 않았습니다."}
+                      {answerText(q, mine) || "쓰지 않았습니다."}
                     </p>
                   </div>
+                  {q.sampleAnswer && (
+                    <div className="px-1">
+                      <p className="text-[12px] font-bold text-soft-muted">예시 답</p>
+                      <ul className="mt-1 space-y-1">
+                        {q.sampleAnswer.map((a, k) => (
+                          <li key={a} className="text-[14px] leading-relaxed text-soft-ink">
+                            {q.blanks?.[k] ? `${q.blanks[k].label} : ` : ""}
+                            {a}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {q.guide && (
                     <div className="px-1">
                       <p className="text-[12px] font-bold text-soft-muted">작성 안내</p>

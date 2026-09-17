@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import AssessmentRoom from "@/components/exam/AssessmentRoom";
 import ExamGate from "@/components/exam/ExamGate";
 import { evalName, isTrackId } from "@/lib/examCatalog";
+import ExamPaper from "@/components/exam/ExamPaper";
 
 export async function generateMetadata({
   params,
@@ -19,10 +20,10 @@ export default async function AssessmentRoomPage({ params }: PageProps<"/exam/[r
   if (!isTrackId(track)) notFound();
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-6 py-9 md:px-10 md:py-12">
+    <ExamPaper>
       <ExamGate>
         <AssessmentRoom roundId={round} trackId={track} />
       </ExamGate>
-    </div>
+    </ExamPaper>
   );
 }
