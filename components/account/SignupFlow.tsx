@@ -596,7 +596,25 @@ export default function SignupFlow() {
                         </button>
                       </div>
                       {openBody === c.id && (
-                        <div className="my-2 max-h-44 overflow-y-auto rounded-[10px] bg-slate-50 px-4 py-3">
+                        /*
+                         * 전문은 500px 상자 안에서 스크롤해 읽는다.
+                         *
+                         * 예전에는 176px(max-h-44)이라 「제1조」와 그다음 줄만 보였다. 동의를
+                         * 받으려고 여는 상자인데 그만큼만 보이면 읽으라는 시늉이 된다.
+                         *
+                         * 높이를 최대값이 아니라 고정으로 둔다. 약관마다 길이가 달라
+                         * max-h로 두면 짧은 것을 열 때 상자가 확 줄면서 아래 체크박스와
+                         * 버튼이 따라 올라온다 — 방금 누른 자리가 손가락 밑에서 움직인다.
+                         *
+                         * tabIndex를 주는 까닭은 크롬이 스크롤되는 div에 초점을 주지 않기
+                         * 때문이다. 없으면 키보드만 쓰는 사람은 전문을 끝까지 내릴 수 없다.
+                         */
+                        <div
+                          role="region"
+                          aria-label={`${c.label} 전문`}
+                          tabIndex={0}
+                          className="my-2 h-[500px] overflow-y-auto rounded-[10px] border border-soft-line bg-slate-50 px-4 py-3"
+                        >
                           {c.body.map((b) => (
                             <div key={b.h} className="mb-2.5 last:mb-0">
                               <p className="text-[12.5px] font-bold">{b.h}</p>
