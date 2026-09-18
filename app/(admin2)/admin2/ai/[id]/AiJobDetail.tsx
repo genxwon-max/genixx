@@ -269,7 +269,7 @@ function StepCard({
   const pick = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
-  /* 자리표를 커서 자리에 끼운다. 목록에서 읽고 손으로 옮겨 적게 두면 {{학년군 }}처럼
+  /* 자리표를 커서 자리에 끼운다. 목록에서 읽고 손으로 옮겨 적게 두면 {{학년}}처럼
      한 글자가 어긋나고, 어긋난 자리표는 채워지지 않은 채 글자 그대로 나간다 */
   const put = (key: string) => {
     const el = box.current;

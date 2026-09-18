@@ -30,7 +30,7 @@ import * as a from "./ui";
  * 이 화면이 답하는 물음은 둘뿐이다 — **이 회차에 무엇이 나가는가**, 그리고 **지금
  * 열어도 되는가.**
  *
- * 편성판은 과목 × 학년군 여섯 칸이다. 표가 아니라 판으로 둔 까닭은, 여기서 세는
+ * 편성판은 과목 × 학년 여섯 칸이다. 표가 아니라 판으로 둔 까닭은, 여기서 세는
  * 것이 줄이 아니라 「빈 칸이 어디인가」이기 때문이다. 표로 세우면 없는 칸은 줄이
  * 아예 나오지 않아 눈에 걸리지 않는다.
  *
@@ -311,7 +311,7 @@ export default function RoundPlan({ roundId }: { roundId: string }) {
       <div className="mt-7">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className={a.cardTitle}>편성판</h2>
-          <p className={a.hint}>한 칸은 한 과목 · 한 학년군입니다. 비운 칸은 보지 않습니다.</p>
+          <p className={a.hint}>한 칸은 한 과목 · 한 학년입니다. 비운 칸은 보지 않습니다.</p>
         </div>
 
         <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -472,7 +472,7 @@ const askCopy: Record<
     title: "이 회차를 엽니다",
     body: [
       "확정한 검사지가 이 회차의 응시 문항이 됩니다. 담긴 순서 그대로 나갑니다.",
-      "비워 둔 칸의 과목·학년군은 이번 회차에 응시하지 않습니다.",
+      "비워 둔 칸의 과목·학년은 이번 회차에 응시하지 않습니다.",
       "연 사람과 시각이 기록에 남습니다.",
     ],
     hint: "예: 국어·수학 검사지 확정 확인함. 과학은 문항이 모자라 이번 회차에 보지 않기로 함",

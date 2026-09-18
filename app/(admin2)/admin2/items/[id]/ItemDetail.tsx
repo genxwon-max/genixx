@@ -9,6 +9,7 @@ import { useAdminPrefs } from "@/lib/adminStore";
 import {
   SET_MAX,
   blankQuestion,
+  contentFor,
   itemForms,
   levelCountsOf,
   levelInsertAt,
@@ -31,8 +32,25 @@ import {
   type Question,
 } from "@/lib/itemStore";
 import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
-import { Body, FormRow, PageHead, Panel, Status, Switch, Tag } from "@/components/admin2/ui";
-import BodyEditor from "@/components/admin2/BodyEditor";
+import {
+  Body,
+  FormBlock,
+  FormRow,
+  PageHead,
+  Panel,
+  Status,
+  Switch,
+  Tag,
+} from "@/components/admin2/ui";
+import BlockEditor from "@/components/admin2/BlockEditor";
+import GroupEditor from "@/components/admin2/GroupEditor";
+import {
+  blankMarks,
+  patchQuestion,
+  questionsIn,
+  type ContentQuestion,
+  type ContentSet,
+} from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import ItemPreview from "@/components/admin2/ItemPreview";
 import BandUnitRows from "./BandUnitRows";
@@ -40,6 +58,9 @@ import LevelCounts from "./LevelCounts";
 import ReviewPanel from "./ReviewPanel";
 import SubmitChecklist from "./SubmitChecklist";
 import { QuestionClassRows, QuestionContentRows, QuestionList } from "./QuestionEditor";
+
+/** 지문 칸에 문단을 이을 때의 틈 — 빈 줄 하나 */
+const PARAGRAPH_GAP = String.fromCharCode(10, 10);
 
 /**
  * ADM-04-1 문항 상세 — 등록 · 수정 · 검수를 한 장에서.
@@ -52,7 +73,7 @@ import { QuestionClassRows, QuestionContentRows, QuestionList } from "./Question
  * ── 차례는 문항 카드의 차례 ──
  * 맨 위에 검수 이력 — 무엇이 걸렸나. 기록이 없으면 서지 않는다.
  *   ① 문항 구성  단일인가 세트인가
- *   ② 분류      단일일 때만. 문항 ID · 학년군 · 교과 단원 · 인지단계 · Tag A · Tag B ·
+ *   ② 분류      단일일 때만. 문항 ID · 학년 · 교과 단원 · 인지단계 · Tag A · Tag B ·
  *               형식 · 난이도|배점
  *   ③ 문항      지문 · 문항 · 정답·채점 기준 · 인정|불인정 예 · 재능 평가 관점 ·
  *               오답 설계 의도 (세트는 지문 아래 목록 → 문항 상세)
@@ -87,7 +108,7 @@ import { QuestionClassRows, QuestionContentRows, QuestionList } from "./Question
  * 문항마다 다르다 — 바깥에 한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다.
  * 그래서 세트에서는 이 판을 아예 세우지 않고, 문항 하나로 들어간 화면에 세운다. 거기서
  * 단일과 같은 차례로 선다 — 분류 → 문항. 분류 판에는 세트가 함께 쓰는 것(문항 ID ·
- * 학년군 · 교과 단원)이 먼저 서고 그 문항만의 것이 뒤따르며, 어느 쪽이 함께 걸리는 값인지
+ * 학년 · 교과 단원)이 먼저 서고 그 문항만의 것이 뒤따르며, 어느 쪽이 함께 걸리는 값인지
  * 판 맨 위에 적어 둔다. 지문과 체크리스트는 세트가 통째로 쥐므로 바깥 화면에 선다.
  *
  * ── 이름표는 왼쪽, 예외 없이 ──
@@ -218,6 +239,28 @@ export default function ItemDetail({ id }: { id: string }) {
   const setQuestion = (k: number, next: Question) =>
     setQuestions(qs.map((x, n) => (n === k ? next : x)));
 
+  /* 학생이 보는 모양 — 자료 블록 · 묶음 · 답 칸(lib/content.ts). 여기서 고치기 시작하면 이것이
+     원본이 된다(contentAuthored). 목록 · 검수가 한 줄로 읽는 지문 칸에는 문단 글만 옮겨 둔다 */
+  const content = contentFor(view);
+  const setContent = (next: ContentSet) =>
+    set({
+      content: next,
+      contentAuthored: true,
+      passage: next.material.blocks
+        .flatMap((b) => (b.kind === "text" ? [b.text] : []))
+        .join(PARAGRAPH_GAP),
+      passageMode: "text",
+      passageImages: [],
+    });
+  /* 빈칸 표지는 세트 자료와 묶음 자료에서 함께 찾는다 — 「[측정 결과]」 표의 ( ㄱ )도 문항이 묻는다 */
+  const marks = blankMarks([
+    ...content.material.blocks,
+    ...content.nodes.flatMap((n) => ("kind" in n ? n.material.blocks : [])),
+  ]);
+  const contentOfQ = (qid: string) => questionsIn(content).find((c) => c.id === qid);
+  const setContentOfQ = (qid: string, next: ContentQuestion) =>
+    setContent(patchQuestion(content, qid, () => next));
+
   /* 세트의 단계별 문항 수 — 문항 구성 줄에서 − / +로 고친다(lib/itemStore.ts setLevelCount).
      빠지는 문항에 적어 둔 것이 있으면 먼저 묻는다. 수만 보고 누르는 칸이라, 어느 문항이
      빠지는지는 눌러 보기 전에 보이지 않는다 */
@@ -233,9 +276,9 @@ export default function ItemDetail({ id }: { id: string }) {
     setQuestions(setLevelCount(qs, level, count));
   };
 
-  /* 학년군을 바꾸면 성취기준 코드가 범위를 벗어난다. 세트면 코드가 문항마다 들어간 화면에
-     있어 바꾼 자리에서 보이지 않으므로 학년군 칸에도 적는다. 다른 학년군이었다면 맞았을
-     코드만 센다 — 비었거나 형식이 틀린 코드는 학년군을 바꿔서 생긴 일이 아니다 */
+  /* 학년을 바꾸면 성취기준 코드가 범위를 벗어난다. 세트면 코드가 문항마다 들어간 화면에
+     있어 바꾼 자리에서 보이지 않으므로 학년 칸에도 적는다. 다른 학년이었다면 맞았을
+     코드만 센다 — 비었거나 형식이 틀린 코드는 학년을 바꿔서 생긴 일이 아니다 */
   /* 단일로 돌려 둔 세트의 2번 이후는 화면에 없고 저장할 때 떨어진다 — 세지 않는다 */
   const bandBroken = (view.form === "single" ? qs.slice(0, 1) : qs).filter(
     (q) =>
@@ -272,7 +315,7 @@ export default function ItemDetail({ id }: { id: string }) {
     <>
       {/* 손으로 적는 칸이 아니다. 코드에 담기는 것이 전부 이 화면의 다른 칸에
           이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID).
-          학년군·과목·형식·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
+          학년·과목·형식·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
           적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
       <FormRow label="문항 ID">
         <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
@@ -289,7 +332,7 @@ export default function ItemDetail({ id }: { id: string }) {
               {view.form === "set"
                 ? `이 세트 문항의 성취기준 코드 ${bandBroken}개가`
                 : "아래 Tag A의 성취기준 코드가"}{" "}
-              이 학년군 범위를 벗어납니다.
+              이 학년 범위를 벗어납니다.
             </span>
           ) : undefined
         }
@@ -323,7 +366,7 @@ export default function ItemDetail({ id }: { id: string }) {
             <Panel title="분류" flush>
               <p className="a2-note m-4 mb-0">
                 <span>
-                  문항 ID · 학년군 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은
+                  문항 ID · 학년 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은
                   세트의 다른 문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
                 </span>
               </p>
@@ -345,8 +388,11 @@ export default function ItemDetail({ id }: { id: string }) {
                 <QuestionContentRows
                   key={`content-${qs[openIndex].id}`}
                   q={qs[openIndex]}
+                  content={contentOfQ(qs[openIndex].id)}
+                  marks={marks}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(openIndex, next)}
+                  onContent={(next) => setContentOfQ(qs[openIndex].id, next)}
                 />
               </div>
             </Panel>
@@ -613,35 +659,47 @@ export default function ItemDetail({ id }: { id: string }) {
               세트면 지문이 곧 「문항들이 함께 읽는 것」이라 목록 바로 위가 제자리다 */}
           <Panel title="문항" meta={view.form === "set" ? `${qs.length}문항` : undefined} flush>
             <div className="a2-form a2-form-lg a2-card">
+              {/* 보기 상자의 네모 테두리와 「[1~4]」 번호는 응시 화면이 그린다. 여기서는 상자 위
+                  지시문과 상자 안에 들어갈 것만 쓴다 */}
               <FormRow
-                label={view.form === "set" ? "보기 · 지문" : "지문"}
-                req={view.form === "set"}
+                label="지시문"
+                hint="응시 화면에서 자료 위에 「[1~4] 지시문」으로 섭니다. 비우면 「다음을 읽고 물음에 답하시오.」"
               >
-                <BodyEditor
-                  name="passage-mode"
-                  flush
-                  value={{
-                    mode: view.passageMode,
-                    body: view.passage,
-                    images: view.passageImages,
-                  }}
+                <input
+                  className="a2-input"
+                  value={content.material.lead ?? ""}
                   disabled={locked}
-                  rows={8}
-                  onChange={(patch) =>
-                    set({
-                      passageMode: patch.mode ?? view.passageMode,
-                      passage: patch.body ?? view.passage,
-                      passageImages: patch.images ?? view.passageImages,
+                  placeholder="다음의 등잔과 초에 대한 설명을 읽고 물음에 답하시오."
+                  onChange={(e) =>
+                    setContent({
+                      ...content,
+                      material: { ...content.material, lead: e.target.value || undefined },
                     })
                   }
                 />
               </FormRow>
+              {/* 블록을 쌓으면 칸이 길어져 왼쪽 이름표가 가운데에 묻힌다 — 이름을 위에 얹는다 */}
+              <FormBlock
+                title={view.form === "set" ? "보기 · 지문 — 네모 상자 안에 들어갈 것" : "지문"}
+                req={view.form === "set"}
+              >
+                <BlockEditor
+                  blocks={content.material.blocks}
+                  disabled={locked}
+                  onChange={(blocks) =>
+                    setContent({ ...content, material: { ...content.material, blocks } })
+                  }
+                />
+              </FormBlock>
               {view.form === "single" && (
                 <QuestionContentRows
                   key={qs[0].id}
                   q={qs[0]}
+                  content={contentOfQ(qs[0].id)}
+                  marks={marks}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(0, next)}
+                  onContent={(next) => setContentOfQ(qs[0].id, next)}
                 />
               )}
             </div>
@@ -670,6 +728,15 @@ export default function ItemDetail({ id }: { id: string }) {
                   <p className="a2-note m-4 mt-0" style={{ borderLeftColor: "var(--a2-warn)" }}>
                     <span>세트는 문항이 두 개 이상이어야 합니다.</span>
                   </p>
+                )}
+                {/* 세트 안의 세트 — 이어진 문항을 묶어 한 화면에 세우고 자료를 더 얹는다 */}
+                {qs.length >= 2 && (
+                  <GroupEditor
+                    content={content}
+                    count={qs.length}
+                    disabled={locked}
+                    onChange={setContent}
+                  />
                 )}
               </>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   answerText,
@@ -15,6 +16,7 @@ import {
   splitBlanks,
   subjectOf,
   type Blank,
+  type Block,
   type Brief,
   type Figure,
   type Question,
@@ -35,6 +37,7 @@ import {
   useHydrated,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
+import { renderDetail } from "@/lib/richText";
 import { useExamConfig } from "@/lib/roundStore";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
@@ -856,8 +859,28 @@ function Result({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * 응시 창을 닫는다.
+ *
+ * 응시는 따로 띄운 창에서 본다(lib/popup.ts examWindow). 다 보았거나 포기한 뒤에 할 일은
+ * 이 창을 닫는 것이지 여기서 다른 화면으로 옮겨 가는 것이 아니다 — 원래 창의 응시 현황이
+ * 그 결과를 이미 받아 두었다. 주소를 직접 열어 본 경우에는 창이 닫히지 않으므로 그때만
+ * 응시 현황으로 보낸다.
+ */
+function useCloseExam() {
+  const router = useRouter();
+  return async () => {
+    await leaveFullscreen();
+    window.close();
+    window.setTimeout(() => {
+      if (!window.closed) router.push("/exam");
+    }, 200);
+  };
+}
+
 function Submitted({ subject }: { subject: SubjectId }) {
   const meta = subjectOf(subject)!;
+  const close = useCloseExam();
   return (
     <Result>
       <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-exam-line text-exam-text">
@@ -867,20 +890,10 @@ function Submitted({ subject }: { subject: SubjectId }) {
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
         답안과 해석이 모두 저장되었습니다. 이 창을 닫으면 진단 현황 화면에서 제출 상태가 갱신됩니다.
       </p>
-      <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <button
-          type="button"
-          onClick={async () => {
-            await leaveFullscreen();
-            window.close();
-          }}
-          className={btnPrimary}
-        >
+      <div className="mt-8 flex justify-center">
+        <button type="button" onClick={close} className={btnPrimary}>
           창 닫기
         </button>
-        <Link href="/exam" className={btnGhost}>
-          진단 현황으로
-        </Link>
       </div>
     </Result>
   );
@@ -896,6 +909,7 @@ function Forfeited({
   attemptsLeft: number;
 }) {
   const meta = subjectOf(subject)!;
+  const close = useCloseExam();
   return (
     <Result>
       <p className={eyebrow}>응시 중단</p>
@@ -911,14 +925,15 @@ function Forfeited({
           <button
             type="button"
             onClick={() => restartSubject(studentId, subject)}
-            className={btnPrimary}
+            className={btnGhost}
           >
             남은 기회로 다시 응시
           </button>
         )}
-        <Link href="/exam" className={btnGhost}>
-          진단 현황으로
-        </Link>
+        {/* 포기한 뒤에 할 일은 이 창을 닫는 것이다 — 원래 창의 응시 현황이 이미 갱신되어 있다 */}
+        <button type="button" onClick={close} className={btnPrimary}>
+          창 닫기
+        </button>
       </div>
     </Result>
   );
@@ -986,27 +1001,47 @@ export function setRange(order: Question[], q: Question) {
   return nums.length > 1 ? `${nums[0]}~${nums[nums.length - 1]}` : null;
 }
 
-/** 자료 상자 안 — 본문 · 사진 · 목록 · 표. 왼쪽 자료와 묶음 머리 자료가 같이 쓴다 */
+/** 자료 상자 안 — 왼쪽 자료와 묶음 머리 자료가 같이 쓴다 */
 function BriefBody({ brief }: { brief: Brief }) {
+  return <BlockList blocks={brief.blocks} />;
+}
+
+/**
+ * 자료 블록을 적힌 차례대로 그린다(lib/content.ts Block).
+ *
+ * 출제 화면이 쌓은 차례가 곧 시험지의 차례다 — 문단 사이는 좁게, 갈래가 바뀌면 넓게 띄운다.
+ * 왼쪽 자료 · 묶음 머리 자료 · 발문 아래 자료가 모두 이것을 쓴다.
+ */
+export function BlockList({ blocks, className = "" }: { blocks: Block[]; className?: string }) {
   return (
-    <div className="space-y-5">
-      {brief.paragraphs.length > 0 && (
-        <div className="space-y-3">
-          {brief.paragraphs.map((p) => (
-            <p key={p} className="text-[14px] leading-[1.9] text-exam-text">
-              <WithBlanks text={p} />
-            </p>
-          ))}
-        </div>
-      )}
+    <div className={className}>
+      {blocks.map((b, i) => {
+        const prev = blocks[i - 1];
+        const gap = !prev ? "" : prev.kind === "text" && b.kind === "text" ? "mt-3" : "mt-5";
+        return (
+          <div key={i} className={gap}>
+            <BlockView block={b} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
-      {brief.figures && <FigureRow figures={brief.figures} sequence={brief.sequence} />}
-
-      {brief.list && (
+function BlockView({ block: b }: { block: Block }) {
+  switch (b.kind) {
+    case "text":
+      return (
+        <p className="whitespace-pre-line text-[14px] leading-[1.9] text-exam-text">
+          <WithBlanks text={b.text} />
+        </p>
+      );
+    case "list":
+      return (
         <ul className="space-y-1.5">
-          {brief.list.map((l) => (
+          {b.items.map((l, i) => (
             <li
-              key={l}
+              key={i}
               className={`text-[14px] leading-[1.8] text-exam-text ${
                 /* 「[측정 방법]」 같은 소제목은 굵게, 「○ …」 항목은 둘째 줄부터 들여 쓴다 */
                 l.startsWith("[") ? "font-bold" : l.startsWith("○") ? "pl-4 -indent-4" : ""
@@ -1016,10 +1051,75 @@ function BriefBody({ brief }: { brief: Brief }) {
             </li>
           ))}
         </ul>
-      )}
+      );
+    case "images":
+      return <FigureRow figures={b.images} sequence={b.layout === "sequence"} />;
+    case "table":
+      return <ExamTable table={b.table} />;
+    case "video":
+      return (
+        <figure className="mx-auto w-full max-w-[28rem]">
+          {/* 대본은 영상 아래 접어 둔다 — 소리를 못 듣는 학생이 같은 내용을 읽을 길 */}
+          <video
+            src={b.src}
+            poster={b.poster}
+            controls
+            preload="metadata"
+            className="w-full rounded-[6px] border border-exam-line bg-black"
+          />
+          {b.caption && (
+            <figcaption className="mt-2 text-center text-[14px] text-exam-text">
+              {b.caption}
+            </figcaption>
+          )}
+          {b.transcript && (
+            <details className="mt-2 font-sans text-[12px] text-exam-muted">
+              <summary className="cursor-pointer">영상 내용 글로 보기</summary>
+              <p className="mt-1.5 whitespace-pre-line leading-relaxed">{b.transcript}</p>
+            </details>
+          )}
+        </figure>
+      );
+    case "audio":
+      /* 듣기 문항이라 대본은 학생에게 내보이지 않는다 — 채점 · 검수가 읽는다 */
+      return (
+        <figure>
+          <audio src={b.src} controls preload="metadata" className="w-full" />
+          {b.caption && (
+            <figcaption className="mt-1.5 text-[13px] text-exam-text">{b.caption}</figcaption>
+          )}
+        </figure>
+      );
+    case "animation":
+      return <PendulumClip periodSec={b.periodSec} caption={b.caption} />;
+    case "rich":
+      return <RichBlock format={b.format} body={b.body} />;
+    case "note":
+      return <p className="whitespace-pre-line text-[13px] text-exam-text">{b.text}</p>;
+    case "box":
+      /* 시험지의 〈보기〉 — 이름을 윗선 가운데에 얹는다. 줄바꿈은 그대로 줄을 바꾼다 */
+      return (
+        <div className="relative mt-2.5 border border-exam-text/70 px-4 pb-3.5 pt-5">
+          {b.title && (
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-exam-panel px-2 text-[13px] font-bold leading-5 text-exam-text">
+              〈{b.title}〉
+            </span>
+          )}
+          <p className="whitespace-pre-line text-[14px] leading-[1.8] text-exam-text">
+            <WithBlanks text={b.text} />
+          </p>
+        </div>
+      );
+  }
+}
 
-      {brief.table && <ExamTable table={brief.table} />}
-    </div>
+/** 마크다운 · HTML로 적힌 옛 지문 — 소독(lib/richText.ts)을 거친 뒤 그린다 */
+function RichBlock({ format, body }: { format: "markdown" | "html"; body: string }) {
+  return (
+    <div
+      className="text-[14px] leading-[1.9] text-exam-text"
+      dangerouslySetInnerHTML={{ __html: renderDetail(format, body, []) }}
+    />
   );
 }
 
@@ -1257,7 +1357,7 @@ function FigureView({ figure: f, className }: { figure: Figure; className: strin
 function PendulumClip({ periodSec, caption }: { periodSec: number; caption: string }) {
   const [playing, setPlaying] = useState(false);
   return (
-    <figure className="mx-auto mt-6 w-full max-w-[18rem]">
+    <figure className="mx-auto w-full max-w-[18rem]">
       <div className="relative overflow-hidden rounded-[6px] border border-exam-line bg-[#f4f1ea]">
         <svg viewBox="0 0 200 180" className="block w-full" aria-hidden>
           <rect x="60" y="8" width="80" height="8" rx="2" fill="#b58a57" />
@@ -1336,12 +1436,11 @@ export function ScreenColumn({
             <span className="mr-1.5 tabular-nums">
               {numbersText(order, screen).replace("문항 ", "[")}]
             </span>
-            {groupBrief.lead ?? groupBrief.title}
+            {groupBrief.lead ?? "다음을 읽고 물음에 답하시오."}
           </p>
           <div className="mt-4 border border-exam-text/70 px-3 py-4 xl:px-5 xl:py-5">
             <BriefBody brief={groupBrief} />
           </div>
-          {groupBrief.note && <p className="mt-2 text-[13px] text-exam-text">{groupBrief.note}</p>}
         </section>
       )}
       <div className="divide-y divide-exam-line">{screen.map(renderQuestion)}</div>
@@ -1382,13 +1481,7 @@ export function QuestionBody({
         <WithBlanks text={q.stem} />
       </h1>
 
-      {q.figures && <FigureRow figures={q.figures} className="mt-6" />}
-      {q.clip && <PendulumClip periodSec={q.clip.periodSec} caption={q.clip.caption} />}
-      {q.table && (
-        <div className="mt-6">
-          <ExamTable table={q.table} />
-        </div>
-      )}
+      {q.blocks && q.blocks.length > 0 && <BlockList blocks={q.blocks} className="mt-6" />}
 
       {q.type === "choice" ? (
         <fieldset className="relative mt-7">

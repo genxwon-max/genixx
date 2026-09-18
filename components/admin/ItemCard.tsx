@@ -64,7 +64,7 @@ const subjects = ["국어", "수학", "과학"] as const;
  *  · 단계를 고르면 형식이 따라온다(§1 고정 매핑). 배점과 b모수는 새 콘솔의 문항 상세에서
  *    사람이 적고 고르며, 단계를 바꿔도 덮지 않는다(lib/itemStore.ts의 setLevel). 형식을 먼저 고르고
  *    단계를 끼워 맞추는 길은 열지 않는다 — 발주서가 「판별 → 형식」 순서를 못 박았다.
- *  · 성취기준 코드는 학년군 접두까지 본다. 코드가 없거나 학년군을 벗어나면
+ *  · 성취기준 코드는 학년 접두까지 본다. 코드가 없거나 학년을 벗어나면
  *    접수 반려되므로(§7.2) 제출을 막는다.
  *  · 자기-성찰 S4처럼 그 재능이 출제할 수 없는 단계는 고를 수 없다(§2 출제 범위).
  *
@@ -230,7 +230,7 @@ export default function ItemCard({ id }: { id: string }) {
           note="학년 + 교과 + 단원 - 단계 - 일련번호 (예: 4K02-S2-001)"
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="학년군">
+            <Field label="학년">
               <select
                 value={item.band}
                 onChange={(e) => set({ band: e.target.value as GradeBand })}

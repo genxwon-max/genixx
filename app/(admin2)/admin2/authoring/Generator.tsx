@@ -32,7 +32,7 @@ import { QuestionClassRows } from "../items/[id]/QuestionEditor";
  * 이제 두 화면이 같은 줄을 쓴다 —
  *
  *   문항 구성   단일 · 세트 + 단계별 문항 수(LevelCounts)
- *   분류        학년군 · 교과 단원(BandUnitRows) · Tag A · Tag B · 난이도(QuestionClassRows)
+ *   분류        학년 · 교과 단원(BandUnitRows) · Tag A · Tag B · 난이도(QuestionClassRows)
  *   출제 지시
  *
  * 과목 줄은 없다. 교과 단원을 고르면 과목이 따라온다(문항 상세와 같다).
@@ -49,7 +49,7 @@ import { QuestionClassRows } from "../items/[id]/QuestionEditor";
  * 필요하면 뽑은 뒤 문항 상세에서 고친다.
  *
  * 규칙은 저장소와 한 벌로 쓴다(lib/itemStore.ts checkSpec) — 몇 문항까지 담을 수 있는지, 어떤
- * 축이 어떤 단계를 못 만드는지, 성취기준 코드 · 교과 단원이 학년군과 맞는지를 여기서 다시 적지
+ * 축이 어떤 단계를 못 만드는지, 성취기준 코드 · 교과 단원이 학년과 맞는지를 여기서 다시 적지
  * 않는다. 화면과 저장소가 다른 규칙을 보면 화면이 통과시킨 것을 저장소가 막는 날이 온다.
  */
 

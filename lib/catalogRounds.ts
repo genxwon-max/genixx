@@ -25,7 +25,7 @@ import { useExamConfig } from "./roundStore";
 export type CatalogSubject = { id: SubjectId; name: string; minutes: number };
 
 /**
- * 한 시기 — 이 안에 학년군마다 평가가 하나씩 선다(「2026 3-1 평가」 · 「2026 3-2 평가」 …).
+ * 한 시기 — 이 안에 학년마다 평가가 하나씩 선다(「2026 3-1 평가」 · 「2026 3-2 평가」 …).
  * 학생 화면에 부르는 이름은 evalName(lib/examCatalog.ts)이 짓는다.
  */
 export type CatalogRound = {

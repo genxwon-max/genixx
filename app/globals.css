@@ -415,6 +415,19 @@ body {
   }
 }
 
+/* 정오표 인쇄 — 종이 전용 정오표만 남기고 화면은 모두 감춘다 (components/exam/AnswerKey) */
+.answer-sheet-print {
+  display: none;
+}
+@media print {
+  body.printing-answer-sheet > *:not(.answer-sheet-print) {
+    display: none !important;
+  }
+  body.printing-answer-sheet > .answer-sheet-print {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

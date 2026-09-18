@@ -15,7 +15,7 @@ import { PageHead, Status } from "@/components/admin2/ui";
  * ADM-04-3 평가별 문항관리 — **회차 한 줄**.
  *
  * ── 왜 줄을 회차로 세는가 ──
- * 한동안 회차 × 과목 × 학년군 한 칸을 한 줄로 폈다. 「어느 칸이 비었나」는 잘 보였지만, 한
+ * 한동안 회차 × 과목 × 학년 한 칸을 한 줄로 폈다. 「어느 칸이 비었나」는 잘 보였지만, 한
  * 회차가 표에서 세 줄로 흩어졌다. 회차 이름이 세 번 되풀이되고, 그 셋을 다시 눈으로 묶어야
  * 「이 회차가 어디까지 왔나」를 알 수 있었다 — 실제로 사람이 세는 단위는 회차다.
  *
@@ -191,10 +191,10 @@ export default function FormsView() {
         cell: (r) => <Status tone={roundTone[r.roundState]}>{roundStates[r.roundState].label}</Status>,
       },
       {
-        /* 학년군은 회차마다 하나다(roundPlanStore의 band). 과목처럼 여럿 눕지 않으므로
-           제 칸에 세운다 — 같은 과목이라도 학년군이 다르면 다른 검사지다 */
+        /* 학년은 회차마다 하나다(roundPlanStore의 band). 과목처럼 여럿 눕지 않으므로
+           제 칸에 세운다 — 같은 과목이라도 학년이 다르면 다른 검사지다 */
         key: "band",
-        head: "학년군",
+        head: "학년",
         width: "9rem",
         nowrap: true,
         hide: "lg",
@@ -283,7 +283,7 @@ export default function FormsView() {
       },
       {
         id: "band",
-        label: "학년군",
+        label: "학년",
         options: gradeBands.map((g) => ({ value: g.id, label: g.label })),
         match: (r, v) => r.band === v,
       },

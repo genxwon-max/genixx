@@ -30,7 +30,10 @@ import {
 } from "@/lib/blueprint";
 import { toneColor } from "@/lib/admin2";
 import { splitPastedItem } from "@/lib/choicePaste";
+import AnswerEditor from "@/components/admin2/AnswerEditor";
+import BlockEditor from "@/components/admin2/BlockEditor";
 import BodyEditor from "@/components/admin2/BodyEditor";
+import type { ContentQuestion } from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import {
   BlockPart,
@@ -52,7 +55,7 @@ import {
  * 붙일 것」으로 분류를 문항 앞뒤로 갈랐는데, 출제위원은 카드를 옆에 펴 놓고 칸을 옮겨
  * 적는다 — 화면 차례가 카드와 다르면 칸을 찾아 화면을 오르내린다. 그래서 둘로 편다.
  *
- *   분류  (문항 ID · 학년군 · 교과 단원은 묶음이 쥔다) 인지단계 · Tag A · Tag B · 형식 · 난이도|배점
+ *   분류  (문항 ID · 학년 · 교과 단원은 묶음이 쥔다) 인지단계 · Tag A · Tag B · 형식 · 난이도|배점
  *   문항  (지문은 묶음이 쥔다) 문항 · 정답·채점 기준 · 인정|불인정 예 ·
  *         재능 평가 관점 · 오답 설계 의도
  *
@@ -229,7 +232,7 @@ const Danger = ({ children }: { children: React.ReactNode }) => (
 /**
  * 문항 하나의 분류 줄 — 인지단계 · Tag A · Tag B · 형식 · 난이도|배점.
  *
- * 문항 ID · 학년군 · 교과 단원은 이 위에 선다. 그 셋은 묶음이 통째로 쥐는 값이라 문항 상세
+ * 문항 ID · 학년 · 교과 단원은 이 위에 선다. 그 셋은 묶음이 통째로 쥐는 값이라 문항 상세
  * (ItemDetail)가 그리고, 세트에서도 문항마다 다르지 않다.
  *
  * 단일이면 문항 상세에, 세트면 목록에서 들어간 문항 상세에 선다. 세트의 바깥 화면에는
@@ -250,7 +253,7 @@ export function QuestionClassRows({
   onChange,
 }: {
   q: Question;
-  /** 성취기준 코드가 맞는지는 학년군을 알아야 본다. 학년군은 세트가 통째로 쥐고 있다 */
+  /** 성취기준 코드가 맞는지는 학년을 알아야 본다. 학년은 세트가 통째로 쥐고 있다 */
   band: GradeBand;
   disabled: boolean;
   /**
@@ -319,7 +322,7 @@ export function QuestionClassRows({
 
           NCIC 원문 대조 · 2022 개정 코드 확인 체크는 걷었다. 체크리스트 01이 같은 것을 묻는다.
           코드 형식이 틀렸다는 줄도 칸 아래에 적지 않는다 — 제출 단추의 풍선 도움말이 짚고,
-          학년군을 벗어난 코드는 학년군 줄이 짚는다.
+          학년을 벗어난 코드는 학년 줄이 짚는다.
 
           학습 요소는 옛 「Tag A 세부」 칸(tagADetail)을 그대로 쓴다. 목록·검수 화면이 Tag A 한
           줄을 그 칸으로 짓는다(lib/itemStore.ts syncTags) */}
@@ -505,12 +508,20 @@ export function QuestionClassRows({
  */
 export function QuestionContentRows({
   q,
+  content,
+  marks = [],
   disabled,
   onChange,
+  onContent,
 }: {
   q: Question;
+  /** 이 문항을 학생이 보는 모양 — 발문 아래 자료와 답 칸이 여기 담긴다(lib/content.ts) */
+  content?: ContentQuestion;
+  /** 지문에 적힌 빈칸 표지 — 답 칸 이름으로 불러온다 */
+  marks?: string[];
   disabled: boolean;
   onChange: (next: Question) => void;
+  onContent?: (next: ContentQuestion) => void;
 }) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
   const choice = q.type === "choice";
@@ -656,6 +667,44 @@ export function QuestionContentRows({
         )}
       </FormRow>
 
+      {/* 발문 아래 자료 — 이 문항에만 딸린 사진 · 표 · 〈보기〉 상자. 세트가 함께 읽는 것은 지문 칸에 쓴다 */}
+      {content && onContent && (
+        <FormBlock title="발문 아래 자료 — 이 문항에만 딸린 〈보기〉 상자 · 사진 · 표">
+          <BlockEditor
+            blocks={content.blocks ?? []}
+            disabled={disabled}
+            kinds={["box", "images", "table", "list", "text", "video", "audio", "note"]}
+            empty="없으면 비워 둡니다. 「〈보기〉에서 고르시오」의 상자나 이 문항에만 쓰는 사진 · 표를 넣습니다."
+            onChange={(blocks) =>
+              onContent({ ...content, blocks: blocks.length > 0 ? blocks : undefined })
+            }
+          />
+        </FormBlock>
+      )}
+
+      {/* 답 칸 — 보기를 고르지 않는 문항이 학생에게 여는 칸과 칸마다의 정답 */}
+      {content && onContent && !picks && (
+        <FormBlock title="답 칸 — 학생이 채우는 칸과 칸마다의 정답" req>
+          <AnswerEditor
+            response={
+              content.response.kind === "choice"
+                ? { kind: "blanks", blanks: [{ label: "" }] }
+                : content.response
+            }
+            answers={content.sampleAnswer ?? []}
+            marks={marks}
+            disabled={disabled}
+            onChange={({ response, answers }) =>
+              onContent({
+                ...content,
+                response,
+                sampleAnswer: answers.some((a) => a.trim()) ? answers : undefined,
+              })
+            }
+          />
+        </FormBlock>
+      )}
+
       <FormBlock title="정답 · 채점 기준" req>
         {picks && (
           <BlockPart title="정답">
@@ -673,7 +722,8 @@ export function QuestionContentRows({
             </div>
           </BlockPart>
         )}
-        {q.type === "short" && (
+        {/* 답 칸 편집기가 서면 허용 답안은 칸마다 거기서 받는다 */}
+        {q.type === "short" && !(content && onContent) && (
           <BlockPart title="허용 답안" req>
             <GrowTextarea
               line

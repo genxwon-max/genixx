@@ -17,6 +17,17 @@ import {
 } from "./blueprint";
 import { pickSample } from "./itemBank";
 import type { DetailMode } from "./richText";
+import {
+  isGroup,
+  questionsIn,
+  type Block,
+  type ContentNode,
+  type ContentQuestion,
+  type ContentSet,
+  type Figure,
+  type Response,
+} from "./content";
+import { examSets } from "./examQuestions";
 import { auditItem, auditRejection } from "./itemAudit";
 
 /**
@@ -303,7 +314,7 @@ export type Question = {
    * 여기서 만든 요약이다(summaryOf · flatten). 단일이면 문항이 하나뿐이라 요약과
    * 원본이 같은 값이다.
    *
-   * 과목·학년군·단원·문항 ID는 여기 없다. 그것은 세트가 통째로 공유하는 것이고,
+   * 과목·학년·단원·문항 ID는 여기 없다. 그것은 세트가 통째로 공유하는 것이고,
    * 문항마다 다를 수 있는 값이 아니다.
    */
   /** ③ 성취기준 코드 — 없으면 접수 반려(§7.2) */
@@ -366,6 +377,22 @@ export type ItemDraft = {
    * 저장으로 나가는 길목 하나(patchItem)에서만 맞춘다 — syncQuestions 주석 참고.
    */
   questions: Question[];
+  /**
+   * 학생이 보는 모양 — 세트 → 묶음 → 문항 얼개와 자료 블록(lib/content.ts).
+   *
+   * 응시 화면이 읽는 형태와 같은 한 벌이다. 출제 화면이 지금은 지문 한 칸(passage)과 문항
+   * 줄(questions)을 고치므로, 저장할 때마다 그 칸들에서 이것을 다시 만든다(contentOf).
+   * 블록 편집기가 붙으면 방향을 뒤집는다 — 그때는 이것이 원본이고 passage가 요약이 된다.
+   */
+  content: ContentSet;
+  /**
+   * 학생이 보는 모양을 블록으로 직접 쓴 문항인가.
+   *
+   * 참이면 content가 원본이다 — 저장할 때 지문 칸에서 다시 만들지 않는다(사진 위 표시 ·
+   * 묶음 · 괄호 칸은 지문 한 칸으로 옮길 수 없다). 옛 칸에서 고친 발문 · 단계 · 보기만
+   * 이쪽으로 옮겨 온다(syncAuthored).
+   */
+  contentAuthored?: boolean;
   /* ── 아래 여덟 칸은 questions[0]의 거울이다. 직접 고치지 말고 questions를 고친다 ── */
   /** 발문 */
   stem: string;
@@ -390,7 +417,7 @@ export type ItemDraft = {
   retireReason?: string;
   version: number;
   /* ── 발주서 Ver.4.1 문항 카드 (lib/blueprint.ts) ── */
-  /** 학년군 — 성취기준 코드의 접두를 결정한다 */
+  /** 학년 — 성취기준 코드의 접두를 결정한다 */
   band: GradeBand;
   /** 단원명 — 교과서 단원 목록(lib/curriculumUnits.ts)에서 고른다 */
   unit: string;
@@ -635,7 +662,7 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       },
       { id: "t-p-level", text: "S단계가 요구하는 조작 수준과 발문이 맞습니다" },
       { id: "t-p-spec", text: "형식·배점·b모수가 단계 명세대로입니다" },
-      { id: "t-p-band", text: "학년군이 지문과 보기 수준에 맞습니다" },
+      { id: "t-p-band", text: "학년이 지문과 보기 수준에 맞습니다" },
       { id: "t-p-single", text: "두 축이 겹치지 않고 하나로 읽힙니다" },
       {
         id: "t-p-cross",
@@ -1001,7 +1028,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2606",
     code: "4K02-S1-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "낱말의 의미 관계",
     unitNo: "02",
@@ -1041,7 +1068,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2607",
     code: "4K02-S2-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "낱말의 의미 관계",
     unitNo: "02",
@@ -1080,7 +1107,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2608",
     code: "4K02-S3-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "낱말의 의미 관계",
     unitNo: "02",
@@ -1114,7 +1141,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2609",
     code: "4K02-S4-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "낱말의 의미 관계 · 읽기",
     unitNo: "02",
@@ -1152,7 +1179,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2610",
     code: "3M04-S1-001",
     subject: "수학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "분수",
     unitNo: "04",
@@ -1210,7 +1237,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2611",
     code: "3M04-S4-001",
     subject: "수학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "분수",
     unitNo: "04",
@@ -1229,7 +1256,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     rubric:
       "예 생성·비교 1점 + 근거(단위분수) 1점 + 일반화 정당화 1점.\n인정 예: '한 칸 크기가 같아서', '1/8씩 커지니까'\n불인정 예: '분자가 크니까 크다'(재진술만)",
     guidance:
-      "정답형 S4 + 학년군 범위 준수 — '분모가 다른 비교'(5~6학년군 [6수01-07])는 요구 금지, 같은 분모 내로 한정합니다. □/8 빈칸으로 저학년을 스캐폴딩하되 생성 본질은 유지합니다.",
+      "정답형 S4 + 학년 범위 준수 — '분모가 다른 비교'(5~6학년 [6수01-07])는 요구 금지, 같은 분모 내로 한정합니다. □/8 빈칸으로 저학년을 스캐폴딩하되 생성 본질은 유지합니다.",
     type: "essay",
     shortAnswers: "",
     assets: [],
@@ -1245,7 +1272,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2612",
     code: "4K02-S1-002",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "낱말의 의미 관계",
     unitNo: "02",
@@ -1286,7 +1313,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2613",
     code: "4K02-S2-002",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "낱말의 의미 관계",
     unitNo: "02",
@@ -1332,7 +1359,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2614",
     code: "4K03-S2-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "문단의 짜임",
     unitNo: "03",
@@ -1378,7 +1405,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2615",
     code: "4K03-S3-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "문단의 짜임",
     unitNo: "03",
@@ -1415,7 +1442,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2616",
     code: "4K03-S4-001",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "문단의 짜임",
     unitNo: "03",
@@ -1450,7 +1477,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     updatedAt: "2026-08-08 10:50",
   },
   /* ── 수학·과학 승인 문항 (회차 편성용) ──
-     회차 편성판은 과목 × 학년군 여섯 칸인데, 승인된 문항이 국어에만 있으면 나머지
+     회차 편성판은 과목 × 학년 여섯 칸인데, 승인된 문항이 국어에만 있으면 나머지
      다섯 칸은 「승인 문항 0건」으로 서서 편성이라는 일 자체를 화면에서 해 볼 수 없다.
      수학 S1~S3 · 과학 S1~S4를 승인 상태로 둔다. 수학 S4(3M04-S4-001)와 과학 S1
      (SCI-4-002)은 일부러 검수 대기로 남겨 두었다 — 검수 화면에서 승인을 눌러 보면
@@ -1462,7 +1489,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2617",
     code: "4M04-S1-002",
     subject: "수학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "분수",
     unitNo: "04",
@@ -1516,7 +1543,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2618",
     code: "4M04-S2-001",
     subject: "수학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "분수",
     unitNo: "04",
@@ -1575,7 +1602,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2619",
     code: "4M04-S3-001",
     subject: "수학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "분수",
     unitNo: "04",
@@ -1592,7 +1619,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     explain:
       "정답: 5/7, 3/7, 2/7. 분모가 같으므로 분자가 큰 쪽이 큽니다. 부분점수 — 순서가 하나만 어긋나면 1점.",
     guidance:
-      "배운 절차를 그대로 수행하게 합니다. 분모가 다른 비교(5~6학년군)는 요구하지 않습니다.",
+      "배운 절차를 그대로 수행하게 합니다. 분모가 다른 비교(5~6학년)는 요구하지 않습니다.",
     type: "short",
     shortAnswers: "5/7, 3/7, 2/7 / 5/7 3/7 2/7 / 5/7>3/7>2/7",
     rubric: "",
@@ -1625,7 +1652,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2620",
     code: "4S10-S1-001",
     subject: "과학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "물의 상태 변화",
     unitNo: "10",
@@ -1685,7 +1712,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2621",
     code: "4S10-S2-001",
     subject: "과학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "물의 상태 변화",
     unitNo: "10",
@@ -1745,7 +1772,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2622",
     code: "4S10-S3-001",
     subject: "과학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "물의 상태 변화",
     unitNo: "10",
@@ -1796,7 +1823,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     id: "IT-2623",
     code: "4S10-S4-001",
     subject: "과학",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     unit: "물의 상태 변화",
     unitNo: "10",
@@ -1845,7 +1872,82 @@ const SEED_RAW: Partial<ItemDraft>[] = [
   },
 ];
 
-const SEED: ItemDraft[] = withCodes(SEED_RAW.map(fill));
+/**
+ * 세트 문항 원본 다섯 벌 — 응시 화면의 과학 20문항(examQuestions.ts)을 은행에 올린 것.
+ *
+ * 블록으로 쓴 문항의 본보기다(contentAuthored). 사진 위 표시 · 묶음 · 괄호 칸이 모두 들어
+ * 있어, 옛 칸(지문 한 칸 + 문항 줄)으로는 옮길 수 없는 것이 어떻게 담기는지 보여 준다.
+ *
+ * 지문 칸에는 자료의 글만 옮겨 둔다 — 목록 · 검수 화면이 한 줄로 읽는 자리다.
+ */
+const SET_SOURCES: Record<string, string> = {
+  "sci-lamp": "한창원_재능진단_여7_초와 등잔 v1.0",
+  "sci-cloud": "한창원_재능진단_여3_구름 v1.0",
+  "sci-lotus": "한창원_재능진단_여5_열화상이미지 연잎 v1.0",
+  "sci-erosion": "한창원_재능진단_여15_지형변화 침식 v1.0",
+  "sci-pendulum": "한창원_재능진단_여16_진자 운동 v1.0",
+};
+
+function seedFromSet(set: (typeof examSets)[number], n: number): Partial<ItemDraft> {
+  const content: ContentSet = { id: set.id, material: set.material, nodes: set.nodes };
+  const typeOf = (r: Response): ItemType => {
+    if (r.kind === "choice") return "choice";
+    if (r.kind === "upload") return "image";
+    if (r.kind === "blanks" && r.blanks.every((b) => b.short || b.options)) return "short";
+    return "descriptive";
+  };
+  const at = `2026-09-16 10:0${n}`;
+  return {
+    id: `IT-SET-0${n}`,
+    code: "",
+    subject: "과학",
+    grade: "초등 3~4학년",
+    band: "3-4",
+    form: "set",
+    tagADetail: set.material.title ?? "",
+    talent: "NATU",
+    subskill: "NATU-01",
+    passage: set.material.blocks.flatMap((b) => (b.kind === "text" ? [b.text] : [])).join("\n\n"),
+    passageMode: "text",
+    passageImages: [],
+    questions: questionsIn(content).map(
+      (cq) =>
+        ({
+          id: cq.id,
+          type: typeOf(cq.response),
+          stem: cq.stem,
+          choices: cq.response.kind === "choice" ? cq.response.choices : undefined,
+          answer: cq.response.kind === "choice" ? cq.response.answer : 0,
+          rubric: cq.scoring?.join("\n") ?? "",
+          explain: cq.sampleAnswer?.join("\n") ?? "",
+          level: cq.level,
+        }) as Partial<Question> as Question,
+    ),
+    content,
+    contentAuthored: true,
+    guidance: `원본 — 「${SET_SOURCES[set.id] ?? set.material.title}」. 사진 위 표시 · 묶음 · 괄호 칸은 블록으로 들어 있습니다.`,
+    type: "descriptive",
+    shortAnswers: "",
+    assets: [],
+    version: 1,
+    anchor: false,
+    level: "S1",
+    author: "author.yoon",
+    authorName: "윤출제",
+    state: "approved",
+    correctRate: null,
+    reviews: [],
+    comments: [],
+    createdAt: at,
+    updatedAt: at,
+  };
+}
+
+const SET_SEEDS: Partial<ItemDraft>[] = examSets
+  .filter((set) => set.subject === "science")
+  .map((set, i) => seedFromSet(set, i + 1));
+
+const SEED: ItemDraft[] = withCodes([...SEED_RAW, ...SET_SEEDS].map(fill));
 
 const KEY = "genixx.items";
 const EVENT = "genixx:items-change";
@@ -2038,7 +2140,144 @@ function derive(item: ItemDraft): ItemDraft {
     choices: choicesOf(first),
     ...summaryOf(item.questions),
   };
-  return { ...next, ...syncTags(next) };
+  return {
+    ...next,
+    ...syncTags(next),
+    content: contentFor(next),
+  };
+}
+
+/**
+ * 이 문항을 학생이 보는 모양 — 저장 전 초안에도 쓴다.
+ *
+ * 블록으로 쓴 문항이면 그것에 옛 칸의 고친 것을 옮기고, 아니면 옛 칸에서 새로 만든다.
+ * 출제 화면이 블록을 고치기 시작하면 이 값을 받아 고쳐서 contentAuthored와 함께 담는다.
+ */
+export function contentFor(item: ItemDraft): ContentSet {
+  return item.contentAuthored && item.content ? syncAuthored(item.content, item) : contentOf(item);
+}
+
+/* ── 학생이 보는 모양 만들기 ─────────────────────────────────────────────── */
+
+/**
+ * 지문 한 칸과 문항 줄을 공통 얼개(lib/content.ts)로 옮긴다.
+ *
+ * 지금 출제 화면의 칸에는 묶음(세트 안의 세트)이 없어 문항은 모두 세트에 바로 달린다.
+ * 사진은 올린 파일에서 대체 글을 찾아 붙인다 — 없으면 빈 글로 두고 검수에서 걸린다.
+ */
+function contentOf(item: ItemDraft): ContentSet {
+  const figure = (src: string): Figure => ({
+    src,
+    caption: "",
+    alt: item.assets?.find((a) => a.dataUrl === src)?.alt ?? "",
+  });
+  return {
+    id: item.id,
+    material: {
+      title: item.unit || undefined,
+      blocks: detailBlocks(item.passageMode, item.passage, item.passageImages, figure),
+    },
+    nodes: item.questions.map((q) => contentQuestionOf(q, figure)),
+  };
+}
+
+/**
+ * 블록으로 쓴 문항에 옛 칸의 고친 것을 옮긴다.
+ *
+ * 문항 줄(questions)은 분류 · 배점을 지고 있어 여전히 원본이다. 그래서 문항을 지우면 여기서도
+ * 빠지고, 새로 더하면 끝에 붙는다. 발문 · 단계 · 보기는 옛 칸에서 고칠 수 있으므로 옮겨 오고,
+ * 괄호 칸 · 자료 블록은 옛 칸에 자리가 없어 그대로 둔다.
+ */
+function syncAuthored(content: ContentSet, item: ItemDraft): ContentSet {
+  const byId = new Map(item.questions.map((q) => [q.id, q]));
+  const figure = (src: string): Figure => ({ src, caption: "", alt: "" });
+  const update = (cq: ContentQuestion): ContentQuestion => {
+    const q = byId.get(cq.id)!;
+    return {
+      ...cq,
+      stem: q.stemMode === "text" ? q.stem : cq.stem,
+      level: q.level,
+      response: hasChoices(q.type) ? responseOf(q) : cq.response,
+    };
+  };
+  const nodes = content.nodes.flatMap((n): ContentNode[] => {
+    if (!isGroup(n)) return byId.has(n.id) ? [update(n)] : [];
+    const questions = n.questions.filter((cq) => byId.has(cq.id)).map(update);
+    return questions.length > 0 ? [{ ...n, questions }] : [];
+  });
+  const known = new Set(questionsIn(content).map((cq) => cq.id));
+  const added = item.questions
+    .filter((q) => !known.has(q.id))
+    .map((q) => contentQuestionOf(q, figure));
+  return { ...content, id: item.id, nodes: [...nodes, ...added] };
+}
+
+/** 지문 · 발문 한 칸을 블록으로 — 일반 글은 빈 줄마다 문단을 가른다 */
+function detailBlocks(
+  mode: DetailMode,
+  body: string,
+  images: string[],
+  figure: (src: string) => Figure,
+): Block[] {
+  if (mode === "images") {
+    return images.length > 0 ? [{ kind: "images", layout: "row", images: images.map(figure) }] : [];
+  }
+  if (mode === "markdown" || mode === "html") {
+    return body.trim() ? [{ kind: "rich", format: mode, body }] : [];
+  }
+  return body
+    .split(/\n\s*\n/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((text) => ({ kind: "text", text }));
+}
+
+function contentQuestionOf(q: Question, figure: (src: string) => Figure): ContentQuestion {
+  /* 발문이 글이 아니면(그림 · 서식 글) 발문 자리는 비우고 그 내용을 발문 아래 블록으로 둔다 */
+  const plain = q.stemMode === "text";
+  const blocks = plain ? [] : detailBlocks(q.stemMode, q.stem, q.stemImages, figure);
+  const lines = (t: string) =>
+    t
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+  const out: ContentQuestion = {
+    id: q.id,
+    level: q.level,
+    stem: plain ? q.stem : "",
+    response: responseOf(q),
+  };
+  if (blocks.length > 0) out.blocks = blocks;
+  if (q.rubric.trim()) out.scoring = lines(q.rubric);
+  if (!hasChoices(q.type) && q.explain.trim()) out.sampleAnswer = [q.explain.trim()];
+  return out;
+}
+
+/** 출제 유형을 답하는 방식으로 */
+function responseOf(q: Question): Response {
+  switch (q.type) {
+    case "choice":
+    case "ox":
+      return { kind: "choice", choices: choicesOf(q), answer: q.answer };
+    case "short":
+      return {
+        kind: "blanks",
+        blanks: [
+          {
+            label: "",
+            accept: q.shortAnswers
+              .split(",")
+              .map((a) => a.trim())
+              .filter(Boolean),
+          },
+        ],
+      };
+    case "descriptive":
+    case "essay":
+      return { kind: "essay" };
+    case "image":
+      return { kind: "upload", media: "image" };
+  }
 }
 
 function syncQuestions(next: ItemDraft, patch: Partial<ItemDraft>): ItemDraft {
@@ -2092,6 +2331,9 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
     passageImages: raw.passageImages ?? [],
     questions,
     band,
+    /* 「초등 3~4학년군」으로 저장된 옛 문항을 읽을 때 「초등 3~4학년」으로 맞춘다 —
+       화면에서 부르는 이름을 바꿨으므로 저장분만 옛 이름으로 남아 있으면 안 된다 */
+    grade: (raw.grade ?? "").replace("학년군", "학년"),
     unit: raw.unit ?? "",
     unitNo: raw.unitNo ?? "",
     unitTerm: raw.unitTerm ?? "",
@@ -2232,7 +2474,7 @@ export function addItem(author: string, authorName: string): ItemDraft {
     id: `IT-${2600 + list.length + 1}`,
     code: "",
     subject: "국어",
-    grade: "초등 3~4학년군",
+    grade: "초등 3~4학년",
     band: "3-4",
     passage: "",
     stem: "",
@@ -2358,14 +2600,14 @@ export function checkSpec(spec: GenerateSpec): string[] {
   }
   if (!difficultyPicked(spec.b)) bad.push("난이도를 골라 주세요.");
 
-  /* 새 콘솔은 교과 단원을 골라야 과목이 정해진다. 학년군을 옮겨 목록 밖이 된 단원도 막는다 —
-     3학년 단원을 단 5·6학년군 문항이 생긴다 */
+  /* 새 콘솔은 교과 단원을 골라야 과목이 정해진다. 학년을 옮겨 목록 밖이 된 단원도 막는다 —
+     3학년 단원을 단 5·6학년 문항이 생긴다 */
   if (spec.unitTerm !== undefined) {
     if (!spec.unitTerm || !spec.unit.trim()) bad.push("교과 단원을 골라 주세요.");
     else {
       const grade = Number(spec.unitTerm.split("-")[0]);
       const grades = spec.band === "3-4" ? [3, 4] : [5, 6];
-      if (!grades.includes(grade)) bad.push("고른 교과 단원이 학년군과 맞지 않습니다.");
+      if (!grades.includes(grade)) bad.push("고른 교과 단원이 학년과 맞지 않습니다.");
     }
   }
   if (spec.points !== undefined && !(spec.points > 0)) {
@@ -2420,7 +2662,9 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         : "· 성취기준 — 아직 비어 있습니다. 문항을 보고 코드를 붙여 주세요",
       `· 단계 — ${s.rule}`,
       `· 금지 — ${s.deny}`,
-      inSet ? "· 세트입니다. 보기 하나를 함께 읽는 문항인지, 앞 문항의 답이 뒷 문항에 새지 않는지 볼 것" : "",
+      inSet
+        ? "· 세트입니다. 보기 하나를 함께 읽는 문항인지, 앞 문항의 답이 뒷 문항에 새지 않는지 볼 것"
+        : "",
       !inSet && n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
       spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
     ]
@@ -2494,7 +2738,7 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
     code: "",
     subject: spec.subject,
     band: spec.band,
-    grade: spec.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
+    grade: spec.band === "3-4" ? "초등 3~4학년" : "초등 5~6학년",
     assets: [],
     version: 1,
     unit: spec.unit.trim(),
@@ -2634,8 +2878,7 @@ export function blankQuestion(
      없거나 비워 두었으면 단계의 기본 배점으로 시작한다.
      ⚠ 문항 쪽에 실어 보낸다. fillQuestion은 태그 쪽 배점을 읽지 않는다 — 옛 납작한 문항을
        풀 때 그 자리에 세트 총점이 들어 있을 수 있어서다 */
-  const points =
-    !opts.level && prev && prev.points > 0 ? prev.points : levelSpecs[level].points;
+  const points = !opts.level && prev && prev.points > 0 ? prev.points : levelSpecs[level].points;
   return fillQuestion({ id: nextQuestionId(list), type, points }, list.length, {
     standardCode: prev?.standardCode ?? "",
     standardText: prev?.standardText ?? "",
@@ -2799,12 +3042,12 @@ export function syncTags(item: ItemDraft): Pick<ItemDraft, "tagA" | "tagB"> {
  *   연월일 - 학년 - 과목 - 문항 유형 - 단계 - 일련번호
  *   260904 -  34  -  K  -    C    -  S1 -   001
  *
- * 사람이 손으로 적던 칸이었다. 그런데 손으로 적으면 반드시 어긋난다 — 학년군을 5~6으로
+ * 사람이 손으로 적던 칸이었다. 그런데 손으로 적으면 반드시 어긋난다 — 학년을 5~6으로
  * 옮기고 코드의 앞자리는 그대로 두거나, 같은 번호를 두 문항이 갖거나, 아예 비워 둔 채로
  * 검수까지 올라갔다. 코드에 담긴 것이 전부 문항 안에 이미 있는 값이라, 적게 할 이유가
  * 없다. 읽을 때마다 다시 만든다.
  *
- * ⚠ 그래서 코드는 **변한다**. 학년군이나 단계를 고치면 코드도 따라 바뀐다 — 그게 코드에
+ * ⚠ 그래서 코드는 **변한다**. 학년이나 단계를 고치면 코드도 따라 바뀐다 — 그게 코드에
  *   그 값들을 넣는 이유다. 변하지 않는 열쇠는 id(IT-2601)이고, 주소와 기록이 쓰는 것도
  *   그쪽이다.
  *
@@ -3214,7 +3457,7 @@ export function removeAsset(id: string, assetId: string) {
  *
  * 「나중에 채우겠다」로 넘어간 칸이 3중 검토에서 반려로 돌아온다. 그래서 무엇이
  * 비었는지를 버튼 옆에 이름으로 적어 둔다. 성취기준 코드는 없으면 접수 자체가
- * 반려되므로(§7.2) 학년군 범위까지 함께 본다.
+ * 반려되므로(§7.2) 학년 범위까지 함께 본다.
  */
 export function missingFields(i: ItemDraft) {
   const out = missingContent(i);
@@ -3296,7 +3539,11 @@ export function formatIssue(q: Pick<Question, "level" | "type" | "points">): str
   const low = q.level === "S1" || q.level === "S2";
   const points = low ? 1 : q.type === "short" ? 2 : 3;
   if (typeFitsLevel(q.level, q.type) && q.points === points) return "";
-  const mapping = low ? "선택 1점" : q.level === "S3" ? "단답 2점 또는 서술 · 논술 3점" : "서술 · 논술 3점";
+  const mapping = low
+    ? "선택 1점"
+    : q.level === "S3"
+      ? "단답 2점 또는 서술 · 논술 3점"
+      : "서술 · 논술 3점";
   return `${q.level} 고정 매핑은 ${mapping}입니다.`;
 }
 
@@ -3455,7 +3702,7 @@ export function standardIssue(i: ItemDraft) {
   return checkStandardCode(i.standardCode, i.band);
 }
 
-/** 문항 하나의 성취기준 코드 진단 — 학년군은 문항이 쥐고 있어 따로 받는다 */
+/** 문항 하나의 성취기준 코드 진단 — 학년은 문항이 쥐고 있어 따로 받는다 */
 export function questionStandardIssue(q: Question, band: GradeBand) {
   return checkStandardCode(q.standardCode, band);
 }

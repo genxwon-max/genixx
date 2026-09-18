@@ -80,7 +80,7 @@ const SEED: ExamForm[] = [
     round: "2026-3",
     subject: "국어",
     band: "3-4",
-    title: "2026 파일럿 3회차 · 국어 · 초등 3~4학년군",
+    title: "2026 파일럿 3회차 · 국어 · 초등 3~4학년",
     itemIds: [
       "IT-2612",
       "IT-2606",
@@ -126,7 +126,7 @@ const SEED: ExamForm[] = [
     round: "2026-3",
     subject: "수학",
     band: "3-4",
-    title: "2026 파일럿 3회차 · 수학 · 초등 3~4학년군",
+    title: "2026 파일럿 3회차 · 수학 · 초등 3~4학년",
     itemIds: ["IT-2617", "IT-2618", "IT-2619"],
     state: "confirmed",
     createdAt: "2026-07-21 09:30",
@@ -148,7 +148,7 @@ const SEED: ExamForm[] = [
     round: "2026-3",
     subject: "과학",
     band: "3-4",
-    title: "2026 파일럿 3회차 · 과학 · 초등 3~4학년군",
+    title: "2026 파일럿 3회차 · 과학 · 초등 3~4학년",
     itemIds: ["IT-2620", "IT-2621", "IT-2622", "IT-2623"],
     state: "confirmed",
     createdAt: "2026-07-21 10:05",
@@ -171,7 +171,7 @@ const SEED: ExamForm[] = [
     round: "2026-2",
     subject: "국어",
     band: "3-4",
-    title: "2026 파일럿 2회차 · 국어 · 초등 3~4학년군",
+    title: "2026 파일럿 2회차 · 국어 · 초등 3~4학년",
     itemIds: [
       "IT-2606",
       "IT-2612",
@@ -271,7 +271,7 @@ export function createForm(
     round,
     subject,
     band,
-    title: `${label} · ${subject} · ${band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군"}`,
+    title: `${label} · ${subject} · ${band === "3-4" ? "초등 3~4학년" : "초등 5~6학년"}`,
     itemIds: [],
     state: "draft",
     createdAt: now(),
@@ -412,7 +412,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
   if (wrongBand.length > 0) {
     out.push({
       tone: "block",
-      text: `다른 학년군의 문항이 ${wrongBand.length}건 섞였습니다. 학년군이 다르면 성취기준이 달라 같은 잣대로 볼 수 없습니다.`,
+      text: `다른 학년의 문항이 ${wrongBand.length}건 섞였습니다. 학년이 다르면 성취기준이 달라 같은 잣대로 볼 수 없습니다.`,
     });
   }
 

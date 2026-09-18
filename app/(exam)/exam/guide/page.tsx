@@ -4,6 +4,7 @@ import { PageTitle } from "@/components/exam/Registrations";
 import { ArrowRight } from "@/components/Icons";
 import { examOrderOf, questionCount, subjects } from "@/lib/exam";
 import { talentSamples } from "@/lib/talentSamples";
+import { firstText } from "@/lib/content";
 import ExamPaper from "@/components/exam/ExamPaper";
 
 export const metadata: Metadata = {
@@ -53,7 +54,7 @@ export default function ExamGuidePage() {
                     <p className="text-[12px] text-soft-muted">{q.brief.label}</p>
                     <p className="mt-1 text-[15px] font-bold text-soft-ink">{q.brief.title}</p>
                     <p className="mt-1.5 line-clamp-3 text-[13px] leading-[1.8] text-soft-ink/80">
-                      {q.brief.paragraphs[0]}
+                      {firstText(q.brief)}
                     </p>
                   </div>
                   <p className="mt-4 text-[15px] font-bold leading-[1.7] text-soft-ink">

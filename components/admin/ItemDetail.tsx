@@ -223,7 +223,7 @@ export default function ItemDetail({ id }: { id: string }) {
         <section className={`${a.panel} p-5 xl:sticky xl:top-6 xl:self-start`}>
           <h2 className={a.cardTitle}>좌표 · 태그</h2>
           <dl className="mt-3 space-y-3">
-            <Row k="학년군" v={band ? `${band.label} (${band.prefix})` : item.band} />
+            <Row k="학년" v={band ? `${band.label} (${band.prefix})` : item.band} />
             <Row k="단원" v={[item.unitNo, item.unit].filter(Boolean).join(" ") || "적히지 않음"} />
             <Row k="성취기준" v={item.standardCode || "비어 있음"} />
             <Row k="성취기준 내용" v={item.standardText || "비어 있음"} />
@@ -402,7 +402,7 @@ const askCopy: Record<
   restore: {
     title: "이 문항을 다시 씁니다",
     body: "다시 승인 상태가 되어 검사지 조립 후보에 오릅니다.",
-    hint: "예: 학년군을 5~6학년으로 바꿔 다시 쓰기로 함",
+    hint: "예: 학년을 5~6학년으로 바꿔 다시 쓰기로 함",
     confirm: "다시 쓰기",
   },
   anchorOn: {

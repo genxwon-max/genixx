@@ -54,7 +54,7 @@ const dash = <span className="text-(--a2-ink-4)">—</span>;
 const inUseText = (s: ItemState) => (s === "approved" ? "사용" : s === "retired" ? "사용 중지" : "");
 
 /*
- * 칸 순서 — 무엇인가(코드) → 어디에 쓰이는가(과목·학년군·단계·유형) → 실제로 무슨
+ * 칸 순서 — 무엇인가(코드) → 어디에 쓰이는가(과목·학년·단계·유형) → 실제로 무슨
  * 문제인가(발문) → 회차에 나가나(사용·앵커) → 누가 붙어 있나(출제자) → 지난번에
  * 어땠나(정답률).
  *
@@ -79,7 +79,7 @@ const COLS: Col<ItemDraft>[] = [
     ),
   },
   {
-    // 과목·학년군·단계는 모두 거르개가 맡는다. 검색창의 「수학」이 과목 전체를 끌고
+    // 과목·학년·단계는 모두 거르개가 맡는다. 검색창의 「수학」이 과목 전체를 끌고
     // 오기 시작하면 발문 검색이 못 쓰게 되므로 value를 달지 않는다
     key: "subject",
     head: "과목",
@@ -89,7 +89,7 @@ const COLS: Col<ItemDraft>[] = [
   },
   {
     key: "band",
-    head: "학년군",
+    head: "학년",
     width: "4.5rem",
     nowrap: true,
     hide: "md",
@@ -228,7 +228,7 @@ const FILTERS: Filter<ItemDraft>[] = [
   },
   {
     id: "band",
-    label: "학년군",
+    label: "학년",
     options: gradeBands.map((g) => ({ value: g.id, label: g.label })),
     match: (r, v) => r.band === v,
   },

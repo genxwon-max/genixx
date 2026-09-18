@@ -447,20 +447,20 @@ export const boundaryRules = [
   },
 ] as const;
 
-/* ───────────────────────── 학년군 · 성취기준 (§7.2) ───────────────────────── */
+/* ───────────────────────── 학년 · 성취기준 (§7.2) ───────────────────────── */
 
 export type GradeBand = "3-4" | "5-6";
 
 export const gradeBands: { id: GradeBand; label: string; prefix: string; note: string }[] = [
   {
     id: "3-4",
-    label: "초등 3·4학년군",
+    label: "초등 3·4학년",
     prefix: "4",
-    note: "성취기준 코드가 [4XX]로 시작합니다. 5~6학년군 내용(약분·통분·이분모 비교 등)을 요구하면 안 됩니다.",
+    note: "성취기준 코드가 [4XX]로 시작합니다. 5~6학년 내용(약분·통분·이분모 비교 등)을 요구하면 안 됩니다.",
   },
   {
     id: "5-6",
-    label: "초등 5·6학년군",
+    label: "초등 5·6학년",
     prefix: "6",
     note: "성취기준 코드가 [6XX]로 시작합니다. S4(생성·증명)를 확장 출제합니다.",
   },
@@ -471,7 +471,7 @@ export const gradeBandOf = (id: GradeBand) => gradeBands.find((g) => g.id === id
 /**
  * 성취기준 코드 형식 — [4국04-02] · [4수01-10] · [6과03-01]
  *
- * 발주서 §7.2: 코드 없는 문항은 접수 반려. 학년군 접두 숫자가 맞아야 한다.
+ * 발주서 §7.2: 코드 없는 문항은 접수 반려. 학년 접두 숫자가 맞아야 한다.
  */
 const CODE_RE = /^\[?([46])([가-힣]{1,3})(\d{2})-(\d{2})\]?$/;
 
@@ -483,7 +483,7 @@ export function checkStandardCode(code: string, band: GradeBand) {
   if (m[1] !== gradeBandOf(band).prefix) {
     return {
       ok: false,
-      why: `${gradeBandOf(band).label}은 [${gradeBandOf(band).prefix}XX] 코드를 씁니다. 학년군을 벗어난 코드입니다.`,
+      why: `${gradeBandOf(band).label}은 [${gradeBandOf(band).prefix}XX] 코드를 씁니다. 학년을 벗어난 코드입니다.`,
     };
   }
   return { ok: true, why: "" };
@@ -511,7 +511,7 @@ export type CheckItem = { id: string; text: string; auto?: boolean };
  * 같은 문장 안에 붙어 있다.
  */
 export const submitChecklist: CheckItem[] = [
-  { id: "chk-tag-a", text: "Tag A가 2022 개정 코드이며 학년군 범위 내인가? (NCIC 대조 완료)" },
+  { id: "chk-tag-a", text: "Tag A가 2022 개정 코드이며 학년 범위 내인가? (NCIC 대조 완료)" },
   {
     id: "chk-tag-b",
     text: "Tag B가 [재능·하위요소코드·S단계] 3원 좌표로 기재되고 §2.2 격자 지표와 일치하는가?",
@@ -538,7 +538,7 @@ export const submitChecklist: CheckItem[] = [
     id: "chk-figure",
     text: "그림 안에 텍스트·수치·정답 정보가 없고, 자체 제작·접근성 확인이 되었는가?",
   },
-  { id: "chk-vocab", text: "발문 어휘가 학년군 수준인가? (예: 3·4학년 ‘가설’→‘예상’)" },
+  { id: "chk-vocab", text: "발문 어휘가 학년 수준인가? (예: 3·4학년 ‘가설’→‘예상’)" },
   { id: "chk-natu", text: "자연-생태 문항이면 ‘(탐색적)’ 표기를 했는가?" },
   { id: "chk-id", text: "문항 ID 6블록·명세표 배정 좌표와 일치하는가?" },
   {
@@ -575,7 +575,7 @@ export const SUBJECT_LETTER: Record<string, string> = { 국어: "K", 수학: "M"
 /**
  * 학년 + 교과 + 단원 - 단계 - 일련번호 (예: 4K02-S2-001)
  *
- * 학년 자리는 학년군 접두(4 또는 6)를 쓴다. 단원은 두 자리 번호다.
+ * 학년 자리는 학년 접두(4 또는 6)를 쓴다. 단원은 두 자리 번호다.
  */
 export function makeItemCode(
   band: GradeBand,
