@@ -95,7 +95,7 @@ const alerts = [
     href: "/exam",
   },
   { tag: "안내", tone: "gv-tag-gray", t: "2026 파일럿 회차 전면 무료 운영 — 결제 수단 등록 없음", href: "/service/pricing" },
-  { tag: "공지", tone: "gv-tag-gray", t: "샘플 리포트 전 페이지와 과목별 예시 문항 공개", href: "/sample" },
+  { tag: "공지", tone: "gv-tag-gray", t: "샘플 리포트 미리보기와 과목별 예시 문항 공개", href: "/sample" },
   { tag: "공지", tone: "gv-tag-gray", t: "진단 윤리 헌장 — 라벨링 방지 원칙 전문 상시 게시", href: "/about/charter" },
   { tag: "모집", tone: "gv-tag-gray", t: "파일럿 참여 학교·교육청·기관 도입 문의 접수", href: "/partner/contact" },
 ];
@@ -183,7 +183,7 @@ const guide = [
 
 /** 자료실 — 가입 없이 볼 수 있는 것. 표 한 장 */
 const archive = [
-  { kind: "리포트", t: "샘플 리포트", d: "결과지 전 페이지 공개 · PDF 내려받기 가능", href: "/sample/report" },
+  { kind: "리포트", t: "샘플 리포트", d: "정밀본 한 면 미리보기", href: "/sample/report" },
   { kind: "문항", t: "문항 미리보기", d: "과목별 예시 문항과 응시 화면 구성", href: "/sample/questions" },
   { kind: "헌장", t: "진단 윤리 헌장", d: "라벨링 방지 원칙(Article 7) 전문", href: "/about/charter" },
   { kind: "연구", t: "연구노트·백서", d: "타당화 결과와 통계 지표", href: "/insight/research" },

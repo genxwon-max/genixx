@@ -1,4 +1,5 @@
 import type { Block } from "@/lib/pageContent";
+import ReportPreview from "@/components/report/ReportPreview";
 
 export default function Blocks({ blocks }: { blocks: Block[] }) {
   return (
@@ -79,6 +80,15 @@ export default function Blocks({ blocks }: { blocks: Block[] }) {
             </>
           )}
 
+          {block.kind === "reportPreview" && (
+            <>
+              <Heading title={block.heading} lead={block.lead} />
+              <div className="mt-8">
+                <ReportPreview />
+              </div>
+            </>
+          )}
+
           {block.kind === "note" && (
             <p className="type-body rounded-2xl border border-dashed border-brand-200 bg-brand-50/50 px-6 py-5 text-slate-600">
               {block.text}
@@ -88,9 +98,7 @@ export default function Blocks({ blocks }: { blocks: Block[] }) {
           {block.kind === "quote" && (
             <blockquote className="rounded-3xl bg-brand-900 px-6 py-8 text-white md:px-10 md:py-10">
               <p className="type-h3 font-bold leading-relaxed">“{block.text}”</p>
-              {block.by && (
-                <footer className="type-meta mt-4 text-brand-200">{block.by}</footer>
-              )}
+              {block.by && <footer className="type-meta mt-4 text-brand-200">{block.by}</footer>}
             </blockquote>
           )}
         </section>
@@ -102,9 +110,7 @@ export default function Blocks({ blocks }: { blocks: Block[] }) {
 function Heading({ title, lead }: { title: string; lead?: string }) {
   return (
     <div>
-      <h2 className="type-h3 font-black text-brand-950">
-        {title}
-      </h2>
+      <h2 className="type-h3 font-black text-brand-950">{title}</h2>
       {lead && <p className="type-body mt-2.5 text-slate-600">{lead}</p>}
     </div>
   );

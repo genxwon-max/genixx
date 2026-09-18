@@ -100,13 +100,13 @@ export const menu: MenuGroup[] = [
     id: "PUB-04",
     label: "샘플 리포트",
     href: "/sample",
-    summary: "결과지 전 페이지를 가입 전에 공개합니다",
+    summary: "받게 될 결과지를 가입 전에 미리 봅니다",
     children: [
       {
         id: "PUB-04-1",
         label: "샘플 PDF 뷰어",
         href: "/sample/report",
-        desc: "전 페이지 공개 · 다운로드 가능",
+        desc: "정밀본 한 면 미리보기",
       },
       {
         id: "PUB-04-2",

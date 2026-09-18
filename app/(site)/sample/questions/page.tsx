@@ -24,8 +24,8 @@ export const metadata: Metadata = {
  * PUB-04-3 문항 미리보기.
  *
  * KEDI 영재성 검사 소개(ged.kedi.re.kr intro4_1~4_4)가 검사도구마다 「개요 → 측정
- * 항목 → 검사 방식 → 예시 문항」을 공개하는 구성을 따랐다. 우리는 결과지는 전 페이지
- * 공개하면서(PUB-04-1) 정작 아이가 무슨 문제를 푸는지는 어디에도 없었는데, 학부모가
+ * 항목 → 검사 방식 → 예시 문항」을 공개하는 구성을 따랐다. 우리는 결과지는 미리
+ * 보여 주면서(PUB-04-1) 정작 아이가 무슨 문제를 푸는지는 어디에도 없었는데, 학부모가
  * 가입 전에 가장 알고 싶어 하는 것이 그쪽이다.
  *
  * ⚠ 이 화면은 「소개」다. 응시 화면(ASM)과 섞지 않는다. 예시 문항에 정답을 싣지 않는
@@ -228,7 +228,7 @@ export default function QuestionPreviewPage() {
           <SectionHead
             align="center"
             title="문항을 보셨다면, 결과지도 보세요"
-            lead="이 문항들을 풀고 나면 어떤 리포트를 받게 되는지 전 페이지를 공개하고 있습니다."
+            lead="이 문항들을 풀고 나면 어떤 리포트를 받게 되는지 미리 볼 수 있습니다."
           />
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link

@@ -9,6 +9,8 @@ import { findById, formatCode, useRoster } from "@/lib/roster";
 import { confidenceOf, decideType, scoreAxes, scoreSubject } from "@/lib/result";
 import { blockText, useReportOf } from "@/lib/reportStore";
 import { useExamConfig } from "@/lib/roundStore";
+import { editions } from "@/lib/diagReport";
+import { unlockFull, useFullUnlocked } from "@/lib/reportUnlockStore";
 import OctagonChart from "./OctagonChart";
 import ResultIndex from "./ResultIndex";
 import SectionTitle from "./SectionTitle";
@@ -127,6 +129,8 @@ export default function ResultView() {
           </button>
         </div>
       </div>
+
+      <ReportLinks studentId={studentId} />
 
       {/* 유형 */}
       {type && (
@@ -318,5 +322,63 @@ export default function ResultView() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 진단 보고서 두 판 — 요약본(무료 2면)과 정밀본(10면)을 새 창으로 연다.
+ *
+ * 새 창으로 여는 까닭은 보고서가 이 화면과 다른 물건이라서다 — A4 지면 그대로 넘겨 보고
+ * 인쇄하거나 PDF로 저장한다. 정밀본은 결제 상품이지만 파일럿 기간에는 「받기」만 누르면
+ * 열린다(lib/reportUnlockStore).
+ */
+function ReportLinks({ studentId }: { studentId: string }) {
+  const unlocked = useFullUnlocked(studentId);
+  const q = `?student=${encodeURIComponent(studentId)}`;
+  const open = (edition: "summary" | "full") =>
+    window.open(`/report/${edition}${q}`, "_blank", "noopener");
+
+  const cards = [
+    {
+      edition: "summary" as const,
+      desc: "종합 유형 · 과목별 위치 · 여섯 가지 사고 능력 · 강점 셋",
+      price: editions.summary.price,
+      cta: "요약본 열기",
+    },
+    {
+      edition: "full" as const,
+      desc: "영역별 근거 · 대표 문항 답안 리뷰 · 학습 성향 · 학생용 성장 지도 · 3개월 로드맵 · 전문가 총평",
+      price: unlocked ? "받음" : `${editions.full.price} → 파일럿 무료`,
+      cta: unlocked ? "정밀본 열기" : "정밀본 받기",
+    },
+  ];
+
+  return (
+    <section className="no-print mt-7">
+      <SectionTitle note="A4 지면 그대로 새 창에서 열립니다. 그 창에서 인쇄하거나 PDF로 저장할 수 있습니다.">
+        진단 보고서
+      </SectionTitle>
+      <div className="grid gap-3 md:grid-cols-2">
+        {cards.map((c) => (
+          <div key={c.edition} className={`flex flex-col p-6 ${panel}`}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[17px] font-bold text-soft-ink">{editions[c.edition].label}</p>
+              <span className="text-[12px] font-bold text-soft-primary-dark">{c.price}</span>
+            </div>
+            <p className="mt-2 flex-1 text-[13px] leading-relaxed text-soft-muted">{c.desc}</p>
+            <button
+              type="button"
+              onClick={() => {
+                if (c.edition === "full" && !unlocked) unlockFull(studentId);
+                open(c.edition);
+              }}
+              className={`mt-5 self-start ${c.edition === "full" ? btnPrimary : btnGhost}`}
+            >
+              {c.cta}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

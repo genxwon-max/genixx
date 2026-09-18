@@ -1,0 +1,100 @@
+/*
+ * 진단 보고서 지면 — A4 한 장이 한 .rp-page다.
+ *
+ * 화면에서는 회색 책상 위에 종이를 한 장씩 쌓아 보이고, 인쇄하면 여백 없이 한 장씩 끊어
+ * 나간다. 종이 크기는 mm로 박아 두고, 좁은 화면에서는 뷰어가 --rp-zoom으로 통째 줄인다
+ * (글자를 줄바꿈시키면 인쇄본과 모양이 달라진다).
+ */
+
+.rp {
+  --rp-paper: #faf9f5;
+  --rp-ink: #1d1d1a;
+  --rp-body: #3b3a36;
+  --rp-muted: #77756d;
+  --rp-line: #dcd9cf;
+  --rp-rule: #26251f;
+  --rp-accent: #a23b2a;
+  --rp-ko: #9a5a2a;
+  --rp-ma: #2f4d6e;
+  --rp-sc: #3a6a4f;
+  --rp-kid: #f5eedd;
+  --rp-kid-ink: #3f3212;
+  --rp-gold: #a8842f;
+  --rp-serif: var(--font-serif-kr), "Noto Serif KR", "Nanum Myeongjo", serif;
+  background: #e9e7e1;
+  color: var(--rp-ink);
+}
+
+.rp-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  background: var(--rp-paper);
+  padding: 13mm 16.5mm 10mm;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--rp-body);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.08),
+    0 8px 24px rgb(0 0 0 / 0.06);
+  display: flex;
+  flex-direction: column;
+  word-break: keep-all;
+}
+.rp-page.rp-kidpage {
+  background: var(--rp-kid);
+}
+
+.rp-serif {
+  font-family: var(--rp-serif);
+}
+
+.rp-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--rp-ink);
+}
+
+.rp-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8mm;
+  padding: 8mm 0 16mm;
+  zoom: var(--rp-zoom, 1);
+}
+
+@page rp {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  .rp {
+    background: none;
+  }
+  .rp-stack {
+    zoom: 1;
+    gap: 0;
+    padding: 0;
+    display: block;
+  }
+  .rp-page {
+    page: rp;
+    /* 297mm 꼭 맞추면 반올림으로 빈 장이 한 장씩 끼는 브라우저가 있다 */
+    height: 296.5mm;
+    box-shadow: none;
+    break-after: page;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .rp-page:last-child {
+    break-after: auto;
+  }
+}
