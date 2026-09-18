@@ -21,7 +21,7 @@ export default function QuestionSample({ q }: { q: Question }) {
   const level = levelOf(q.level);
 
   return (
-    <figure className="overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-card">
+    <figure className="overflow-hidden rounded-lg border border-brand-200 bg-white">
       <figcaption className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-brand-100 bg-brand-50/70 px-5 py-3 sm:px-6">
         <span className="type-tag rounded-full bg-brand-900 px-2.5 py-1 text-white">
           {q.level} {level.name}

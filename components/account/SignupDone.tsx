@@ -23,7 +23,7 @@ import { themeOf } from "@/lib/authVariant";
  *   ③ 로그인한 뒤에 무엇이 기다리는지 — 자녀 등록 → 접속코드 → 응시
  *
  * ⚠ **결제 단계는 여기 없다.** 2026 파일럿 회차 응시권은 0원이고(components/account/
- *   PaymentForm.tsx의 products, lib/pageContent.ts "/service/pricing"), 결제 화면은
+ *   PaymentForm.tsx의 products, app/(site)/service/pricing), 결제 화면은
  *   응시권을 고르는 PAY-03(/exam/payment)에 따로 있다. 학부모 메뉴에는 응시권 항목
  *   자체가 없다(components/account/DashShell.tsx parentMenu). 가입 직후에 결제를
  *   붙이면 무료라고 공지한 회차에 없는 관문을 세우는 셈이라, 대신 「받지 않는다」고

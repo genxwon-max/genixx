@@ -11,11 +11,23 @@ import { ChevronDown } from "./Icons";
  */
 export type FaqItem = { q: string; a: string; html?: string };
 
-export default function Faq({ items }: { items: FaqItem[] }) {
-  const [open, setOpen] = useState<number | null>(0);
+/**
+ * plain — 상자 없이 위아래 줄만 긋는 모양(공개 사이트의 읽는 글 화면).
+ * 기본은 테두리 상자 안에 넣는 모양으로, 첫 화면 FAQ가 쓴다.
+ */
+export default function Faq({ items, plain = false }: { items: FaqItem[]; plain?: boolean }) {
+  const [open, setOpen] = useState<number | null>(plain ? null : 0);
+  const pad = plain ? "px-0" : "px-5 md:px-6";
+  const answer = plain ? "" : "rounded-xl bg-brand-50/70 px-5 py-4";
 
   return (
-    <ul className="divide-y divide-brand-100 overflow-hidden rounded-2xl border border-brand-100 bg-white">
+    <ul
+      className={
+        plain
+          ? "divide-y divide-brand-100 border-y border-brand-100"
+          : "divide-y divide-brand-100 overflow-hidden rounded-2xl border border-brand-100 bg-white"
+      }
+    >
       {items.map((item, i) => {
         const expanded = open === i;
         return (
@@ -26,10 +38,12 @@ export default function Faq({ items }: { items: FaqItem[] }) {
                 onClick={() => setOpen(expanded ? null : i)}
                 aria-expanded={expanded}
                 // 마우스를 올려도 배경은 그대로 두고 커서만 바뀌게 한다
-                className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-5 text-left md:px-6"
+                className={`flex w-full cursor-pointer items-center justify-between gap-4 py-5 text-left ${pad}`}
               >
-                <span className="type-lead font-bold leading-snug text-brand-950">
-                  <span className="mr-2 text-brand-400">Q.</span>
+                <span
+                  className={`${plain ? "type-h4" : "type-lead"} font-bold leading-snug text-brand-950`}
+                >
+                  {!plain && <span className="mr-2 text-brand-400">Q.</span>}
                   {item.q}
                 </span>
                 <ChevronDown
@@ -40,16 +54,14 @@ export default function Faq({ items }: { items: FaqItem[] }) {
               </button>
             </h3>
             {expanded && (
-              <div className="px-5 pb-6 md:px-6">
+              <div className={`pb-6 ${pad}`}>
                 {item.html ? (
                   <div
-                    className="type-body prose-faq rounded-xl bg-brand-50/70 px-5 py-4 text-slate-600"
+                    className={`type-body prose-faq text-slate-600 ${answer}`}
                     dangerouslySetInnerHTML={{ __html: item.html }}
                   />
                 ) : (
-                  <p className="type-body rounded-xl bg-brand-50/70 px-5 py-4 text-slate-600">
-                    {item.a}
-                  </p>
+                  <p className={`type-body text-slate-600 ${answer}`}>{item.a}</p>
                 )}
               </div>
             )}

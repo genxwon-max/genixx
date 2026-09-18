@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import SubHero from "@/components/site/SubHero";
 import FaqGroups from "@/components/site/FaqGroups";
-import { ArrowRight } from "@/components/Icons";
+import { NextStep } from "@/components/site/Article";
 
 export const metadata: Metadata = {
   title: "자주 묻는 질문",
@@ -27,22 +26,16 @@ export default function FaqPage() {
         lead="다섯 가지 주제로 나누어 정리했습니다. 여기에 없는 내용은 1:1 문의로 남겨 주세요."
       />
 
-      <section className="section-y">
-        <div className="container-x space-y-12">
-          <FaqGroups />
-
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-brand-50/70 px-7 py-7">
-            <p className="type-h3 font-black text-brand-950">답을 찾지 못하셨나요?</p>
-            <Link
-              href="/support/inquiry"
-              className="btn btn-md bg-brand-900 text-white hover:bg-brand-800"
-            >
-              1:1 문의하기
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+      <div className="container-x section-y">
+        <FaqGroups />
+        <div className="mt-12 md:mt-16">
+          <NextStep
+            text="답을 찾지 못하셨나요? 영업일 기준 1~2일 안에 답변드립니다."
+            href="/support/inquiry"
+            label="1:1 문의하기"
+          />
         </div>
-      </section>
+      </div>
     </>
   );
 }

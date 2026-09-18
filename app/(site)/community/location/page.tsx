@@ -42,7 +42,7 @@ export default function LocationPage() {
       <div className="container-x max-w-5xl">
         <PageTitle title="오시는 길" lead="찾아오시는 길과 연락처를 안내해 드립니다." />
 
-        <div className="overflow-hidden rounded-3xl border border-brand-100 shadow-card">
+        <div className="overflow-hidden rounded-xl border border-brand-100">
           <iframe
             title={`${company.name} 위치 지도`}
             src={`https://maps.google.com/maps?q=${q}&z=16&output=embed`}

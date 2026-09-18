@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 
    ───── 사실의 출처 ─────
    문항 수·시간·회차·마감은 lib/exam, 여덟 갈래는 lib/result에서 읽는다.
-   AI의 역할은 /about/hitl(lib/pageContent)과 lib/brand의 「AI 단독 판정을 하지
+   AI의 역할은 /about/hitl(app/(site)/about/hitl)과 lib/brand의 「AI 단독 판정을 하지
    않는다」와 같은 말로 적는다 — 이 시안에만 다른 원리를 쓰면 안 된다.
 
    ⚠ 「한국창의영재교육원 전문가 40인 — 영재학교 교수진, 교장·교감 출신 교육자.

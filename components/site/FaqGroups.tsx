@@ -1,6 +1,7 @@
 "use client";
 
 import Faq, { type FaqItem } from "@/components/Faq";
+import { Chapter } from "./Article";
 import { renderDetail } from "@/lib/richText";
 import { shownFaqGroups, useContent } from "@/lib/contentStore";
 
@@ -23,30 +24,32 @@ export default function FaqGroups() {
 
   if (groups.length === 0) {
     return (
-      <p className="type-body rounded-2xl border border-brand-100 bg-white px-6 py-8 text-center text-slate-500">
+      <p className="type-body text-slate-500">
         아직 올라온 질문이 없습니다. 궁금한 것은 1:1 문의로 남겨 주세요.
       </p>
     );
   }
 
-  /* 넓은 화면에서는 주제를 두 칸으로 편다. items-start — 한쪽 답을 열어도 옆 칸이 같이
-     늘어나지 않는다. 칸(columns)으로 흘리지 않는 까닭도 같다: 답을 열 때마다 질문이
-     옆 칸으로 넘어가 버린다 */
+  /* 주제 하나가 한 구간 — 왼쪽에 주제 이름, 오른쪽에 질문 목록(상자 없이 줄만) */
   return (
-    <div className="grid items-start gap-x-8 gap-y-10 lg:grid-cols-2">
-      {groups.map((g) => (
-        <div key={g.name} id={g.name} className="scroll-mt-24">
-          <h2 className="type-h3 font-black text-brand-950">{g.name}</h2>
-          <div className="mt-4">
-            <Faq
-              items={g.items.map((f): FaqItem => ({
-                q: f.q,
-                a: f.a.mode === "text" ? f.a.body : "",
-                html: f.a.mode === "text" ? undefined : renderDetail(f.a.mode, f.a.body, f.a.images),
-              }))}
-            />
-          </div>
-        </div>
+    <div>
+      {groups.map((g, i) => (
+        <Chapter
+          key={g.name}
+          id={g.name}
+          no={String(i + 1).padStart(2, "0")}
+          title={g.name}
+          lead={`질문 ${g.items.length}개`}
+        >
+          <Faq
+            plain
+            items={g.items.map((f): FaqItem => ({
+              q: f.q,
+              a: f.a.mode === "text" ? f.a.body : "",
+              html: f.a.mode === "text" ? undefined : renderDetail(f.a.mode, f.a.body, f.a.images),
+            }))}
+          />
+        </Chapter>
       ))}
     </div>
   );
