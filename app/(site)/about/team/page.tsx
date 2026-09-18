@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PageHero from "@/components/PageHero";
+import SubHero from "@/components/site/SubHero";
 import PersonCard from "@/components/site/PersonCard";
 import SectionHead from "@/components/site/SectionHead";
 import { people, peopleDisclaimer, peopleGroups, peopleOf } from "@/lib/people";
@@ -15,17 +15,10 @@ export const metadata: Metadata = {
 export default function TeamPage() {
   return (
     <>
-      <PageHero
-        eyebrow="연구·자문진"
-        title={
-          <>
-            누가 만들었고
-            <br />
-            누가 판정하는지 공개합니다
-          </>
-        }
-        desc="진단 도구를 설계한 사람, AI를 만든 사람, 문항을 쓴 사람, 결과를 판정하는 사람을 각각 밝힙니다. 이해충돌을 막기 위해 만든 사람과 검증하는 사람의 권한은 구조적으로 분리되어 있습니다."
-        primary={{ label: "진단 원리 보기", href: "/about/hitl" }}
+      <SubHero
+        href="/about/team"
+        title="참여진 소개"
+        lead="진단을 설계한 사람, AI를 만든 사람, 문항을 쓴 사람, 결과를 판정하는 사람을 밝힙니다. 이해충돌을 막으려 만드는 권한과 검증하는 권한을 나눠 두었습니다."
       />
 
       <section className="section-y">
@@ -81,7 +74,10 @@ export default function TeamPage() {
           <ul className="mt-10 grid gap-4 sm:grid-cols-2 md:gap-5">
             {[
               { t: "출제자 ↔ 검수자", d: "문항을 쓴 사람은 자신의 문항을 승인할 수 없습니다." },
-              { t: "개발자 ↔ 검증자", d: "AI 모델을 만든 사람은 그 모델의 편향을 검증하지 않습니다." },
+              {
+                t: "개발자 ↔ 검증자",
+                d: "AI 모델을 만든 사람은 그 모델의 편향을 검증하지 않습니다.",
+              },
               { t: "채점자 ↔ 판정자", d: "1차 채점과 최종 판정을 다른 인력이 담당합니다." },
               { t: "판정 ↔ 발행", d: "판정 확정과 리포트 발행 승인을 분리해 기록합니다." },
             ].map((r) => (
@@ -101,7 +97,10 @@ export default function TeamPage() {
                 판정 근거와 확정자 기록은 회차별로 보존됩니다.
               </p>
             </div>
-            <Link href="/about/hitl" className="btn btn-md bg-brand-900 text-white hover:bg-brand-800">
+            <Link
+              href="/about/hitl"
+              className="btn btn-md bg-brand-900 text-white hover:bg-brand-800"
+            >
               진단 원리 자세히 보기
               <ArrowRight className="h-4 w-4" />
             </Link>

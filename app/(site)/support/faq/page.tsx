@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PageHero from "@/components/PageHero";
+import SubHero from "@/components/site/SubHero";
 import FaqGroups from "@/components/site/FaqGroups";
 import { ArrowRight } from "@/components/Icons";
 
@@ -21,11 +21,10 @@ export const metadata: Metadata = {
 export default function FaqPage() {
   return (
     <>
-      <PageHero
-        eyebrow="자주 묻는 질문"
-        title="궁금한 것부터 찾아보세요"
-        desc="다섯 가지 주제로 나누어 정리했습니다. 여기에 없는 내용은 1:1 문의로 남겨 주세요."
-        primary={{ label: "1:1 문의하기", href: "/support/inquiry" }}
+      <SubHero
+        href="/support/faq"
+        title="자주 묻는 질문"
+        lead="다섯 가지 주제로 나누어 정리했습니다. 여기에 없는 내용은 1:1 문의로 남겨 주세요."
       />
 
       <section className="section-y">

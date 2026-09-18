@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import InquiryForm from "@/components/InquiryForm";
-import PageHero from "@/components/PageHero";
+import SubHero from "@/components/site/SubHero";
 import { company } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 export default function InquiryPage() {
   return (
     <>
-      <PageHero
-        eyebrow="1:1 문의"
-        title="문의를 남겨 주세요"
-        desc="영업일 기준 1~2일 안에 답변드립니다. 회원이 아니어도 이메일 인증만으로 접수할 수 있습니다."
+      <SubHero
+        href="/support/inquiry"
+        title="1:1 문의"
+        lead="영업일 기준 1~2일 안에 답변드립니다. 회원이 아니어도 이메일 인증만으로 접수할 수 있습니다."
       />
 
       <section className="section-y">
@@ -57,8 +57,8 @@ export default function InquiryPage() {
             <div className="rounded-2xl bg-brand-50/70 p-6">
               <p className="type-h4 font-black text-brand-900">응시 중 오류인가요?</p>
               <p className="type-meta mt-2 text-slate-600">
-                응시 화면에서 발생한 문제는 회차·과목·문항 번호를 함께 적어 주시면 훨씬 빠르게 확인할
-                수 있습니다.
+                응시 화면에서 발생한 문제는 회차·과목·문항 번호를 함께 적어 주시면 훨씬 빠르게
+                확인할 수 있습니다.
               </p>
             </div>
           </aside>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import InquiryForm from "@/components/InquiryForm";
-import PageHero from "@/components/PageHero";
+import SubHero from "@/components/site/SubHero";
 
 export const metadata: Metadata = {
   title: "기관 도입 문의",
@@ -36,23 +36,20 @@ const steps = [
 export default function PartnerContactPage() {
   return (
     <>
-      <PageHero
-        eyebrow="기관 도입 문의"
-        title={
-          <>
-            학교와 기관을 위한
-            <br />
-            단체 진단 운영
-          </>
-        }
-        desc="교육청·학교·학원·영재교육원 단위로 도입할 수 있습니다. 파일럿 참여 기관에는 집단 리포트를 무상으로 제공합니다."
+      <SubHero
+        href="/partner/contact"
+        title="기관 도입 문의"
+        lead="교육청·학교·학원·영재교육원 단위로 도입할 수 있습니다. 파일럿 참여 기관에는 집단 리포트를 무상으로 제공합니다."
       />
 
       <section className="section-y">
         <div className="container-x">
           <ul className="grid gap-5 md:grid-cols-2">
             {benefits.map((b) => (
-              <li key={b.t} className="rounded-2xl border border-brand-100 bg-white p-6 shadow-card">
+              <li
+                key={b.t}
+                className="rounded-2xl border border-brand-100 bg-white p-6 shadow-card"
+              >
                 <h2 className="type-h3 font-black text-brand-950">{b.t}</h2>
                 <p className="type-body mt-2 text-slate-600">{b.d}</p>
               </li>

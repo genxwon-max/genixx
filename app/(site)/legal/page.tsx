@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
+import SubHero from "@/components/site/SubHero";
 import { legalLinks } from "@/lib/nav";
 import LinkCards from "@/components/site/LinkCards";
 
@@ -11,16 +11,10 @@ export const metadata: Metadata = {
 export default function LegalPage() {
   return (
     <>
-      <PageHero
-        eyebrow="정책·법적 고지"
-        title={
-          <>
-            무엇을 모으고 어떻게 쓰는지
-            <br />
-            숨기지 않습니다
-          </>
-        }
-        desc="아동 데이터를 다루는 서비스이므로 수집 범위·보관 기간·파기 절차를 명시하고, 아이가 직접 읽을 수 있는 고지문도 따로 제공합니다."
+      <SubHero
+        href="/legal"
+        title="정책·법적 고지"
+        lead="아동 데이터를 다루는 서비스이므로 수집 범위·보관 기간·파기 절차를 명시하고, 아이가 직접 읽을 수 있는 고지문도 따로 제공합니다."
       />
 
       <section className="section-y">
