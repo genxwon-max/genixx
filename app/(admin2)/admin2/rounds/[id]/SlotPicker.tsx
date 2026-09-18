@@ -7,7 +7,7 @@ import PlanPicker from "@/components/admin2/PlanPicker";
 import { FormRow, Panel } from "@/components/admin2/ui";
 
 /**
- * 이 회차의 편성을 다시 정한다 — 학년군과 평가 과목.
+ * 이 회차의 편성을 다시 정한다 — 학년과 평가 과목.
  *
  * 회차를 만들 때 고른 것을 나중에 고치는 자리다. 「이번엔 과학도 넣기로 했다」가 실제로
  * 생기고, 그때 회차를 새로 만들게 하면 이미 짜 둔 검사지가 따라오지 않는다.
@@ -39,7 +39,7 @@ export default function SlotPicker({
 }) {
   const forms = useForms();
 
-  /* 그 과목·학년군에 담긴 문항 수 — 뺄 때 무엇을 잃는지(잃지는 않지만) 알려 주는 값 */
+  /* 그 과목·학년에 담긴 문항 수 — 뺄 때 무엇을 잃는지(잃지는 않지만) 알려 주는 값 */
   const pickedOf = (subject: string, band: string) =>
     forms.find((f) => f.round === round && f.subject === subject && f.band === band)?.itemIds.length ?? 0;
 
@@ -50,9 +50,9 @@ export default function SlotPicker({
       <div className="a2-form">
         {locked ? (
           <>
-            <FormRow label="학년군">
+            <FormRow label="학년">
               <span className="a2-t-sm text-(--a2-ink-2)">
-                {value.band === "3-4" ? "초등 3·4학년군" : "초등 5·6학년군"}
+                {value.band === "3-4" ? "초등 3·4학년" : "초등 5·6학년"}
               </span>
             </FormRow>
             <FormRow

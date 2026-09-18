@@ -63,7 +63,7 @@ export default function FormBuilder() {
         <div className={`${a.panel} p-5`}>
           <p className={a.label}>검사지 새로 만들기</p>
           <p className={`${a.hint} mt-1`}>
-            한 검사지는 한 회차 · 한 과목 · 한 학년군입니다. 학년군이 섞이면 성취기준이 달라 같은
+            한 검사지는 한 회차 · 한 과목 · 한 학년입니다. 학년이 섞이면 성취기준이 달라 같은
             잣대로 볼 수 없습니다.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -96,7 +96,7 @@ export default function FormBuilder() {
               </select>
             </label>
             <label className="block">
-              <span className={a.label}>학년군</span>
+              <span className={a.label}>학년</span>
               <select
                 value={band}
                 onChange={(e) => setBand(e.target.value as GradeBand)}
@@ -231,7 +231,7 @@ export function FormEditor({
   const byLevel = levelCount(picked);
   const locked = form.state === "confirmed";
 
-  /* 담을 수 있는 것 — 같은 과목·학년군의 승인 문항 중 아직 안 담긴 것 */
+  /* 담을 수 있는 것 — 같은 과목·학년의 승인 문항 중 아직 안 담긴 것 */
   const pool = items.filter(
     (i) =>
       i.state === "approved" &&
@@ -437,7 +437,7 @@ export function FormEditor({
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p className={a.label}>담을 수 있는 문항 {pool.length}건</p>
             <p className={a.hint}>
-              {form.subject} · {form.band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군"}의 승인
+              {form.subject} · {form.band === "3-4" ? "초등 3~4학년" : "초등 5~6학년"}의 승인
               문항입니다. 몇 개를 담아야 한다는 수는 없습니다.
             </p>
           </div>

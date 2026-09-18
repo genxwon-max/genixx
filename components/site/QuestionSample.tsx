@@ -38,50 +38,66 @@ export default function QuestionSample({ q }: { q: Question }) {
           <p className="type-tag text-brand-500">{q.brief.label}</p>
           <p className="type-h3 mt-1.5 font-black text-brand-950">{q.brief.title}</p>
 
-          {q.brief.paragraphs.map((p, i) => (
-            <p key={i} className="type-body mt-3 text-slate-700">
-              {p}
-            </p>
-          ))}
-
-          {q.brief.list && (
-            <ul className="mt-3 space-y-1.5">
-              {q.brief.list.map((l, i) => (
-                <li key={i} className="type-body text-slate-700">
-                  {l}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {q.brief.table && (
-            <div className="mt-3 overflow-x-auto rounded-xl border border-brand-100 bg-white">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-brand-100">
-                    {q.brief.table.head.map((h, i) => (
-                      <th key={i} className="type-caption px-3 py-2 font-black text-brand-800">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {q.brief.table.rows.map((row, r) => (
-                    <tr key={r} className="border-b border-brand-50 last:border-0">
-                      {row.map((cell, c) => (
-                        <td key={c} className="type-caption px-3 py-2 text-slate-700">
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
+          {/* 공개 예시는 글 · 목록 · 표만 옮긴다 — 사진 · 영상이 든 세트는 여기 싣지 않는다 */}
+          {q.brief.blocks.map((b, i) => {
+            if (b.kind === "text") {
+              return (
+                <p key={i} className="type-body mt-3 text-slate-700">
+                  {b.text}
+                </p>
+              );
+            }
+            if (b.kind === "list") {
+              return (
+                <ul key={i} className="mt-3 space-y-1.5">
+                  {b.items.map((l, k) => (
+                    <li key={k} className="type-body text-slate-700">
+                      {l}
+                    </li>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {q.brief.note && <p className="type-caption mt-3 text-slate-500">{q.brief.note}</p>}
+                </ul>
+              );
+            }
+            if (b.kind === "table") {
+              return (
+                <div
+                  key={i}
+                  className="mt-3 overflow-x-auto rounded-xl border border-brand-100 bg-white"
+                >
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-brand-100">
+                        {b.table.head.map((h, k) => (
+                          <th key={k} className="type-caption px-3 py-2 font-black text-brand-800">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {b.table.rows.map((row, r) => (
+                        <tr key={r} className="border-b border-brand-50 last:border-0">
+                          {row.map((cell, c) => (
+                            <td key={c} className="type-caption px-3 py-2 text-slate-700">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+            if (b.kind === "note") {
+              return (
+                <p key={i} className="type-caption mt-3 text-slate-500">
+                  {b.text}
+                </p>
+              );
+            }
+            return null;
+          })}
         </div>
 
         {/* 오른쪽 — 발문과 보기 */}

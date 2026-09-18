@@ -250,6 +250,52 @@ export const legalGroup: MenuGroup = {
 export const publicMenu: MenuGroup[] = [...menu, legalGroup];
 
 /**
+ * 커뮤니티 — 공지사항 · 자유게시판 · 오시는 길.
+ *
+ * menu에 바로 넣지 않고 따로 두는 까닭: menu는 다른 시안 홈(home3·4·5)의 헤더·푸터도
+ * 읽는데, 그쪽 메가메뉴는 여섯 칸 격자에 맞춰 그려져 있어 일곱째 갈래가 들어가면 줄이
+ * 깨진다. 공개 사이트((site) 존)의 머리띠·푸터만 siteMenu를 읽는다.
+ */
+export const communityGroup: MenuGroup = {
+  id: "PUB-09",
+  label: "커뮤니티",
+  href: "/community",
+  summary: "공지사항 · 자유게시판 · 오시는 길",
+  children: [
+    {
+      id: "PUB-09-1",
+      label: "공지사항",
+      href: "/community/notice",
+      desc: "회차 일정·점검 안내",
+    },
+    {
+      id: "PUB-09-2",
+      label: "자유게시판",
+      href: "/community/board",
+      desc: "보호자·기관 회원이 나누는 이야기",
+    },
+    {
+      id: "PUB-09-3",
+      label: "오시는 길",
+      href: "/community/location",
+      desc: "주소와 연락처",
+    },
+  ],
+};
+
+/** 공개 사이트((site) 존) 머리띠·푸터의 갈래 */
+export const siteMenu: MenuGroup[] = [...menu, communityGroup];
+
+/**
+ * 갈래 첫 화면 — 헤더에서 갈래 이름을 누르면 여기로 간다.
+ * 갈래마다 따로 두던 모음(허브) 화면은 걷었다. 하위 화면이 히어로 밑 탭 줄로 서로
+ * 이어져 있어, 카드로 한 번 더 고르게 하는 화면이 중간에 끼면 한 번 더 누르게만 된다.
+ */
+export function firstPageOf(groupHref: string) {
+  return siteMenu.find((g) => g.href === groupHref)!.children[0].href;
+}
+
+/**
  * 푸터 맨 위 정책 띠 — 공개 사이트와 계정 존이 같은 목록을 쓴다.
  *
  * legalLinks와 따로 두는 까닭은 이 띠가 「법적 고지 모음」이 아니라 **푸터에서 늘

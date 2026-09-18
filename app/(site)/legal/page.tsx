@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import PageHero from "@/components/PageHero";
 import { legalLinks } from "@/lib/nav";
-import { ArrowRight } from "@/components/Icons";
+import LinkCards from "@/components/site/LinkCards";
 
 export const metadata: Metadata = {
   title: "정책·법적 고지",
@@ -26,26 +25,7 @@ export default function LegalPage() {
 
       <section className="section-y">
         <div className="container-x">
-          <ul className="grid gap-4 md:grid-cols-2">
-            {legalLinks.map((l) => (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  className="group flex h-full flex-col rounded-3xl border border-brand-100 bg-white p-7 shadow-card transition-shadow hover:shadow-float"
-                >
-                  {/* 화면 ID 알약을 걷었다 — 읽는 사람에게 「PUB-08-3」은 아무 뜻이 없다 */}
-                  <h2 className="type-h3 font-black text-brand-950">{l.label}</h2>
-                  <p className="type-body mt-2 flex-1 text-slate-600">
-                    {l.desc}
-                  </p>
-                  <span className="type-meta mt-5 inline-flex items-center gap-1.5 font-bold text-brand-700">
-                    문서 보기
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <LinkCards items={legalLinks} cta="문서 보기" />
         </div>
       </section>
     </>

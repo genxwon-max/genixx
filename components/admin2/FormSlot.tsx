@@ -22,7 +22,7 @@ import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/E
 import { FormRow, Panel, Status, Tag } from "@/components/admin2/ui";
 
 /**
- * 검사지 한 벌 — 한 회차 · 한 과목 · 한 학년군.
+ * 검사지 한 벌 — 한 회차 · 한 과목 · 한 학년.
  *
  * 「국어·수학·과학에 S1~S4 문항을 여러 개 골라 넣는다」가 여기서 일어나는 일이다.
  *
@@ -215,7 +215,7 @@ export default function FormSlot({
      아직 보지도 않은 사람 앞에 먼저 설 이유가 없다. */
   const blocks = (form ? checkForm(form, picked) : []).filter((f) => f.tone === "block");
 
-  /* 담을 수 있는 것 — 승인된, 같은 과목·학년군의, 아직 안 담긴 문항.
+  /* 담을 수 있는 것 — 승인된, 같은 과목·학년의, 아직 안 담긴 문항.
      **초안 기준**이다. 저장한 것만 빼면 방금 담은 문항이 오른쪽에 그대로 남아 두 번 담긴다 */
   const pool = items.filter(
     (i) =>

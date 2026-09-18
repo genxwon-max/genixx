@@ -5,7 +5,7 @@ import BrandMeaning from "@/components/site/BrandMeaning";
 import SectionHead from "@/components/site/SectionHead";
 import TeamPreview from "@/components/site/TeamPreview";
 import HomeFaq from "@/components/site/HomeFaq";
-import { menu } from "@/lib/nav";
+import { siteMenu } from "@/lib/nav";
 import { company } from "@/lib/site";
 import { axes } from "@/lib/result";
 import { subjectOf } from "@/lib/exam";
@@ -702,7 +702,7 @@ export default function HomePage() {
           </div>
 
           <ul className="type-meta mt-12 flex flex-wrap justify-center gap-x-6 gap-y-2 text-slate-500">
-            {menu.map((g) => (
+            {siteMenu.map((g) => (
               <li key={g.id}>
                 <Link href={g.href} className="hover:text-brand-700">
                   {g.label}

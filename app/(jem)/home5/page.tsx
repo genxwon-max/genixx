@@ -3,7 +3,7 @@ import Link from "next/link";
 import GemMap from "@/components/home5/GemMap";
 import Jempy from "@/components/home5/Jempy";
 import Reveal from "@/components/home5/Reveal";
-import { assessment, QUESTIONS_PER_SUBJECT, subjects } from "@/lib/exam";
+import { assessment, questionCountText, subjects, totalQuestions } from "@/lib/exam";
 import { axes, primaryTypes } from "@/lib/result";
 
 export const metadata: Metadata = {
@@ -50,9 +50,8 @@ const MASCOT = "잼피";
 
 const [dy, dm, dd] = assessment.deadline.split("-").map(Number);
 const deadlineKo = `${dy}년 ${dm}월 ${dd}일`;
-const subjectNames = subjects.map((s) => s.short).join("·");
 const limitMin = subjects[0].limitMin;
-const totalItems = subjects.length * QUESTIONS_PER_SUBJECT;
+const totalItems = totalQuestions();
 const measuredAxes = axes.filter((a) => a.subject);
 const measuredShort = measuredAxes.map((a) => a.short).join("·");
 const sampleType = primaryTypes.language;
@@ -75,7 +74,7 @@ const steps = [
     n: "1",
     t: "풀어요",
     pose: "hi" as const,
-    d: `${subjectNames} 각 ${QUESTIONS_PER_SUBJECT}문항. 과목마다 따로 들어가니까 하루 한 과목씩 해도 돼요.`,
+    d: `${questionCountText()}. 과목마다 따로 들어가니까 하루 한 과목씩 해도 돼요.`,
     meta: `과목당 ${limitMin}분`,
   },
   {

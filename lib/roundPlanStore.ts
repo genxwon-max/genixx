@@ -17,9 +17,9 @@ import type { ItemDraft } from "./itemStore";
  *
  * 이 파일이 그 둘을 잇는다 —
  *
- *   편성  한 회차는 **과목 × 학년군** 칸으로 이루어진다(3 × 2 = 여섯 칸). 한 칸이
+ *   편성  한 회차는 **과목 × 학년** 칸으로 이루어진다(3 × 2 = 여섯 칸). 한 칸이
  *         검사지 한 벌이고, 칸마다 짜거나 비워 둘 수 있다. 비운 칸은 이번 회차에
- *         그 과목·학년군을 보지 않는다는 뜻이다.
+ *         그 과목·학년을 보지 않는다는 뜻이다.
  *
  *   개폐  준비중 → 응시 진행중 → 채점중 → 마감. 여는 것은 사람이 누르되, **초안이
  *         하나라도 남아 있으면 막는다.** 확정되지 않은 검사지가 회차에 걸리면 응시
@@ -136,17 +136,17 @@ export type RoundPlan = {
   closedAt?: string;
   closedBy?: string;
 /**
-   * 이번 회차가 보는 학년군 — **하나**.
+   * 이번 회차가 보는 학년 — **하나**.
    *
-   * 과목보다 먼저 정한다. 학년군은 「누구에게 내보내는가」이고 과목은 「무엇을 재는가」라,
+   * 과목보다 먼저 정한다. 학년은 「누구에게 내보내는가」이고 과목은 「무엇을 재는가」라,
    * 앞엣것이 정해져야 뒤엣것의 문항 재고를 셀 수 있다 — 국어 문항이 열 개 있어도 그것이
-   * 전부 3·4학년군이면 5·6학년군 회차에서는 담을 것이 하나도 없다.
+   * 전부 3·4학년이면 5·6학년 회차에서는 담을 것이 하나도 없다.
    *
-   * 한동안 여럿을 담는 배열이었다(bands). 실제 편성은 한 회차가 한 학년군을 본다 —
-   * 3·4학년군과 5·6학년군은 응시 기간도 문항 재고도 따로 굴러가고, 둘을 한 회차에 묶으면
-   * 제출률·판정 진행이 두 학년군의 평균이 되어 어느 쪽이 밀렸는지가 사라진다.
+   * 한동안 여럿을 담는 배열이었다(bands). 실제 편성은 한 회차가 한 학년을 본다 —
+   * 3·4학년과 5·6학년은 응시 기간도 문항 재고도 따로 굴러가고, 둘을 한 회차에 묶으면
+   * 제출률·판정 진행이 두 학년의 평균이 되어 어느 쪽이 밀렸는지가 사라진다.
    *
-   * 없으면 3·4학년군으로 본다(코드에 박힌 회차 넷과 옛 저장분). 없는 것을 「아무 학년군도
+   * 없으면 3·4학년으로 본다(코드에 박힌 회차 넷과 옛 저장분). 없는 것을 「아무 학년도
    * 안 본다」로 읽으면 이미 짜 둔 검사지가 화면에서 통째로 사라진다.
    */
   band?: GradeBand;
@@ -156,7 +156,7 @@ export type RoundPlan = {
    * 배열 순서가 그대로 순서다. 따로 order 번호를 두지 않는다 — 번호를 들면 지우고 넣을
    * 때마다 1,2,4처럼 구멍이 나고, 그 구멍을 메우는 코드가 화면과 저장소 두 군데에 생긴다.
    *
-   * 없으면 세 과목 전부. 칸(과목 × 학년군)은 이 목록과 bands를 곱해서 만든다(slotsFor).
+   * 없으면 세 과목 전부. 칸(과목 × 학년)은 이 목록과 bands를 곱해서 만든다(slotsFor).
    */
   subjects?: ItemDraft["subject"][];
   /**
@@ -342,16 +342,16 @@ export function checkPeriod(p: Period): string[] {
 
 export const planSubjects: ItemDraft["subject"][] = ["국어", "수학", "과학"];
 
-/** 과목 × 학년군 한 칸의 열쇠. 화면과 저장소가 같은 글자를 써야 칸이 어긋나지 않는다 */
+/** 과목 × 학년 한 칸의 열쇠. 화면과 저장소가 같은 글자를 써야 칸이 어긋나지 않는다 */
 export const slotKey = (subject: ItemDraft["subject"], band: GradeBand) => `${subject}:${band}`;
 
-/** 새 회차의 기본 학년군 */
+/** 새 회차의 기본 학년 */
 export const defaultBand: GradeBand = gradeBands[0].id;
 
 /** 여섯 칸 전부 — band·subjects가 없는 옛 회차가 보는 값 */
 export const allSlotKeys = planSubjects.flatMap((s) => gradeBands.map((g) => slotKey(s, g.id)));
 
-/** 이 회차가 보는 학년군. 없으면 3·4학년군 */
+/** 이 회차가 보는 학년. 없으면 3·4학년 */
 export const bandFor = (plan: RoundPlan): GradeBand => plan.band ?? defaultBand;
 
 /**
@@ -366,10 +366,10 @@ export const subjectsFor = (plan: RoundPlan): ItemDraft["subject"][] =>
   plan.subjects ? plan.subjects.filter((s) => planSubjects.includes(s)) : planSubjects;
 
 /**
- * 이 회차가 보는 칸 = 과목 × 학년군.
+ * 이 회차가 보는 칸 = 과목 × 학년.
  *
  * 과목 차례를 바깥에 둔다. 「국어 3·4 → 국어 5·6 → 수학 3·4 …」로 서야 응시 차례대로
- * 읽히고, 학년군을 바깥에 두면 같은 과목이 표에서 갈라져 선다.
+ * 읽히고, 학년을 바깥에 두면 같은 과목이 표에서 갈라져 선다.
  */
 export function slotsFor(plan: RoundPlan): string[] {
   const band = bandFor(plan);
@@ -377,7 +377,7 @@ export function slotsFor(plan: RoundPlan): string[] {
 }
 
 export type PlanSlot = {
-  /** 과목:학년군 — 화면에서 어느 칸을 열었는지 붙들어 두는 열쇠 */
+  /** 과목:학년 — 화면에서 어느 칸을 열었는지 붙들어 두는 열쇠 */
   key: string;
   subject: ItemDraft["subject"];
   band: GradeBand;
@@ -385,7 +385,7 @@ export type PlanSlot = {
   /**
    * 여럿을 이어 붙일 때 쓰는 짧은 이름 — 「국어 3·4」.
    *
-   * 점검 문구는 어긋난 칸을 모두 부른다. 「국어 · 초등 3·4학년군」을 여섯 번 이으면
+   * 점검 문구는 어긋난 칸을 모두 부른다. 「국어 · 초등 3·4학년」을 여섯 번 이으면
    * 한 줄이 세 줄이 되고, 그 안에서 어느 칸이 걸렸는지 도로 찾아 읽어야 한다.
    */
   short: string;
@@ -525,7 +525,7 @@ export function createRound(
           at,
           by,
           action: "period",
-          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${input.band}학년군`,
+          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${input.band}학년`,
         },
       ],
     },
@@ -578,7 +578,7 @@ export function setRoundPlan(
           at: now(),
           by,
           action: "period" as const,
-          text: `편성을 정했습니다 — ${next.subjects.join(" · ") || "과목 없음"} · ${next.band}학년군`,
+          text: `편성을 정했습니다 — ${next.subjects.join(" · ") || "과목 없음"} · ${next.band}학년`,
         },
         ...plan.log,
       ].slice(0, 40),

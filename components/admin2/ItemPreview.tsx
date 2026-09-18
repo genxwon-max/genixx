@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { assessment } from "@/lib/exam";
-import { levelSpecs } from "@/lib/blueprint";
-import { renderDetail } from "@/lib/richText";
-import { choicesOf, typeLabel, type ItemDraft, type Question } from "@/lib/itemStore";
+import {
+  assessment,
+  flattenSets,
+  screensOf,
+  subjects,
+  type Question as ExamQuestion,
+} from "@/lib/exam";
+import { questionsIn, type ContentQuestion } from "@/lib/content";
+import { choicesOf, contentFor, type ItemDraft, type Question } from "@/lib/itemStore";
+import { BriefPanel, QuestionBody, ScreenColumn } from "@/components/exam/ExamSession";
 
 /**
  * 문항을 **아이가 보는 그대로** 띄운다 (EXP-03 검수의 미리보기).
@@ -41,7 +47,7 @@ import { choicesOf, typeLabel, type ItemDraft, type Question } from "@/lib/itemS
  */
 export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClose: () => void }) {
   const qs = item.questions;
-  const [pick, setPick] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, number | string>>({});
   /* 검수하러 온 사람이 열므로 처음부터 켜 둔다. 아이 화면 그대로를 보려면 끈다 */
   const [reveal, setReveal] = useState(true);
 
@@ -72,21 +78,31 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
 
   if (qs.length === 0) return null;
 
-  const set = item.form === "set" && qs.length > 1;
-  const passage = renderDetail(item.passageMode, item.passage, item.passageImages);
-  const hasPassage = passage.trim() !== "";
+  /* 응시 화면과 **같은 컴포넌트**로 그린다 — 자료 블록 · 〈보기〉 상자 · 괄호 칸 · 묶음이 시험지와
+     똑같이 서는지를 여기서 본다. 답 저장 · 시계 · 전체화면은 부르지 않는다(답은 이 판 안에만) */
+  const content = contentFor(item);
+  const subject = subjects.find((s) => s.short === item.subject)?.id ?? "science";
+  const bank = flattenSets([{ ...content, subject }]);
+  const screens = screensOf(subject, bank);
+  const set = bank.length > 1;
+  const hasBrief = content.material.blocks.length > 0 || !!content.material.lead;
+  const byId = new Map(qs.map((q) => [q.id, q]));
+  const contentById = new Map(questionsIn(content).map((c) => [c.id, c]));
 
-  const one = (q: Question, k: number) => (
-    <QuestionBlock
-      key={q.id}
-      q={q}
-      no={k + 1}
-      /* 세트에서만 번호를 세운다 — 단일에 「1번」을 붙이면 없는 2번을 찾게 된다 */
-      numbered={set}
-      reveal={reveal}
-      picked={pick[q.id]}
-      onPick={(i) => setPick((p) => ({ ...p, [q.id]: i }))}
-    />
+  const one = (q: ExamQuestion) => (
+    <div key={q.id}>
+      <QuestionBody
+        q={q}
+        num={bank.indexOf(q) + 1}
+        value={answers[q.id]}
+        onAnswer={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))}
+      />
+      {reveal && byId.get(q.id) && (
+        <div className="grid gap-3 px-6 pb-7 lg:px-10">
+          <RevealNotes q={byId.get(q.id)!} cq={contentById.get(q.id)} />
+        </div>
+      )}
+    </div>
   );
 
   return (
@@ -151,220 +167,90 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
-        {set ? (
-          /* ── 세트 — 왼쪽 자료, 오른쪽 문항 여럿 ──
-             자료 칸은 화면에 붙여 둔다(sticky). 오른쪽을 3번까지 내려가도 왼쪽 글이
-             따라와야 「두 번 읽히지 않는다」가 지켜진다.
-             높이의 100vh는 콘솔 글자 크기(zoom)에 곱해지므로 배율로 나눠 쓴다(admin2.css .a2-shell) */
-          <div className="mx-auto grid min-h-full max-w-[80rem] gap-px bg-exam-line lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-            <section className="bg-exam-panel px-6 py-7 md:px-9 md:py-9 lg:sticky lg:top-0 lg:max-h-[calc(100vh/var(--a2-zoom,1)-4rem)] lg:self-start lg:overflow-y-auto">
-              <p className="text-[12px] font-bold tracking-wide text-exam-muted">함께 읽는 자료</p>
-              {hasPassage ? (
-                <div
-                  className="a2-prose mt-4 text-[15px] leading-[1.85] text-exam-text"
-                  dangerouslySetInnerHTML={{ __html: passage }}
-                />
-              ) : (
-                <p className="mt-4 rounded-[6px] border border-dashed border-exam-line p-4 text-[14px] text-exam-muted">
-                  아직 자료를 쓰지 않았습니다. 세트는 함께 읽을 것이 있어야 성립합니다.
-                </p>
-              )}
-            </section>
-
-            <div className="grid gap-px bg-exam-line">
-              {qs.map(one)}
-              {reveal && (item.guidance.trim() !== "" || item.reviewRequest.trim() !== "") && (
-                <section className="grid gap-3 bg-exam-panel px-6 py-6 md:px-9">
-                  <AuthorNotes item={item} />
-                </section>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* ── 단일 — 가운데 한 칸 ── */
-          <div className="mx-auto min-h-full max-w-[46rem] px-4 py-7 md:py-10">
-            {hasPassage && (
-              <section className="rounded-[8px] bg-exam-panel px-6 py-7 md:px-9">
-                <p className="text-[12px] font-bold tracking-wide text-exam-muted">지문 · 자료</p>
-                <div
-                  className="a2-prose mt-4 text-[15px] leading-[1.85] text-exam-text"
-                  dangerouslySetInnerHTML={{ __html: passage }}
-                />
-              </section>
-            )}
-            <div className={`overflow-hidden rounded-[8px] ${hasPassage ? "mt-4" : ""}`}>
-              {one(qs[0], 0)}
-              {reveal && (item.guidance.trim() !== "" || item.reviewRequest.trim() !== "") && (
-                <section className="grid gap-3 bg-exam-panel px-6 pb-7 md:px-9">
-                  <AuthorNotes item={item} />
-                </section>
-              )}
-            </div>
-          </div>
+      <div
+        className={`mx-auto grid min-h-0 w-full max-w-[1400px] flex-1 overflow-y-auto bg-exam-panel ${
+          hasBrief ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:overflow-hidden" : ""
+        }`}
+      >
+        {hasBrief && (
+          <BriefPanel brief={content.material} range={set ? `1~${bank.length}` : null} />
         )}
+        {/* 오른쪽 — 응시 화면은 한 화면씩 넘기지만, 미리보기는 화면들을 이어서 세운다 */}
+        <div className="order-3 lg:order-2 lg:overflow-y-auto">
+          {screens.map((screen) => (
+            <div key={screen[0].id} className="border-b border-exam-line">
+              <ScreenColumn order={bank} screen={screen} renderQuestion={one} />
+            </div>
+          ))}
+          {reveal && (item.guidance.trim() !== "" || item.reviewRequest.trim() !== "") && (
+            <section className="grid gap-3 px-6 py-6 lg:px-10">
+              <AuthorNotes item={item} />
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/** 문항 한 덩이 — 머리줄 · 발문 · 보기(또는 답 쓰는 칸) */
-function QuestionBlock({
-  q,
-  no,
-  numbered,
-  reveal,
-  picked,
-  onPick,
-}: {
-  q: Question;
-  no: number;
-  numbered: boolean;
-  /** 검수자만 보는 것(정답·오답 의도·해설)을 겹쳐 그릴지 */
-  reveal: boolean;
-  picked: number | undefined;
-  onPick: (i: number) => void;
-}) {
-  /* 보기를 여기서 갈아 끼우지 않는다 — OX는 저장된 보기를 그대로 두고 화면에서만
-     「맞다·아니다」로 바꾸는 규칙이 이미 있다(lib/itemStore.ts choicesOf). 여기서 따로
-     바꾸면 보기만 갈리고 오답 의도·정답 번호는 옛 보기를 가리킨 채 남는다 */
+/** 줄바꿈 — 칸마다의 답을 한 줄씩 */
+const NL = String.fromCharCode(10);
+
+/**
+ * 검수자만 보는 것 — 정답 · 칸마다의 답 · 채점 기준. 아이 화면에는 없는 글이라 점선으로 가른다.
+ */
+function RevealNotes({ q, cq }: { q: Question; cq?: ContentQuestion }) {
   const choices = choicesOf(q);
-  const writing = q.type !== "choice" && q.type !== "ox";
-  /* 오답 의도는 **객관식에만** 적는다. 객관식으로 쓰다 OX로 돌린 문항은 옛 보기의
-     의도를 그대로 들고 있어(retypeQuestion), 그것을 「맞다·아니다」 밑에 붙이면
-     검수자가 없는 보기의 오개념을 읽는다 */
-  const showIntent = q.type === "choice";
-  const stem = renderDetail(q.stemMode, q.stem, q.stemImages);
-
+  const picks = q.type === "choice" || q.type === "ox";
+  const blanks = cq?.response.kind === "blanks" ? cq.response.blanks : [];
+  const answers = cq?.sampleAnswer ?? [];
   return (
-    <section className="bg-exam-panel px-6 py-7 md:px-9 md:py-9">
-      <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
-        <p className="text-[13px] font-semibold text-exam-text">
-          {numbered && <span className="tabular-nums">{no}번</span>}
-          <span className={`font-medium text-exam-muted ${numbered ? "ml-2" : ""}`}>
-            {typeLabel(q.type)}
-          </span>
-        </p>
-        <p className="text-[12px] font-medium tabular-nums text-exam-muted">
-          {q.level} {levelSpecs[q.level].name}
-        </p>
-      </div>
-
-      <div
-        className="a2-prose mt-5 text-[19px] font-bold leading-[1.75] text-exam-text md:text-[21px]"
-        dangerouslySetInnerHTML={{ __html: stem }}
-      />
-
-      {writing ? (
-        <div className="mt-7">
-          <div className="min-h-[10rem] w-full rounded-[6px] border border-exam-line bg-exam-bg/40 p-4 text-[15px] leading-[1.8] text-exam-muted">
-            여기에 답을 씁니다.
-          </div>
-          {q.type === "image" && (
-            <p className="mt-3 text-[13px] text-exam-muted">
-              풀이 과정을 찍어 올리는 칸이 함께 섭니다.
-            </p>
-          )}
-        </div>
-      ) : (
-        <fieldset className="mt-7">
-          <legend className="sr-only">{numbered ? `${no}번 보기 선택` : "보기 선택"}</legend>
-          <ul className="grid gap-2">
-            {choices.map((c, i) => {
-              const on = picked === i;
-              /* 정답 번호가 보기 수를 넘어갈 수 있다(유형을 바꾸며 보기가 줄어든 문항).
-                 그때는 어느 것에도 배지가 안 붙으므로 아래에서 따로 짚어 준다 */
-              const answerHere = q.answer === i;
-              return (
-                <li key={`${q.id}-${i}`}>
-                  <label
-                    className={`flex cursor-pointer items-start gap-4 rounded-[6px] border p-4 transition-colors ${
-                      on
-                        ? "border-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
-                        : "border-exam-line hover:border-exam-muted"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={`pv-${q.id}`}
-                      checked={on}
-                      onChange={() => onPick(i)}
-                      className="sr-only"
-                    />
-                    <span
-                      aria-hidden
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
-                        on ? "border-exam-text bg-exam-text text-white" : "border-exam-line text-exam-muted"
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={`block text-[15px] leading-[1.7] ${on ? "font-semibold" : ""}`}>
-                        {c || <span className="text-exam-muted">보기 {i + 1} — 아직 안 씀</span>}
-                      </span>
-                      {/* 오답 의도 — 이 오답이 무슨 오개념을 잡으려는 것인가.
-                          보기 바로 아래 붙여야 「그 오개념이 이 문장으로 잡히는가」를 본다 */}
-                      {reveal && showIntent && !answerHere && q.distractorIntent[i]?.trim() && (
-                        <span className="mt-2 block border-l-2 border-dashed border-exam-muted/60 pl-3 text-[13px] leading-[1.6] text-exam-muted">
-                          <b className="font-bold">오답 의도</b> {q.distractorIntent[i]}
-                        </span>
-                      )}
-                    </span>
-                    {reveal && answerHere && (
-                      <span className="shrink-0 self-center rounded-full border border-exam-text px-2 py-0.5 text-[11px] font-bold text-exam-text">
-                        정답
-                      </span>
-                    )}
-                  </label>
-                </li>
-              );
-            })}
-            {choices.length === 0 && (
-              <li className="rounded-[6px] border border-dashed border-exam-line p-4 text-[14px] text-exam-muted">
-                아직 보기를 쓰지 않았습니다. 응시 화면에서는 고를 것이 없습니다.
-              </li>
-            )}
-          </ul>
-        </fieldset>
+    <>
+      {picks && (
+        <Keyed label="정답">
+          {choices[q.answer] !== undefined
+            ? `${q.answer + 1}번 ${choices[q.answer]}`
+            : `정답 번호(${q.answer + 1})가 보기 수(${choices.length})를 벗어났습니다.`}
+        </Keyed>
       )}
-
-      {/* 검수자만 보는 것 — 답과 채점 기준. 아이 화면에는 없는 글이라 점선으로 가른다 */}
-      {reveal && (
-        <div className="mt-6 grid gap-3">
-          {q.type === "short" && q.shortAnswers.trim() !== "" && (
-            <Keyed label="허용 답안">{q.shortAnswers}</Keyed>
-          )}
-          {!writing && (q.answer < 0 || q.answer >= choices.length) && (
-            <Keyed label="정답">
-              정답 번호({q.answer + 1})가 보기 수({choices.length})를 벗어났습니다. 유형을 바꾸면서 보기가
-              줄었을 수 있습니다.
-            </Keyed>
-          )}
-          {q.explain.trim() !== "" && <Keyed label="모범답안">{q.explain}</Keyed>}
-          {/* 부분점수 · 인정/불인정 예는 형식을 가리지 않고 적은 것이 있으면 그린다. 한동안 쓰는
-              형식에서만 그렸는데, 선택형에도 그 칸을 열어 두어(QuestionEditor) 적은 것이 검수자에게
-              안 보이게 된다. 서술형에서 돌린 문항의 옛 기준도 편집 화면에 그대로 보여 지울 수 있다 */}
-          {q.rubric.trim() !== "" && <Keyed label="부분점수">{q.rubric}</Keyed>}
-          {(q.acceptExamples.trim() !== "" || q.rejectExamples.trim() !== "") && (
-            <div className="grid gap-3 md:grid-cols-2">
-              <Keyed label="인정 예">{q.acceptExamples.trim() || "—"}</Keyed>
-              <Keyed label="불인정 예">{q.rejectExamples.trim() || "—"}</Keyed>
-            </div>
-          )}
-          {(q.perspectiveHierarchy.trim() !== "" || q.perspectiveAbility.trim() !== "") && (
-            <Keyed label="재능 평가 관점">
-              {[
-                q.perspectiveHierarchy.trim() && `인지 처리 위계 — ${q.perspectiveHierarchy.trim()}`,
-                q.perspectiveAbility.trim() && `인지 능력 수준 — ${q.perspectiveAbility.trim()}`,
-              ]
-                .filter(Boolean)
-                .join("\n")}
-            </Keyed>
-          )}
+      {/* 오답 의도 — 이 오답이 무슨 오개념을 잡으려는 것인가 */}
+      {q.type === "choice" && q.distractorIntent.some((d, i) => i !== q.answer && d.trim()) && (
+        <Keyed label="오답 의도">
+          {q.distractorIntent
+            .map((d, i) => (i !== q.answer && d.trim() ? `${i + 1}번 — ${d.trim()}` : ""))
+            .filter(Boolean)
+            .join(NL)}
+        </Keyed>
+      )}
+      {blanks.length > 0 && answers.some((a) => a.trim()) && (
+        <Keyed label="칸마다 정답 · 예시 답">
+          {blanks
+            .map((b, i) => `${b.label || `칸 ${i + 1}`} : ${answers[i]?.trim() || "—"}`)
+            .join(NL)}
+        </Keyed>
+      )}
+      {blanks.length === 0 && !picks && answers.some((a) => a.trim()) && (
+        <Keyed label="예시 답">{answers.join(NL)}</Keyed>
+      )}
+      {q.explain.trim() !== "" && <Keyed label="모범답안">{q.explain}</Keyed>}
+      {q.rubric.trim() !== "" && <Keyed label="부분점수">{q.rubric}</Keyed>}
+      {(q.acceptExamples.trim() !== "" || q.rejectExamples.trim() !== "") && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Keyed label="인정 예">{q.acceptExamples.trim() || "—"}</Keyed>
+          <Keyed label="불인정 예">{q.rejectExamples.trim() || "—"}</Keyed>
         </div>
       )}
-    </section>
+      {(q.perspectiveHierarchy.trim() !== "" || q.perspectiveAbility.trim() !== "") && (
+        <Keyed label="재능 평가 관점">
+          {[
+            q.perspectiveHierarchy.trim() && `인지 처리 위계 — ${q.perspectiveHierarchy.trim()}`,
+            q.perspectiveAbility.trim() && `인지 능력 수준 — ${q.perspectiveAbility.trim()}`,
+          ]
+            .filter(Boolean)
+            .join(NL)}
+        </Keyed>
+      )}
+    </>
   );
 }
 
@@ -388,7 +274,9 @@ function Keyed({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="rounded-[6px] border border-dashed border-exam-muted/50 bg-exam-bg/40 px-4 py-3">
       <p className="text-[11px] font-bold tracking-wide text-exam-muted">{label}</p>
-      <p className="mt-1.5 whitespace-pre-line text-[14px] leading-[1.75] text-exam-text">{children}</p>
+      <p className="mt-1.5 whitespace-pre-line text-[14px] leading-[1.75] text-exam-text">
+        {children}
+      </p>
     </div>
   );
 }

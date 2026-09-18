@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
-import { menu } from "@/lib/nav";
+import { siteMenu } from "@/lib/nav";
 import { roleHome, useSession } from "@/lib/authStore";
-import { ArrowRight, CloseIcon, MenuIcon } from "./Icons";
+import { CloseIcon, MenuIcon } from "./Icons";
 
 /**
  * 홍보 존 헤더 오른쪽.
@@ -74,6 +74,25 @@ function HeaderActions({
   );
 }
 
+/**
+ * 굵기를 바꿔도 폭이 흔들리지 않는 메뉴 글자.
+ * 굵은 글자를 보이지 않게 겹쳐 두어 자리를 미리 잡는다 — 이 폭이 아래 드롭다운
+ * 칸의 폭과 같아야 칸이 메뉴 글자 밑에 줄 맞춰 선다.
+ */
+function SteadyLabel({ text }: { text: string }) {
+  return (
+    <span className="grid">
+      <span aria-hidden className="invisible col-start-1 row-start-1 font-bold">
+        {text}
+      </span>
+      <span className="col-start-1 row-start-1 text-center">{text}</span>
+    </span>
+  );
+}
+
+/** 메뉴 칸과 드롭다운 칸이 같이 쓰는 폭 — 둘이 어긋나면 줄이 안 맞는다 */
+const navCell = "min-w-[5.25rem] shrink-0";
+
 export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -119,23 +138,25 @@ export default function Header() {
         <Logo />
 
         <nav className="hidden h-full items-center xl:flex" aria-label="주요 메뉴">
-          {menu.map((group) => (
+          {siteMenu.map((group) => (
             <div
               key={group.id}
-              className="flex h-full items-center"
+              className="flex h-full shrink-0 items-center"
               onMouseEnter={() => setOpenGroup(group.id)}
               onFocus={() => setOpenGroup(group.id)}
             >
               <Link
                 href={group.href}
-                aria-expanded={openGroup === group.id}
-                className={`type-h4 rounded-lg px-3.5 py-2 font-medium transition-colors ${
+                aria-expanded={openGroup !== null}
+                className={`type-h4 ${navCell} flex justify-center whitespace-nowrap px-2.5 py-2 transition-colors ${
                   isActive(group.href)
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+                    ? "font-bold text-brand-700"
+                    : openGroup === group.id
+                      ? "font-bold text-brand-950"
+                      : "font-medium text-slate-700 hover:font-bold hover:text-brand-950"
                 }`}
               >
-                {group.label}
+                <SteadyLabel text={group.label} />
               </Link>
             </div>
           ))}
@@ -157,49 +178,60 @@ export default function Header() {
         </button>
       </div>
 
-      {/* 데스크톱 드롭다운 */}
-      {menu
-        .filter((group) => group.id === openGroup)
-        .map((group) => (
-        <div
-          key={group.id}
-          className="absolute inset-x-0 top-full hidden border-t border-brand-100 bg-white shadow-float xl:block"
-        >
-          <div className="container-x grid gap-8 py-8 xl:grid-cols-[260px_1fr]">
-            <div className="rounded-2xl bg-brand-50/70 p-5">
-              <p className="type-eyebrow text-brand-500">{group.id}</p>
-              <p className="type-h3 mt-2 font-black text-brand-950">{group.label}</p>
-              <p className="type-meta mt-2 text-slate-600">{group.summary}</p>
-              <Link
-                href={group.href}
-                onClick={() => setOpenGroup(null)}
-                className="type-meta mt-4 inline-flex items-center gap-1 font-bold text-brand-700 hover:underline"
-              >
-                전체 보기
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+      {/* 데스크톱 드롭다운 — 메뉴 하나에 올려도 전체 하위 메뉴를 칸으로 펼친다.
+          머리띠와 같은 줄을 한 번 더 깔고(로고·오른쪽 버튼은 보이지 않게 폭만 차지)
+          칸마다 메뉴 글자와 같은 폭을 주어, 하위 메뉴가 제 메뉴 밑에 줄 맞춰 선다. */}
+      {openGroup && (
+        <div className="absolute inset-x-0 top-full hidden border-t border-brand-100 bg-white shadow-float xl:block">
+          <div className="container-x flex justify-between gap-4 py-5">
+            <div aria-hidden className="invisible h-0 shrink-0 overflow-hidden">
+              <Logo />
             </div>
-            <ul className="grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
-              {group.children.map((child) => (
-                <li key={child.href}>
-                  <Link
-                    href={child.href}
-                    onClick={() => setOpenGroup(null)}
-                    className="block rounded-xl p-4 transition-colors hover:bg-brand-50"
+            <div className="flex">
+              {siteMenu.map((group) => (
+                <div
+                  key={group.id}
+                  className={`${navCell} flex flex-col`}
+                  onMouseEnter={() => setOpenGroup(group.id)}
+                  onFocus={() => setOpenGroup(group.id)}
+                >
+                  {/* 폭 맞춤용 — 위 메뉴 글자와 같은 폭을 잡는다 */}
+                  <span
+                    aria-hidden
+                    className="type-h4 invisible h-0 overflow-hidden whitespace-nowrap px-2.5 font-bold"
                   >
-                    <span className="type-h4 block font-bold text-brand-950">
-                      {child.label}
-                    </span>
-                    <span className="type-meta mt-1 block text-slate-500">
-                      {child.desc}
-                    </span>
-                  </Link>
-                </li>
+                    {group.label}
+                  </span>
+                  {/* w-0 min-w-full: 긴 하위 메뉴가 칸을 넓히지 않고 칸 안에서 줄바꿈된다.
+                      break-keep이라 낱말 중간이 아니라 띄어쓰기에서 끊긴다 */}
+                  <ul className="w-0 min-w-full">
+                    {group.children.map((child) => (
+                      <li key={child.href}>
+                        <Link
+                          href={child.href}
+                          onClick={() => setOpenGroup(null)}
+                          className={`type-meta block break-keep py-1.5 text-center transition-colors hover:text-brand-700 ${
+                            isActive(child.href)
+                              ? "font-bold text-brand-700"
+                              : openGroup === group.id
+                                ? "text-slate-800"
+                                : "text-slate-500"
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
+            <div aria-hidden className="invisible flex h-0 shrink-0 items-center gap-2 overflow-hidden">
+              <HeaderActions />
+            </div>
           </div>
         </div>
-        ))}
+      )}
 
       {/* 모바일 */}
       {open && (
@@ -208,7 +240,7 @@ export default function Header() {
           className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-brand-100 bg-white xl:hidden"
         >
           <nav className="container-x flex flex-col py-3" aria-label="모바일 메뉴">
-            {menu.map((group) => {
+            {siteMenu.map((group) => {
               const expanded = mobileGroup === group.id;
               return (
                 <div key={group.id} className="border-b border-brand-50 last:border-0">
@@ -228,14 +260,6 @@ export default function Header() {
                   </button>
                   {expanded && (
                     <ul className="pb-3" onClick={() => setOpen(false)}>
-                      <li>
-                        <Link
-                          href={group.href}
-                          className="type-meta block rounded-lg px-3 py-2.5 font-medium text-brand-700"
-                        >
-                          {group.label} 전체 보기
-                        </Link>
-                      </li>
                       {group.children.map((child) => (
                         <li key={child.href}>
                           <Link

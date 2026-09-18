@@ -146,7 +146,7 @@ export default function ItemGenerator() {
             />
           </Field>
 
-          <Field label="학년군">
+          <Field label="학년">
             <Radios
               name="band"
               value={band}

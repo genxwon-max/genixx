@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { assessment, QUESTIONS_PER_SUBJECT, questionsOf, subjects } from "@/lib/exam";
+import { assessment, questionCount, questionsOf, subjects } from "@/lib/exam";
 import {
   allSubmitted,
   finalize,
@@ -17,12 +17,15 @@ import {
   type SurveyKey,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
-import { findById, formatCode } from "@/lib/roster";
+import { formatCode, recordSurveySend, useRoster } from "@/lib/roster";
 import { examWindow, surveyWindow } from "@/lib/popup";
+import { phoneText } from "@/components/account/SendCodes";
 import { ensureReport } from "@/lib/reportStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { isAnswered } from "./ExamSession";
 import SectionTitle from "./SectionTitle";
+import Toast from "./Toast";
+import StudentOnly from "./StudentOnly";
 import { ArrowRight } from "@/components/Icons";
 import {
   btnGhost,
@@ -32,6 +35,7 @@ import {
   btnSmMuted,
   eyebrow,
   govTable,
+  input,
   panel,
   td,
   tdStrong,
@@ -55,14 +59,34 @@ const stateText: Record<string, { label: string; className: string }> = {
   none: { label: "미제출", className: "font-bold text-rose-600" },
 };
 
-export default function StatusTable() {
+/**
+ * 과목을 하나씩 응시하는 판.
+ *
+ * 응시 첫 화면(ExamCatalog)에서 평가 카드의 「응시하기」를 누르면 여기로 온다. 머리에는
+ * 고른 평가(회차 · 학년)를 적는다 — 넘겨받지 않으면 예전처럼 지금 회차 이름을 쓴다.
+ */
+export type StatusHeading = {
+  eyebrow: string;
+  title: string;
+  /** 「2026.08.01 ~ 2026.08.31」 */
+  period: string;
+};
+
+export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
   const config = useExamConfig();
   const studentId = session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
-  const student = hydrated ? findById(studentId) : null;
+  const roster = useRoster();
+  const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
+  /** 문자를 보낼 설문 — 번호 받는 창이 열려 있다 */
+  const [smsFor, setSmsFor] = useState<SurveyKey | null>(null);
+  /* 명부에 없는 시연 계정도 「보냈다」가 남도록 화면에 따로 적어 둔다 */
+  const [localSends, setLocalSends] = useState<Record<string, { phone: string; at: string }>>({});
+  const sends = { ...student?.surveySends, ...localSends };
+  const [toast, setToast] = useState<string | null>(null);
 
   const [askFinal, setAskFinal] = useState(false);
   const [guardianPick, setGuardianPick] = useState(false);
@@ -75,30 +99,7 @@ export default function StatusTable() {
 
   // 학생 세션이 아니면 응시 현황을 볼 대상이 없다
   if (hydrated && session && session.role !== "student") {
-    const home = session.role === "director" ? "/my/students" : "/my/children";
-    return (
-      <div className="py-10">
-        <div className={`mx-auto max-w-lg p-8 text-center ${panel}`}>
-          <p className={eyebrow}>학생 화면</p>
-          <h1 className="mt-3 text-[20px] font-bold text-soft-ink">
-            응시 현황은 학생 계정에서 확인합니다
-          </h1>
-          <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
-            학생에게 발급한 접속코드로 들어가면 이 화면이 열립니다. 보호자도 같은 코드로 들어와
-            설문만 진행할 수 있습니다.
-          </p>
-          <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Link href={home} className={btnPrimary}>
-              학생 관리로
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href="/login/student" className={btnGhost}>
-              학생 코드로 접속
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <StudentOnly role={session.role} />;
   }
 
   const openExam = (subject: string) => examWindow(`/exam/session/${subject}`);
@@ -109,13 +110,13 @@ export default function StatusTable() {
       {/* 응시자 정보 */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div>
-          <p className={eyebrow}>ASM-01 · 응시 현황</p>
+          <p className={eyebrow}>{heading?.eyebrow ?? "ASM-01 · 응시 현황"}</p>
           <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
-            {assessment.name} {config.roundLabel} 진단 현황
+            {heading?.title ?? `${assessment.name} ${config.roundLabel} 진단 현황`}
           </h1>
         </div>
         <p className="text-[12px] text-soft-muted">
-          응시 기간 {config.opensAt} ~ {config.closesAt} · 조회 기준{" "}
+          응시 기간 {heading?.period ?? `${config.opensAt} ~ ${config.closesAt}`} · 조회 기준{" "}
           {fmt(new Date().toISOString())}
         </p>
       </div>
@@ -150,7 +151,7 @@ export default function StatusTable() {
       {/* 표 1 — 과목별 평가 */}
       <section className="mt-9">
         <SectionTitle
-          note={`과목마다 따로 응시하며, 한 과목당 ${QUESTIONS_PER_SUBJECT}문항입니다. 제한 시간은 과목마다 다를 수 있어 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
+          note={`과목마다 따로 응시하며, 제한 시간은 과목마다 다를 수 있어 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
         >
           평가 응시 현황
         </SectionTitle>
@@ -204,7 +205,7 @@ export default function StatusTable() {
                         색점은 뜻 없이 눈만 잡아끈다. */}
                     <td className={`${tdStrong} text-left`}>{s.name}</td>
                     <td className={`${td} tabular-nums`}>
-                      {answered}/{QUESTIONS_PER_SUBJECT}
+                      {answered}/{questionCount(s.id)}
                     </td>
                     <td className={`${td} tabular-nums`}>
                       {/* 이미 시작했다면 그 아이가 받은 시간을 적는다. 지금 설정을 적으면
@@ -248,7 +249,7 @@ export default function StatusTable() {
 
       {/* 표 2 — 설문 */}
       <section className="mt-9">
-        <SectionTitle note="어머니·아버지 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 버튼을 누르면 별도 창이 열립니다.">
+        <SectionTitle note="어머니·아버지 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다.">
           설문 제출 현황
         </SectionTitle>
 
@@ -261,7 +262,7 @@ export default function StatusTable() {
               <col className="w-[130px]" />
               <col className="w-[100px]" />
               <col className="w-[150px]" />
-              <col className="w-[110px]" />
+              <col className="w-[130px]" />
             </colgroup>
             <thead>
               <tr>
@@ -270,7 +271,7 @@ export default function StatusTable() {
                 <th className={th}>대상</th>
                 <th className={th}>진행상태</th>
                 <th className={th}>제출일시</th>
-                <th className={th}>설문</th>
+                <th className={th}>문자</th>
               </tr>
             </thead>
             <tbody>
@@ -278,6 +279,7 @@ export default function StatusTable() {
                 const meta = surveyMeta[key];
                 const state = record.surveys[key];
                 const st = stateText[state] ?? stateText.none;
+                const sent = sends[key];
                 return (
                   <tr key={key}>
                     {i === 0 && (
@@ -292,13 +294,30 @@ export default function StatusTable() {
                     </td>
                     <td className={`${td} tabular-nums`}>{fmt(record.surveyAt[key])}</td>
                     <td className={td}>
-                      <button
-                        type="button"
-                        onClick={() => openSurvey(key)}
-                        className={state === "done" ? btnSmGhost : btnSm}
-                      >
-                        {state === "done" ? "다시 작성" : "설문하기"}
-                      </button>
+                      {state === "done" ? (
+                        <span className={btnSmMuted}>제출됨</span>
+                      ) : sent ? (
+                        /* 이미 보냈으면 보냈다는 표시를 세우고, 다시 보낼 길만 작게 둔다 */
+                        <span className="inline-flex flex-col items-center gap-0.5">
+                          <span className="text-[12px] font-bold text-emerald-700">
+                            발송완료{" "}
+                            <span className="font-medium tabular-nums">
+                              {fmt(sent.at).slice(5, 10).replace("-", ".")}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSmsFor(key)}
+                            className="text-[11px] text-soft-muted underline-offset-2 hover:text-soft-ink hover:underline"
+                          >
+                            다시 보내기
+                          </button>
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => setSmsFor(key)} className={btnSm}>
+                          문자 보내기
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -337,7 +356,7 @@ export default function StatusTable() {
             시연용 초기화
           </button>
           {record.finalized ? (
-            <Link href="/exam/result" className={btnPrimary}>
+            <Link href="/exam/report" className={btnPrimary}>
               결과 확인
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -379,10 +398,30 @@ export default function StatusTable() {
               record,
             );
             setAskFinal(false);
-            router.push("/exam/result");
+            router.push("/exam/report");
           }}
         />
       )}
+
+      {smsFor && (
+        <SmsDialog
+          label={surveyMeta[smsFor].label}
+          /* 어머니·아버지 설문은 등록 때 받은 보호자 번호에서 출발한다. 교사 번호는 알 수 없다 */
+          initial={
+            sends[smsFor]?.phone ?? (smsFor === "teacher" ? "" : (student?.guardianPhone ?? ""))
+          }
+          onCancel={() => setSmsFor(null)}
+          onSend={(phone) => {
+            /* ⚠ 문자는 아직 나가지 않는다. 발송 API를 붙이면 그 결과가 돌아온 뒤에 기록한다 */
+            if (student) recordSurveySend(student.id, smsFor, phone);
+            setLocalSends((m) => ({ ...m, [smsFor]: { phone, at: new Date().toISOString() } }));
+            setToast(`${phoneText(phone)}로 ${surveyMeta[smsFor].label} 링크를 보냈습니다.`);
+            setSmsFor(null);
+          }}
+        />
+      )}
+
+      <Toast message={toast} onClose={() => setToast(null)} />
 
       {guardianPick && (
         <GuardianDialog
@@ -517,6 +556,74 @@ function GuardianDialog({
           닫기
         </button>
       </div>
+    </div>
+  );
+}
+
+/** 설문 링크를 보낼 휴대전화 번호를 받는 창 */
+function SmsDialog({
+  label,
+  initial,
+  onCancel,
+  onSend,
+}: {
+  label: string;
+  initial: string;
+  onCancel: () => void;
+  onSend: (phone: string) => void;
+}) {
+  const [phone, setPhone] = useState(phoneText(initial));
+  const digits = phone.replace(/\D/g, "");
+  const ok = digits.length >= 10 && digits.length <= 11;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sms-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-5"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (ok) onSend(digits);
+        }}
+        className="w-full max-w-md rounded-[12px] bg-white p-7 shadow-float"
+      >
+        <h2 id="sms-title" className="text-[19px] font-bold text-soft-ink">
+          {label} 링크를 문자로 보냅니다
+        </h2>
+        <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
+          받은 분이 링크를 열면 로그인 없이 바로 설문을 작성할 수 있습니다.
+        </p>
+        <label htmlFor="sms-phone" className="mt-5 block text-[13px] font-bold text-soft-ink">
+          휴대전화 번호
+        </label>
+        <input
+          id="sms-phone"
+          type="tel"
+          inputMode="numeric"
+          autoFocus
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+          placeholder="010-1234-5678"
+          className={`mt-2 tabular-nums ${input}`}
+        />
+        {phone && !ok && (
+          <p className="mt-1.5 text-[12px] text-rose-600">휴대전화 번호를 정확히 입력해 주세요.</p>
+        )}
+        <div className="mt-7 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onCancel} className={btnGhost}>
+            취소
+          </button>
+          <button
+            type="submit"
+            disabled={!ok}
+            className={`${btnPrimary} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            보내기
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

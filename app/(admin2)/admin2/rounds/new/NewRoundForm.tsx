@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { GradeBand } from "@/lib/blueprint";
-import { QUESTIONS_PER_SUBJECT, subjects } from "@/lib/exam";
+import { questionCountText, subjects } from "@/lib/exam";
 import { roundStateLabels } from "@/lib/admin";
 import { n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
@@ -185,8 +185,8 @@ export default function NewRoundForm() {
         </div>
 
         {/* ── 무엇으로 — 이 화면의 본체 ──
-            학년군을 먼저 받고 과목을 넣는 까닭은 PlanPicker 머리 주석에 적어 두었다 */}
-        {/* PlanPicker가 학년군·평가 과목 두 줄을 그대로 낸다. 「편성」이라는 이름표로 한 번
+            학년을 먼저 받고 과목을 넣는 까닭은 PlanPicker 머리 주석에 적어 두었다 */}
+        {/* PlanPicker가 학년·평가 과목 두 줄을 그대로 낸다. 「편성」이라는 이름표로 한 번
             더 감싸지 않는다 — 감싸면 이름표가 두 겹이 되고, 편성 화면(ADM-05-4)과 여기가
             같은 줄을 다른 깊이로 그리게 된다 */}
         <PlanPicker
@@ -218,8 +218,8 @@ export default function NewRoundForm() {
           <div className="a2-form-label">과목당 규격</div>
           <div className="a2-form-field">
             <span className="a2-t-sm text-(--a2-ink-2)">
-              {subjects.map((s) => `${s.short} ${s.limitMin}분`).join(" · ")} · 과목당{" "}
-              <span className="a2-num">{QUESTIONS_PER_SUBJECT}</span>문항
+              {subjects.map((s) => `${s.short} ${s.limitMin}분`).join(" · ")} ·{" "}
+              {questionCountText()}
             </span>
           </div>
         </div>

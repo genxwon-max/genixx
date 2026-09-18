@@ -7,7 +7,7 @@ import {
   stubSections,
   userActions,
 } from "@/lib/admin";
-import { QUESTIONS_PER_SUBJECT, assessment, levels, subjects } from "@/lib/exam";
+import { assessment, levels, questionCountText, subjects, totalQuestions } from "@/lib/exam";
 import { company } from "@/lib/site";
 import { Body, DescList, PageHead, Panel, SeedNote, Tag } from "@/components/admin2/ui";
 import QualityPanel from "./QualityPanel";
@@ -42,7 +42,7 @@ export const metadata = { title: "시스템 설정" };
 const limits = Array.from(new Set(subjects.map((s) => s.limitMin)));
 const limitText = limits.length === 1 ? `${limits[0]}분` : limits.map((v) => `${v}분`).join(" · ");
 const totalMin = subjects.reduce((sum, s) => sum + s.limitMin, 0);
-const totalQ = subjects.length * QUESTIONS_PER_SUBJECT;
+const totalQ = totalQuestions();
 
 /* 이 화면을 여는 권한(system.manage)을 실제로 누가 쥐고 있는지 역할 목록에서 센다.
    「관리자만」이라고 적어 두면 권한을 옮긴 날 이 줄만 옛말이 된다. */
@@ -91,10 +91,8 @@ export default function Admin2Settings() {
                   "lib/exam.ts",
                 ),
                 row(
-                  "과목당 문항",
-                  <>
-                    <span className="a2-num">{QUESTIONS_PER_SUBJECT}</span>문항
-                  </>,
+                  "과목별 문항",
+                  <span className="a2-num">{questionCountText()}</span>,
                   "lib/exam.ts",
                 ),
                 row("과목당 제한 시간", <span className="a2-num">{limitText}</span>, "lib/exam.ts"),

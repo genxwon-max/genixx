@@ -2,39 +2,43 @@
 
 import Link from "next/link";
 import { useSession } from "@/lib/authStore";
-import { useExamStore, useHydrated, surveyKeys } from "@/lib/examStore";
+import { useExamStore, useHydrated, surveyKeys, type SurveyKey } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
-import { docIdOf, useSurveyDocs } from "@/lib/surveyStore";
-import { bandFromGrade } from "@/lib/surveyBands";
-import { surveyWindow } from "@/lib/popup";
 import { themeOf, type Variant } from "@/lib/authVariant";
-import SectionTitle from "@/components/exam/SectionTitle";
 import { eyebrow } from "@/components/exam/ui";
+import { listTd, listTh } from "./ui";
 
 /**
- * 설문 현황 — 학생마다 어머니·아버지·교사 셋을 나란히 둔다.
+ * 설문 현황 — 학생이 줄로 서고, 어머니·아버지·교사 셋이 어디까지 왔는지가 칸으로 붙는다.
+ *
+ * 학생 목록(/my · /my/children)과 같은 표를 쓴다. 여기는 **누가 아직 안 냈는지 훑는**
+ * 자리이고, 실제로 내보내거나 여는 일은 학생 상세(/my/surveys/[id])에서 한다. 목록에서
+ * 곧바로 문항 창을 띄우면 보호자가 그 자리에 앉아 셋을 대신 채우게 되는데, 그러면 관찰이
+ * 한 사람의 것으로 쏠린다. 아버지·교사에게는 그 사람 폰으로 링크를 보내는 것이 맞다.
  *
  * 셋을 다 보여 주는 이유가 있다. 한 아이의 재능은 네 정보원(지필·학생 응답·보호자
  * 관찰·교사 관찰)을 교차해 읽는데, 어느 축이 비었는지 보이지 않으면 왜 해석이 얕은지
  * 알 수 없다. 그래서 보호자에게도 교사 칸을 보여 주되 누가 내는 것인지 함께 적는다.
  *
- * 문항 작성만 새 창(/survey/[role])으로 띄운다. 답만 쓰는 화면이라 레일·헤더가 없는
- * 편이 낫고, 이 화면은 다른 화면과 오가며 훑는 자리라 껍데기를 유지한다.
- *
  * 학생 응답(ASM-04)은 학생이 접속코드로 들어가 직접 하는 것이라 여기 없다.
  */
+
+/** 칸 머리에 적는 짧은 이름. 저장소의 who는 「담당 교사·교수」처럼 길어 칸을 넘긴다. */
+const shortWho: Record<SurveyKey, string> = {
+  mother: "어머니",
+  father: "아버지",
+  teacher: "교사",
+};
+
 export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
   const t = themeOf(variant);
   const hydrated = useHydrated();
   const session = useSession();
   const roster = useRoster();
   const records = useExamStore();
-  const docs = useSurveyDocs();
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
-  const divide = variant === 1 ? "divide-acc-hairline" : "divide-slate-100";
-  const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
 
   return (
     <>
@@ -45,103 +49,126 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
         </h1>
         <p className={`mt-2 text-[13px] ${t.muted}`}>
           학생마다 어머니·아버지·교사가 각각 냅니다. 셋이 채워질수록 해석이 촘촘해집니다.
+          「설문 관리」에서 그 사람 폰으로 링크를 보내거나 지금 이 자리에서 바로 여실 수
+          있습니다 — 정답이 있는 검사가 아닙니다.
         </p>
       </header>
 
-      {!hydrated ? (
-        <p className={`py-16 text-center text-[14px] ${t.muted}`}>확인 중입니다…</p>
-      ) : mine.length === 0 ? (
-        <section className={`${t.card} px-6 py-12 text-center`}>
-          <p className="text-[17px] font-bold">등록된 학생이 없어요.</p>
-          <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>
-            학생을 먼저 등록하시면 설문을 낼 수 있습니다.
-          </p>
-          <Link href="/my/students?tab=one" className={`${t.btnAction} mt-6`}>
-            + 학생 등록
-          </Link>
-        </section>
-      ) : (
-        <section>
-          <SectionTitle note="누르면 새 창에서 문항이 열립니다. 정답이 있는 검사가 아닙니다.">
-            학생별 제출 현황
-          </SectionTitle>
-
-          <div className={`${t.card} overflow-hidden`}>
-            <ul className={`divide-y ${divide}`}>
-              {mine.map((student) => {
+      <div className={`${t.card} overflow-x-auto`}>
+        <table className="w-full min-w-[720px] border-collapse">
+          <caption className="sr-only">학생별 설문 제출 현황</caption>
+          <colgroup>
+            <col className="w-[18%]" />
+            <col className="w-[22%]" />
+            <col className="w-[10%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[14%]" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className={listTh}>이름</th>
+              <th className={listTh}>학교 · 학년</th>
+              <th className={listTh}>제출</th>
+              {surveyKeys.map((k) => (
+                <th key={k} className={listTh}>
+                  {shortWho[k]}
+                </th>
+              ))}
+              <th className={listTh}>관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!hydrated ? (
+              <tr>
+                <td colSpan={7} className={`${listTd} py-14`}>
+                  확인 중입니다…
+                </td>
+              </tr>
+            ) : mine.length === 0 ? (
+              /* 빈 상태에서도 칸은 그대로 둔다 — 이 화면이 무엇을 보여 주는 자리인지가 남는다 */
+              <tr>
+                <td colSpan={7} className={`${listTd} py-14`}>
+                  <p className="text-[15px] font-bold text-soft-ink">
+                    아직 등록된 학생이 없습니다
+                  </p>
+                  <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
+                    학생을 먼저 등록하시면 설문을 낼 수 있습니다.
+                  </p>
+                  <Link href="/my/children/new" className={`${t.btnAction} mt-5`}>
+                    등록하러 가기
+                  </Link>
+                </td>
+              </tr>
+            ) : (
+              mine.map((student) => {
                 const done = surveyKeys.filter(
                   (k) => records[student.id]?.surveys?.[k] === "done",
                 ).length;
                 return (
-                  <li key={student.id} className="px-4 py-4">
-                    <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                      <span className="text-[15px] font-semibold">{student.name}</span>
-                      {student.grade && (
-                        <span className={`text-[12.5px] ${t.muted}`}>{student.grade}</span>
-                      )}
-                      <span
-                        className={`text-[12.5px] ${
-                          done === surveyKeys.length ? "text-emerald-600" : t.muted
-                        }`}
+                  <tr key={student.id}>
+                    <td className={`${listTd} text-left`}>
+                      <Link
+                        href={`/my/children/${student.id}`}
+                        className="text-[14px] font-black text-soft-ink hover:underline"
                       >
-                        {done} / {surveyKeys.length} 제출
-                      </span>
-                    </p>
+                        {student.name}
+                      </Link>
+                    </td>
 
-                    <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
-                      {surveyKeys.map((key) => {
-                        /* 설문은 학년대마다 한 벌씩이라, 이 아이의 학년으로 고른다 */
-                        const cfg = docs[docIdOf(key, bandFromGrade(student.grade))].live;
-                        const submitted = records[student.id]?.surveys?.[key] === "done";
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => surveyWindow(`/survey/${key}?student=${student.id}`)}
-                            className={`flex items-center justify-between gap-2 rounded-[10px] border px-3 py-2.5 text-left transition-colors ${
-                              submitted
-                                ? "border-slate-200 bg-slate-50 hover:bg-slate-100"
-                                : variant === 1
-                                  ? "border-acc-line bg-white hover:border-acc-primary"
-                                  : "border-soft-line bg-white hover:border-soft-primary"
-                            }`}
-                          >
-                            <span className="min-w-0">
-                              <span className="block text-[13.5px] font-semibold">{cfg.who}</span>
-                              <span className={`mt-0.5 block text-[12px] ${t.muted}`}>
-                                {key === "teacher" ? "담당 교사가 입력" : "가정에서 관찰한 모습"}
-                              </span>
-                            </span>
-                            <span
-                              className={`shrink-0 text-[12.5px] font-semibold ${
-                                submitted
-                                  ? "text-emerald-600"
-                                  : variant === 1
-                                    ? "text-acc-primary"
-                                    : "text-soft-primary"
-                              }`}
-                            >
-                              {submitted ? "제출됨" : "작성"}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </li>
+                    <td className={`${listTd} text-left`}>
+                      {student.school ?? "—"}
+                      {student.grade && <span className="block text-[12px]">{student.grade}</span>}
+                    </td>
+
+                    <td
+                      className={`${listTd} font-semibold tabular-nums ${
+                        done === surveyKeys.length ? "text-emerald-600" : "text-soft-muted"
+                      }`}
+                    >
+                      {done}/{surveyKeys.length}
+                    </td>
+
+                    {/* 셋이 어디까지 왔는지만 적는다. 보내거나 여는 일은 상세에서 한다 */}
+                    {surveyKeys.map((key) => {
+                      const submitted = records[student.id]?.surveys?.[key] === "done";
+                      const sent = student.surveySends?.[key];
+                      return (
+                        <td
+                          key={key}
+                          className={`${listTd} ${submitted ? "text-emerald-600" : ""}`}
+                        >
+                          <span className="font-semibold">{submitted ? "제출됨" : "미제출"}</span>
+                          {/* 아직 안 냈어도 링크를 보내 두었으면 기다리는 중인 것이다 */}
+                          {!submitted && sent && (
+                            <span className="mt-0.5 block text-[12px]">문자 발송</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    <td className={listTd}>
+                      <Link
+                        href={`/my/surveys/${student.id}`}
+                        className="font-semibold text-soft-primary hover:underline"
+                      >
+                        설문 관리
+                      </Link>
+                    </td>
+                  </tr>
                 );
-              })}
-            </ul>
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
-            <div className={`border-t px-4 py-3.5 ${rule}`}>
-              <p className={`text-[12.5px] leading-[1.7] ${t.muted}`}>
-                평소 모습 그대로 답해 주시면 됩니다. 보호자의 양육 태도를 평가하거나 리포트에
-                출력하지 않습니다. 교사 설문은 담당 교사가 입력하며, 없어도 나머지 축으로 해석은
-                진행됩니다.
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
+      <p className={`mt-3 text-[12.5px] leading-[1.7] ${t.muted}`}>
+        평소 모습 그대로 답해 주시면 됩니다. 보호자의 양육 태도를 평가하거나 리포트에
+        출력하지 않습니다. 교사 설문은 담당 교사가 입력하며, 없어도 나머지 축으로 해석은
+        진행됩니다.
+      </p>
     </>
   );
 }

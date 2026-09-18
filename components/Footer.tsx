@@ -2,7 +2,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import PolicyBar from "./PolicyBar";
 import { company } from "@/lib/site";
-import { menu } from "@/lib/nav";
+import { siteMenu } from "@/lib/nav";
 
 /**
  * 공개 존 푸터.
@@ -41,7 +41,7 @@ export default function Footer() {
         </div>
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {menu.slice(0, 4).map((group) => (
+          {siteMenu.slice(0, 4).map((group) => (
             <div key={group.id}>
               <h2 className="type-h4 font-bold text-slate-900">{group.label}</h2>
               <ul className="mt-4 space-y-2.5">
@@ -61,8 +61,8 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="container-x grid gap-8 border-t border-brand-100 py-10 sm:grid-cols-2 lg:grid-cols-3">
-        {menu.slice(4).map((group) => (
+      <div className="container-x grid gap-8 border-t border-brand-100 py-10 sm:grid-cols-2 lg:grid-cols-4">
+        {siteMenu.slice(4).map((group) => (
           <div key={group.id}>
             <h2 className="type-h4 font-bold text-slate-900">{group.label}</h2>
             <ul className="mt-4 space-y-2.5">

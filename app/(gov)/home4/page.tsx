@@ -9,7 +9,7 @@ import {
   QuestionIcon,
   ReportIcon,
 } from "@/components/home4/QuickIcons";
-import { assessment, QUESTIONS_PER_SUBJECT, subjects } from "@/lib/exam";
+import { assessment, questionCountText, subjects, totalQuestions } from "@/lib/exam";
 import { axes } from "@/lib/result";
 import { company } from "@/lib/site";
 
@@ -65,7 +65,7 @@ const deadlineDot = `${dy}. ${dm}. ${dd}.`;
 const deadlineKo = `${dy}년 ${dm}월 ${dd}일`;
 const subjectNames = subjects.map((s) => s.short).join("·");
 const limitMin = subjects[0].limitMin;
-const totalItems = subjects.length * QUESTIONS_PER_SUBJECT;
+const totalItems = totalQuestions();
 const measuredAxes = axes.filter((a) => a.subject);
 
 /** 공고 요약 — 첫 화면 오른쪽 표. 자세한 것은 아래 응시 안내표가 맡으므로 넷만 */
@@ -112,7 +112,7 @@ const progress = [
 const figures = [
   { n: "40", unit: "인", l: "출제·검수·평가·면담을 맡는 전문가단" },
   { n: String(axes.length), unit: "갈래", l: `재능 좌표 · 2026년은 ${measuredAxes.length}갈래 측정` },
-  { n: String(totalItems), unit: "문항", l: `${subjectNames} 각 ${QUESTIONS_PER_SUBJECT}문항 · 과목당 ${limitMin}분` },
+  { n: String(totalItems), unit: "문항", l: `${questionCountText()} · 과목당 ${limitMin}분` },
   { n: `${dm}. ${dd}.`, unit: "", l: `${assessment.round} 응시 마감` },
 ];
 
@@ -169,7 +169,7 @@ const flow = [
 /** 응시 안내표 */
 const guide = [
   { k: "응시 대상", v: "초등학교 3~4학년 (2026 파일럿)" },
-  { k: "과목·문항", v: `${subjectNames} 각 ${QUESTIONS_PER_SUBJECT}문항, 객관식과 서술형` },
+  { k: "과목·문항", v: `${questionCountText()}, 객관식과 서술형` },
   { k: "응시 시간", v: `과목당 ${limitMin}분 · 과목별로 따로 접속하며, 과목을 나누어 응시할 수 있습니다` },
   { k: "접수 방법", v: "보호자가 회원가입 후 자녀를 등록 → 8자리 접속코드 발급 → 학생은 코드와 생년월일로 입장" },
   {

@@ -174,7 +174,7 @@ export default function ReviewQueue() {
       },
       {
         key: "band",
-        head: "학년군",
+        head: "학년",
         width: "4rem",
         nowrap: true,
         hide: "md",

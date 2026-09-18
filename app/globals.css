@@ -42,6 +42,8 @@
   --color-exam-line: #ccd5e4;
   --color-exam-text: #1a2242;
   --color-exam-muted: #5e6a88;
+  /* 응시 존 페이지 본문을 담는 판 — 순백(#fff)보다 한 톤 가라앉힌 흰색 */
+  --color-exam-paper: #fbfbfc;
 
   /* 계정 존(ACC) — 공공·영재교육 플랫폼 관행을 따른 별도 팔레트.
      디자인 원본: claude.ai/design "회원가입 및 로그인 디자인" v2.
@@ -91,6 +93,13 @@ body {
   color: #1f2340;
   -webkit-font-smoothing: antialiased;
   word-break: keep-all;
+}
+
+/* 시험지 글꼴 — 자료·발문·보기는 종이 시험지처럼 명조로 짠다.
+   변수는 응시 존 레이아웃(app/(exam)/layout.tsx)에만 걸려 있어 @theme에 두지 않는다 —
+   :root에서 풀면 값이 비어 버린다. 그 밖에서 쓰면 기본 명조로 떨어진다. */
+@utility font-myeongjo {
+  font-family: var(--font-noto-serif-kr), "Noto Serif KR", "Nanum Myeongjo", serif;
 }
 
 /* Reusable page-level helpers */
@@ -406,6 +415,19 @@ body {
   }
 }
 
+/* 정오표 인쇄 — 종이 전용 정오표만 남기고 화면은 모두 감춘다 (components/exam/AnswerKey) */
+.answer-sheet-print {
+  display: none;
+}
+@media print {
+  body.printing-answer-sheet > *:not(.answer-sheet-print) {
+    display: none !important;
+  }
+  body.printing-answer-sheet > .answer-sheet-print {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -473,4 +495,69 @@ body {
   --border: #d9d9d9; /* soft-line */
   --input: #d9d9d9;
   --ring: #365eef;
+}
+
+/* 응시 화면 진자 — 한 주기에 한 번 왕복한다(components/exam/ExamSession.tsx PendulumClip) */
+@keyframes exam-pendulum {
+  0%,
+  100% {
+    transform: rotate(22deg);
+  }
+  50% {
+    transform: rotate(-22deg);
+  }
+}
+
+/*
+ * 공개 화면의 갈래 글(공지·FAQ 답) — renderDetail이 만든 HTML에 문단·목록 간격을 준다.
+ * 콘솔 미리보기(.a2-prose, app/(admin2)/admin2.css)와 같은 뼈대에 공개 사이트 색을 입혔다.
+ * 첫·끝 요소의 바깥 여백을 지워, 한 문단짜리 글은 이 규칙이 없을 때와 똑같이 보인다.
+ */
+@layer components {
+  .prose-faq {
+    overflow-wrap: anywhere;
+  }
+  .prose-faq > :first-child {
+    margin-top: 0;
+  }
+  .prose-faq > :last-child {
+    margin-bottom: 0;
+  }
+  .prose-faq p {
+    margin-block: 0.75em;
+  }
+  .prose-faq h1,
+  .prose-faq h2,
+  .prose-faq h3,
+  .prose-faq h4 {
+    margin-block: 1.4em 0.5em;
+    font-weight: 800;
+    line-height: 1.4;
+    color: var(--color-brand-950);
+  }
+  .prose-faq ul,
+  .prose-faq ol {
+    margin-block: 0.75em;
+    padding-inline-start: 1.4em;
+    list-style: revert;
+  }
+  .prose-faq li {
+    margin-block: 0.25em;
+  }
+  .prose-faq a {
+    color: var(--color-brand-700);
+    text-decoration: underline;
+  }
+  .prose-faq img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-block: 1em;
+    border-radius: 0.75rem;
+  }
+  .prose-faq hr {
+    margin-block: 1.5em;
+    border: 0;
+    border-top: 1px solid var(--color-brand-100);
+  }
 }

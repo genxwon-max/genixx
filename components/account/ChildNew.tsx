@@ -12,9 +12,9 @@ import {
 } from "@/lib/account";
 import { clearChildDraft } from "@/lib/childStore";
 import { useHydrated } from "@/lib/examStore";
-import { addStudents, formatCode } from "@/lib/roster";
+import { addStudents, formatCode, type ChildProfile } from "@/lib/roster";
 import { useSession } from "@/lib/authStore";
-import { ArrowRight, CheckIcon } from "@/components/Icons";
+import { ArrowRight } from "@/components/Icons";
 import { Button } from "@/components/ui/button";
 import { labelText as fieldLabel, field as input } from "@/components/account/ui";
 import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
@@ -30,20 +30,31 @@ import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
  * 글자는 어디에도 저장되지 않고, 저장되는 시점은 필수 동의에 체크하고 등록을
  * 누른 그 한 번뿐이다(개인정보보호법 제22조의2).
  *
- * 반드시 받는 것은 이름과 생년월일 둘뿐이다. 생년월일은 만 14세 기준으로 동의
- * 주체를 가르는 값이라 뺄 수 없다. 학교·학년을 비롯한 나머지는 결과를 더 잘
- * 읽기 위한 값이므로, 지금 모르면 비워 두고 나중에 채우면 된다.
+ * 필수는 이름·생년월일·학교급·학년·아이 휴대전화 다섯이다. 생년월일은 만 14세
+ * 기준으로 동의 주체를 가르는 값이고, 학교급·학년은 어느 학년대 설문을 낼지 정하는
+ * 값이다. 휴대전화는 「없음」을 고를 수 있으나 고르기는 해야 한다 — 빈 칸과 없는 것은
+ * 다르다.
+ * 나머지는 결과를 더 잘 읽기 위한 값이므로, 지금 모르면 비워 두고 나중에 채우면 된다.
+ * 항목 구분은 개인정보처리방침의 수집 항목 표와 맞춘다.
  */
 
-const grades = [
-  "초등 3학년",
-  "초등 4학년",
-  "초등 5학년",
-  "초등 6학년",
-  "중등 1학년",
-  "중등 2학년",
-  "중등 3학년",
+/**
+ * 학교급과 그 안의 학년.
+ *
+ * 2026 파일럿이 문항을 갖춘 구간은 초등 3학년 ~ 중학교 3학년이지만, 학교급은 초·중·고
+ * 셋을 다 받는다. 형제자매를 한 계정에 모아 두는 일이 흔한데 큰아이가 고등학생이라고
+ * 명부에 올리지도 못하면 보호자는 아이마다 다른 자리를 찾아야 한다.
+ *
+ * ⚠ 고등학생은 아직 접수할 평가가 없다. 차림표(lib/examCatalog.ts)의 학년 칸이 초3-4 ·
+ *   초5-6 · 중1-2 셋뿐이라 「내 학년」으로 걸리는 카드가 없다. 설문은 나간다 —
+ *   학년대(lib/surveyBands.ts)가 고등학생을 가장 위 칸(중2~3)으로 받는다.
+ */
+const schoolLevels = [
+  { id: "초등", label: "초등학교", grades: [3, 4, 5, 6] },
+  { id: "중등", label: "중학교", grades: [1, 2, 3] },
+  { id: "고등", label: "고등학교", grades: [1, 2, 3] },
 ];
+const genders = ["남자", "여자"];
 const regions = [
   "서울",
   "경기·인천",
@@ -53,20 +64,74 @@ const regions = [
   "경상·대구·부산·울산",
   "제주",
 ];
-const schoolTypes = [
-  "공립 초등학교",
-  "사립 초등학교",
-  "공립 중학교",
-  "사립 중학교",
-  "대안학교",
-  "홈스쿨링",
-  "기타",
+const interestAreas = [
+  "읽기·글쓰기",
+  "수학·논리",
+  "과학·자연 탐구",
+  "그리기·만들기",
+  "음악",
+  "운동·신체 활동",
+  "코딩·디지털",
+  "사회·역사",
+  "외국어",
 ];
-const languages = ["한국어", "한국어 + 다른 언어", "주로 다른 언어"];
+const learningKinds = [
+  "영재교육원·영재학급",
+  "경시·경진대회 참가",
+  "학원·과외",
+  "방과후 프로그램",
+  "온라인 학습",
+  "해외 거주·유학",
+];
+const OBSERVATION_MAX = 500;
 
-/** 선택 항목의 라벨 뒤에 붙는 표시 */
-function Opt() {
-  return <span className="font-normal text-soft-muted">(선택)</span>;
+/** 입력 칸과 같은 모양이되 높이만 여러 줄로 */
+const textarea = `${input.replace("h-[3.25rem]", "")} min-h-[7.5rem] py-3 leading-relaxed`;
+
+/**
+ * 비었거나 틀린 필수 칸. 테두리 색을 덧붙이지 않고 바꿔 끼운다 — 같은 속성의 클래스가
+ * 둘 다 있으면 어느 쪽이 이기는지는 CSS가 생성된 순서에 달려 있다.
+ */
+const inputBad = (on: boolean) =>
+  on ? input.replace("border-soft-line", "border-[#e5484d]") : input;
+
+const flip = (list: string[], v: string) =>
+  list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
+
+/** 눌러서 켜고 끄는 알약. 여러 개 고르는 항목과, 다시 누르면 풀리는 성별에 쓴다. */
+function Chips({
+  options,
+  picked,
+  onToggle,
+  labelledBy,
+}: {
+  options: string[];
+  picked: string[];
+  onToggle: (v: string) => void;
+  labelledBy: string;
+}) {
+  return (
+    <div role="group" aria-labelledby={labelledBy} className="mt-2 flex flex-wrap gap-2">
+      {options.map((o) => {
+        const on = picked.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onToggle(o)}
+            className={`h-10 rounded-full border px-4 text-[14px] font-semibold transition-colors ${
+              on
+                ? "border-soft-primary bg-soft-primary-soft text-soft-primary"
+                : "border-soft-line bg-white text-soft-muted hover:bg-slate-50"
+            }`}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function ChildNew() {
@@ -76,13 +141,20 @@ export default function ChildNew() {
   const [form, setForm] = useState({
     name: "",
     birth: "",
-    school: "",
+    /** 아이가 자기 휴대전화를 가지고 있는가 — 기본은 있음 */
+    hasPhone: "yes",
+    phone: "",
+    level: "",
+    /** 학년 숫자만 — 학교급과 붙여서 「초등 4학년」으로 저장한다 */
     grade: "",
+    gender: "",
     region: "",
-    schoolType: "",
-    language: "한국어",
-    guardianPhone: "",
+    observation: "",
+    school: "",
+    learningNote: "",
   });
+  const [interests, setInterests] = useState<string[]>([]);
+  const [learning, setLearning] = useState<string[]>([]);
   const [agreed, setAgreed] = useState<string[]>([]);
   const [kidsNoticeRead, setKidsNoticeRead] = useState(false);
   /** 만 14세 이상 자녀에게 보내는 가입 초대 링크를 복사했는가 */
@@ -105,46 +177,65 @@ export default function ChildNew() {
   const age = ageFromBirth(digits);
   const route = consentRouteFor(age);
   const info = route ? consentRouteInfo[route] : null;
+  const level = schoolLevels.find((l) => l.id === form.level);
 
   const upfront = consentStages.filter((s) => s.upfront);
   const allRequired = upfront.filter((s) => s.required).every((s) => agreed.includes(s.id));
   // 만 14세 미만은 아이 눈높이 고지문을 함께 보여 줬는지도 확인한다
   const kidsOk = route === "guardian" ? kidsNoticeRead : true;
 
-  const nameOk = form.name.trim().length >= 2;
-  const ready = nameOk && route !== null && allRequired && kidsOk;
+  const nameOk = form.name.trim().length > 0;
+  const gradeOk = !!level && form.grade !== "";
+  /* 「있음」을 골랐으면 번호가 있어야 한다. 10~11자리 휴대전화만 받는다. */
+  const phoneDigits = form.phone.replace(/\D/g, "");
+  const phoneOk =
+    form.hasPhone === "no" || (phoneDigits.length >= 10 && phoneDigits.length <= 11);
+  const ready =
+    nameOk && route !== null && !!level && gradeOk && phoneOk && allRequired && kidsOk;
 
   const problem = !nameOk
-    ? "아이 이름을 두 글자 이상 적어 주세요."
+    ? "이름을 적어 주세요."
     : route === null
       ? "생년월일을 8자리로 정확히 입력해 주세요."
-      : !kidsOk
-        ? "아이에게 보여 줄 안내문을 확인해 주세요."
-        : "필수 동의 항목에 체크해 주세요.";
+      : !level
+        ? "학교급을 골라 주세요."
+        : !gradeOk
+          ? "학년을 골라 주세요."
+          : !phoneOk
+            ? "아이 휴대전화 번호를 정확히 입력해 주세요. 없으면 「없음」을 골라 주세요."
+            : !kidsOk
+              ? "아이에게 보여 줄 안내문을 확인해 주세요."
+              : "필수 동의 항목에 체크해 주세요.";
 
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
-  const toggle = (id: string) =>
-    setAgreed((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-
   const submit = () => {
     setTried(true);
-    if (!ready || !route) return;
+    if (!ready || !route || !level) return;
+    const text = (v: string) => v.trim() || undefined;
+    const list = (v: string[]) => (v.length ? v : undefined);
+    const profile: ChildProfile = {
+      gender: form.gender || undefined,
+      region: form.region || undefined,
+      interests: list(interests),
+      observation: text(form.observation),
+      learning: list(learning),
+      learningNote: text(form.learningNote),
+    };
     const [created] = addStudents(
       [
         {
           name: form.name.trim(),
           birth: digits,
-          school: form.school.trim() || undefined,
-          grade: form.grade || undefined,
-          guardianPhone: form.guardianPhone.trim() || undefined,
+          phone: form.hasPhone === "yes" ? phoneDigits : undefined,
+          school: text(form.school),
+          grade: `${level.id} ${form.grade}학년`,
+          profile,
         },
       ],
       "parent",
       session?.name ?? "보호자",
     );
-    // 지역·학교유형·주사용 언어는 프로필 레코드에 함께 저장되는 값이다.
-    // (지금 단계에서는 명부에 필요한 항목만 보관한다)
     setIssued({ name: created.name, code: created.code, route, age });
     // 세 화면으로 나뉘어 있던 시절의 초안이 남아 있으면 여기서 치운다
     clearChildDraft();
@@ -155,13 +246,18 @@ export default function ChildNew() {
       <AccHead
         id="ACC-03"
         title="학생 등록"
-        lead="이름과 생년월일만 있으면 등록됩니다. 나머지는 결과를 더 잘 읽기 위한 값이라 나중에 채우셔도 됩니다."
+        lead="필수 항목 다섯 가지만 있으면 등록됩니다. 선택 항목은 결과를 더 잘 읽기 위한 값이라 나중에 채우셔도 됩니다."
         back={{ href: "/my/children", label: "학생 목록으로" }}
       />
 
-      {/* ① 아이 정보 */}
-      <div className={`${card} ${cardPad} grid gap-5`}>
-        <div className="grid gap-5 sm:grid-cols-2">
+      {/* ① 필수 정보 */}
+      <section className={`${card} ${cardPad}`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[17px] font-bold text-soft-ink">필수 정보</h2>
+          <p className="text-[13px] text-soft-muted">다섯 가지 모두 입력해 주세요.</p>
+        </div>
+
+        <div className="mt-5 grid gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="c-name" className={fieldLabel}>
               이름 <span className="text-rose-600">*</span>
@@ -170,8 +266,9 @@ export default function ChildNew() {
               id="c-name"
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="아이 이름"
-              className={`mt-2 ${input}`}
+              placeholder="예) 김하늘"
+              aria-invalid={tried && !nameOk}
+              className={`mt-2 ${inputBad(tried && !nameOk)}`}
             />
           </div>
 
@@ -186,130 +283,238 @@ export default function ChildNew() {
               value={form.birth}
               onChange={(e) => set("birth", e.target.value.replace(/\D/g, "").slice(0, 8))}
               placeholder="20150312"
-              className={`mt-2 tabular-nums ${input}`}
+              aria-invalid={tried && route === null}
+              className={`mt-2 tabular-nums ${inputBad(tried && route === null)}`}
             />
             {digits.length === 8 && age === null ? (
               <p role="alert" className="mt-1.5 text-[12px] font-bold text-rose-600">
                 날짜를 다시 확인해 주세요.
               </p>
             ) : (
-              <p className="mt-1.5 text-[12px] text-soft-muted">
-                {age !== null
-                  ? `만 ${age}세 — 아래에 동의 항목이 나왔습니다.`
-                  : "만 14세 기준으로 누가 동의해야 하는지가 갈립니다."}
-              </p>
+              age !== null && (
+                <p className="mt-1.5 text-[12px] text-soft-muted">
+                  만 {age}세 — 아래에 동의 항목이 나왔습니다.
+                </p>
+              )
             )}
           </div>
-        </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label htmlFor="c-school-name" className={fieldLabel}>
-              학교 <Opt />
-            </label>
-            <input
-              id="c-school-name"
-              value={form.school}
-              onChange={(e) => set("school", e.target.value)}
-              placeholder="예) 목동초등학교"
-              className={`mt-2 ${input}`}
-            />
+            <p id="c-level" className={fieldLabel}>
+              학교급 <span className="text-rose-600">*</span>
+            </p>
+            <div role="group" aria-labelledby="c-level" className="mt-2 flex flex-wrap gap-2">
+              {schoolLevels.map((l) => {
+                const on = form.level === l.id;
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setForm((p) => ({ ...p, level: l.id, grade: "" }))}
+                    className={`h-[3.25rem] min-w-[5.5rem] flex-1 rounded-[12px] border px-2 text-[15px] font-semibold transition-colors ${
+                      on
+                        ? "border-soft-primary bg-soft-primary-soft text-soft-primary"
+                        : tried && !level
+                          ? "border-[#e5484d] bg-white text-soft-muted"
+                          : "border-soft-line bg-white text-soft-muted hover:bg-slate-50"
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div>
             <label htmlFor="c-grade" className={fieldLabel}>
-              학년 <Opt />
+              학년 <span className="text-rose-600">*</span>
             </label>
             <select
               id="c-grade"
               value={form.grade}
+              disabled={!level}
               onChange={(e) => set("grade", e.target.value)}
-              className={`mt-2 ${input}`}
+              aria-invalid={tried && !gradeOk}
+              className={`mt-2 ${inputBad(tried && !!level && !gradeOk)} disabled:cursor-not-allowed disabled:bg-slate-50`}
             >
-              <option value="">고르지 않음</option>
-              {grades.map((g) => (
-                <option key={g}>{g}</option>
+              <option value="">{level ? "학년을 고르세요" : "학교급을 먼저 고르세요"}</option>
+              {level?.grades.map((g) => (
+                <option key={g} value={g}>
+                  {g}학년
+                </option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label htmlFor="c-region" className={fieldLabel}>
-              거주 지역 <Opt />
-            </label>
-            <select
-              id="c-region"
-              value={form.region}
-              onChange={(e) => set("region", e.target.value)}
-              className={`mt-2 ${input}`}
-            >
-              <option value="">고르지 않음</option>
-              {regions.map((r) => (
-                <option key={r}>{r}</option>
-              ))}
-            </select>
-            <p className="mt-1.5 text-[12px] text-soft-muted">시·도까지만 받습니다.</p>
-          </div>
+          {/*
+           * 아이 휴대전화.
+           *
+           * 초등 저학년은 자기 전화가 없는 일이 흔해서 「없음」을 고를 수 있게 둔다.
+           * 비워 두는 것과 없다고 고르는 것은 다르다 — 빈 칸은 「아직 안 적었다」로
+           * 읽혀 등록이 막히고, 없다고 고르면 그대로 넘어간다. 대부분은 가지고
+           * 있으므로 기본은 「있음」이다.
+           */}
+          <div className="sm:col-span-2">
+            <p id="c-has-phone" className={fieldLabel}>
+              아이 휴대전화 <span className="text-rose-600">*</span>
+            </p>
+            <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+              <div role="group" aria-labelledby="c-has-phone" className="flex gap-2">
+                {[
+                  { id: "yes", label: "있음" },
+                  { id: "no", label: "없음" },
+                ].map((o) => {
+                  const on = form.hasPhone === o.id;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setForm((p) => ({ ...p, hasPhone: o.id, phone: "" }))}
+                      className={`h-[3.25rem] flex-1 rounded-[12px] border text-[15px] font-semibold transition-colors ${
+                        on
+                          ? "border-soft-primary bg-soft-primary-soft text-soft-primary"
+                          : "border-soft-line bg-white text-soft-muted hover:bg-slate-50"
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-          <div>
-            <label htmlFor="c-school" className={fieldLabel}>
-              학교 유형 <Opt />
-            </label>
-            <select
-              id="c-school"
-              value={form.schoolType}
-              onChange={(e) => set("schoolType", e.target.value)}
-              className={`mt-2 ${input}`}
-            >
-              <option value="">고르지 않음</option>
-              {schoolTypes.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
+              {form.hasPhone === "yes" && (
+                <input
+                  id="c-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  aria-label="아이 휴대전화 번호"
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+                  placeholder="010-1234-5678"
+                  aria-invalid={tried && !phoneOk}
+                  className={`tabular-nums ${inputBad(tried && !phoneOk)}`}
+                />
+              )}
+            </div>
             <p className="mt-1.5 text-[12px] text-soft-muted">
-              결과 해석의 기준 집단을 고를 때 씁니다.
+              {form.hasPhone === "yes"
+                ? "접속코드와 응시 안내를 아이에게 바로 보낼 때 씁니다."
+                : "없어도 등록과 응시에는 지장이 없습니다. 안내는 보호자 연락처로 갑니다."}
             </p>
           </div>
         </div>
+      </section>
 
-        {/* B10 — 다문화 가정 지필 해석 보정 변수 */}
-        <div>
-          <label htmlFor="c-lang" className={fieldLabel}>
-            가정에서 주로 쓰는 언어 <Opt />
-          </label>
-          <select
-            id="c-lang"
-            value={form.language}
-            onChange={(e) => set("language", e.target.value)}
-            className={`mt-2 ${input}`}
-          >
-            {languages.map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
-            국어 지필 결과를 해석할 때 보정에 씁니다. 언어 환경 때문에 점수가 낮게 나온 것을
-            &lsquo;언어 재능이 낮다&rsquo;고 읽지 않기 위한 항목입니다.
-          </p>
+      {/* ② 선택 정보 */}
+      <section className={`${card} mt-4 ${cardPad}`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[17px] font-bold text-soft-ink">선택 정보</h2>
         </div>
 
-        <div>
-          <label htmlFor="c-phone" className={fieldLabel}>
-            보호자 연락처 <Opt />
-          </label>
-          <input
-            id="c-phone"
-            type="tel"
-            value={form.guardianPhone}
-            onChange={(e) => set("guardianPhone", e.target.value)}
-            placeholder="010-1234-5678"
-            className={`mt-2 ${input}`}
-          />
-        </div>
-      </div>
+        <div className="mt-5 grid gap-6">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <p id="c-gender" className={fieldLabel}>
+                성별
+              </p>
+              <Chips
+                labelledBy="c-gender"
+                options={genders}
+                picked={form.gender ? [form.gender] : []}
+                onToggle={(v) => set("gender", form.gender === v ? "" : v)}
+              />
+            </div>
 
-      {/* ② 동의 — 생년월일이 들어와야 누가 동의하는지 정해진다 */}
-      {info && route ? (
+            <div>
+              <label htmlFor="c-region" className={fieldLabel}>
+                거주 지역
+              </label>
+              <select
+                id="c-region"
+                value={form.region}
+                onChange={(e) => set("region", e.target.value)}
+                className={`mt-2 ${input}`}
+              >
+                <option value="">고르지 않음</option>
+                {regions.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[12px] text-soft-muted">시·도까지만 받습니다.</p>
+            </div>
+          </div>
+
+          <div>
+            <p id="c-interest" className={fieldLabel}>
+              관심 분야 <span className="font-normal text-soft-muted">(여러 개 고를 수 있어요)</span>
+            </p>
+            <Chips
+              labelledBy="c-interest"
+              options={interestAreas}
+              picked={interests}
+              onToggle={(v) => setInterests((p) => flip(p, v))}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="c-observe" className={fieldLabel}>
+              보호자가 관찰한 자녀 특성{" "}
+              <span className="font-normal text-soft-muted">(진단 목적)</span>
+            </label>
+            <textarea
+              id="c-observe"
+              value={form.observation}
+              maxLength={OBSERVATION_MAX}
+              onChange={(e) => set("observation", e.target.value)}
+              placeholder="예) 궁금한 게 생기면 답을 찾을 때까지 계속 물어봐요. 블록으로 설명서에 없는 모양을 만들어요."
+              className={`mt-2 ${textarea}`}
+            />
+            <p className="mt-1.5 text-right text-[12px] tabular-nums text-soft-muted">
+              {form.observation.length}/{OBSERVATION_MAX}
+            </p>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label htmlFor="c-school-name" className={fieldLabel}>
+                학교명
+              </label>
+              <input
+                id="c-school-name"
+                value={form.school}
+                onChange={(e) => set("school", e.target.value)}
+                placeholder={`예) 목동${level?.label ?? "초등학교"}`}
+                className={`mt-2 ${input}`}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p id="c-learning" className={fieldLabel}>
+              학습 경험 <span className="font-normal text-soft-muted">(여러 개 고를 수 있어요)</span>
+            </p>
+            <Chips
+              labelledBy="c-learning"
+              options={learningKinds}
+              picked={learning}
+              onToggle={(v) => setLearning((p) => flip(p, v))}
+            />
+            <input
+              aria-label="그 밖의 학습 경험"
+              value={form.learningNote}
+              onChange={(e) => set("learningNote", e.target.value)}
+              placeholder="그 밖의 경험이 있으면 적어 주세요. 예) 수학 경시대회 장려상"
+              className={`mt-3 ${input}`}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ③ 동의 — 생년월일이 들어와야 누가 동의하는지 정해진다 */}
+      {info && route && (
         <div className={`${card} mt-4 ${cardPad}`}>
           <p className="text-[15px] font-black text-soft-ink">
             만 {age}세 — {info.label} · {info.who} 동의
@@ -388,7 +593,7 @@ export default function ChildNew() {
                     <input
                       type="checkbox"
                       checked={on}
-                      onChange={() => toggle(s.id)}
+                      onChange={() => setAgreed((p) => flip(p, s.id))}
                       className="mt-1 h-5 w-5 shrink-0 accent-[#365eef]"
                     />
                     <span className="min-w-0 flex-1">
@@ -424,11 +629,6 @@ export default function ChildNew() {
             </Link>
           </p>
         </div>
-      ) : (
-        <p className="mt-4 rounded-lg border border-soft-line bg-slate-50 px-5 py-4 text-[13px] leading-relaxed text-soft-muted">
-          생년월일을 입력하시면 <b className="text-soft-ink">누가 동의해야 하는지</b>와 동의 항목이
-          여기에 나타납니다. 만 14세를 기준으로 보호자 동의와 학생 본인 동의가 갈립니다.
-        </p>
       )}
 
       {info && (
@@ -442,13 +642,6 @@ export default function ChildNew() {
           </LegalNote>
         </div>
       )}
-
-      <div className="mt-4">
-        <LegalNote title="여기서 받지 않는 것">
-          <p>상세 주소와 주민등록번호는 받지 않습니다.</p>
-          <p>음성·영상·행동로그는 2단계 심화진단을 신청하실 때 따로 여쭤봅니다.</p>
-        </LegalNote>
-      </div>
 
       {tried && !ready && (
         <p role="alert" className="mt-4 text-[13px] font-bold text-rose-600">
@@ -464,12 +657,6 @@ export default function ChildNew() {
       <Link href="/my/children" className={`${btnGhost} mt-2 w-full`}>
         나중에 하기
       </Link>
-
-      <p className="mt-5 flex items-start gap-2 text-[13px] leading-relaxed text-soft-muted">
-        <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-        동의는 언제든 철회할 수 있습니다. 철회하시면 파기 절차가 자동으로 시작되고 처리 결과를 알려
-        드립니다.
-      </p>
     </>
   );
 }

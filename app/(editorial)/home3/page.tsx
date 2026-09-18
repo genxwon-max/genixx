@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Photo from "@/components/home3/Photo";
 import TalentWheel from "@/components/home3/TalentWheel";
-import { assessment, QUESTIONS_PER_SUBJECT, subjects } from "@/lib/exam";
+import { assessment, questionCountText, subjects, totalQuestions } from "@/lib/exam";
 import { axes, primaryTypes } from "@/lib/result";
 
 export const metadata: Metadata = {
@@ -61,9 +61,9 @@ const figures = [
   { n: "40", unit: "인", l: "한국창의영재교육원의 출제·평가 전문가" },
   { n: String(axes.length), unit: "갈래", l: `재능 좌표. 2026년에는 ${measuredAxes.length}갈래를 먼저 잽니다` },
   {
-    n: String(subjects.length * QUESTIONS_PER_SUBJECT),
+    n: String(totalQuestions()),
     unit: "문항",
-    l: `${subjectNames} 각 ${QUESTIONS_PER_SUBJECT}문항, 과목당 ${limitMin}분`,
+    l: `${questionCountText()}, 과목당 ${limitMin}분`,
   },
   { n: "0", unit: "원", l: "2026 파일럿 전면 무료, 결제 수단 등록 없음" },
 ];
@@ -111,7 +111,7 @@ const steps = [
   },
   {
     t: "세 과목을 풉니다",
-    d: `${subjectNames} 각 ${QUESTIONS_PER_SUBJECT}문항. 과목마다 따로 접속하고, 하루에 한 과목씩 나눠 봐도 됩니다.`,
+    d: `${questionCountText()}. 과목마다 따로 접속하고, 하루에 한 과목씩 나눠 봐도 됩니다.`,
     meta: `과목당 ${limitMin}분`,
   },
   {
@@ -138,7 +138,7 @@ const reportParts = [
 const programs = [
   {
     name: "학력진단",
-    what: `${subjectNames} 각 ${QUESTIONS_PER_SUBJECT}문항으로 지금 어디까지 이해하고 있는지 봅니다.`,
+    what: `${questionCountText()}으로 지금 어디까지 이해하고 있는지 봅니다.`,
     when: "2026 파일럿 · 무료",
     live: true,
     href: "/service/academic",

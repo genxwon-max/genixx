@@ -22,7 +22,7 @@ import {
  *
  * 그래서 여기 담은 것은 「판단」이 아니라 「대조」다. 발주서와 blueprint에 이미 적혀
  * 있어서 기계가 확실히 볼 수 있는 것만 본다 — 단계와 형식의 고정 매핑, 성취기준
- * 코드의 학년군 접두, 보기 중복, 정답 길이 단서 같은 것들. 교과 내용이 맞는지,
+ * 코드의 학년 접두, 보기 중복, 정답 길이 단서 같은 것들. 교과 내용이 맞는지,
  * 이 학년 아이가 정말 읽을 수 있는지는 여기서 알 수 없고 사람이 봐야 한다.
  *
  * 걸린 것은 두 갈래로 나눈다.
@@ -253,7 +253,7 @@ export function auditItem(item: ItemDraft): AuditResult {
       tagging.push({
         tone: "block",
         text: `${at}${qStd.why}`,
-        fix: `${item.band} 학년군의 성취기준 코드로 고쳐 주세요.`,
+        fix: `${item.band} 학년의 성취기준 코드로 고쳐 주세요.`,
         code: "tag",
         reason: "t-b-standard",
       });

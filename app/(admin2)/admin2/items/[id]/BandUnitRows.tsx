@@ -13,11 +13,11 @@ import {
 import type { ItemDraft } from "@/lib/itemStore";
 import { FormRow } from "@/components/admin2/ui";
 
-/** 학년군 · 교과 단원 두 줄이 읽고 쓰는 값 */
+/** 학년 · 교과 단원 두 줄이 읽고 쓰는 값 */
 export type BandUnit = Pick<ItemDraft, "band" | "subject" | "unit" | "unitNo" | "unitTerm">;
 
 /**
- * 분류 판의 학년군 · 교과 단원 줄 — 묶음이 통째로 쥐는 값.
+ * 분류 판의 학년 · 교과 단원 줄 — 묶음이 통째로 쥐는 값.
  *
  * 문항 상세(ItemDetail)와 AI 문항 출제 판(authoring/Generator)이 같은 두 줄을 쓴다. 생성 판이
  * 과목 고르개와 손으로 적는 단원 칸을 따로 두었을 때는, 생성한 문항의 단원이 교과서 단원 목록에
@@ -36,12 +36,12 @@ export default function BandUnitRows({
 }: {
   value: BandUnit;
   disabled: boolean;
-  /** 학년군 줄 아래 한 줄 — 문항 상세가 학년군을 벗어난 성취기준 코드를 센다 */
+  /** 학년 줄 아래 한 줄 — 문항 상세가 학년을 벗어난 성취기준 코드를 센다 */
   bandHint?: React.ReactNode;
   onChange: (patch: Partial<ItemDraft>) => void;
 }) {
-  /* 교과 단원 — 학년군에 드는 교과서 단원 중에서 고른다(lib/curriculumUnits.ts).
-     목록에 없는 단원이 적힌 문항(고르개 전에 손으로 적은 것 · 학년군을 옮긴 것)은 그 값을
+  /* 교과 단원 — 학년에 드는 교과서 단원 중에서 고른다(lib/curriculumUnits.ts).
+     목록에 없는 단원이 적힌 문항(고르개 전에 손으로 적은 것 · 학년을 옮긴 것)은 그 값을
      「목록 밖」으로 세워 둔다. 고르개에 없는 값을 value로 주면 브라우저가 첫 항목을 고른 것처럼
      그려서, 적힌 단원과 화면에 보이는 단원이 다른 문항이 된다 */
   const groups = unitGroups(value.band);
@@ -49,11 +49,11 @@ export default function BandUnitRows({
   const unitValue = pickedUnit ? unitKey(pickedUnit) : value.unit.trim() ? "outside" : "";
   /* 목록 밖이라는 안내 줄(「교과서 단원 목록에 없는 단원입니다…」 · 「고른 단원은 n학년
      교과서입니다…」)은 걷었다. 닫힌 고르개에 선 「(목록 밖)」이 같은 것을
-     말하고, 생성 판은 checkSpec이 학년군에 맞지 않는 단원을 막는다 */
+     말하고, 생성 판은 checkSpec이 학년에 맞지 않는 단원을 막는다 */
 
   return (
     <>
-      <FormRow label="학년군" req hint={bandHint}>
+      <FormRow label="학년" req hint={bandHint}>
         <select
           className="a2-select a2-input-lg a2-select-fit"
           value={value.band}
@@ -62,7 +62,7 @@ export default function BandUnitRows({
             const band = e.target.value as GradeBand;
             onChange({
               band,
-              grade: band === "3-4" ? "초등 3~4학년군" : "초등 5~6학년군",
+              grade: band === "3-4" ? "초등 3~4학년" : "초등 5~6학년",
             });
           }}
         >

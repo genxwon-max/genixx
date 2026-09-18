@@ -1,24 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { ageFromBirth } from "@/lib/account";
-import { formatCode, reissueCode, useRoster, type Student } from "@/lib/roster";
-import { assessment, subjects } from "@/lib/exam";
-import {
-  allSubmitted,
-  finalize,
-  missingSurveys,
-  surveyKeys,
-  surveyMeta,
-  useExamRecord,
-  useExamStore,
-  useHydrated,
-} from "@/lib/examStore";
-import { progressOf, type Phase } from "@/lib/progress";
-import { ensureReport } from "@/lib/reportStore";
+import { formatCode, useRoster, type Student } from "@/lib/roster";
+import { subjects } from "@/lib/exam";
+import { getRecord, surveyKeys, useExamStore, useHydrated } from "@/lib/examStore";
+import { phaseTone, progressOf, type Phase } from "@/lib/progress";
+import { ticketsLeft, useTickets, walletOf } from "@/lib/ticketStore";
 import { ArrowRight } from "@/components/Icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ConfirmDialog from "./ConfirmDialog";
-import { AccHead, btnPrimary, card, cardPad } from "./ui";
+import { PickBox, phoneText, SendCodesButton, usePicked } from "./SendCodes";
+import { AccHead, btnPrimary, card, listTd, listTh } from "./ui";
 
 /** 한 쪽에 담는 학생 수. 25명을 넘으면 쪽을 나눈다. */
 const PER_PAGE = 25;
@@ -61,23 +51,35 @@ const sortOptions: { value: SortKey; label: string }[] = [
  */
 const rowShape = "rounded-full text-[13px] font-semibold";
 
+/** 「20150311」 → 「2015.03.11」 */
+const birthText = (b: string) =>
+  b.length === 8 ? `${b.slice(0, 4)}.${b.slice(4, 6)}.${b.slice(6)}` : b;
+
 /**
  * ACC-03 학생(자녀) 프로필 관리.
  *
- * 여러 명을 지원하고, 프로필 단위로 응시·리포트 이력이 귀속된다. 한 명씩 큰 카드로
- * 세우면 네 명만 넘어도 화면이 끝없이 길어지므로 목록 한 줄에 한 명을 담고,
- * 25명이 넘으면 쪽을 나눈다.
+ * 보호자가 여기서 하는 일은 셋이다 — 아이마다 **응시권을 결제**하고, **접속코드를
+ * 아이에게 넘기고**, 진행 상황을 본다. 한 명씩 큰 카드로 세우면 그 셋이 세로로 흩어져
+ * 서로 견줄 수 없으므로, 한 명이 한 줄인 **표**로 세운다. 견줄 값이 칸으로 맞으면
+ * 「누구 응시권이 비었는지」가 한눈에 보인다.
+ *
+ * 문자 보내기는 줄마다 두지 않고 **체크해서 한 번에** 보낸다. 형제자매가 둘·셋이면
+ * 줄마다 같은 버튼을 세 번 누르게 되기 때문이다. 반대로 코드 재발급처럼 되돌릴 수
+ * 없는 일은 목록에서 빼고 학생 상세(/my/children/[id])로 내렸다 — 옆줄과 한 칸 차이로
+ * 붙어 있으면 잘못 누른다.
  */
 export default function ChildList() {
   const hydrated = useHydrated();
   const all = useRoster();
   // 상태로 거르려면 응시 기록이 바뀔 때도 다시 그려야 한다. 값 자체는 progressOf가 읽는다.
   const store = useExamStore();
+  const tickets = useTickets();
 
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<"all" | Phase>("all");
   const [sort, setSort] = useState<SortKey>("recent");
+  const pick = usePicked();
 
   const children = useMemo(() => all.filter((s) => s.owner === "parent"), [all]);
 
@@ -138,17 +140,17 @@ export default function ChildList() {
   const shown = rows.slice(start, start + PER_PAGE);
   const filtering = query.trim() !== "" || phase !== "all";
 
+  /* 고른 사람은 지금 걸러 놓은 목록 안에서만 센다. 검색으로 가려진 아이까지 함께
+     보내면 화면에 없는 사람에게 문자가 나간다. */
+  const chosen = rows.filter((c) => pick.has(c.id));
+  const allShownPicked = shown.length > 0 && shown.every((c) => pick.has(c.id));
+
   return (
     <>
       {/* 등록 버튼은 학부모 홈과 같은 자리(제목 오른쪽)에 둔다 */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <AccHead
-            id="ACC-03"
-            title="학생 프로필"
-            lead="아이마다 프로필을 따로 둡니다. 응시 기록과 리포트는 프로필 단위로 쌓입니다."
-            back={{ href: "/my", label: "홈으로" }}
-          />
+          <AccHead id="ACC-03" title="학생 프로필" back={{ href: "/my", label: "홈으로" }} />
         </div>
         {children.length > 0 && (
           <Link href="/my/children/new" className={`${btnPrimary} mt-8 shrink-0`}>
@@ -158,7 +160,7 @@ export default function ChildList() {
       </div>
 
       {children.length === 0 ? (
-        <div className={`${card} ${cardPad} text-center`}>
+        <div className={`${card} p-10 text-center`}>
           <p className="text-[16px] font-black text-soft-ink">아직 등록된 학생이 없습니다</p>
           <p className="mt-2.5 text-[14px] leading-relaxed text-soft-muted">
             이름과 생년월일만 있으면 등록됩니다. 생년월일에 따라 누가 동의해야 하는지 폼에서
@@ -171,9 +173,12 @@ export default function ChildList() {
         </div>
       ) : (
         <>
-          {/* 찾기와 분류. 어느 것을 바꾸든 1쪽으로 돌아간다 — 3쪽을 보던 중에
-              검색하면 결과가 있는데도 빈 쪽이 나오기 때문이다. */}
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          {/* 조회 조건.
+              입력·선택 부품의 바탕이 투명이라 대시보드 바탕(#f4f6fb)에 잠겨 보였다.
+              흰 면에 얹고 컨트롤도 흰색으로 세워, 「지금 쳐 넣는 자리」로 읽히게 한다.
+              어느 것을 바꾸든 1쪽으로 돌아간다 — 3쪽을 보던 중에 검색하면 결과가
+              있는데도 빈 쪽이 나오기 때문이다. */}
+          <div className={`${card} mb-3 flex flex-col gap-2 p-3 sm:flex-row sm:items-center`}>
             <div className="relative flex-1">
               <Search
                 aria-hidden
@@ -188,7 +193,7 @@ export default function ChildList() {
                 }}
                 placeholder="이름 · 접속코드 · 학교 · 학년으로 찾기"
                 aria-label="학생 찾기"
-                className="rounded-full pl-10 text-[14px]"
+                className="rounded-full bg-white pl-10 text-[14px]"
               />
             </div>
 
@@ -204,7 +209,7 @@ export default function ChildList() {
               >
                 <SelectTrigger
                   aria-label="진행 상태로 거르기"
-                  className="flex-1 rounded-full sm:w-40 sm:flex-none"
+                  className="flex-1 rounded-full bg-white sm:w-40 sm:flex-none"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -227,7 +232,7 @@ export default function ChildList() {
               >
                 <SelectTrigger
                   aria-label="정렬"
-                  className="flex-1 rounded-full sm:w-36 sm:flex-none"
+                  className="flex-1 rounded-full bg-white sm:w-36 sm:flex-none"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -242,40 +247,106 @@ export default function ChildList() {
             </div>
           </div>
 
-          <p className="mb-2.5 text-[13px] text-soft-muted">
-            {filtering ? `${children.length}명 중 ${rows.length}명` : `총 ${rows.length}명`}
-            {pages > 1 && ` · ${start + 1}–${start + shown.length}번째`}
-          </p>
-
-          {shown.length === 0 ? (
-            <div className={`${card} p-10 text-center`}>
-              <p className="text-[14px] font-bold text-soft-ink">찾는 학생이 없습니다</p>
-              <p className="mt-1.5 text-[13px] text-soft-muted">
-                검색어나 상태를 바꿔 보세요. 등록된 학생은 {children.length}
-                명입니다.
-              </p>
+          {/* 센 수와 골라 둔 사람에게 할 일을 한 줄에 둔다 */}
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2.5">
+            <p className="text-[13px] text-soft-muted">
+              {filtering ? `${children.length}명 중 ${rows.length}명` : `총 ${rows.length}명`}
+              {pages > 1 && ` · ${start + 1}–${start + shown.length}번째`}
+              {chosen.length > 0 && (
+                <b className="ml-2 text-soft-primary">{chosen.length}명 선택</b>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <SendCodesButton chosen={chosen} onSent={pick.clear} className={rowShape} />
+              {/* 못 누를 때는 링크를 씌우지 않는다 — disabled를 준 <a>는 그대로 눌린다 */}
+              {chosen.length === 0 ? (
+                <Button disabled className={rowShape}>
+                  응시권 결제
+                </Button>
+              ) : (
+                <Button
+                  nativeButton={false}
+                  render={<Link href="/exam/payment" />}
+                  className={rowShape}
+                >
+                  응시권 결제 {chosen.length}명
+                </Button>
+              )}
             </div>
-          ) : (
-            <ul className={card}>
-              {shown.map((c) => (
-                <ChildRow key={c.id} student={c} />
-              ))}
-            </ul>
-          )}
+          </div>
+
+          <div className={`${card} overflow-x-auto`}>
+            <table className="w-full min-w-[920px] border-collapse">
+              <caption className="sr-only">등록한 학생과 응시권·진행 상황</caption>
+              <colgroup>
+                <col className="w-[44px]" />
+                <col className="w-[13%]" />
+                <col className="w-[15%]" />
+                <col className="w-[12%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
+                <col className="w-[9%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[10%]" />
+                <col className="w-[8%]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className={listTh}>
+                    <PickBox
+                      checked={allShownPicked}
+                      onChange={() =>
+                        pick.setMany(
+                          shown.map((c) => c.id),
+                          !allShownPicked,
+                        )
+                      }
+                      disabled={shown.length === 0}
+                      label="이 쪽의 학생 모두 선택"
+                    />
+                  </th>
+                  <th className={listTh}>이름</th>
+                  <th className={listTh}>학교 · 학년</th>
+                  <th className={listTh}>생년월일</th>
+                  <th className={listTh}>접속코드</th>
+                  <th className={listTh}>보호자 연락처</th>
+                  <th className={listTh}>응시권</th>
+                  <th className={listTh}>시험</th>
+                  <th className={listTh}>설문</th>
+                  <th className={listTh}>상태</th>
+                  <th className={listTh}>관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className={`${listTd} py-14`}>
+                      <p className="text-[14px] font-bold text-soft-ink">찾는 학생이 없습니다</p>
+                      <p className="mt-1.5 text-[13px] text-soft-muted">
+                        검색어나 상태를 바꿔 보세요. 등록된 학생은 {children.length}명입니다.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  shown.map((c) => (
+                    <ChildRow
+                      key={c.id}
+                      student={c}
+                      left={ticketsLeft(walletOf(tickets, c.id))}
+                      picked={pick.has(c.id)}
+                      onToggle={() => pick.toggle(c.id)}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {pages > 1 && <Pager page={current} pages={pages} onGo={setPage} />}
         </>
       )}
 
-      <div className={`${card} mt-4 p-5`}>
-        <p className="text-[14px] font-black text-soft-ink">만 14세를 기준으로 갈립니다</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
-          만 14세 미만 아이는 이 계정 안의 프로필로 남고, 법정대리인이신 보호자께서 동의하셔야
-          응시가 열립니다. 만 14세 이상이면 아이가 자기 이름으로 가입해 본인 동의로 진행할 수 있고,
-          그때는 이 계정과 이어서 결과를 함께 보시게 됩니다. 어느 쪽이든 아이 화면에서는 결제
-          정보나 형제자매의 결과가 보이지 않습니다.
-        </p>
-      </div>
     </>
   );
 }
@@ -286,137 +357,101 @@ export default function ChildList() {
  * 학생 한 명.
  *
  * 진행 상황은 아이마다 따로 저장되므로(lib/examStore.ts) 줄마다 자기 기록을 읽는다.
- * 목록에서 바로 할 수 있는 일은 셋이다 — 코드를 아이에게 넘기고, 코드가 새면 다시
- * 발급하고, 다 끝났으면 결과를 받기 위해 최종 제출한다.
+ * 줄에서 할 수 있는 일은 **고르는 것**과 **상세로 들어가는 것**뿐이다. 코드 재발급·최종
+ * 제출처럼 되돌릴 수 없는 일은 상세로 내렸다.
  */
-function ChildRow({ student }: { student: Student }) {
-  const router = useRouter();
-  const record = useExamRecord(student.id);
-  const [ask, setAsk] = useState<"reissue" | "final" | null>(null);
-
+function ChildRow({
+  student,
+  left,
+  picked,
+  onToggle,
+}: {
+  student: Student;
+  /** 남은 응시권 매수 */
+  left: number;
+  picked: boolean;
+  onToggle: () => void;
+}) {
+  const record = getRecord(student.id);
   const age = ageFromBirth(student.birth);
-
-  // 세 과목 모두 제출 + 문항별 해석까지 끝나야 최종 제출할 수 있다 (응시 현황 화면과 같은 기준)
-  const examDone =
-    allSubmitted(record) && subjects.every((s) => record.subjects[s.id].reflectionAt !== null);
   const submitted = subjects.filter((s) => record.subjects[s.id].status === "submitted").length;
   const surveysDone = surveyKeys.filter((k) => record.surveys[k] === "done").length;
-  const missing = missingSurveys(record);
+  const { phase } = progressOf(student);
+  const tone = phaseTone[phase];
 
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 px-5 py-2.5 first:border-t-0 sm:px-6">
-      <p className="text-[15px] font-black text-soft-ink">{student.name}</p>
-      <p className="text-[13px] text-soft-muted">
-        {/* 학교는 필수가 되기 전에 등록된 아이에게는 없다 */}
-        {student.school ? `${student.school} · ` : ""}
-        {student.grade ? `${student.grade} · ` : ""}만 {age ?? "—"}세
-      </p>
+    <tr className={picked ? "bg-soft-primary-soft/50" : undefined}>
+      <td className={listTd}>
+        <PickBox checked={picked} onChange={onToggle} label={`${student.name} 선택`} />
+      </td>
+
+      <td className={`${listTd} text-left`}>
+        <Link
+          href={`/my/children/${student.id}`}
+          className="text-[14px] font-black text-soft-ink hover:underline"
+        >
+          {student.name}
+        </Link>
+      </td>
+
+      <td className={`${listTd} text-left`}>
+        {student.school ?? "—"}
+        {student.grade && <span className="block text-[12px]">{student.grade}</span>}
+      </td>
+
+      <td className={`${listTd} tabular-nums`}>
+        {birthText(student.birth)}
+        <span className="block text-[12px]">만 {age ?? "—"}세</span>
+      </td>
 
       {/* 코드와 복사 버튼은 붙여 둔다. 코드를 보는 이유가 곧 아이에게 넘기는 것이다. */}
-      <span className="rounded-md bg-slate-50 px-2.5 py-1 text-[14px] font-black tracking-[0.08em] tabular-nums text-soft-ink">
-        {formatCode(student.code)}
-      </span>
-      <CopyCode code={student.code} />
+      <td className={listTd}>
+        <span className="block font-black tracking-[0.06em] tabular-nums text-soft-ink">
+          {formatCode(student.code)}
+        </span>
+        <CopyCode code={student.code} />
+      </td>
 
-      <span
-        className={`text-[13px] font-semibold ${examDone ? "text-emerald-600" : "text-soft-muted"}`}
-      >
-        시험 {submitted}/{subjects.length}
-        {examDone ? " 완료" : ""}
-      </span>
-      <span
-        className={`text-[13px] font-semibold ${
-          surveysDone === surveyKeys.length ? "text-emerald-600" : "text-soft-muted"
-        }`}
-      >
-        설문 {surveysDone}/{surveyKeys.length}
-        {surveysDone === surveyKeys.length ? " 완료" : ""}
-      </span>
+      <td className={`${listTd} tabular-nums`}>
+        {student.guardianPhone ? phoneText(student.guardianPhone) : "—"}
+      </td>
 
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Button variant="outline" onClick={() => setAsk("reissue")} className={rowShape}>
-          코드 재발급
-        </Button>
-        {record.finalized ? (
-          <Button render={<Link href={`/exam/result?student=${student.id}`} />} className={rowShape}>
-            결과 보기
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
+      {/* 응시권이 없으면 접수 자체가 안 된다 — 0매는 색으로 세우고 결제로 바로 잇는다 */}
+      <td className={listTd}>
+        {left > 0 ? (
+          <span className="font-semibold text-soft-ink tabular-nums">{left}매</span>
         ) : (
-          /* 세 과목의 답안과 해석이 모두 끝나야 열린다. 왜 안 열리는지는 같은 줄의
-             「시험 0/3」이 이미 말해 주므로 따로 덧붙이지 않는다.
-             못 누르는 동안은 채움을 걷는다 — 파란 면을 반투명으로만 낮추면
-             「지금 누를 수 있는데 흐린 것」으로 읽힌다. */
-          <Button
-            variant={examDone ? "default" : "outline"}
-            onClick={() => setAsk("final")}
-            disabled={!examDone}
-            className={rowShape}
-          >
-            제출 완료
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
+          <Link href="/exam/payment" className="font-semibold text-rose-600 hover:underline">
+            결제 필요
+          </Link>
         )}
-      </div>
+      </td>
 
-      {ask === "reissue" && (
-        <ConfirmDialog
-          title="접속코드를 다시 발급할까요?"
-          tone="danger"
-          body={
-            <>
-              <b className="text-soft-ink">{student.name}</b>의 지금 코드{" "}
-              <b className="tabular-nums text-soft-ink">{formatCode(student.code)}</b>
-              는 바로 쓸 수 없게 됩니다. 아이에게 이미 알려 주셨다면 새 코드를 다시 전해 주셔야
-              합니다.
-              <br />
-              지금까지의 응시 기록과 결과는 그대로 남습니다.
-            </>
-          }
-          onCancel={() => setAsk(null)}
-          onConfirm={() => {
-            reissueCode(student.id);
-            setAsk(null);
-          }}
-        />
-      )}
+      <td className={`${listTd} tabular-nums ${submitted === subjects.length ? "text-emerald-600" : ""}`}>
+        {submitted}/{subjects.length}
+      </td>
+      <td
+        className={`${listTd} tabular-nums ${surveysDone === surveyKeys.length ? "text-emerald-600" : ""}`}
+      >
+        {surveysDone}/{surveyKeys.length}
+      </td>
 
-      {ask === "final" && (
-        <ConfirmDialog
-          title="결과를 받기 위해 최종 제출할까요?"
-          body={
-            <>
-              세 과목의 답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작되고,
-              <b className="text-soft-ink"> 이후에는 답안을 고칠 수 없습니다.</b>
-              {missing.length > 0 && (
-                <>
-                  <br />
-                  <br />
-                  아직 받지 않은 설문이 있습니다 —{" "}
-                  <b className="text-soft-ink">
-                    {missing.map((k) => surveyMeta[k].label).join(" · ")}
-                  </b>
-                  . 이대로 제출해도 되지만, 설문이 있으면 해석이 더 촘촘해집니다.
-                </>
-              )}
-            </>
-          }
-          onCancel={() => setAsk(null)}
-          onConfirm={() => {
-            finalize(student.id);
-            ensureReport(
-              student.id,
-              student.name,
-              student.grade ?? "",
-              assessment.round,
-              record,
-            );
-            setAsk(null);
-            router.push(`/exam/result?student=${student.id}`);
-          }}
-        />
-      )}
-    </li>
+      <td className={listTd}>
+        <span className={`inline-flex items-center gap-1.5 font-semibold ${tone.text}`}>
+          <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+          {phase}
+        </span>
+      </td>
+
+      <td className={listTd}>
+        <Link
+          href={`/my/children/${student.id}`}
+          className="font-semibold text-soft-primary hover:underline"
+        >
+          상세
+        </Link>
+      </td>
+    </tr>
   );
 }
 
@@ -473,7 +508,7 @@ function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (p: n
  * 코드를 받은 보호자가 바로 할 일은 아이에게 전달하는 것이다. 손으로 옮겨 적게
  * 두면 혼동하기 쉬운 글자(0·O 같은)를 빼 둔 뜻이 없어진다.
  */
-function CopyCode({ code }: { code: string }) {
+export function CopyCode({ code }: { code: string }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
 
   const copy = async () => {
@@ -503,8 +538,12 @@ function CopyCode({ code }: { code: string }) {
   };
 
   return (
-    <Button variant="outline" onClick={() => void copy()} className={rowShape}>
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="mt-0.5 text-[12px] font-medium text-soft-muted underline-offset-2 hover:text-soft-ink hover:underline"
+    >
       {state === "done" ? "복사했습니다" : state === "failed" ? "직접 입력해 주세요" : "코드 복사"}
-    </Button>
+    </button>
   );
 }
