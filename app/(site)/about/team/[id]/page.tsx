@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PersonAvatar from "@/components/site/PersonAvatar";
+import SectionTabs from "@/components/site/SectionTabs";
 import { groupOf, people, peopleDisclaimer, peopleOf, personById } from "@/lib/people";
 import { ArrowRight } from "@/components/Icons";
 
@@ -31,8 +32,8 @@ export default async function PersonPage({ params }: PageProps<"/about/team/[id]
 
   return (
     <>
-      <section className="border-b border-brand-100 bg-gradient-to-b from-brand-50 via-[#f4f7ff] to-white">
-        <div className="container-x section-y">
+      <section className="bg-gradient-to-b from-brand-50 via-[#f4f7ff] to-white">
+        <div className="container-x py-10 md:py-14">
           <nav aria-label="현재 위치" className="type-meta flex flex-wrap items-center gap-2 text-slate-500">
             <Link href="/about" className="hover:text-brand-700">
               GENIXX 소개
@@ -45,13 +46,13 @@ export default async function PersonPage({ params }: PageProps<"/about/team/[id]
             <span className="font-medium text-brand-700">{person.name}</span>
           </nav>
 
-          <div className="mt-7 flex flex-wrap items-start gap-6">
+          <div className="mt-5 flex flex-wrap items-start gap-6">
             <PersonAvatar person={person} size={96} className="shadow-card" />
             <div className="min-w-0 flex-1">
               <span className={`type-tag inline-flex rounded-full px-3 py-1 ${group.tone}`}>
                 {group.label}
               </span>
-              <h1 className="type-h1 mt-3 font-black text-brand-950">{person.name}</h1>
+              <h1 className="type-h2 mt-3 font-black text-brand-950">{person.name}</h1>
               <p className="type-lead mt-2 font-bold text-brand-700">{person.role}</p>
               <p className="type-meta mt-1 text-slate-500">{person.org}</p>
               <p className="type-lead mt-5 max-w-2xl text-slate-600">{person.headline}</p>
@@ -69,6 +70,9 @@ export default async function PersonPage({ params }: PageProps<"/about/team/[id]
           </div>
         </div>
       </section>
+
+      {/* 「참여진 소개」 칸에 밑줄이 선다 — 소개 갈래의 다른 화면과 같은 탭 줄 */}
+      <SectionTabs />
 
       <section className="section-y">
         <div className="container-x grid gap-10 lg:grid-cols-[1fr_320px] lg:gap-14">

@@ -507,3 +507,57 @@ body {
     transform: rotate(-22deg);
   }
 }
+
+/*
+ * 공개 화면의 갈래 글(공지·FAQ 답) — renderDetail이 만든 HTML에 문단·목록 간격을 준다.
+ * 콘솔 미리보기(.a2-prose, app/(admin2)/admin2.css)와 같은 뼈대에 공개 사이트 색을 입혔다.
+ * 첫·끝 요소의 바깥 여백을 지워, 한 문단짜리 글은 이 규칙이 없을 때와 똑같이 보인다.
+ */
+@layer components {
+  .prose-faq {
+    overflow-wrap: anywhere;
+  }
+  .prose-faq > :first-child {
+    margin-top: 0;
+  }
+  .prose-faq > :last-child {
+    margin-bottom: 0;
+  }
+  .prose-faq p {
+    margin-block: 0.75em;
+  }
+  .prose-faq h1,
+  .prose-faq h2,
+  .prose-faq h3,
+  .prose-faq h4 {
+    margin-block: 1.4em 0.5em;
+    font-weight: 800;
+    line-height: 1.4;
+    color: var(--color-brand-950);
+  }
+  .prose-faq ul,
+  .prose-faq ol {
+    margin-block: 0.75em;
+    padding-inline-start: 1.4em;
+    list-style: revert;
+  }
+  .prose-faq li {
+    margin-block: 0.25em;
+  }
+  .prose-faq a {
+    color: var(--color-brand-700);
+    text-decoration: underline;
+  }
+  .prose-faq img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-block: 1em;
+    border-radius: 0.75rem;
+  }
+  .prose-faq hr {
+    margin-block: 1.5em;
+    border: 0;
+    border-top: 1px solid var(--color-brand-100);
+  }
+}

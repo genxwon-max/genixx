@@ -1,72 +1,47 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Blocks from "./Blocks";
-import { menu, legalLinks, type SubMenu } from "@/lib/nav";
+import SectionTabs from "./SectionTabs";
+import { legalGroup, siteMenu } from "@/lib/nav";
 import { pageContent } from "@/lib/pageContent";
 import { ArrowRight } from "@/components/Icons";
 
-/** 형제 페이지 목록 — 좌측 서브 내비게이션에 사용 */
-function siblingsOf(href: string): { label: string; items: SubMenu[] } | null {
-  const group = menu.find((g) => href.startsWith(`${g.href}/`));
-  if (group) return { label: group.label, items: group.children };
-  if (href.startsWith("/legal/")) return { label: "정책·법적 고지", items: legalLinks };
-  return null;
+/** 이 화면이 속한 갈래 — 현재 위치 줄에 이름을 쓴다 */
+function groupOf(href: string) {
+  return [...siteMenu, legalGroup].find((g) => href.startsWith(`${g.href}/`)) ?? null;
 }
 
 export default function SubPage({ href }: { href: string }) {
   const content = pageContent[href];
   if (!content) notFound();
 
-  const siblings = siblingsOf(href);
+  const group = groupOf(href);
 
   return (
     <>
-      <section className="border-b border-brand-100 bg-gradient-to-b from-brand-50 via-[#f4f7ff] to-white">
-        <div className="container-x section-y">
+      <section className="bg-gradient-to-b from-brand-50 via-[#f4f7ff] to-white">
+        <div className="container-x py-10 md:py-14">
           <nav aria-label="현재 위치" className="type-meta flex flex-wrap items-center gap-2 text-slate-500">
             <Link href="/" className="hover:text-brand-700">
               홈
             </Link>
             <span aria-hidden>›</span>
-            {siblings && <span>{siblings.label}</span>}
+            {group && <span>{group.label}</span>}
             <span aria-hidden>›</span>
             <span className="font-medium text-brand-700">{content.title}</span>
           </nav>
           {/* 화면 ID 알약을 걷었다 — 정의서의 번호는 만드는 사람의 말이지 읽는 사람의
               말이 아니다. 제목 위에 붙여 두면 그것부터 읽힌다 */}
-          <h1 className="type-h1 mt-5 max-w-3xl font-black text-brand-950">{content.title}</h1>
-          <p className="type-lead mt-4 max-w-2xl text-slate-600">{content.lead}</p>
+          <h1 className="type-h2 mt-3 max-w-3xl font-black text-brand-950">{content.title}</h1>
+          <p className="type-body mt-2 max-w-2xl text-slate-600">{content.lead}</p>
         </div>
       </section>
 
-      <section className="section-y">
-        <div className="container-x grid gap-10 lg:grid-cols-[230px_1fr] lg:gap-14">
-          {siblings && (
-            <aside className="lg:sticky lg:top-28 lg:self-start">
-              <p className="type-eyebrow px-3 text-slate-400">{siblings.label}</p>
-              <ul className="mt-3 space-y-0.5">
-                {siblings.items.map((s) => {
-                  const active = s.href === href;
-                  return (
-                    <li key={s.href}>
-                      <Link
-                        href={s.href}
-                        aria-current={active ? "page" : undefined}
-                        className={`type-body block rounded-xl px-3 py-2.5 transition-colors ${
-                          active
-                            ? "bg-brand-50 font-bold text-brand-800"
-                            : "text-slate-600 hover:bg-brand-50/60 hover:text-brand-700"
-                        }`}
-                      >
-                        {s.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </aside>
-          )}
+      {/* 형제 화면은 왼쪽 목록 대신 머리 밑 탭 줄로 오간다 — 갈래 첫 화면과 같은 모양 */}
+      <SectionTabs />
 
+      <section className="section-y">
+        <div className="container-x">
           <div>
             <Blocks blocks={content.blocks} />
 

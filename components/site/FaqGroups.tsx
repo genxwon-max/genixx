@@ -29,12 +29,15 @@ export default function FaqGroups() {
     );
   }
 
+  /* 넓은 화면에서는 주제를 두 칸으로 편다. items-start — 한쪽 답을 열어도 옆 칸이 같이
+     늘어나지 않는다. 칸(columns)으로 흘리지 않는 까닭도 같다: 답을 열 때마다 질문이
+     옆 칸으로 넘어가 버린다 */
   return (
-    <>
+    <div className="grid items-start gap-x-8 gap-y-10 lg:grid-cols-2">
       {groups.map((g) => (
         <div key={g.name} id={g.name} className="scroll-mt-24">
-          <h2 className="type-h2 font-black text-brand-950">{g.name}</h2>
-          <div className="mt-5">
+          <h2 className="type-h3 font-black text-brand-950">{g.name}</h2>
+          <div className="mt-4">
             <Faq
               items={g.items.map((f): FaqItem => ({
                 q: f.q,
@@ -45,6 +48,6 @@ export default function FaqGroups() {
           </div>
         </div>
       ))}
-    </>
+    </div>
   );
 }

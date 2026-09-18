@@ -1,23 +1,7 @@
-import type { Metadata } from "next";
-import HubPage from "@/components/site/HubPage";
+import { redirect } from "next/navigation";
+import { firstPageOf } from "@/lib/nav";
 
-export const metadata: Metadata = {
-  title: "콘텐츠 허브",
-  description: "재능 영역별 해설, 양육 가이드, 연구노트와 공지를 모았습니다.",
-};
-
+/** 갈래 첫 화면으로 보낸다 — 헤더·푸터의 갈래 이름이 여기로 온다(lib/nav.ts firstPageOf) */
 export default function InsightPage() {
-  return (
-    <HubPage
-      groupId="PUB-05"
-      title={
-        <>
-          진단 결과를 기다리는 동안
-          <br />
-          읽어두면 좋은 이야기
-        </>
-      }
-      desc="재능 영역별 해설과 가정에서 만들 수 있는 발현 조건, 그리고 우리가 공개하는 연구 지표를 정리했습니다."
-    />
-  );
+  redirect(firstPageOf("/insight"));
 }

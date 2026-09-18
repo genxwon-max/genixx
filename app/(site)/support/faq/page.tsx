@@ -29,7 +29,7 @@ export default function FaqPage() {
       />
 
       <section className="section-y">
-        <div className="container-x max-w-3xl space-y-12">
+        <div className="container-x space-y-12">
           <FaqGroups />
 
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-brand-50/70 px-7 py-7">
