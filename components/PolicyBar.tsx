@@ -11,18 +11,28 @@ import { policyLinks } from "@/lib/nav";
  * 구분선은 **앞 항목에 붙인다.** 뒤에 붙이면 좁은 화면에서 줄이 넘어갈 때 다음 줄이
  * 「| 광고제휴」처럼 막대로 시작한다.
  *
- * 색만 존별로 갈아입는다. 공개 사이트 푸터는 남색 계열 연한 판 위에, 계정 존 푸터는
+ * 색만 존별로 갈아입는다. 공개 사이트 푸터는 회색 띠(band) 위 흰 글자로, 계정 존 푸터는
  * 회색 판 위에 선다.
  */
 
 const tones = {
+  /** 공개 사이트 푸터 — 회색 띠 위 흰 글자 */
+  band: {
+    wrap: "bg-slate-500",
+    line: "border-transparent",
+    link: "text-white/90 hover:text-white",
+    strong: "font-bold text-white hover:text-white",
+    sep: "text-white/40",
+  },
   site: {
+    wrap: "",
     line: "border-brand-100",
     link: "text-slate-600 hover:text-brand-700",
     strong: "font-bold text-slate-900 hover:text-brand-700",
     sep: "text-brand-200",
   },
   account: {
+    wrap: "",
     line: "border-soft-line/70",
     link: "text-soft-muted hover:text-soft-primary",
     strong: "font-bold text-soft-ink hover:text-soft-primary",
@@ -34,22 +44,24 @@ export default function PolicyBar({ tone = "site" }: { tone?: keyof typeof tones
   const c = tones[tone];
 
   return (
-    <nav
-      aria-label="정책·고지"
-      className={`container-x flex flex-wrap items-center gap-x-3 gap-y-2 border-b py-4 text-[13px] ${c.line}`}
-    >
-      {policyLinks.map((l, i) => (
-        <span key={l.href} className="inline-flex items-center gap-x-3">
-          <Link href={l.href} className={`transition-colors ${l.strong ? c.strong : c.link}`}>
-            {l.label}
-          </Link>
-          {i < policyLinks.length - 1 && (
-            <span aria-hidden className={c.sep}>
-              |
-            </span>
-          )}
-        </span>
-      ))}
-    </nav>
+    <div className={c.wrap}>
+      <nav
+        aria-label="정책·고지"
+        className={`container-x flex flex-wrap items-center gap-x-3 gap-y-2 border-b py-4 text-[13px] ${c.line}`}
+      >
+        {policyLinks.map((l, i) => (
+          <span key={l.href} className="inline-flex items-center gap-x-3">
+            <Link href={l.href} className={`transition-colors ${l.strong ? c.strong : c.link}`}>
+              {l.label}
+            </Link>
+            {i < policyLinks.length - 1 && (
+              <span aria-hidden className={c.sep}>
+                |
+              </span>
+            )}
+          </span>
+        ))}
+      </nav>
+    </div>
   );
 }

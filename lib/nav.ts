@@ -317,6 +317,8 @@ export const policyLinks: { href: string; label: string; strong?: boolean }[] = 
   { href: "/legal/youth", label: "청소년보호정책" },
   { href: "/partner/ads", label: "광고제휴" },
   { href: "/legal/refund", label: "환불·청약철회 규정" },
+  /* 띠에 없는 AI 이용 고지·아동용 고지까지 모인 /legal 허브로 가는 유일한 길 */
+  { href: "/legal", label: "전체 정책" },
 ];
 
 /**
