@@ -66,7 +66,7 @@ export default function InquiryForm({
 
   if (status === "done") {
     return (
-      <div className="rounded-3xl border border-brand-100 bg-white p-8 text-center shadow-card md:p-12">
+      <div className="rounded-xl border border-brand-100 bg-white p-8 text-center md:p-12">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-surface-mint text-emerald-600">
           <CheckIcon className="h-8 w-8" strokeWidth={2.4} />
         </span>
@@ -102,7 +102,7 @@ export default function InquiryForm({
     <form
       onSubmit={onSubmit}
       noValidate
-      className="rounded-3xl border border-brand-100 bg-white p-6 shadow-card md:p-9"
+      className="rounded-xl border border-brand-100 bg-white p-6 md:p-8"
     >
       <div className="grid gap-5 md:grid-cols-2">
         <div>

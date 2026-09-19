@@ -1,8 +1,8 @@
 /**
  * 재능진단 샘플 문항 — 응시 존 서비스 안내(/exam/guide) 오른쪽 칸에만 쓴다.
  *
- * 재능진단 1단계는 지필 + 상황판단(SJT) + 설문 + 면담으로 짠다(lib/pageContent.ts
- * /service/talent-base). 학력진단 문항(lib/examQuestions.ts)과 무엇이 다른지 한눈에
+ * 재능진단 1단계는 지필 + 상황판단(SJT) + 설문 + 면담으로 짠다(/service/talent-base —
+ * app/(site)/service/talent-base/page.tsx). 학력진단 문항(lib/examQuestions.ts)과 무엇이 다른지 한눈에
  * 보이도록 **정답이 없는 문항** 위주로 세 개를 둔다 — 학력진단은 맞혔는지를 보고,
  * 재능진단은 어떻게 생각하고 어디서 몰입하는지를 본다.
  *

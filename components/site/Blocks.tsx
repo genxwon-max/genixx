@@ -1,111 +1,114 @@
+import type { ReactNode } from "react";
 import type { Block } from "@/lib/pageContent";
+import ReportPreview from "@/components/report/ReportPreview";
+import { Aside, Chapter, Rows, Steps } from "./Article";
 
+type Headed = Exclude<Block, { kind: "note" } | { kind: "quote" }>;
+
+/**
+ * 하위 화면 본문 — 소개·서비스 갈래와 같은 「읽는 글」 모양으로 편다.
+ *
+ * 제목이 있는 블록(points·steps·table·reportPreview) 하나가 한 구간(Chapter)이 되고,
+ * 그 뒤에 오는 note는 같은 구간 끝의 한마디(Aside)로 붙는다. 카드·그림자 없이
+ * 가는 줄과 여백만 쓴다. quote는 구간 밖에 크게 싣는다.
+ */
 export default function Blocks({ blocks }: { blocks: Block[] }) {
-  return (
-    <div className="space-y-12 md:space-y-16">
-      {blocks.map((block, i) => (
-        <section key={i}>
-          {block.kind === "points" && (
-            <>
-              <Heading title={block.heading} lead={block.lead} />
-              <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-                {block.items.map((it) => (
-                  <li
-                    key={it.t}
-                    className="rounded-2xl border border-brand-100 bg-white p-6 shadow-card"
-                  >
-                    <h3 className="type-h3 font-black text-brand-950">{it.t}</h3>
-                    <p className="type-body mt-2 text-slate-600">{it.d}</p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+  const out: ReactNode[] = [];
+  let chapter: { block: Headed; notes: string[] } | null = null;
+  let no = 0;
 
-          {block.kind === "steps" && (
-            <>
-              <Heading title={block.heading} lead={block.lead} />
-              <ol className="mt-6 space-y-3">
-                {block.items.map((it, n) => (
-                  <li
-                    key={it.t}
-                    className="flex gap-4 rounded-2xl border border-brand-100 bg-white p-6 shadow-card"
-                  >
-                    <span className="type-h4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-900 font-black text-white">
-                      {n + 1}
-                    </span>
-                    <div>
-                      <h3 className="type-h3 font-black text-brand-950">{it.t}</h3>
-                      <p className="type-body mt-2 text-slate-600">{it.d}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </>
-          )}
+  const flush = () => {
+    if (!chapter) return;
+    const { block, notes } = chapter;
+    no += 1;
+    out.push(
+      <Chapter
+        key={`c${no}`}
+        no={String(no).padStart(2, "0")}
+        title={block.heading}
+        lead={block.lead}
+      >
+        <Body block={block} />
+        {notes.map((n) => (
+          <Aside key={n}>{n}</Aside>
+        ))}
+      </Chapter>,
+    );
+    chapter = null;
+  };
 
-          {block.kind === "table" && (
-            <>
-              <Heading title={block.heading} lead={block.lead} />
-              <div className="mt-6 overflow-x-auto rounded-2xl border border-brand-100 bg-white shadow-card">
-                <table className="type-body w-full min-w-[520px] text-left">
-                  <thead>
-                    <tr className="border-b border-brand-100 bg-brand-50/60">
-                      {block.head.map((h) => (
-                        <th key={h} className="px-5 py-3.5 font-black text-brand-900">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {block.rows.map((row) => (
-                      <tr key={row[0]} className="border-b border-brand-50 last:border-0">
-                        {row.map((cell, c) => (
-                          <td
-                            key={c}
-                            className={`px-5 py-4 leading-relaxed ${
-                              c === 0 ? "font-bold text-brand-900" : "text-slate-600"
-                            }`}
-                          >
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+  blocks.forEach((b, i) => {
+    if (b.kind === "note") {
+      if (chapter) chapter.notes.push(b.text);
+      else out.push(<Aside key={`n${i}`}>{b.text}</Aside>);
+      return;
+    }
+    if (b.kind === "quote") {
+      flush();
+      out.push(<Quote key={`q${i}`} text={b.text} by={b.by} />);
+      return;
+    }
+    flush();
+    chapter = { block: b, notes: [] };
+  });
+  flush();
 
-          {block.kind === "note" && (
-            <p className="type-body rounded-2xl border border-dashed border-brand-200 bg-brand-50/50 px-6 py-5 text-slate-600">
-              {block.text}
-            </p>
-          )}
-
-          {block.kind === "quote" && (
-            <blockquote className="rounded-3xl bg-brand-900 px-6 py-8 text-white md:px-10 md:py-10">
-              <p className="type-h3 font-bold leading-relaxed">“{block.text}”</p>
-              {block.by && (
-                <footer className="type-meta mt-4 text-brand-200">{block.by}</footer>
-              )}
-            </blockquote>
-          )}
-        </section>
-      ))}
-    </div>
-  );
+  return <div>{out}</div>;
 }
 
-function Heading({ title, lead }: { title: string; lead?: string }) {
+function Body({ block }: { block: Headed }) {
+  switch (block.kind) {
+    case "points":
+      return <Rows items={block.items} />;
+
+    case "steps":
+      return <Steps items={block.items} />;
+
+    case "table":
+      return (
+        <div className="overflow-x-auto">
+          <table className="type-body w-full min-w-[520px] text-left">
+            <thead>
+              <tr className="border-b-2 border-brand-900">
+                {block.head.map((h) => (
+                  <th key={h} className="type-meta py-3 pr-6 font-bold text-brand-900">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row) => (
+                <tr key={row[0]} className="border-b border-brand-100">
+                  {row.map((cell, c) => (
+                    <td
+                      key={c}
+                      className={`py-4 pr-6 align-top ${
+                        c === 0 ? "whitespace-nowrap font-bold text-brand-950" : "text-slate-600"
+                      }`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+
+    case "reportPreview":
+      return <ReportPreview />;
+  }
+}
+
+function Quote({ text, by }: { text: string; by?: string }) {
   return (
-    <div>
-      <h2 className="type-h3 font-black text-brand-950">
-        {title}
-      </h2>
-      {lead && <p className="type-body mt-2.5 text-slate-600">{lead}</p>}
-    </div>
+    <figure className="mx-auto max-w-3xl py-12 text-center md:py-16">
+      <blockquote className="type-h3 font-bold leading-relaxed text-brand-950">
+        &ldquo;{text}&rdquo;
+      </blockquote>
+      {by && <figcaption className="type-meta mt-4 text-slate-500">{by}</figcaption>}
+    </figure>
   );
 }

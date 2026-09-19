@@ -21,7 +21,7 @@ export default function BoardWrite() {
 
   if (!session || cannotWrite.includes(session.role)) {
     return (
-      <div className="rounded-3xl border border-brand-100 bg-white p-8 text-center shadow-card md:p-12">
+      <div className="rounded-xl border border-brand-100 bg-white p-8 text-center md:p-12">
         <p className="type-h3 font-black text-brand-950">
           {session ? "학생 계정은 글을 쓸 수 없습니다" : "로그인하면 글을 쓸 수 있습니다"}
         </p>
@@ -57,11 +57,11 @@ export default function BoardWrite() {
         const id = addPost(session, title, body);
         router.push(`/community/board/${id}`);
       }}
-      className="rounded-3xl border border-brand-100 bg-white p-6 shadow-card md:p-9"
+      className="rounded-xl border border-brand-100 bg-white p-6 md:p-8"
     >
       <p className="type-meta rounded-xl bg-brand-50/70 px-4 py-3 text-slate-600">
-        <b className="text-brand-800">{author}</b> 이름으로 올라갑니다. 아이의 실명·학교·사진·연락처는
-        적지 말아 주세요.
+        <b className="text-brand-800">{author}</b> 이름으로 올라갑니다. 아이의
+        실명·학교·사진·연락처는 적지 말아 주세요.
       </p>
 
       <div className="mt-6">

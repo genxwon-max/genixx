@@ -31,7 +31,7 @@ const signupsDelta = change(thisMonth.signups, lastMonth.signups);
 const paidDelta = change(thisMonth.paid, lastMonth.paid);
 
 /* 결제 금액은 이 자리에 두지 않는다. 2026 파일럿 회차는 전면 무료로 공지되어 있어
-   (lib/pageContent.ts "/service/pricing"), 회차 이름 바로 아래 「결제 금액 700만 원」이
+   (app/(site)/service/pricing), 회차 이름 바로 아래 「결제 금액 700만 원」이
    서면 진단이 그만큼 벌고 있다는 말로 읽힌다. 기존 콘솔도 같은 이유로 뺐다
    (components/admin/BusinessMetrics.tsx). 그 자리에는 회차 제출률을 세운다. */
 
