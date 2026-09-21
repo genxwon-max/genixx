@@ -538,17 +538,15 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
             <WithBlanks text={question.stem} />
           </h1>
 
-          {/* 낸 답 — 응시 때와 같은 모양으로 두되 잠근다 */}
+          {/* 낸 답 — 응시 때와 같은 모양으로 두되 잠근다. 상자 없이 고른 번호만 검게 남는다 */}
           {question.type === "choice" ? (
-            <ul className="mt-7 grid gap-2">
+            <ul className="-mx-3 mt-6">
               {question.choices?.map((c, i) => {
                 const on = picked === i;
                 return (
                   <li
                     key={c}
-                    className={`flex items-start gap-4 rounded-[6px] border p-4 ${
-                      on ? "border-exam-text" : "border-exam-line opacity-60"
-                    }`}
+                    className={`flex items-start gap-3.5 px-3 py-3 ${on ? "" : "opacity-60"}`}
                   >
                     <span
                       aria-hidden
@@ -604,16 +602,13 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
               가까운 것을 하나 고르거나, 아래에 직접 써도 됩니다. 둘 다 해도 좋습니다.
             </p>
 
-            <ul className="mt-4 grid gap-2">
+            {/* 답 고르기와 같은 모양 — 상자 없이 고른 번호만 칠한다 */}
+            <ul className="mt-3 -mx-3">
               {reasons.map((r, n) => {
                 const on = pick === r.id;
                 return (
                   <li key={r.id}>
-                    <label
-                      className={`relative flex cursor-pointer items-center gap-4 rounded-[6px] border p-3.5 transition-colors ${
-                        on ? "border-exam-text" : "border-exam-line hover:bg-exam-raised"
-                      }`}
-                    >
+                    <label className="group relative flex cursor-pointer items-center gap-3.5 rounded-[6px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500">
                       <input
                         type="radio"
                         name={`reason-${question.id}`}
@@ -628,10 +623,10 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
                       />
                       <span
                         aria-hidden
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
                           on
                             ? "border-exam-text bg-exam-text text-white"
-                            : "border-exam-line text-exam-muted"
+                            : "border-exam-line text-exam-muted group-hover:border-exam-muted"
                         }`}
                       >
                         {n + 1}
@@ -1484,24 +1479,20 @@ export function QuestionBody({
       {q.blocks && q.blocks.length > 0 && <BlockList blocks={q.blocks} className="mt-6" />}
 
       {q.type === "choice" ? (
-        <fieldset className="relative mt-7">
+        <fieldset className="relative mt-6">
           <legend className="sr-only">보기 선택</legend>
-          <ul className="grid gap-2">
+          {/* 보기마다 상자를 두르지 않는다 — 큐넷 CBT·맞춤형 학업성취도 자율평가·ETS가
+                모두 번호 표시만 칠한다. 종이 시험지에서 번호에 동그라미를 치던 손짓 그대로다.
+                상자를 걷으면 화면이 조용해지고, 고른 답 하나만 검게 남는다.
+                -mx-3: 누르는 자리는 좌우로 넓히되 글줄은 발문과 같은 선에서 시작한다. */}
+          <ul className="-mx-3">
             {q.choices?.map((c, i) => {
               const on = value === i;
               return (
                 <li key={c}>
-                  {/* 고른 보기는 면을 물들이지 않고 테두리와 글자 굵기로 세운다.
-                        답안지에 형광펜을 칠하지는 않는다.
-                        relative는 숨긴 라디오(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨
+                  {/* relative는 숨긴 라디오(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨
                         위를 기준으로 놓여 응시 화면 바깥에 스크롤이 생긴다. */}
-                  <label
-                    className={`relative flex cursor-pointer items-start gap-4 rounded-[6px] border p-4 transition-colors ${
-                      on
-                        ? "border-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
-                        : "border-exam-line hover:border-exam-muted"
-                    }`}
-                  >
+                  <label className="group relative flex cursor-pointer items-start gap-3.5 rounded-[6px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500">
                     <input
                       type="radio"
                       name={q.id}
@@ -1512,10 +1503,10 @@ export function QuestionBody({
                     />
                     <span
                       aria-hidden
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
                         on
                           ? "border-exam-text bg-exam-text text-white"
-                          : "border-exam-line text-exam-muted"
+                          : "border-exam-line text-exam-muted group-hover:border-exam-muted"
                       }`}
                     >
                       {i + 1}

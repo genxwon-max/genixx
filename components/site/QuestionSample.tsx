@@ -104,14 +104,15 @@ export default function QuestionSample({ q }: { q: Question }) {
         <div className="px-5 py-5 sm:px-6">
           <p className="type-h3 font-black text-brand-950">{q.stem}</p>
 
+          {/* 보기 — 실제 응시 화면과 같이 상자를 두르지 않고 번호만 세운다 */}
           {q.choices && (
-            <ol className="mt-4 space-y-2">
+            <ol className="mt-4">
               {q.choices.map((c, i) => (
-                <li
-                  key={i}
-                  className="type-body flex gap-3 rounded-xl border border-brand-100 px-4 py-3 text-slate-700"
-                >
-                  <span aria-hidden className="font-black text-brand-400">
+                <li key={i} className="type-body flex items-start gap-3 py-2 text-slate-700">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-brand-200 text-[12px] font-bold tabular-nums text-brand-500"
+                  >
                     {i + 1}
                   </span>
                   {c}
