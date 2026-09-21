@@ -55,7 +55,8 @@ import {
  * 붙일 것」으로 분류를 문항 앞뒤로 갈랐는데, 출제위원은 카드를 옆에 펴 놓고 칸을 옮겨
  * 적는다 — 화면 차례가 카드와 다르면 칸을 찾아 화면을 오르내린다. 그래서 둘로 편다.
  *
- *   분류  (문항 ID · 학년 · 교과 단원은 묶음이 쥔다) 인지단계 · Tag A · Tag B · 형식 · 난이도|배점
+ *   분류  (문항 ID · 학년 · 교과 단원은 묶음이 쥔다) 인지단계 · Tag A · 출제 의도 · Tag B ·
+ *         형식 · 난이도|배점
  *   문항  (지문은 묶음이 쥔다) 문항 · 정답·채점 기준 · 인정|불인정 예 ·
  *         재능 평가 관점 · 오답 설계 의도
  *
@@ -230,7 +231,7 @@ const Danger = ({ children }: { children: React.ReactNode }) => (
 );
 
 /**
- * 문항 하나의 분류 줄 — 인지단계 · Tag A · Tag B · 형식 · 난이도|배점.
+ * 문항 하나의 분류 줄 — 인지단계 · Tag A · 출제 의도 · Tag B · 형식 · 난이도|배점.
  *
  * 문항 ID · 학년 · 교과 단원은 이 위에 선다. 그 셋은 묶음이 통째로 쥐는 값이라 문항 상세
  * (ItemDetail)가 그리고, 세트에서도 문항마다 다르지 않다.
@@ -316,9 +317,8 @@ export function QuestionClassRows({
         </FormRow>
       )}
 
-      {/* 종이 카드의 Tag A 칸 한 칸을 그대로 옮긴다 — 성취기준 코드(코드 + 내용) · 학습 요소 ·
-          출제 의도를 한 칸 안에 줄로 쌓는다. 줄마다 따로 줄을 세우면 카드의 한 칸이 화면에서
-          세 칸이 된다.
+      {/* 종이 카드의 Tag A 칸 한 칸을 그대로 옮긴다 — 성취기준 코드(코드 + 내용)와 학습 요소를
+          한 칸 안에 줄로 쌓는다. 줄마다 따로 줄을 세우면 카드의 한 칸이 화면에서 두 칸이 된다.
 
           NCIC 원문 대조 · 2022 개정 코드 확인 체크는 걷었다. 체크리스트 01이 같은 것을 묻는다.
           코드 형식이 틀렸다는 줄도 칸 아래에 적지 않는다 — 제출 단추의 풍선 도움말이 짚고,
@@ -358,16 +358,20 @@ export function QuestionClassRows({
             aria-label="학습 요소"
           />
         </CellLine>
-        <CellLine label="출제 의도">
-          <GrowTextarea
-            className="a2-textarea a2-textarea-lg"
-            rows={2}
-            value={q.tagAIntent}
-            disabled={disabled}
-            onChange={(e) => set({ tagAIntent: e.target.value })}
-            aria-label="출제 의도"
-          />
-        </CellLine>
+      </FormRow>
+
+      {/* 출제 의도는 Tag A 칸에서 빼내 제 줄로 세운다. 성취기준 코드·학습 요소는 교육과정 문서에서
+          옮겨 적는 칸이지만 출제 의도는 출제자가 직접 쓰는 글이라, 한 칸 안에 끼워 두면 이름표가
+          없는 셋째 줄처럼 읽히고 검수가 무엇을 봐야 하는지도 흐려진다 */}
+      <FormRow label="출제 의도" req>
+        <GrowTextarea
+          className="a2-textarea a2-textarea-lg"
+          rows={2}
+          value={q.tagAIntent}
+          disabled={disabled}
+          onChange={(e) => set({ tagAIntent: e.target.value })}
+          aria-label="출제 의도"
+        />
       </FormRow>
 
       {/* 칸 아래에는 축과 단계가 어긋났을 때만 적는다. 한동안 3원 좌표와 격자 지표를 늘
