@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { blockKinds, type Block, type BlockKind, type Figure, type Table } from "@/lib/content";
 import { IMAGE_MAX_BYTES, dataUrlBytes, shrinkImage } from "@/lib/productStore";
+import { sanitizeHtml } from "@/lib/richText";
 import GrowTextarea from "./GrowTextarea";
 
 /**
@@ -248,6 +249,21 @@ function BlockFields({
       );
 
     case "rich":
+      /* 문서 편집기가 남긴 서식 글(굵게 · 밑줄 · 첨자가 든 문단)은 태그 대신 보이는 그대로 세운다.
+         태그를 날것으로 고치게 두면 한 글자 실수로 서식이 통째로 깨진다 — 고치는 곳은 문서 편집기다 */
+      if (b.format === "html") {
+        return (
+          <div className="a2-body-flush">
+            <div
+              className="a2-cell-pad a2-prose-doc a2-t-sm text-(--a2-ink)"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(b.body) }}
+            />
+            <span className="a2-hint">
+              굵게 · 밑줄 같은 꾸밈이 든 글입니다. 고치려면 왼쪽 「문서 편집기」를 여세요.
+            </span>
+          </div>
+        );
+      }
       return (
         <div className="a2-body-flush">
           <GrowTextarea
@@ -259,8 +275,7 @@ function BlockFields({
             onChange={(e) => onChange({ ...b, body: e.target.value })}
           />
           <span className="a2-hint">
-            예전에 {b.format === "html" ? "HTML" : "마크다운"}으로 쓴 지문입니다. 새로 쓰는 자료는
-            블록으로 나눠 쌓으세요.
+            예전에 마크다운으로 쓴 지문입니다. 새로 쓰는 자료는 블록으로 나눠 쌓으세요.
           </span>
         </div>
       );

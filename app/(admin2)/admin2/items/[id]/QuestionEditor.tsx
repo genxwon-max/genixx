@@ -33,8 +33,12 @@ import {
 import { toneColor } from "@/lib/admin2";
 import { splitPastedItem } from "@/lib/choicePaste";
 import AnswerEditor from "@/components/admin2/AnswerEditor";
-import BlockEditor from "@/components/admin2/BlockEditor";
-import BodyEditor from "@/components/admin2/BodyEditor";
+import DocEditor from "@/components/admin2/DocEditor";
+import DocBox from "@/components/admin2/DocBox";
+import { BlockList, WithBlanks } from "@/components/exam/ExamSession";
+import { renderDetail } from "@/lib/richText";
+import { htmlToQuestion, questionToHtml, textToHtml } from "@/lib/docBlocks";
+import type { Block } from "@/lib/content";
 import type { ContentQuestion } from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import {
@@ -537,160 +541,84 @@ export function QuestionContentRows({
   const choice = q.type === "choice";
   const picks = hasChoices(q.type);
 
+  /* 문항을 문서 편집기로 열었는가 — 발문 · 보기 · 발문 아래 자료를 한 장에 편다 */
+  const [doc, setDoc] = useState<{ html: string; atoms: Block[] } | null>(null);
+  const stemHtml =
+    q.stemMode === "text"
+      ? ""
+      : q.stemMode === "images"
+        ? q.stemImages.map((src) => `<img src="${src}" alt="">`).join("")
+        : renderDetail(q.stemMode, q.stem, q.stemImages);
+  const openDoc = () =>
+    setDoc(
+      questionToHtml(
+        /* 그림으로 쓴 발문은 그림을 문서에 펴 둔다 — 적용하면 발문 아래 자료로 들어간다 */
+        q.stemMode === "text" ? textToHtml(q.stem) : stemHtml,
+        choice ? q.choices.filter((c) => c.trim()) : [],
+        content?.blocks ?? [],
+      ),
+    );
+
   /**
-   * 한글에 쓰던 문항을 통째로 붙여 넣으면 발문 · 보기 · 정답으로 가른다(lib/choicePaste.ts).
-   *
-   * 발문 칸에 붙이면 발문 몫은 커서 자리에 들어간다. 보기 칸에 붙이면 발문 몫이 발문을 갈아
-   * 끼운다 — 보기 칸에는 발문을 둘 자리가 없다. ①이 없는 글은 가르지 않고 그대로 붙는다.
-   *
-   * 적어 둔 보기가 있으면 먼저 묻는다. 보기를 갈아 끼우면 보기마다 적은 오답 설계 의도도
-   * 옛 보기를 가리키게 되어 함께 비운다. 보기가 비어 있었으면 의도는 남긴다(보기 수만큼).
+   * 문서 → 문항. 글은 붙여 넣기 규칙으로 발문 · 보기 · 정답을 가르고(객관식만), 표 · 그림 · 상자는
+   * 발문 아래 자료로 보낸다. 보기가 바뀌면 보기마다 적은 오답 설계 의도는 옛 보기를 가리키므로 비운다.
    */
-  const pasteItem = (e: React.ClipboardEvent<HTMLTextAreaElement>, into: "stem" | "choice") => {
-    if (!choice || disabled) return;
-    const split = splitPastedItem(e.clipboardData.getData("text/plain"));
-    if (!split) return;
-    e.preventDefault();
-
-    const el = e.currentTarget;
-    const stem =
-      into === "stem"
-        ? el.value.slice(0, el.selectionStart) + split.stem + el.value.slice(el.selectionEnd)
-        : split.stem || q.stem;
-    const written = q.choices.some((c) => c.trim());
-    const stemReplaced = into === "choice" && split.stem !== "" && q.stem.trim() !== "";
-    if (written || stemReplaced) {
-      const what = [
-        written &&
-          `적어 둔 보기를 붙여 넣은 보기 ${split.choices.length}개로 바꿉니다. ` +
-            "보기마다 적은 오답 설계 의도는 비워집니다.",
-        stemReplaced && "발문도 붙여 넣은 발문으로 바꿉니다.",
-      ].filter(Boolean);
-      if (!window.confirm(`${what.join("\n")}\n\n바꿀까요?`)) return;
+  const applyDoc = (html: string) => {
+    if (!doc) return;
+    const { text, extra } = htmlToQuestion(html, doc.atoms);
+    const split = choice ? splitPastedItem(text) : null;
+    if (split) {
+      const same = split.choices.join("\n") === q.choices.join("\n");
+      set({
+        stemMode: "text",
+        stem: split.stem,
+        choices: split.choices,
+        answer: split.answer ?? Math.min(q.answer, split.choices.length - 1),
+        distractorIntent: same ? q.distractorIntent : [],
+      });
+    } else {
+      set({ stemMode: "text", stem: text.trim() });
     }
-
-    set({
-      stem,
-      choices: split.choices,
-      answer: split.answer ?? Math.min(q.answer, split.choices.length - 1),
-      distractorIntent: written ? [] : q.distractorIntent.slice(0, split.choices.length),
-    });
+    if (content && onContent) onContent({ ...content, blocks: extra.length > 0 ? extra : undefined });
   };
 
   return (
     <>
+      {/* 문항은 상자 하나 — 발문 · 발문 아래 자료 · 보기를 응시 화면 차례 그대로 그린다(2026-09-22 요청).
+          쓰는 곳은 문서 편집기다. 발문 칸 · 보기 칸 넷 · 자료 칸을 따로 두던 때는 한글 원고를 칸마다
+          나눠 옮겨 적어야 했다. 정답은 아래 「정답 및 채점기준」에서 고른다 */}
       <FormRow label="문항" req>
-        {/* 발문은 대개 한두 문장이다. 지문만큼 열어 두면 화면에서 가장 큰 덩어리가
-            대부분 비어 있는 칸이 된다 — 세 줄로 시작하고 적은 만큼 늘어난다 */}
-        <BodyEditor
-          name={`stem-mode-${q.id}`}
-          value={{ mode: q.stemMode, body: q.stem, images: q.stemImages }}
+        <DocBox
+          label="문항"
+          empty="비어 있습니다. 눌러서 문서 편집기로 발문과 보기(① ② ③ …)를 씁니다."
           disabled={disabled}
-          rows={3}
-          flush
-          onPaste={(e) => pasteItem(e, "stem")}
-          onChange={(patch) =>
-            set({
-              stemMode: patch.mode ?? q.stemMode,
-              stem: patch.body ?? q.stem,
-              stemImages: patch.images ?? q.stemImages,
-            })
-          }
-        />
-
-        {/* 보기는 발문 아래 한 줄에 하나. 정답은 보기 옆에서 고른다 — 아래 정답 칸으로 떼어
-            놓으면 번호만 보고 고르게 되고, 「정답만 혼자 길다」 같은 단서는 보기와 정답이
-            나란히 서 있어야 눈에 걸린다 */}
-        {choice &&
-          q.choices.map((c, k) => (
-            <div key={k} className="a2-cell-split" style={{ gridTemplateColumns: "3rem minmax(0, 1fr)" }}>
-              <label className="flex items-center justify-center gap-1.5">
-                <input
-                  type="radio"
-                  name={`answer-${q.id}`}
-                  checked={q.answer === k}
-                  disabled={disabled}
-                  onChange={() => set({ answer: k })}
-                  aria-label={`${k + 1}번을 정답으로`}
-                />
-                <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{k + 1}</span>
-              </label>
-              <GrowTextarea
-                line
-                className="a2-textarea a2-textarea-lg"
-                value={c}
-                disabled={disabled}
-                aria-label={`${k + 1}번 보기`}
-                onPaste={(e) => pasteItem(e, "choice")}
-                onChange={(e) =>
-                  set({
-                    choices: q.choices.map((x, n) => (n === k ? e.target.value : x)),
-                  })
-                }
-              />
+          filled={!!q.stem.trim() || q.stemImages.length > 0 || q.choices.some((c) => c.trim())}
+          onOpen={openDoc}
+        >
+          {q.stemMode === "text" ? (
+            <p className="whitespace-pre-line font-semibold">
+              <WithBlanks text={q.stem} />
+            </p>
+          ) : (
+            <div className="font-semibold" dangerouslySetInnerHTML={{ __html: stemHtml }} />
+          )}
+          {(content?.blocks?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <BlockList blocks={content!.blocks!} />
             </div>
-          ))}
-        {choice && (
-          <div className="a2-cell-pad flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="a2-btn"
-              disabled={disabled || q.choices.length >= 6}
-              onClick={() => set({ choices: [...q.choices, ""] })}
-            >
-              보기 추가
-            </button>
-            <button
-              type="button"
-              className="a2-btn"
-              disabled={disabled || q.choices.length <= 2}
-              onClick={() =>
-                set({
-                  choices: q.choices.slice(0, -1),
-                  distractorIntent: q.distractorIntent.slice(0, q.choices.length - 1),
-                  answer: Math.min(q.answer, q.choices.length - 2),
-                })
-              }
-            >
-              마지막 보기 지우기
-            </button>
-          </div>
-        )}
-
-        {q.type === "ox" && (
-          <CellLine label="정답">
-            <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
-              {OX_CHOICES.map((c, k) => (
-                <label key={c} className="a2-choice">
-                  <input
-                    type="radio"
-                    name={`answer-${q.id}`}
-                    checked={q.answer === k}
-                    disabled={disabled}
-                    onChange={() => set({ answer: k })}
-                  />
-                  {c}
-                </label>
+          )}
+          {choice && (
+            <ol className="a2-docbox-choices">
+              {q.choices.map((c, k) => (
+                <li key={k} className="a2-docbox-choice">
+                  <span className={`a2-docbox-mark${q.answer === k ? " on" : ""}`}>{k + 1}</span>
+                  <span>{c.trim() || <span className="text-(--a2-ink-4)">(빈 보기)</span>}</span>
+                </li>
               ))}
-            </div>
-          </CellLine>
-        )}
+            </ol>
+          )}
+        </DocBox>
       </FormRow>
-
-      {/* 발문 아래 자료 — 이 문항에만 딸린 사진 · 표 · 〈보기〉 상자. 세트가 함께 읽는 것은 지문 칸에 쓴다 */}
-      {content && onContent && (
-        <FormRow label="발문 아래 자료">
-          <BlockEditor
-            blocks={content.blocks ?? []}
-            disabled={disabled}
-            kinds={["box", "images", "table", "list", "text", "video", "audio", "note"]}
-            empty="없으면 비워 둡니다. 「〈보기〉에서 고르시오」의 상자나 이 문항에만 쓰는 사진 · 표를 넣습니다."
-            onChange={(blocks) =>
-              onContent({ ...content, blocks: blocks.length > 0 ? blocks : undefined })
-            }
-          />
-        </FormRow>
-      )}
 
       {/* 답 칸 — 보기를 고르지 않는 문항이 학생에게 여는 칸과 칸마다의 정답 */}
       {content && onContent && !picks && (
@@ -722,17 +650,22 @@ export function QuestionContentRows({
       <FormRow label="정답 및 채점기준" req>
         {picks && (
           <CellLine label="정답">
-            <div className="a2-cell-pad flex items-center a2-t-sm text-(--a2-ink-2)">
-              {q.type === "ox" ? (
-                (OX_CHOICES[q.answer] ?? "—")
-              ) : q.choices[q.answer] !== undefined ? (
-                <span>
-                  <span className="a2-mono font-bold text-(--a2-ink)">{q.answer + 1}번</span>{" "}
-                  {q.choices[q.answer].trim()}
-                </span>
-              ) : (
-                "—"
-              )}
+            {/* 보기 칸이 문항 상자로 들어가면서 정답은 여기서 고른다. 문서 편집기에서 「정답: ③」 줄을
+                적어도 여기에 켜진다 */}
+            <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
+              {(q.type === "ox" ? [...OX_CHOICES] : q.choices).map((c, k) => (
+                <label key={k} className="a2-choice">
+                  <input
+                    type="radio"
+                    name={`answer-${q.id}`}
+                    checked={q.answer === k}
+                    disabled={disabled}
+                    onChange={() => set({ answer: k })}
+                    aria-label={`${k + 1}번을 정답으로`}
+                  />
+                  {q.type === "ox" ? c : <span className="a2-mono">{k + 1}번</span>}
+                </label>
+              ))}
             </div>
           </CellLine>
         )}
@@ -862,6 +795,16 @@ export function QuestionContentRows({
           />
         )}
       </FormRow>
+
+      {doc && (
+        <DocEditor
+          title="문항 — 발문 · 보기 · 발문 아래 자료"
+          initialHtml={doc.html}
+          mode="question"
+          onClose={() => setDoc(null)}
+          onApply={applyDoc}
+        />
+      )}
     </>
   );
 }

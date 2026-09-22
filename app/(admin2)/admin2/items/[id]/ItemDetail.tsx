@@ -41,7 +41,6 @@ import {
   Switch,
   Tag,
 } from "@/components/admin2/ui";
-import BlockEditor from "@/components/admin2/BlockEditor";
 import GroupEditor from "@/components/admin2/GroupEditor";
 import {
   blankMarks,
@@ -52,6 +51,10 @@ import {
 } from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import ItemPreview from "@/components/admin2/ItemPreview";
+import DocEditor from "@/components/admin2/DocEditor";
+import DocBox from "@/components/admin2/DocBox";
+import { BlockList } from "@/components/exam/ExamSession";
+import { blocksToHtml, htmlToBlocks, splitLeadHtml, textToHtml } from "@/lib/docBlocks";
 import BandUnitRows from "./BandUnitRows";
 import LevelCounts from "./LevelCounts";
 import ReviewPanel from "./ReviewPanel";
@@ -157,6 +160,13 @@ export default function ItemDetail({ id }: { id: string }) {
   const [openQ, setOpenQ] = useState<string | null>(null);
   /** 응시 화면 미리보기를 띄웠는가 */
   const [preview, setPreview] = useState(false);
+  /** 지문을 문서 편집기로 열었는가 — 열 때 편 블록 중 편집기가 못 고치는 것(atoms)을 들고 있다 */
+  const [docOpen, setDocOpen] = useState<{
+    html: string;
+    atoms: import("@/lib/content").Block[];
+    /** 독립 문항 — 첫 줄 지시문을 함께 펴고 되돌린다 */
+    lead: boolean;
+  } | null>(null);
   /** 고친 내용 때문에 제출 확인이 풀렸는가 — 체크리스트 판이 까닭을 적는다 */
   const [unsigned, setUnsigned] = useState(false);
 
@@ -676,40 +686,43 @@ export default function ItemDetail({ id }: { id: string }) {
                       }
                     />
                   </FormRow>
-                  {/* 다른 칸처럼 이름을 왼쪽에 둔다(2026-09-22 요청) */}
+                  {/* 보기 · 지문은 상자 하나 — 응시 화면 모양 그대로 그리고, 누르면 문서 편집기가 열린다 */}
                   <FormRow label="보기 · 지문" req>
-                    <BlockEditor
-                      blocks={content.material.blocks}
+                    <DocBox
+                      label="보기 · 지문"
+                      empty="비어 있습니다. 눌러서 문서 편집기로 쓰거나 한글 · 워드 파일을 불러옵니다."
                       disabled={locked}
-                      onChange={(blocks) =>
-                        setContent({ ...content, material: { ...content.material, blocks } })
-                      }
-                    />
+                      filled={content.material.blocks.length > 0}
+                      onOpen={() => setDocOpen({ ...blocksToHtml(content.material.blocks), lead: false })}
+                    >
+                      <BlockList blocks={content.material.blocks} />
+                    </DocBox>
                   </FormRow>
                 </>
               ) : (
-                /* 독립 문항은 지시문과 지문을 한 칸 「지문」에 담는다(2026-09-22 요청) — 첫 줄이 지시문,
-                   그 아래가 자료 블록이다. 세트는 지시문이 「[1~4]」 묶음 머리라 칸을 따로 둔다 */
+                /* 독립 문항은 지시문과 지문을 상자 하나 「지문」에 담는다(2026-09-22 요청) — 첫 줄이 지시문,
+                   그 아래가 자료다. 편집기에서도 첫 줄로 펴고, 적용하면 「…답하시오.」 줄을 지시문으로 되돌린다.
+                   세트는 지시문이 「[1~4]」 묶음 머리라 칸을 따로 둔다 */
                 <FormRow label="지문">
-                  <input
-                    className="a2-input"
-                    value={content.material.lead ?? ""}
+                  <DocBox
+                    label="지문"
+                    empty="비어 있습니다. 눌러서 문서 편집기로 쓰거나 한글 · 워드 파일을 불러옵니다."
                     disabled={locked}
-                    placeholder="다음의 등잔과 초에 대한 설명을 읽고 물음에 답하시오."
-                    onChange={(e) =>
-                      setContent({
-                        ...content,
-                        material: { ...content.material, lead: e.target.value || undefined },
-                      })
-                    }
-                  />
-                  <BlockEditor
-                    blocks={content.material.blocks}
-                    disabled={locked}
-                    onChange={(blocks) =>
-                      setContent({ ...content, material: { ...content.material, blocks } })
-                    }
-                  />
+                    filled={!!content.material.lead || content.material.blocks.length > 0}
+                    onOpen={() => {
+                      const body = blocksToHtml(content.material.blocks);
+                      setDocOpen({
+                        html: textToHtml(content.material.lead ?? "") + body.html,
+                        atoms: body.atoms,
+                        lead: true,
+                      });
+                    }}
+                  >
+                    {content.material.lead && (
+                      <p className="a2-docbox-lead">{content.material.lead}</p>
+                    )}
+                    <BlockList blocks={content.material.blocks} />
+                  </DocBox>
                 </FormRow>
               )}
               {view.form === "single" && (
@@ -831,6 +844,25 @@ export default function ItemDetail({ id }: { id: string }) {
 
       <LeaveDialog guard={guard} />
       {preview && <ItemPreview item={view} onClose={() => setPreview(false)} />}
+
+      {/* 지문 문서 편집기 — 적용하면 블록으로 되접어 지문 칸을 갈아 끼운다. 첫 줄이 「…답하시오.」면
+          지시문 칸으로 옮긴다(한글 원고는 지시문을 본문 첫 줄에 쓴다) */}
+      {docOpen && (
+        <DocEditor
+          title={`${view.form === "set" ? "보기 · 지문" : "지문"} — ${view.code || view.id}`}
+          initialHtml={docOpen.html}
+          mode="passage"
+          onClose={() => setDocOpen(null)}
+          onApply={(html) => {
+            /* 독립은 지시문도 편집기 안에 있었다 — 첫 줄이 지시문 꼴이 아니면 지시문을 비운다(지운 것이다).
+               세트는 지시문 칸이 따로라, 원고 첫 줄에 지시문이 있을 때만 옮긴다 */
+            const cut = splitLeadHtml(html);
+            const blocks = htmlToBlocks(cut.html, docOpen.atoms);
+            const lead = docOpen.lead ? cut.lead ?? undefined : cut.lead ?? content.material.lead;
+            setContent({ ...content, material: { ...content.material, blocks, lead } });
+          }}
+        />
+      )}
     </>
   );
 }
