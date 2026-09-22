@@ -31,7 +31,7 @@ import {
   type Response,
 } from "./content";
 import { examSets } from "./examQuestions";
-import { auditItem, auditRejection } from "./itemAudit";
+import { buildCardReport, reportVerdict, sectionName } from "./cardReport";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
@@ -3268,9 +3268,12 @@ export function runAiAudit(ids: string[]): {
 
   const next = read().map((item) => {
     if (!ids.includes(item.id) || !aiAuditable(item)) return item;
-    const result = auditItem(item);
-    const rejection = auditRejection(result);
-    const verdict: AiVerdict = rejection ? "reject" : result.warns > 0 ? "hold" : "approve";
+    /* 문항 카드 항목마다 판정한 보고서(lib/cardReport.ts)에서 권고를 낸다. 3단 소견(checks)은 기록과
+       옛 콘솔이 읽는 꼴이라 보고서 항목을 갈래별로 모아 채운다 */
+    const report = buildCardReport(item);
+    const r = reportVerdict(report);
+    const verdict: AiVerdict = r.verdict;
+    const result = { blocks: report.fails, warns: report.warns };
     done += 1;
     ran.push(item.id);
     if (verdict === "approve") approved += 1;
@@ -3280,18 +3283,24 @@ export function runAiAudit(ids: string[]): {
     const audit: AiAudit = {
       at,
       round,
-      checks: result.checks.map((c) => ({
-        id: c.id,
-        ok: c.ok,
-        notes: c.findings.map(
-          (f) => `${f.tone === "block" ? "[규칙 위반] " : "[확인 필요] "}${f.text} → ${f.fix}`,
-        ),
-      })),
+      checks: reviewChecks.map((c) => {
+        const mine = report.sections.filter((x) => x.tier === c.id && x.status !== "ok");
+        return {
+          id: c.id,
+          ok: !mine.some((x) => x.status === "fail"),
+          notes: mine.flatMap((x) =>
+            x.findings.map(
+              (f) =>
+                `${x.status === "fail" ? "[보완 필요] " : "[확인 필요] "}${sectionName(x)} — ${f.text} → ${f.fix}`,
+            ),
+          ),
+        };
+      }),
       blocks: result.blocks,
       warns: result.warns,
       verdict,
-      code: rejection?.code,
-      text: rejection ? rejection.text : verdict === "approve" ? APPROVE_TEXT : undefined,
+      code: r.code,
+      text: r.text ?? (verdict === "approve" ? APPROVE_TEXT : undefined),
     };
 
     return {
@@ -3308,7 +3317,7 @@ export function runAiAudit(ids: string[]): {
           kind: "note" as CommentKind,
           text:
             `AI 검수 ${round}/${AI_AUDIT_MAX}회 — ${aiVerdictLabel[verdict]}` +
-            ` (규칙 위반 ${result.blocks} · 확인 필요 ${result.warns}). 검수자에게 넘깁니다.`,
+            ` (보완 필요 ${result.blocks} · 확인 필요 ${result.warns}). 검수자에게 넘깁니다.`,
         },
       ],
     };

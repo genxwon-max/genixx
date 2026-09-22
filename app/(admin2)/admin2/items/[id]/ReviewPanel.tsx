@@ -1,120 +1,98 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { downloadAuditCsv, printAudit } from "@/lib/auditReport";
+import { buildCardReport, reportStatusLabel, sectionName } from "@/lib/cardReport";
 import {
   AI_AUDIT_MAX,
   aiAuditable,
   aiVerdictLabel,
   approveItem,
-  blankChecks,
   clearReviewDraft,
   humanReviewable,
-  reasonText,
   rejectItem,
-  rejectLabel,
   reviewChecks,
   runAiAudit,
   saveReviewDraft,
   type ItemDraft,
   type ReviewCheckResult,
 } from "@/lib/itemStore";
+import AuditReportView from "@/components/admin2/AuditReportView";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import { Panel } from "@/components/admin2/ui";
 
 /**
- * 검수판 (EXP-03) — 3단을 **확인**하거나 **반려**한다.
+ * 검수판 (EXP-03) — AI 검수 보고서를 보고 승인하거나, 반려할 부분과 사유를 적어 돌려보낸다
+ * (2026-09-22 요청).
  *
- * ── 확인은 누르면 끝이다 ──
- * 한동안 칸마다 「통과 / 걸림」을 누르면 까닭 고르개와 덧붙임 칸이 열리고, 승인에는 소견문
- * 열 자가 필요했다. 무엇 때문에 많이 걸리는지 세려던 것인데, 막상 검수자는 문제없는 문항에도
- * 칸 셋을 채워야 승인할 수 있었다. 이제 확인은 누르는 것으로 끝나고, 셋 다 확인이면 승인이 열린다.
+ * ── 1 · 2 · 3차 확인 줄을 걷었다 ──
+ * 한동안 검수자가 내용 · 태깅 · 윤리 세 갈래마다 「확인 · 반려」를 눌렀다. 그런데 그 세 갈래를 실제로
+ * 대조하는 것은 AI 검수이고, 검수자가 하는 일은 그 결과를 읽고 결론을 내는 것이다. 같은 갈래를 사람이
+ * 한 번 더 누르게 두면 누른 것이 무엇을 본 것인지 기록으로 남지 않는다. 이제 흐름은 —
  *
- * ── 반려 내용은 적어도 되고 안 적어도 된다 ──
- * 반려를 누른 갈래에만 반려 내용 칸이 열린다. 비워도 반려할 수 있다. 출제자에게 가는 글에는
- * 반려한 갈래 이름이 늘 선다 — 내용을 적었으면 그 뒤에 붙는다. 이름까지 빼면 옛 콘솔의 출제
- * 화면(components/admin/ItemCard.tsx)은 코멘트만 읽어서, 출제자가 빈 「반려」 한 줄만 받는다.
- * 반려 사유 코드 고르개도 걷었다. 기록 쪽 code는 비워 둔다(옛 기록 · AI 검수는 그대로 코드를 든다).
+ *   AI 검수 돌리기 → AI 검수 보고서 보기(문항 카드 항목마다 판정 · lib/cardReport.ts)
+ *     → 승인(문항 은행으로) 또는 반려(반려할 부분을 고르고 사유를 적어 출제자에게)
  *
- * ── 옛 검수판에서 쓰던 검수를 버리지 않는다 ──
- * 옛 콘솔 검수(components/admin/ReviewCard.tsx)는 지금도 같은 문항에 쓰던 검수를 붙여 둔다 —
- * 사유 코드 · 소견문 · 고른 소견(reason). 이 판에 그 칸이 없다고 흘려버리면, 임시 저장 한 번에
- * 옛 콘솔로 돌아가도 적어 둔 것이 사라지고, 반려하면 빈 반려가 나간다. 그래서 코드와 소견문은
- * 판 위에 읽기로 세우고 승인 · 반려 · 임시 저장에 그대로 싣는다. 버리려면 「쓰던 검수 지우기」.
+ * ── 반려에는 사유가 있어야 한다 ──
+ * 출제자는 이 글 하나를 받고 고친다. 비어 있으면 무엇을 고쳐야 할지 모른다 — 사유를 적어야 반려가 열린다.
+ * 반려할 부분(카드 항목)은 보고서에서 「보완 필요」인 것을 미리 골라 둔다. 고른 부분은 출제자에게 가는 글
+ * 맨 앞에 서고, 기록의 3단(checks)에는 그 항목이 든 갈래를 「걸림」으로 남긴다.
  *
- * ── AI 검수가 먼저다 (2026-09-21 협의) ──
- * 흐름은 「출제 → AI 검수 → 검수자」다. 이번 제출분에 AI 검수가 없으면 승인 · 반려를 잠그고 판
- * 머리에서 AI 검수를 돌리게 한다. AI 결과는 판 맨 위에 서고, 인쇄 · 다운로드할 수 있다. AI는
- * 결론을 내지 않으므로 「통과 권고」여도 승인은 검수자가 누른다. AI를 두 번 다 쓴 문항은 결과
- * 없이도 검수자가 본다(lib/itemStore.ts humanReviewable).
- *
- * 쓰다 만 검수는 문항에 붙여 둔다. 검수는 한 건에 몇 분씩 걸리고 중간에 다른 문항을
- * 열어 볼 일이 생기는데, 돌아왔을 때 짚어 둔 것이 날아가 있으면 처음부터 다시 읽어야 한다.
+ * AI 검수를 두 번 다 쓴 문항은 보고서 없이도 검수자가 판단한다(humanReviewable). 쓰다 만 반려 사유는
+ * 「임시 저장」으로 문항에 붙여 둔다.
  */
 export default function ReviewPanel({ item }: { item: ItemDraft }) {
   const prefs = useAdminPrefs();
-  const saved = item.reviewDraft;
-
-  const [checks, setChecks] = useState<ReviewCheckResult[]>(saved?.checks ?? blankChecks());
-  /* 옛 검수판이 붙여 둔 사유 코드 · 소견문 — 이 판에서는 고치지 않고 싣기만 한다 */
-  const legacyCode = saved?.code;
-  const legacyText = saved?.text?.trim() ?? "";
-
   const by = prefs.staffName || "운영자";
-  /* 자기가 쓴 문항을 자기가 보는 것 — 슈퍼 관리자만 열려 있고, 승인해도 기록에
-     남는다(reviews[].self). 목록에서 붉은 점으로 세는 값이 이것이다. */
+  /* 자기가 쓴 문항을 자기가 보는 것 — 슈퍼 관리자만 열려 있고, 기록에 남는다(reviews[].self) */
   const self = item.author === prefs.loginId;
 
-  const at = (id: string) => checks.find((c) => c.id === id)!;
-  const put = (id: string, patch: Partial<ReviewCheckResult>) =>
-    setChecks((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  const ai = item.aiAudit;
+  const open = humanReviewable(item);
+  const report = useMemo(() => (ai ? buildCardReport(item) : null), [ai, item]);
+  const needFix = report?.sections.filter((s) => s.status === "fail") ?? [];
 
-  const allOk = checks.every((c) => c.ok === true);
-  const anyReject = checks.some((c) => c.ok === false);
+  const [showReport, setShowReport] = useState(false);
+  const [rejecting, setRejecting] = useState(!!item.reviewDraft?.text);
+  const [parts, setParts] = useState<string[]>(() => needFix.map((s) => s.key));
+  const [reason, setReason] = useState(item.reviewDraft?.text ?? "");
 
-  /* 출제자에게 가는 글 — 반려한 갈래마다 한 줄. 옛 검수판에서 고른 소견과 적은 내용이 있으면
-     갈래 이름 뒤에 붙이고, 옛 소견문은 맨 끝에 싣는다 */
-  const rejectText = [
-    ...reviewChecks
-      .map((c) => ({ id: c.id, label: c.label, cur: at(c.id) }))
-      .filter(({ cur }) => cur.ok === false)
-      .map(({ id, label, cur }) => {
-        const detail = [reasonText(id, false, cur.reason), cur.note.trim()]
-          .filter(Boolean)
-          .join(" · ");
-        return detail ? `${label} — ${detail}` : label;
-      }),
-    legacyText,
-  ]
+  const partName = (key: string) => {
+    const s = report?.sections.find((x) => x.key === key);
+    return s ? sectionName(s) : key;
+  };
+
+  /* 기록의 3단 — 고른 부분이 든 갈래는 걸림, 나머지는 확인 안 함(반려) / 모두 통과(승인) */
+  const checksFor = (verdict: "approve" | "reject"): ReviewCheckResult[] =>
+    reviewChecks.map((c) => {
+      const hit = parts.filter((k) => report?.sections.find((s) => s.key === k)?.tier === c.id);
+      return {
+        id: c.id,
+        ok: verdict === "approve" ? true : hit.length ? false : null,
+        note: verdict === "reject" ? hit.map(partName).join(" · ") : "",
+      };
+    });
+
+  const rejectText = [parts.length ? `[반려한 부분] ${parts.map(partName).join(" · ")}` : "", reason.trim()]
     .filter(Boolean)
     .join("\n");
 
-  /* 기록에는 짚은 그대로 남긴다. 확인 · 반려를 뒤집으면 put이 고른 소견과 반려 내용을 비우므로,
-     남아 있는 것은 지금 상태에 맞는 값이다 */
-  const recorded = () => checks.map((c) => ({ ...c, note: c.note.trim() }));
-
-  const done = () => setChecks(blankChecks());
-
-  /* 이번 제출분에 AI 검수가 없고 아직 돌릴 수 있으면 사람의 판단을 잠근다 */
-  const open = humanReviewable(item);
-  const ai = item.aiAudit;
   const lockNote = open ? undefined : "AI 검수를 먼저 돌려야 승인 · 반려할 수 있습니다";
 
   return (
     <Panel
       title="검수"
-      meta="1차 내용 · 2차 태깅 교차검증 · 3차 윤리·편향"
+      meta="AI 검수 보고서 → 승인 · 반려"
       actions={
-        <button
-          type="button"
-          className="a2-btn a2-btn-sm"
-          onClick={() =>
-            saveReviewDraft(item.id, { by, checks, code: legacyCode, text: saved?.text ?? "" })
-          }
-        >
-          임시 저장
-        </button>
+        rejecting && (
+          <button
+            type="button"
+            className="a2-btn a2-btn-sm"
+            onClick={() => saveReviewDraft(item.id, { by, checks: checksFor("reject"), text: reason })}
+          >
+            임시 저장
+          </button>
+        )
       }
     >
       {self && (
@@ -123,33 +101,24 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
         </p>
       )}
 
-      {/* AI 검수 결과 — 이번 제출분. 결론이 아니라 검수자에게 건네는 권고다 */}
-      <div className="mb-2 border-b border-(--a2-line) pb-2">
+      {/* ① AI 검수 — 돌리기 · 보고서 보기 */}
+      <div className="border-b border-(--a2-line) pb-2.5">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="a2-t-sm font-bold text-(--a2-ink)">AI 검수</span>
           <span className="a2-mono a2-t-xs text-(--a2-ink-4)">
             {item.aiAuditCount ?? 0}/{AI_AUDIT_MAX}회
           </span>
-          <span className="ml-auto flex items-center gap-1">
+          <span className="ml-auto">
             {ai ? (
-              <>
-                <button type="button" className="a2-btn a2-btn-sm" onClick={() => printAudit([item])}>
-                  인쇄
-                </button>
-                <button type="button" className="a2-btn a2-btn-sm" onClick={() => downloadAuditCsv([item])}>
-                  다운로드
-                </button>
-              </>
+              <button type="button" className="a2-btn a2-btn-sm a2-btn-primary" onClick={() => setShowReport(true)}>
+                AI 검수 보고서 보기
+              </button>
             ) : (
               <button
                 type="button"
                 className="a2-btn a2-btn-sm a2-btn-primary"
                 disabled={!aiAuditable(item)}
-                title={
-                  aiAuditable(item)
-                    ? undefined
-                    : `AI 검수는 한 문항에 ${AI_AUDIT_MAX}번까지입니다 — 검수자가 바로 봅니다`
-                }
+                title={aiAuditable(item) ? undefined : `AI 검수는 한 문항에 ${AI_AUDIT_MAX}번까지입니다 — 검수자가 바로 봅니다`}
                 onClick={() => runAiAudit([item.id])}
               >
                 AI 검수 돌리기
@@ -157,157 +126,137 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
             )}
           </span>
         </div>
-        {ai ? (
-          <>
-            <p className="mt-1 a2-t-sm">
-              <b
-                style={{
-                  color:
-                    ai.verdict === "reject"
-                      ? "var(--a2-danger)"
-                      : ai.verdict === "hold"
-                        ? "var(--a2-warn)"
-                        : "var(--a2-ok)",
-                }}
-              >
-                {aiVerdictLabel[ai.verdict]}
-              </b>{" "}
-              <span className="text-(--a2-ink-3)">
-                · 규칙 위반 {ai.blocks} · 확인 필요 {ai.warns} · {ai.at}
-                {ai.code && ` · ${rejectLabel(ai.code)}`}
-              </span>
-            </p>
-            {ai.checks.some((c) => c.notes.length > 0) && (
-              <ul className="mt-1 space-y-0.5">
-                {ai.checks.flatMap((c) =>
-                  c.notes.map((note, k) => (
-                    <li key={`${c.id}-${k}`} className="a2-t-xs text-(--a2-ink-2)">
-                      <span className="font-semibold text-(--a2-ink-3)">
-                        {reviewChecks.find((x) => x.id === c.id)?.label}
-                      </span>{" "}
-                      {note}
-                    </li>
-                  )),
-                )}
-              </ul>
-            )}
-          </>
+        {ai && report ? (
+          <p className="mt-1.5 a2-t-sm text-(--a2-ink-2)">
+            권고{" "}
+            <b
+              style={{
+                color:
+                  ai.verdict === "reject" ? "var(--a2-danger)" : ai.verdict === "hold" ? "var(--a2-warn)" : "var(--a2-ok)",
+              }}
+            >
+              {aiVerdictLabel[ai.verdict]}
+            </b>
+            <span className="text-(--a2-ink-3)">
+              {" "}
+              · {reportStatusLabel.fail} {report.fails} · {reportStatusLabel.warn} {report.warns} · {ai.at}
+            </span>
+          </p>
         ) : (
           <p className="mt-1 a2-hint">
             {aiAuditable(item)
-              ? "이번 제출분은 아직 AI가 보지 않았습니다. AI 검수를 돌린 뒤 결과를 보고 판단합니다."
-              : `AI 검수를 ${AI_AUDIT_MAX}번 모두 썼습니다. 검수자가 바로 판단합니다.`}
+              ? "AI 검수를 돌리면 문항 카드 항목마다 판정한 보고서가 나옵니다. 보고서를 보고 승인 · 반려합니다."
+              : `AI 검수를 ${AI_AUDIT_MAX}번 모두 썼습니다. 검수자가 문항을 보고 바로 판단합니다.`}
           </p>
         )}
       </div>
 
-      {(legacyCode || legacyText) && (
-        <p className="a2-note mb-2">
-          <span className="whitespace-pre-line">
-            <b>먼저 적어 둔 소견</b>
-            {legacyCode && ` · ${rejectLabel(legacyCode)}`}
-            {legacyText && `\n${legacyText}`}
-          </span>
-        </p>
-      )}
-
-      <ul className="space-y-2">
-        {reviewChecks.map((c) => {
-          const cur = at(c.id);
-          return (
-            <li key={c.id} className="border-b border-(--a2-line) pb-2 last:border-b-0 last:pb-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="a2-t-sm font-bold text-(--a2-ink)">{c.label}</span>
-                <span className="flex items-center gap-1">
-                  {/* 확인 · 반려 · 안 봄은 서로 다른 상태다. 다시 누르면 안 본 것으로 되돌아간다 */}
-                  {[true, false].map((v) => (
+      {/* ② 결론 — 승인 또는 반려(부분 + 사유) */}
+      {rejecting ? (
+        <div className="mt-2.5 grid gap-2">
+          <div>
+            <p className="a2-label mb-1">반려할 부분</p>
+            {report ? (
+              <div className="flex flex-wrap gap-1">
+                {report.sections.map((s) => {
+                  const on = parts.includes(s.key);
+                  return (
                     <button
-                      key={String(v)}
+                      key={s.key}
                       type="button"
+                      aria-pressed={on}
                       className="a2-btn a2-btn-sm"
-                      aria-pressed={cur.ok === v}
                       style={
-                        cur.ok === v
-                          ? {
-                              borderColor: v ? "var(--a2-ok)" : "var(--a2-danger)",
-                              color: v ? "var(--a2-ok)" : "var(--a2-danger)",
-                              fontWeight: 700,
-                            }
-                          : undefined
+                        on
+                          ? { borderColor: "var(--a2-danger)", color: "var(--a2-danger)", fontWeight: 700 }
+                          : s.status === "fail"
+                            ? { borderStyle: "dashed", borderColor: "var(--a2-danger)" }
+                            : undefined
                       }
-                      onClick={() => {
-                        /* 뒤집으면 고른 소견과 반려 내용을 비운다 — 반려로 적은 글이 확인한 갈래에
-                           숨은 채 기록에 남으면 안 된다 */
-                        const next = cur.ok === v ? null : v;
-                        put(c.id, {
-                          ok: next,
-                          reason: undefined,
-                          note: next === false ? cur.note : "",
-                        });
-                      }}
+                      title={`${reportStatusLabel[s.status]} — ${s.findings.map((f) => f.text).join(" ") || "걸린 것 없음"}`}
+                      onClick={() => setParts((p) => (on ? p.filter((x) => x !== s.key) : [...p, s.key]))}
                     >
-                      {v ? "확인" : "반려"}
+                      {sectionName(s)}
                     </button>
-                  ))}
-                </span>
+                  );
+                })}
               </div>
-              <p className="a2-hint">{c.desc}</p>
-
-              {cur.ok === false && (
-                <label className="a2-field mt-1.5 block">
-                  <span className="a2-label">반려 내용</span>
-                  <GrowTextarea
-                    className="a2-textarea"
-                    rows={2}
-                    value={cur.note}
-                    onChange={(e) => put(c.id, { note: e.target.value })}
-                  />
-                </label>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          className="a2-btn a2-btn-primary"
-          disabled={!open || !allOk}
-          title={lockNote ?? (allOk ? undefined : "3단을 모두 확인해야 승인할 수 있습니다")}
-          onClick={() => {
-            /* 옛 소견문에 사유 코드가 붙어 있으면 반려로 쓰던 글이라 승인에는 싣지 않는다 */
-            approveItem(item.id, by, legacyCode ? "" : legacyText, recorded(), self);
-            done();
-          }}
-        >
-          승인
-        </button>
-        <button
-          type="button"
-          className="a2-btn a2-btn-danger"
-          disabled={!open || !anyReject}
-          title={lockNote ?? (anyReject ? undefined : "반려한 갈래가 있어야 반려할 수 있습니다")}
-          onClick={() => {
-            rejectItem(item.id, by, legacyCode, rejectText, recorded(), self);
-            done();
-          }}
-        >
-          반려
-        </button>
-        {saved && (
+            ) : (
+              <p className="a2-hint">보고서가 없어 부분을 고를 수 없습니다. 사유에 적어 주세요.</p>
+            )}
+            {report && <p className="a2-hint mt-1">점선 테두리는 보고서에서 「보완 필요」인 항목입니다.</p>}
+          </div>
+          <label className="a2-field block">
+            <span className="a2-label">
+              반려 사유 <span style={{ color: "var(--a2-danger)" }}>*</span>
+            </span>
+            <GrowTextarea
+              className="a2-textarea"
+              rows={3}
+              value={reason}
+              placeholder="출제자가 무엇을 어떻게 고쳐야 하는지 적어 주세요."
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </label>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              className="a2-btn a2-btn-danger"
+              disabled={!open || !reason.trim()}
+              title={lockNote ?? (reason.trim() ? undefined : "반려 사유를 적어야 반려할 수 있습니다")}
+              onClick={() => rejectItem(item.id, by, undefined, rejectText, checksFor("reject"), self)}
+            >
+              반려하기
+            </button>
+            <button
+              type="button"
+              className="a2-btn"
+              onClick={() => {
+                setRejecting(false);
+                if (item.reviewDraft) clearReviewDraft(item.id);
+              }}
+            >
+              그만두기
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            className="a2-btn a2-btn-sm"
+            className="a2-btn a2-btn-primary"
+            disabled={!open}
+            title={lockNote ?? "승인하면 문항 은행으로 올라갑니다"}
             onClick={() => {
-              clearReviewDraft(item.id);
-              done();
+              const warn =
+                needFix.length > 0
+                  ? `AI 검수 보고서에 「보완 필요」 항목이 ${needFix.length}개 있습니다.\n${needFix
+                      .map(sectionName)
+                      .join(" · ")}\n\n그래도 승인할까요?`
+                  : "승인하면 문항 은행으로 올라갑니다. 승인할까요?";
+              if (!window.confirm(warn)) return;
+              approveItem(item.id, by, "", checksFor("approve"), self);
             }}
           >
-            쓰던 검수 지우기
+            승인
           </button>
-        )}
-      </div>
+          <button
+            type="button"
+            className="a2-btn a2-btn-danger"
+            disabled={!open}
+            title={lockNote}
+            onClick={() => {
+              /* 반려할 부분은 보고서의 「보완 필요」를 미리 골라 둔다 — 고칠 곳이 거기서 나온다 */
+              if (parts.length === 0) setParts(needFix.map((x) => x.key));
+              setRejecting(true);
+            }}
+          >
+            반려
+          </button>
+        </div>
+      )}
+
+      {showReport && <AuditReportView item={item} onClose={() => setShowReport(false)} />}
     </Panel>
   );
 }

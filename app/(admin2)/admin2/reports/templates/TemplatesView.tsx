@@ -1,22 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useAdminPrefs } from "@/lib/adminStore";
 import { n } from "@/lib/admin2";
 import { useHydrated } from "@/lib/examStore";
-import { bandOf, gradeLabel, slotOf, slotOrder, type SlotId } from "@/lib/reportAssets";
-import { useAllTemplates, type TemplateRow } from "@/lib/reportAssetStore";
+import {
+  bandOf,
+  isCustomSlot,
+  keyOf,
+  measuredAxes,
+  slotOf,
+  slotOrder,
+  templateGrades,
+  type SlotId,
+  type TemplateGrade,
+} from "@/lib/reportAssets";
+import { addSlot, useCustomSlots, useEveryTemplate, type TemplateRow } from "@/lib/reportAssetStore";
 import { axes } from "@/lib/result";
-import { surveyBands, type SurveyBand } from "@/lib/surveyBands";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { Body, PageHead, SeedNote, Status, Tab, Tag } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, SeedNote, Status, Tag } from "@/components/admin2/ui";
 
 /**
  * ADM-08-1 해석 템플릿 — 목록.
  *
- * 탭이 학년대다. 이 화면에서 사람이 하는 일은 「한 학년대의 문구를 채우는 것」이라, 학년대를
- * 옮기는 것이 곧 조회 조건이다. 탭에 「채운 칸 / 전체」를 함께 적어 어느 학년대가 비었는지를
- * 탭 줄에서 바로 보게 한다 — 그것이 이 화면의 첫 물음이다.
+ * 학년은 탭이 아니라 조회 조건 「학년」이다(2026-09-22 요청). 문구를 초1 ~ 중3 학년마다 따로 쓰게
+ * 되면서 탭이 아홉이 되어 한 줄에 서지 않았다. 「학년마다 채운 칸 / 전체」는 표 위 한 줄에 모아
+ * 어느 학년이 비었는지를 먼저 보게 한다 — 그것이 이 화면의 첫 물음이다.
  *
  * ── 격자가 아니라 표인 까닭 ──
  * 「축 × 밴드」 격자를 먼저 짜 보았다. 그런데 자리(slot)마다 붙는 차원이 다르다 — 유형
@@ -35,33 +46,34 @@ import { Body, PageHead, SeedNote, Status, Tab, Tag } from "@/components/admin2/
  *   뺀 것과 같은 까닭이고, 이 콘솔의 다른 목록도 전부 그렇게 간다.
  */
 
-type TabId = SurveyBand;
-
 export default function TemplatesView() {
-  const [tab, setTab] = useState<TabId>("e34");
+  const [adding, setAdding] = useState(false);
   const hydrated = useHydrated();
+  const custom = useCustomSlots();
 
-  const rows = useAllTemplates(tab);
+  const rows = useEveryTemplate();
 
-  /* 탭마다 「채운 칸 / 전체」를 세려면 네 학년대를 다 세어야 한다. 훅은 조건 없이
-     넷을 다 부른다 — 지금 탭만 세면 다른 탭이 비었는지를 이 화면에서 볼 수 없다 */
-  const e34 = useAllTemplates("e34");
-  const e56 = useAllTemplates("e56");
-  const m1 = useAllTemplates("m1");
-  const m23 = useAllTemplates("m23");
-  const filled = useMemo(
-    () => ({
-      e34: e34.filter((r) => !r.empty).length,
-      e56: e56.filter((r) => !r.empty).length,
-      m1: m1.filter((r) => !r.empty).length,
-      m23: m23.filter((r) => !r.empty).length,
-    }),
-    [e34, e56, m1, m23],
+  /* 학년마다 「채운 칸 / 전체」 — 표 위 한 줄에 모아 어느 학년이 비었는지를 먼저 본다 */
+  const byGrade = useMemo(
+    () =>
+      templateGrades.map((g) => {
+        const mine = rows.filter((r) => r.grade === g.id);
+        return { ...g, filled: mine.filter((r) => !r.empty).length, total: mine.length };
+      }),
+    [rows],
   );
-  const total = e34.length;
 
   const cols: Col<TemplateRow>[] = useMemo(
     () => [
+      {
+        key: "grade",
+        head: "학년",
+        width: "5rem",
+        nowrap: true,
+        value: (r) => gradeShort(r.grade),
+        sort: (r) => GRADE_RANK(r.grade),
+        cell: (r) => <span className="a2-t-sm font-semibold text-(--a2-ink-2)">{gradeShort(r.grade)}</span>,
+      },
       {
         key: "slot",
         head: "자리",
@@ -70,8 +82,10 @@ export default function TemplatesView() {
         value: (r) => slotOf(r.slot).label,
         sort: (r) => SLOT_RANK(r.slot),
         cell: (r) => (
-          <span title={slotOf(r.slot).guide}>
+          <span title={slotOf(r.slot).guide} className="inline-flex flex-col">
             <span className="font-semibold text-(--a2-ink)">{slotOf(r.slot).label}</span>
+            {/* 운영자가 더한 자리 — 씨앗 자리와 갈라 보여야 지울 수 있는 자리인지 안다 */}
+            {isCustomSlot(r.slot) && <span className="a2-t-xs text-(--a2-accent)">추가한 자리</span>}
           </span>
         ),
       },
@@ -144,7 +158,7 @@ export default function TemplatesView() {
             <Status tone="warn">빈 칸</Status>
           ) : r.edited ? (
             <span title={`${r.editedAt} · ${r.editedBy}`}>
-              <Status tone="info">고침</Status>
+              <Status tone="info">{isCustomSlot(r.slot) ? "작성" : "고침"}</Status>
             </span>
           ) : (
             <Status tone="muted">기본 문구</Status>
@@ -172,6 +186,12 @@ export default function TemplatesView() {
   const filters: Filter<TemplateRow>[] = useMemo(
     () => [
       {
+        id: "grade",
+        label: "학년",
+        options: templateGrades.map((g) => ({ value: g.id, label: g.label })),
+        match: (r, v) => r.grade === v,
+      },
+      {
         id: "state",
         label: "상태",
         options: [
@@ -185,7 +205,7 @@ export default function TemplatesView() {
       {
         id: "slot",
         label: "자리",
-        options: slotOrder.map((s) => ({ value: s, label: slotOf(s).label })),
+        options: [...slotOrder, ...custom.map((c) => c.id)].map((s) => ({ value: s, label: slotOf(s).label })),
         match: (r, v) => r.slot === v,
       },
       {
@@ -197,42 +217,45 @@ export default function TemplatesView() {
         match: (r, v) => r.axis === v,
       },
     ],
-    [],
+    [custom],
   );
-
-  const gap = rows.filter((r) => r.empty).length;
 
   return (
     <>
       <PageHead
         title="해석 템플릿"
-        tabsLabel="학년대별 조회 조건"
-        tabs={surveyBands.map((b) => (
-          <Tab
-            key={b.id}
-            label={b.label}
-            /* 「채운 칸/전체」 — 어느 학년대가 비었는지를 탭 줄에서 바로 본다 */
-            count={hydrated ? `${n(filled[b.id])}/${n(total)}` : undefined}
-            active={tab === b.id}
-            onClick={() => setTab(b.id)}
-          />
-        ))}
+        actions={
+          <button type="button" className="a2-btn a2-btn-primary" onClick={() => setAdding(true)}>
+            템플릿 추가
+          </button>
+        }
       />
 
-      {hydrated && gap > 0 && (
+      {/* 학년마다 채운 칸 — 빈 학년이 먼저 눈에 걸린다. 빈 칸은 조립할 때 같은 학년대의 다른 학년,
+          그다음 초등 3학년 문구로 물러선다(물러선 사실은 조립 규칙 화면의 미리보기에 적힌다) */}
+      {hydrated && (
         <Body className="pb-0">
-          <p className="a2-note" style={{ borderLeftColor: "var(--a2-warn)" }}>
-            <span>
-              {gradeLabel(tab)}에 아직 쓰지 않은 칸이 {n(gap)}개 있습니다. 조립할 때 그 자리는
-              초등 3~4학년 문구로 물러섭니다 — 물러선 사실은 조립 규칙 화면의 미리보기에
-              적힙니다.
+          <p className="a2-note flex-wrap" style={{ borderLeftColor: "var(--a2-info)" }}>
+            <span className="font-semibold">학년마다 채운 칸</span>
+            {byGrade.map((g) => (
+              <span key={g.id} className="a2-t-sm">
+                {g.short}{" "}
+                <span
+                  className="a2-num font-bold"
+                  style={{ color: g.filled < g.total ? "var(--a2-warn)" : "var(--a2-ok)" }}
+                >
+                  {n(g.filled)}/{n(g.total)}
+                </span>
+              </span>
+            ))}
+            <span className="a2-t-xs text-(--a2-ink-4)">
+              빈 칸은 같은 학년대의 다른 학년, 그다음 초등 3학년 문구로 물러섭니다.
             </span>
           </p>
         </Body>
       )}
 
       <DataTable
-        key={tab}
         rows={rows}
         cols={cols}
         getKey={(r) => r.id}
@@ -241,6 +264,8 @@ export default function TemplatesView() {
         searchHint="문구 · 제목 · 축 검색"
         empty="조건에 맞는 칸이 없습니다."
       />
+
+      {adding && <AddSlotDialog onClose={() => setAdding(false)} />}
 
       <SeedNote>
         고친 문구는 이 브라우저에만 저장됩니다(lib/reportAssetStore.ts). 기본 문구는
@@ -252,7 +277,128 @@ export default function TemplatesView() {
 }
 
 
-/** 표의 기본 순서 — 리포트에 서는 차례 그대로 */
-const SLOT_RANK = (id: SlotId) => slotOrder.indexOf(id);
+const GRADE_RANK = (g: TemplateGrade) => templateGrades.findIndex((x) => x.id === g);
+const gradeShort = (g: TemplateGrade) => templateGrades.find((x) => x.id === g)?.short ?? g;
+
+/** 표의 기본 순서 — 리포트에 서는 차례 그대로. 더한 자리는 맨 뒤 */
+const SLOT_RANK = (id: SlotId) => (slotOrder.includes(id) ? slotOrder.indexOf(id) : 100);
+
+/**
+ * 템플릿 추가 — 리포트에 새 자리(절)를 더한다 (2026-09-22 요청).
+ *
+ * 씨앗 자리 여섯은 칸이 이미 다 깔려 있어(자리 × 학년대 × 축 × 밴드) 「쓰기」로 채운다. 그 밖의 절
+ * (「선생님 한마디」 · 「다음 진단 안내」 …)을 리포트에 붙이고 싶을 때 여기서 자리를 만든다. 만들면
+ * 학년대마다 빈 칸이 목록에 서고, 조립 규칙에도 한 줄이 따라 서서(맨 끝 차례) 문구를 채우는 순간부터
+ * 다음 조립에 붙는다. 채우지 않은 학년대는 다른 칸처럼 초등 3~4학년 문구로 물러선다.
+ *
+ * 축마다 · 밴드마다 다른 글인지를 여기서 정한다. 만든 뒤에는 바꾸지 않는다 — 바꾸면 이미 쓴 칸의
+ * 열쇠가 달라져 쓴 문구가 격자에서 떨어져 나간다. 잘못 만들었으면 지우고 다시 만든다(상세 화면).
+ */
+function AddSlotDialog({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const by = useAdminPrefs().staffName || "운영자";
+  const [label, setLabel] = useState("");
+  const [section, setSection] = useState("");
+  const [guide, setGuide] = useState("");
+  const [byAxis, setByAxis] = useState(false);
+  const [byBand, setByBand] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cells = (byAxis ? measuredAxes.length : 1) * (byBand ? 3 : 1);
+
+  const submit = () => {
+    const id = addSlot({ label, section, guide, byAxis, byBand }, by);
+    if (!id) {
+      setError(label.trim() ? "같은 이름의 자리가 이미 있습니다." : "자리 이름을 적어 주세요.");
+      return;
+    }
+    /* 만든 자리의 첫 칸(초등 3학년 — 빈 칸이 물러서는 학년)으로 바로 들어가 문구를 쓴다 */
+    router.push(
+      `/admin2/reports/templates/${keyOf(
+        id,
+        "e3",
+        byAxis ? measuredAxes[0].id : null,
+        byBand ? "L3" : null,
+      )}`,
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="a2-add-slot"
+        className="a2-panel w-full max-w-[34rem]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-(--a2-line) px-5 py-3.5">
+          <h2 id="a2-add-slot" className="a2-h">
+            템플릿 추가
+          </h2>
+          <p className="mt-1 a2-t-sm text-(--a2-ink-3)">
+            리포트에 새 절을 더합니다. 만들면 학년마다 빈 칸이 생기고, 문구를 채우면 다음 조립부터 붙습니다.
+          </p>
+        </div>
+        <div className="a2-form">
+          <FormRow label="자리 이름" req>
+            <input
+              className="a2-input"
+              value={label}
+              autoFocus
+              placeholder="예) 선생님 한마디"
+              onChange={(e) => {
+                setLabel(e.target.value);
+                setError(null);
+              }}
+            />
+          </FormRow>
+          <FormRow label="리포트 절 제목" hint="비우면 자리 이름을 씁니다.">
+            <input
+              className="a2-input"
+              value={section}
+              placeholder={label.trim() || "리포트에 서는 절 이름"}
+              onChange={(e) => setSection(e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="쓰는 안내" hint="이 자리의 글이 무엇을 말해야 하는지 — 문구를 쓰는 화면에 그대로 섭니다.">
+            <textarea
+              className="a2-textarea"
+              rows={2}
+              value={guide}
+              placeholder="예) 담당 전문가가 이번 진단에서 가장 눈여겨본 점을 한두 문장으로 적습니다."
+              onChange={(e) => setGuide(e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="나눠 쓰기" hint={`학년마다 ${cells}칸 · 모두 ${cells * templateGrades.length}칸이 생깁니다.`}>
+            <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              <label className="a2-choice">
+                <input type="checkbox" checked={byAxis} onChange={(e) => setByAxis(e.target.checked)} />
+                재능 축마다 다른 글
+              </label>
+              <label className="a2-choice">
+                <input type="checkbox" checked={byBand} onChange={(e) => setByBand(e.target.checked)} />
+                발현 밴드마다 다른 글
+              </label>
+            </span>
+          </FormRow>
+        </div>
+        {error && (
+          <p className="a2-note mx-5 mt-3" style={{ borderLeftColor: "var(--a2-danger)" }}>
+            <span>{error}</span>
+          </p>
+        )}
+        <div className="flex justify-end gap-1.5 px-5 py-3.5">
+          <button type="button" className="a2-btn" onClick={onClose}>
+            그만두기
+          </button>
+          <button type="button" className="a2-btn a2-btn-primary" disabled={!label.trim()} onClick={submit}>
+            추가하고 문구 쓰기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const axisLabel = (id: string) => axes.find((a) => a.id === id)?.label ?? id;

@@ -9,6 +9,7 @@ import {
   bandOf,
   condText,
   crossKeyOf,
+  templateGrades,
   type CrossKey,
   type Rule,
 } from "@/lib/reportAssets";
@@ -25,7 +26,6 @@ import {
   type PreviewInput,
 } from "@/lib/reportAssetStore";
 import { axes } from "@/lib/result";
-import { surveyBands } from "@/lib/surveyBands";
 import { Body, FormRow, PageHead, Panel, SeedNote, Status, Tag } from "@/components/admin2/ui";
 
 /**
@@ -62,7 +62,7 @@ export default function RulesView() {
 
   /* 표본 — 이 값으로 규칙이 걸리는지 본다. 씨앗 리포트의 교차 셀에 걸린 아이를 본떠 둔다 */
   const [sample, setSample] = useState<PreviewInput>({
-    grade: "e34",
+    grade: "e3",
     topAxis: "nature",
     topScore: 74,
     lowAxis: "logic",
@@ -168,17 +168,17 @@ export default function RulesView() {
         <div className="grid content-start gap-3">
           <Panel title="표본" flush>
             <div className="a2-form">
-              <FormRow label="학년대">
+              <FormRow label="학년">
                 <select
                   className="a2-select"
                   style={{ maxWidth: "10rem" }}
-                  aria-label="학년대"
+                  aria-label="학년"
                   value={sample.grade}
                   onChange={(e) =>
                     setSample({ ...sample, grade: e.target.value as PreviewInput["grade"] })
                   }
                 >
-                  {surveyBands.map((b) => (
+                  {templateGrades.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.label}
                     </option>

@@ -11,7 +11,6 @@ import {
   aiVerdictLabel,
   formTextOf,
   humanReviewable,
-  reviewChecks,
   runAiAudit,
   stateLabel,
   typeTextOf,
@@ -47,21 +46,12 @@ import { Body, PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 
 const dash = <span className="text-(--a2-ink-4)">—</span>;
 
-/**
- * 3단 중 몇을 짚어 두었나 — 쓰다 만 검수의 진척.
- *
- * ok가 null인 칸은 아직 안 본 것이다. 「걸림(false)」과 「안 봄(null)」은 다른 상태라
- * 참인 것만 세면 걸린 칸을 안 짚은 것으로 세게 된다.
- */
-function progressOf(i: ItemDraft) {
-  return i.reviewDraft?.checks.filter((c) => c.ok !== null).length ?? 0;
-}
 
-type TabId = "ai" | "human" | "started" | "approved" | "rejected";
+type TabId = "all" | "ai" | "human" | "started" | "approved" | "rejected";
 
 export default function ReviewQueue() {
   const items = useItems();
-  const [tab, setTab] = useState<TabId>("ai");
+  const [tab, setTab] = useState<TabId>("all");
 
   /* 오래 기다린 것이 위로. 넘긴 시각을 따로 들고 있지 않으므로 마지막으로 고친 때를
      쓴다 — 제출이 곧 마지막 손질이라 실제로 같은 값이다 */
@@ -93,6 +83,13 @@ export default function ReviewQueue() {
    */
   const tabs = useMemo(
     () => [
+      /* 전체 — 검수에 오른 문항 모두(검수 대기 · 승인됨 · 반려됨). 검수 대기가 위로, 오래 기다린 것부터 */
+      {
+        id: "all" as TabId,
+        label: "전체",
+        rows: [...waiting, ...judgedRows],
+        empty: "검수에 오른 문항이 없습니다.",
+      },
       {
         id: "ai" as TabId,
         label: "AI 검수 대기",
@@ -107,7 +104,7 @@ export default function ReviewQueue() {
       },
       {
         id: "started" as TabId,
-        label: "짚는 중",
+        label: "반려 작성 중",
         rows: waiting.filter((i) => i.reviewDraft),
         empty: "누군가 열어 둔 검수가 없습니다.",
       },
@@ -269,17 +266,17 @@ export default function ReviewQueue() {
         nowrap: true,
         value: (r) =>
           r.reviewDraft
-            ? `짚는 중 ${progressOf(r)}`
+            ? "반려 작성 중"
             : r.aiAudit
               ? `AI ${aiVerdictLabel[r.aiAudit.verdict]}`
               : aiAuditable(r)
                 ? "AI 검수 전"
                 : "",
-        sort: (r) => (r.reviewDraft ? -progressOf(r) - 10 : r.aiAudit ? -1 : 0),
+        sort: (r) => (r.reviewDraft ? -10 : r.aiAudit ? -1 : 0),
         cell: (r) =>
           r.reviewDraft ? (
             <span className="a2-t-sm" style={{ color: "var(--a2-warn)" }}>
-              짚는 중 {progressOf(r)}/{reviewChecks.length}
+              반려 작성 중
             </span>
           ) : r.aiAudit ? (
             <span title={`${r.aiAudit.at} · 규칙 위반 ${r.aiAudit.blocks} · 확인 필요 ${r.aiAudit.warns}`}>
@@ -425,7 +422,7 @@ export default function ReviewQueue() {
                 disabled={batch.length === 0}
                 onClick={() => printAudit(batch)}
               >
-                결과 인쇄
+                보고서 인쇄
               </button>
               <button
                 type="button"
@@ -433,7 +430,7 @@ export default function ReviewQueue() {
                 disabled={batch.length === 0}
                 onClick={() => downloadAuditCsv(batch)}
               >
-                결과 다운로드
+                보고서 다운로드
               </button>
               <button
                 type="button"

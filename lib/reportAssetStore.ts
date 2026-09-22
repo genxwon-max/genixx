@@ -3,7 +3,6 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { AxisId } from "./result";
 import { axes } from "./result";
-import type { SurveyBand } from "./surveyBands";
 import { labelCheck, type LabelFinding } from "./labelCheck";
 import {
   bandFromScore,
@@ -16,6 +15,9 @@ import {
   keyOf,
   seedRules,
   seedTemplates,
+  gradesOfBand,
+  setCustomSlots,
+  templateGrades,
   slotOf,
   slotOrder,
   type Band,
@@ -23,10 +25,12 @@ import {
   type CrossCellRule,
   type CrossCuts,
   type CrossKey,
+  type CustomSlot,
   type Rule,
   type RuleCond,
   type SlotId,
   type Template,
+  type TemplateGrade,
 } from "./reportAssets";
 
 /**
@@ -100,6 +104,8 @@ export type Assets = {
   cutLog?: CutRev[];
   cross?: Record<string, CrossEdit>;
   crossCuts?: CrossCuts;
+  /** 운영자가 해석 템플릿 화면에서 더한 자리 — 리포트 맨 끝 쪽에 새 절로 붙는다 */
+  slots?: CustomSlot[];
 };
 
 const EMPTY: Assets = { templates: {}, rules: {} };
@@ -120,7 +126,32 @@ function read(): Assets {
   } catch {
     cacheValue = EMPTY;
   }
+  cacheValue = migrateGrades(cacheValue);
+  /* 더한 자리를 slotOf · parseKey가 보는 목록에 올린다(lib/reportAssets.ts setCustomSlots) */
+  setCustomSlots(cacheValue.slots ?? []);
   return cacheValue;
+}
+
+/**
+ * 학년대로 고쳐 둔 문구(「top-e34-language-L3」)를 학년마다의 칸(e3 · e4)으로 옮긴다.
+ *
+ * 템플릿 학년을 학년대 넷에서 학년 하나씩으로 바꿨다(2026-09-22). 옛 열쇠를 그대로 두면 고쳐 둔
+ * 문구가 격자에서 떨어져 나가 씨앗 문구로 되돌아간 것처럼 보인다. 새 열쇠에 이미 고친 것이 있으면
+ * 그것을 남긴다. 옮긴 값은 다음 저장 때 함께 적힌다.
+ */
+function migrateGrades(a: Assets): Assets {
+  const old = Object.keys(a.templates).filter((k) => /-(e34|e56|m23)-/.test(k));
+  if (old.length === 0) return a;
+  const templates = { ...a.templates };
+  for (const k of old) {
+    const [slot, band, axis, bnd] = k.split("-");
+    for (const g of gradesOfBand[band as keyof typeof gradesOfBand] ?? []) {
+      const nk = `${slot}-${g}-${axis}-${bnd}`;
+      if (!templates[nk]) templates[nk] = a.templates[k];
+    }
+    delete templates[k];
+  }
+  return { ...a, templates };
 }
 
 function write(next: Assets) {
@@ -168,7 +199,7 @@ const seedMap = new Map(seedTemplates.map((x) => [x.id, x]));
 function rowOf(
   a: Assets,
   slot: SlotId,
-  grade: SurveyBand,
+  grade: TemplateGrade,
   axis: AxisId | null,
   band: Band | null,
 ): TemplateRow {
@@ -201,7 +232,7 @@ export function useTemplateById(id: string): TemplateRow | null {
 }
 
 /** 한 슬롯 × 한 학년대의 격자 — 빈 칸까지 전부 선다 */
-export function useTemplateGrid(slot: SlotId, grade: SurveyBand): TemplateRow[] {
+export function useTemplateGrid(slot: SlotId, grade: TemplateGrade): TemplateRow[] {
   const a = useAssets();
   return useMemo(() => {
     const s = slotOf(slot);
@@ -213,12 +244,22 @@ export function useTemplateGrid(slot: SlotId, grade: SurveyBand): TemplateRow[] 
   }, [a, slot, grade]);
 }
 
-/** 학년대 하나의 모든 칸 — 「몇 칸이 비었나」를 세는 데 쓴다 */
-export function useAllTemplates(grade: SurveyBand): TemplateRow[] {
+/** 모든 학년의 모든 칸 — 학년 차례, 그 안에서 자리 차례. 목록이 조회 조건 「학년」으로 거른다 */
+export function useEveryTemplate(): TemplateRow[] {
   const a = useAssets();
-  return useMemo(() => {
+  return useMemo(() => templateGrades.flatMap((g) => allOf(a, g.id)), [a]);
+}
+
+/** 학년 하나의 모든 칸 — 「몇 칸이 비었나」를 세는 데 쓴다 */
+export function useAllTemplates(grade: TemplateGrade): TemplateRow[] {
+  const a = useAssets();
+  return useMemo(() => allOf(a, grade), [a, grade]);
+}
+
+function allOf(a: Assets, grade: TemplateGrade): TemplateRow[] {
+  {
     const out: TemplateRow[] = [];
-    for (const s of slotOrder) {
+    for (const s of [...slotOrder, ...(a.slots ?? []).map((x) => x.id)]) {
       const def = slotOf(s);
       const axisList: (AxisId | null)[] = def.byAxis
         ? axes.filter((x) => x.subject).map((x) => x.id)
@@ -227,13 +268,13 @@ export function useAllTemplates(grade: SurveyBand): TemplateRow[] {
       for (const axis of axisList) for (const band of bandList) out.push(rowOf(a, s, grade, axis, band));
     }
     return out;
-  }, [a, grade]);
+  }
 }
 
 
 /** 씨앗 규칙에 고친 것을 덮어 차례대로 세운다 — 훅과 조립이 같은 것을 쓴다 */
 function rulesOf(a: Assets): (Rule & { edited: boolean })[] {
-  return seedRules
+  return [...seedRules, ...(a.slots ?? []).map(customRule)]
     .map((r) => {
       const e = a.rules[r.id];
       return {
@@ -246,6 +287,23 @@ function rulesOf(a: Assets): (Rule & { edited: boolean })[] {
       };
     })
     .sort((x, y) => x.order - y.order || x.id.localeCompare(y.id));
+}
+
+/**
+ * 더한 자리의 규칙 — 자리를 더하면 규칙 하나가 따라 선다. 규칙이 없으면 문구를 채워도 리포트에
+ * 붙지 않는다. 축마다 다른 글이면 가장 높은 축의 문구를, 아니면 늘 붙인다. 차례 · 켜고 끄기 ·
+ * 근거 줄은 조립 규칙 화면에서 씨앗 규칙과 똑같이 고친다(a.rules에 같은 열쇠로 덮는다).
+ */
+function customRule(s: CustomSlot, k: number): Rule {
+  return {
+    id: `R-${s.id}`,
+    label: s.label,
+    desc: s.guide || "운영자가 해석 템플릿 화면에서 더한 자리",
+    slot: s.id,
+    cond: s.byAxis ? { kind: "topAxis" } : { kind: "always" },
+    order: 100 + k * 10,
+    on: true,
+  };
 }
 
 const cutsOf = (a: Assets): BandCuts => a.cuts ?? defaultCuts;
@@ -329,6 +387,55 @@ export function saveTemplate(id: string, title: string, text: string, by: string
   return true;
 }
 
+/**
+ * 자리를 더한다 — 리포트에 새 절이 생긴다. 학년대 넷 × (축) × (밴드)만큼 빈 칸이 목록에 선다.
+ * 이름이 비었거나 이미 있는 자리 이름이면 null.
+ */
+export function addSlot(
+  input: { label: string; section: string; guide: string; byAxis: boolean; byBand: boolean },
+  by: string,
+): CustomSlot["id"] | null {
+  const label = input.label.trim();
+  if (!label) return null;
+  const cur = read();
+  const taken = [...slotOrder.map((x) => slotOf(x).label), ...(cur.slots ?? []).map((x) => x.label)];
+  if (taken.includes(label)) return null;
+  const id = `c${Date.now().toString(36)}` as CustomSlot["id"];
+  const slot: CustomSlot = {
+    id,
+    label,
+    section: input.section.trim() || label,
+    guide: input.guide.trim(),
+    byAxis: input.byAxis,
+    byBand: input.byBand,
+    createdAt: now(),
+    createdBy: by,
+  };
+  write({ ...cur, slots: [...(cur.slots ?? []), slot] });
+  return id;
+}
+
+/**
+ * 더한 자리를 지운다 — 그 자리의 문구와 규칙 고침도 함께 걷는다. 씨앗 자리는 지우지 못한다.
+ * 이미 발행된 리포트는 조립 때 문장을 복사해 담았으므로 그대로다.
+ */
+export function removeSlot(id: string) {
+  const cur = read();
+  if (!(cur.slots ?? []).some((x) => x.id === id)) return;
+  const templates = Object.fromEntries(
+    Object.entries(cur.templates).filter(([k]) => !k.startsWith(`${id}-`)),
+  );
+  const rules = { ...cur.rules };
+  delete rules[`R-${id}`];
+  write({ ...cur, slots: (cur.slots ?? []).filter((x) => x.id !== id), templates, rules });
+}
+
+/** 더한 자리 목록 */
+export function useCustomSlots(): CustomSlot[] {
+  return useAssets().slots ?? EMPTY_SLOTS;
+}
+const EMPTY_SLOTS: CustomSlot[] = [];
+
 /** 고친 것을 물리고 씨앗 문구로 되돌린다 — 씨앗에 없던 칸이면 다시 빈 칸이 된다 */
 export function resetTemplate(id: string) {
   const cur = read();
@@ -398,7 +505,7 @@ export function useCutLog(): CutRev[] {
  * 「그러면 어떤 블록이 붙나」를 본다. 규칙을 고치는 사람이 알고 싶은 것이 바로 그것이다.
  */
 export type PreviewInput = {
-  grade: SurveyBand;
+  grade: TemplateGrade;
   topAxis: AxisId;
   topScore: number;
   lowAxis: AxisId | null;
@@ -450,7 +557,15 @@ function fires(c: RuleCond, v: PreviewInput, a: Assets): boolean {
  * 물러서고, **물러섰다는 사실을 값에 담아** 화면이 그것을 적게 한다 — 조용히 물러서면
  * 「중1 문구를 다 썼다」고 착각한 채로 리포트가 나간다.
  */
-const FALLBACK: SurveyBand = "e34";
+/**
+ * 물러서는 차례 — 같은 옛 학년대의 다른 학년(4학년이 비면 3학년), 그다음 초등 3학년.
+ * 초등 3 · 4학년은 씨앗이 온전히 차 있다.
+ */
+function fallbacksOf(g: TemplateGrade): TemplateGrade[] {
+  const band = templateGrades.find((x) => x.id === g)!.band;
+  const sibling = gradesOfBand[band].filter((x) => x !== g);
+  return [...sibling, "e3" as TemplateGrade].filter((x, k, all) => x !== g && all.indexOf(x) === k);
+}
 
 function build(
   a: Assets,
@@ -489,11 +604,14 @@ function build(
 
         let row = rowOf(a, r.slot, v.grade, axis, useBand);
         let fellBack = false;
-        if (row.empty && v.grade !== FALLBACK) {
-          const back = rowOf(a, r.slot, FALLBACK, axis, useBand);
-          if (!back.empty) {
-            row = back;
-            fellBack = true;
+        if (row.empty) {
+          for (const g of fallbacksOf(v.grade)) {
+            const back = rowOf(a, r.slot, g, axis, useBand);
+            if (!back.empty) {
+              row = back;
+              fellBack = true;
+              break;
+            }
           }
         }
 

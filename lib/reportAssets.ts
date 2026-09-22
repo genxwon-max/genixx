@@ -1,6 +1,6 @@
 import type { AxisId } from "./result";
 import { axes } from "./result";
-import { surveyBands, type SurveyBand } from "./surveyBands";
+import type { SurveyBand } from "./surveyBands";
 
 /**
  * 리포트 자산 (ADM-08) — 조립되는 문구와 그 문구를 부르는 규칙.
@@ -94,7 +94,15 @@ export function bandFromScore(score: number, cuts: BandCuts): Band {
  * 미측정 안내처럼 축도 밴드도 붙지 않는 자리는 학년대마다 한 벌이면 된다. 축·밴드를
  * 전부 붙이면 8 × 3 × 4 = 96칸이 되는데 그중 아흔 칸은 같은 글을 복사한 것이 된다.
  */
-export type SlotId = "type" | "top" | "low" | "unmeasured" | "sources" | "activity" | "cross";
+export type BuiltinSlotId = "type" | "top" | "low" | "unmeasured" | "sources" | "activity" | "cross";
+
+/**
+ * 자리 열쇠 — 씨앗 자리 여섯(+ cross)과 운영자가 해석 템플릿 화면에서 더한 자리.
+ *
+ * 더한 자리는 「c」로 시작하는 글자다(c + 만든 시각). 열쇠를 「-」로 이어 붙이므로(keyOf) 그 글자를
+ * 쓰지 않는다.
+ */
+export type SlotId = BuiltinSlotId | `c${string}`;
 
 /* ⚠ cross는 슬롯 목록(slots)에 없다. 교차 해석 문구는 학년대가 아니라 **교차 셀**마다
    갈리므로 아래 crossCells가 든다 — 템플릿 격자에 두면 같은 글을 셀 수만큼 복사하게 된다 */
@@ -163,7 +171,24 @@ export const slots: Slot[] = [
   },
 ];
 
-export const slotOf = (id: SlotId) => slots.find((s) => s.id === id)!;
+/**
+ * 운영자가 더한 자리 — 저장소(lib/reportAssetStore.ts)가 읽을 때마다 여기에 올려 둔다.
+ *
+ * slotOf · parseKey는 화면 여러 곳(목록 · 상세 · 조립 규칙 · 조립)이 부르는데 저장소 값을 모른다.
+ * 그 모두에 더한 자리를 넘기게 고치는 대신, 저장소가 이 목록을 갈아 끼우고 두 함수가 함께 본다.
+ */
+export type CustomSlot = Slot & { createdAt: string; createdBy: string };
+
+const customSlots: CustomSlot[] = [];
+
+export function setCustomSlots(list: CustomSlot[]) {
+  customSlots.splice(0, customSlots.length, ...list);
+}
+
+export const isCustomSlot = (id: SlotId) => customSlots.some((s) => s.id === id);
+
+export const slotOf = (id: SlotId) =>
+  (slots.find((s) => s.id === id) ?? customSlots.find((s) => s.id === id))!;
 
 /**
  * 격자에 세우는 자리의 차례 — 리포트에 서는 순서 그대로.
@@ -198,7 +223,49 @@ export function cellsOf(slot: Slot): { axis: AxisId | null; band: Band | null }[
  * 빈 자리를 `-`가 아니라 `all`로 적는 까닭도 같다. `-`를 사이 글자로 쓰는데 빈 자리까지 `-`면
  * 열쇠를 도로 풀 때 어디가 사이인지 알 수 없다.
  */
-export const keyOf = (slot: SlotId, grade: SurveyBand, axis: AxisId | null, band: Band | null) =>
+/**
+ * 템플릿의 학년 — 초등 1~6학년 · 중학교 1~3학년을 하나씩 (2026-09-22 요청).
+ *
+ * 한동안 학년대 넷(초3~4 · 초5~6 · 중1 · 중2~3, SurveyBand)으로 문구를 갈랐다. 문항 은행이 학년을
+ * 하나씩 적게 되면서 여기도 학년마다 따로 쓴다 — 3학년과 4학년에게 하는 말이 다를 수 있다.
+ * 옛 학년대 문구는 그 학년대에 드는 학년마다 옮겨 담는다(씨앗은 seedTemplates, 고친 것은
+ * lib/reportAssetStore.ts의 read가 옮긴다).
+ */
+export type TemplateGrade = "e1" | "e2" | "e3" | "e4" | "e5" | "e6" | "m1" | "m2" | "m3";
+
+export const templateGrades: { id: TemplateGrade; label: string; short: string; band: SurveyBand }[] = [
+  { id: "e1", label: "초등 1학년", short: "초1", band: "e34" },
+  { id: "e2", label: "초등 2학년", short: "초2", band: "e34" },
+  { id: "e3", label: "초등 3학년", short: "초3", band: "e34" },
+  { id: "e4", label: "초등 4학년", short: "초4", band: "e34" },
+  { id: "e5", label: "초등 5학년", short: "초5", band: "e56" },
+  { id: "e6", label: "초등 6학년", short: "초6", band: "e56" },
+  { id: "m1", label: "중학교 1학년", short: "중1", band: "m1" },
+  { id: "m2", label: "중학교 2학년", short: "중2", band: "m23" },
+  { id: "m3", label: "중학교 3학년", short: "중3", band: "m23" },
+];
+
+/** 옛 학년대 → 그 학년대에 드는 학년. 1 · 2학년은 옛 학년대가 없어 빈 칸으로 시작한다 */
+export const gradesOfBand: Record<SurveyBand, TemplateGrade[]> = {
+  e34: ["e3", "e4"],
+  e56: ["e5", "e6"],
+  m1: ["m1"],
+  m23: ["m2", "m3"],
+};
+
+/**
+ * 명부의 학년 글자(「초4」 · 「4학년」 · 「중2」)에서 템플릿 학년을 고른다. 못 읽으면 초등 3학년.
+ * lib/surveyBands.ts의 bandFromGrade와 같은 규칙으로 읽는다.
+ */
+export function templateGradeFrom(grade?: string): TemplateGrade {
+  const t = (grade ?? "").trim();
+  const n = Number(t.match(/\d/)?.[0] ?? "");
+  if (t.includes("고")) return "m3";
+  if (t.includes("중")) return n >= 1 && n <= 3 ? (`m${n}` as TemplateGrade) : "m1";
+  return n >= 1 && n <= 6 ? (`e${n}` as TemplateGrade) : "e3";
+}
+
+export const keyOf = (slot: SlotId, grade: TemplateGrade, axis: AxisId | null, band: Band | null) =>
   `${slot}-${grade}-${axis ?? "all"}-${band ?? "all"}`;
 
 /**
@@ -210,14 +277,14 @@ export const keyOf = (slot: SlotId, grade: SurveyBand, axis: AxisId | null, band
  */
 export function parseKey(
   id: string,
-): { slot: SlotId; grade: SurveyBand; axis: AxisId | null; band: Band | null } | null {
+): { slot: SlotId; grade: TemplateGrade; axis: AxisId | null; band: Band | null } | null {
   const p = id.split("-");
   if (p.length !== 4) return null;
   const [slotRaw, gradeRaw, axisRaw, bandRaw] = p;
 
-  const slot = slots.find((x) => x.id === slotRaw);
+  const slot = slots.find((x) => x.id === slotRaw) ?? customSlots.find((x) => x.id === slotRaw);
   if (!slot) return null;
-  if (!surveyBands.some((b) => b.id === gradeRaw)) return null;
+  if (!templateGrades.some((b) => b.id === gradeRaw)) return null;
 
   /* 그 자리에 축·밴드가 붙는지까지 본다. 붙지 않는 자리에 축이 적힌 열쇠는
      격자에 없는 칸이라 받아 주지 않는다 */
@@ -229,7 +296,7 @@ export function parseKey(
   if (slot.byBand === (band === null)) return null;
   if (band && !bands.some((b) => b.id === band)) return null;
 
-  return { slot: slot.id, grade: gradeRaw as SurveyBand, axis, band };
+  return { slot: slot.id, grade: gradeRaw as TemplateGrade, axis, band };
 }
 
 /* ───────────────────────── 해석 템플릿 ───────────────────────── */
@@ -238,7 +305,7 @@ export type Template = {
   /** keyOf가 낸 값 */
   id: string;
   slot: SlotId;
-  grade: SurveyBand;
+  grade: TemplateGrade;
   axis: AxisId | null;
   band: Band | null;
   /** 리포트 블록의 제목 */
@@ -247,6 +314,7 @@ export type Template = {
   text: string;
 };
 
+/* 씨앗은 옛 학년대로 적어 두고, 그 학년대에 드는 학년마다 한 벌씩 편다(gradesOfBand) */
 const t = (
   slot: SlotId,
   grade: SurveyBand,
@@ -254,7 +322,8 @@ const t = (
   band: Band | null,
   title: string,
   text: string,
-): Template => ({ id: keyOf(slot, grade, axis, band), slot, grade, axis, band, title, text });
+): Template[] =>
+  gradesOfBand[grade].map((g) => ({ id: keyOf(slot, g, axis, band), slot, grade: g, axis, band, title, text }));
 
 /**
  * 씨앗 문구.
@@ -267,7 +336,7 @@ const t = (
  *   빈틈없이 차 있으면 그 물음을 화면에서 볼 수가 없다. 빈 칸은 조립할 때 같은 슬롯의
  *   초등 3~4학년 문구로 물러선다(lib/reportAssetStore.ts의 templateFor).
  */
-export const seedTemplates: Template[] = [
+export const seedTemplates: Template[] = ([
   /* ── 유형 판정 ── */
   t("type", "e34", "language", null, "이야기 탐험가형",
     "글에서 필요한 정보를 골라내고, 그것을 자기 문장으로 바꾸어 설명하는 데서 힘이 드러납니다. 읽기 자체보다 「읽고 나서 무엇을 하느냐」에서 차이가 납니다."),
@@ -335,7 +404,7 @@ export const seedTemplates: Template[] = [
     "집에서 하는 간단한 관찰에서도 「한 번에 하나만 바꾸기」를 지키면 실험 설계 감각이 생깁니다."),
   t("activity", "e56", "language", null, "다른 결말 써 보기",
     "이야기의 결말을 바꿔 쓰게 하면 이해와 창작이 같이 자랍니다. 왜 그렇게 바꿨는지 한 줄 덧붙이게 해 주세요."),
-];
+] as Template[][]).flat();
 
 /* ───────────────────────── 교차 셀 ─────────────────────────
    사이트맵 ADM-08-4가 이 화면에 요구한 것 — 「학력 부진 × 재능 강세」 같은 교차 셀에
@@ -605,4 +674,4 @@ export function condText(c: RuleCond): string {
 }
 
 /** 학년대 이름 — 화면이 여러 곳에서 쓴다 */
-export const gradeLabel = (g: SurveyBand) => surveyBands.find((b) => b.id === g)?.label ?? g;
+export const gradeLabel = (g: TemplateGrade) => templateGrades.find((b) => b.id === g)?.label ?? g;
