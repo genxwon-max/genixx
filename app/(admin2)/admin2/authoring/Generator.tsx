@@ -136,7 +136,7 @@ export default function Generator({
               hint={
                 isSet
                   ? "고른 문항을 세트 한 장에 담습니다 — 보기 하나를 함께 읽고 S1 → S4 차례로 묻습니다."
-                  : "고른 수만큼 단일 문항이 따로 생깁니다 — 문항마다 서로 다른 문제이고, 형식 · 배점은 단계의 기본값으로 들어갑니다."
+                  : "고른 수만큼 독립 문항이 따로 생깁니다 — 문항마다 서로 다른 문제이고, 형식 · 배점은 단계의 기본값으로 들어갑니다."
               }
             >
               <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">

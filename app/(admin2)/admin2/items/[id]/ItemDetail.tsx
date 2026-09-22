@@ -660,30 +660,58 @@ export default function ItemDetail({ id }: { id: string }) {
             <div className="a2-form a2-form-lg a2-card">
               {/* 보기 상자의 네모 테두리와 「[1~4]」 번호는 응시 화면이 그린다. 여기서는 상자 위
                   지시문과 상자 안에 들어갈 것만 쓴다 */}
-              <FormRow label="지시문">
-                <input
-                  className="a2-input"
-                  value={content.material.lead ?? ""}
-                  disabled={locked}
-                  placeholder="다음의 등잔과 초에 대한 설명을 읽고 물음에 답하시오."
-                  onChange={(e) =>
-                    setContent({
-                      ...content,
-                      material: { ...content.material, lead: e.target.value || undefined },
-                    })
-                  }
-                />
-              </FormRow>
-              {/* 다른 칸처럼 이름을 왼쪽에 둔다(2026-09-22 요청) */}
-              <FormRow label={view.form === "set" ? "보기 · 지문" : "지문"} req={view.form === "set"}>
-                <BlockEditor
-                  blocks={content.material.blocks}
-                  disabled={locked}
-                  onChange={(blocks) =>
-                    setContent({ ...content, material: { ...content.material, blocks } })
-                  }
-                />
-              </FormRow>
+              {view.form === "set" ? (
+                <>
+                  <FormRow label="지시문">
+                    <input
+                      className="a2-input"
+                      value={content.material.lead ?? ""}
+                      disabled={locked}
+                      placeholder="다음의 등잔과 초에 대한 설명을 읽고 물음에 답하시오."
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          material: { ...content.material, lead: e.target.value || undefined },
+                        })
+                      }
+                    />
+                  </FormRow>
+                  {/* 다른 칸처럼 이름을 왼쪽에 둔다(2026-09-22 요청) */}
+                  <FormRow label="보기 · 지문" req>
+                    <BlockEditor
+                      blocks={content.material.blocks}
+                      disabled={locked}
+                      onChange={(blocks) =>
+                        setContent({ ...content, material: { ...content.material, blocks } })
+                      }
+                    />
+                  </FormRow>
+                </>
+              ) : (
+                /* 독립 문항은 지시문과 지문을 한 칸 「지문」에 담는다(2026-09-22 요청) — 첫 줄이 지시문,
+                   그 아래가 자료 블록이다. 세트는 지시문이 「[1~4]」 묶음 머리라 칸을 따로 둔다 */
+                <FormRow label="지문">
+                  <input
+                    className="a2-input"
+                    value={content.material.lead ?? ""}
+                    disabled={locked}
+                    placeholder="다음의 등잔과 초에 대한 설명을 읽고 물음에 답하시오."
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        material: { ...content.material, lead: e.target.value || undefined },
+                      })
+                    }
+                  />
+                  <BlockEditor
+                    blocks={content.material.blocks}
+                    disabled={locked}
+                    onChange={(blocks) =>
+                      setContent({ ...content, material: { ...content.material, blocks } })
+                    }
+                  />
+                </FormRow>
+              )}
               {view.form === "single" && (
                 <QuestionContentRows
                   key={qs[0].id}

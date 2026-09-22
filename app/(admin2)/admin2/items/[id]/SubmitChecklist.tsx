@@ -94,7 +94,7 @@ function machineNote(id: string, item: ItemDraft): Note | null {
         "인정 예가 2개에 못 미칩니다",
       );
     case "chk-set":
-      return item.form === "single" ? none("단일 문항입니다") : null;
+      return item.form === "single" ? none("독립 문항입니다") : null;
     case "chk-natu":
       return qs.some((q) => q.talent === "NATU") ? null : none("자연-생태 문항이 아닙니다");
     default:
