@@ -64,7 +64,7 @@ export type AuditResult = {
 /* ── 편향·정서 낱말 ──
    낱말이 있다고 편향인 것은 아니다. 「우리 아파트 앞 놀이터」는 괜찮고 「몇 평
    아파트에 사는지」는 안 된다. 그래서 잡아서 사람에게 넘길 뿐 막지 않는다. */
-const SENSITIVE: {
+export const SENSITIVE: {
   words: string[];
   why: string;
   fix: string;
