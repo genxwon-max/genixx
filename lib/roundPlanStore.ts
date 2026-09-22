@@ -2,8 +2,15 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { currentRound, rounds, type Round, type RoundState } from "./admin";
-import { gradeBands, type GradeBand } from "./blueprint";
-import { formItems, type ExamForm } from "./formStore";
+import {
+  bandOfGrade,
+  firstGradeOf,
+  gradeBands,
+  gradeText,
+  type GradeBand,
+  type GradeNo,
+} from "./blueprint";
+import { formGradeOf, formItems, type ExamForm } from "./formStore";
 import { detailIsEmpty, type DetailMode } from "./richText";
 import type { ItemDraft } from "./itemStore";
 
@@ -150,6 +157,14 @@ export type RoundPlan = {
    * 안 본다」로 읽으면 이미 짜 둔 검사지가 화면에서 통째로 사라진다.
    */
   band?: GradeBand;
+  /**
+   * 이번 회차가 보는 학년 — 새 콘솔은 학년군이 아니라 **학년 하나**를 고른다
+   * (lib/blueprint.ts grades 주석). 고르면 band도 그 학년군으로 함께 적는다 — 옛 콘솔은
+   * band만 읽는다.
+   *
+   * 없으면 band의 앞 학년으로 읽는다(3·4 → 3학년). gradeFor.
+   */
+  grade?: GradeNo;
   /**
    * 이번 회차에 넣은 평가 과목 — **차례가 곧 응시 차례**다.
    *
@@ -354,6 +369,16 @@ export const allSlotKeys = planSubjects.flatMap((s) => gradeBands.map((g) => slo
 /** 이 회차가 보는 학년. 없으면 3·4학년 */
 export const bandFor = (plan: RoundPlan): GradeBand => plan.band ?? defaultBand;
 
+/** 새 회차의 기본 학년 */
+export const defaultGrade: GradeNo = 3;
+
+/** 이 회차가 보는 학년 하나 — 학년 없이 학년군만 든 회차는 그 앞 학년 */
+export const gradeFor = (plan: RoundPlan): GradeNo =>
+  plan.grade && bandOfGrade(plan.grade) === bandFor(plan) ? plan.grade : firstGradeOf(bandFor(plan));
+
+/** 새 콘솔의 칸 열쇠 — 과목:학년(「국어:3」). 옛 콘솔의 과목:학년군(「국어:3-4」)과 갈린다 */
+export const gradeSlotKey = (subject: ItemDraft["subject"], grade: GradeNo) => `${subject}:${grade}`;
+
 /**
  * 이 회차에 넣은 과목 — **넣은 차례 그대로**. 칸이 아예 없으면(옛 회차) 세 과목 전부.
  *
@@ -372,8 +397,9 @@ export const subjectsFor = (plan: RoundPlan): ItemDraft["subject"][] =>
  * 읽히고, 학년을 바깥에 두면 같은 과목이 표에서 갈라져 선다.
  */
 export function slotsFor(plan: RoundPlan): string[] {
-  const band = bandFor(plan);
-  return subjectsFor(plan).map((s) => slotKey(s, band));
+  /* 새 콘솔만 부른다 — 학년 하나로 칸을 짓는다. 옛 콘솔은 slotsOf의 기본값(학년군 여섯 칸)을 본다 */
+  const grade = gradeFor(plan);
+  return subjectsFor(plan).map((s) => gradeSlotKey(s, grade));
 }
 
 export type PlanSlot = {
@@ -381,6 +407,8 @@ export type PlanSlot = {
   key: string;
   subject: ItemDraft["subject"];
   band: GradeBand;
+  /** 학년 칸(새 콘솔)이면 그 학년. 학년군 칸(옛 콘솔)이면 없다 */
+  grade?: GradeNo;
   label: string;
   /**
    * 여럿을 이어 붙일 때 쓰는 짧은 이름 — 「국어 3·4」.
@@ -414,7 +442,40 @@ export function slotsOf(
      돌아왔더니 국어가 여전히 맨 위였다. 차례를 정하게 해 놓고 그 차례로 안 그리면
      정하는 일 자체가 뜻을 잃는다. */
   return only.flatMap((key): PlanSlot[] => {
-    const [subject, band] = key.split(":") as [ItemDraft["subject"], GradeBand];
+    const [subject, part] = key.split(":") as [ItemDraft["subject"], string];
+    /* 「국어:3」은 학년 칸(새 콘솔), 「국어:3-4」는 학년군 칸(옛 콘솔) */
+    if (/^[1-6]$/.test(part)) {
+      const grade = Number(part) as GradeNo;
+      const band = bandOfGrade(grade);
+      const form =
+        forms.find(
+          (f) =>
+            f.round === roundId &&
+            f.subject === subject &&
+            f.band === band &&
+            formGradeOf(f) === grade,
+        ) ?? null;
+      return [
+        {
+          key,
+          subject,
+          band,
+          grade,
+          label: `${subject} · ${gradeText(grade)}`,
+          short: `${subject} ${gradeText(grade)}`,
+          form,
+          picked: form ? formItems(form, items) : [],
+          pool: items.filter(
+            (i) =>
+              i.state === "approved" &&
+              i.subject === subject &&
+              i.gradeNo === grade &&
+              !form?.itemIds.includes(i.id),
+          ).length,
+        },
+      ];
+    }
+    const band = part as GradeBand;
     const g = gradeBands.find((x) => x.id === band);
     if (!g) return [];
     const form =
@@ -496,7 +557,7 @@ export function createRound(
     closesOn: string;
     closesAt: string;
     target: number;
-    band: GradeBand;
+    grade: GradeNo;
     subjects: ItemDraft["subject"][];
     notice?: RoundNote;
     caution?: RoundNote;
@@ -515,7 +576,8 @@ export function createRound(
       opensAt: input.opensAt,
       closesOn: input.closesOn,
       closesAt: input.closesAt,
-      band: input.band,
+      band: bandOfGrade(input.grade),
+      grade: input.grade,
       subjects: input.subjects,
       notice: input.notice,
       caution: input.caution,
@@ -525,7 +587,7 @@ export function createRound(
           at,
           by,
           action: "period",
-          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${input.band}학년`,
+          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${gradeText(input.grade)}`,
         },
       ],
     },
@@ -561,7 +623,7 @@ export function setRoundNotes(roundId: string, notes: { notice: RoundNote; cauti
  */
 export function setRoundPlan(
   roundId: string,
-  next: { band: GradeBand; subjects: ItemDraft["subject"][] },
+  next: { grade: GradeNo; subjects: ItemDraft["subject"][] },
   by: string,
 ) {
   const cur = read();
@@ -571,14 +633,15 @@ export function setRoundPlan(
     ...cur,
     [roundId]: {
       ...plan,
-      band: next.band,
+      band: bandOfGrade(next.grade),
+      grade: next.grade,
       subjects: next.subjects,
       log: [
         {
           at: now(),
           by,
           action: "period" as const,
-          text: `편성을 정했습니다 — ${next.subjects.join(" · ") || "과목 없음"} · ${next.band}학년`,
+          text: `편성을 정했습니다 — ${next.subjects.join(" · ") || "과목 없음"} · ${gradeText(next.grade)}`,
         },
         ...plan.log,
       ].slice(0, 40),

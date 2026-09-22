@@ -35,7 +35,7 @@ import { BriefPanel, QuestionBody, ScreenColumn } from "@/components/exam/ExamSe
  *
  * ── 검수하는 사람만 보는 것 ──
  * 이 화면은 아이가 아니라 **검수자**가 연다. 그래서 아이 화면 위에 정답 · 오답 의도 ·
- * 모범답안 · 허용 답안 · 부분점수 · 인정/불인정 예 · 재능 평가 관점 · 출제자 유의를
+ * 모범답안 · 허용 답안 · 부분점수 · 인정 예 · 재능 평가 관점 · 출제자 유의를
  * 겹쳐 얹는다. 그것들을 보려고 폼으로 되돌아가야 하면 「이 오답이 정말 그 오개념을
  * 잡는가」를 발문 옆에 두고 볼 수가 없다.
  *
@@ -45,7 +45,34 @@ import { BriefPanel, QuestionBody, ScreenColumn } from "@/components/exam/ExamSe
  *
  * ⚠ 답은 고를 수 있지만 아무 데도 안 남는다. 채점도 하지 않는다.
  */
-export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClose: () => void }) {
+/**
+ * 검사지 한 벌을 넘겨 보는 자리 — 평가별 문항관리의 「평가 미리보기」가 넘긴다.
+ *
+ * 응시 화면처럼 문항(세트) 하나씩 넘긴다. 번호는 검사지 전체에서 이어진다 — 3번째 문항 묶음의
+ * 첫 문항이 1번으로 서면 아이가 받는 번호와 달라진다.
+ */
+export type PreviewNav = {
+  /** 머리에 서는 이름 — 「국어 · 3학년」 */
+  title: string;
+  at: number;
+  total: number;
+  go: (k: number) => void;
+  /** 이 문항 앞에 선 문항 수 — 번호를 잇는다 */
+  offset: number;
+};
+
+/* ⚠ 넘기는 쪽은 문항마다 key를 바꿔 이 판을 새로 세운다(FormSlot). 풀던 답이 같은 id(q1 · q2 …)의
+     다음 문항에 남지 않게 — 판 안에서 답을 비우는 effect를 두는 것보다 곧다 */
+
+export default function ItemPreview({
+  item,
+  onClose,
+  nav,
+}: {
+  item: ItemDraft;
+  onClose: () => void;
+  nav?: PreviewNav;
+}) {
   const qs = item.questions;
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
   /* 검수하러 온 사람이 열므로 처음부터 켜 둔다. 아이 화면 그대로를 보려면 끈다 */
@@ -62,7 +89,6 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
   /**
    * 초점을 이 판 안으로 들이고, 닫을 때 부른 자리로 돌려준다.
    *
@@ -93,7 +119,7 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
     <div key={q.id}>
       <QuestionBody
         q={q}
-        num={bank.indexOf(q) + 1}
+        num={(nav?.offset ?? 0) + bank.indexOf(q) + 1}
         value={answers[q.id]}
         onAnswer={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))}
       />
@@ -137,19 +163,47 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
         <div className="flex items-center gap-3">
           <span className="font-brand text-[1.0625rem] font-semibold leading-none">GENIXX</span>
           <span aria-hidden className="hidden h-5 w-px bg-exam-line sm:block" />
-          <span className="hidden text-[13px] font-bold text-exam-muted sm:inline">
-            {assessment.name} 재능진단
+          <span className="hidden whitespace-nowrap text-[13px] font-bold text-exam-muted sm:inline">
+            {nav ? nav.title : `${assessment.name} 재능진단`}
           </span>
         </div>
+        {nav && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={nav.at === 0}
+              onClick={() => nav.go(nav.at - 1)}
+              className="whitespace-nowrap rounded-[6px] border border-exam-line bg-exam-panel px-3 py-1.5 text-[13px] font-semibold text-exam-text disabled:opacity-40"
+            >
+              ← 이전
+            </button>
+            <span className="whitespace-nowrap text-[13px] font-bold tabular-nums text-exam-text">
+              {nav.at + 1} / {nav.total}
+            </span>
+            <button
+              type="button"
+              disabled={nav.at === nav.total - 1}
+              onClick={() => nav.go(nav.at + 1)}
+              className="whitespace-nowrap rounded-[6px] border border-exam-line bg-exam-panel px-3 py-1.5 text-[13px] font-semibold text-exam-text disabled:opacity-40"
+            >
+              다음 →
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
-          <span className="hidden rounded-full bg-exam-bg px-3 py-1 text-[12px] font-bold text-exam-muted sm:inline">
+          {/* 넘김 단추가 선 머리에서는 넓은 화면에서만 — 좁으면 단추 글자가 두 줄로 접힌다 */}
+          <span
+            className={`hidden whitespace-nowrap rounded-full bg-exam-bg px-3 py-1 text-[12px] font-bold text-exam-muted ${
+              nav ? "xl:inline" : "sm:inline"
+            }`}
+          >
             미리보기 · 답은 저장되지 않습니다
           </span>
           <button
             type="button"
             aria-pressed={reveal}
             onClick={() => setReveal((v) => !v)}
-            className={`rounded-[6px] border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+            className={`whitespace-nowrap rounded-[6px] border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
               reveal
                 ? "border-exam-text bg-exam-text text-white"
                 : "border-exam-line bg-exam-panel text-exam-text hover:border-exam-muted"
@@ -160,7 +214,7 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[6px] border border-exam-line bg-exam-panel px-3 py-1.5 text-[13px] font-semibold text-exam-text transition-colors hover:border-exam-muted"
+            className="whitespace-nowrap rounded-[6px] border border-exam-line bg-exam-panel px-3 py-1.5 text-[13px] font-semibold text-exam-text transition-colors hover:border-exam-muted"
           >
             닫기 (Esc)
           </button>
@@ -173,7 +227,14 @@ export default function ItemPreview({ item, onClose }: { item: ItemDraft; onClos
         }`}
       >
         {hasBrief && (
-          <BriefPanel brief={content.material} range={set ? `1~${bank.length}` : null} />
+          <BriefPanel
+            brief={content.material}
+            range={
+              set
+                ? `${(nav?.offset ?? 0) + 1}~${(nav?.offset ?? 0) + bank.length}`
+                : null
+            }
+          />
         )}
         {/* 오른쪽 — 응시 화면은 한 화면씩 넘기지만, 미리보기는 화면들을 이어서 세운다 */}
         <div className="order-3 lg:order-2 lg:overflow-y-auto">
@@ -234,12 +295,8 @@ function RevealNotes({ q, cq }: { q: Question; cq?: ContentQuestion }) {
       )}
       {q.explain.trim() !== "" && <Keyed label="모범답안">{q.explain}</Keyed>}
       {q.rubric.trim() !== "" && <Keyed label="부분점수">{q.rubric}</Keyed>}
-      {(q.acceptExamples.trim() !== "" || q.rejectExamples.trim() !== "") && (
-        <div className="grid gap-3 md:grid-cols-2">
-          <Keyed label="인정 예">{q.acceptExamples.trim() || "—"}</Keyed>
-          <Keyed label="불인정 예">{q.rejectExamples.trim() || "—"}</Keyed>
-        </div>
-      )}
+      {/* 불인정 예는 출제 화면에서 걷었다 — 인정 예만 보인다 */}
+      {q.acceptExamples.trim() !== "" && <Keyed label="인정 예">{q.acceptExamples.trim()}</Keyed>}
       {(q.perspectiveHierarchy.trim() !== "" || q.perspectiveAbility.trim() !== "") && (
         <Keyed label="재능 평가 관점">
           {[

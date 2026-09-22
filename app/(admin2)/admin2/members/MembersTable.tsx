@@ -323,6 +323,7 @@ export default function MembersTable() {
           filters={pFilters}
           getKey={(r) => r.id}
           searchHint="이름 · ID · 연락처"
+          csv={{ name: "회원정보_학부모" }}
           empty="조건에 맞는 학부모가 없습니다."
         />
       ) : (
@@ -333,6 +334,7 @@ export default function MembersTable() {
           filters={tFilters}
           getKey={(r) => r.id}
           searchHint="이름 · ID · 연락처"
+          csv={{ name: "회원정보_교사" }}
           empty="조건에 맞는 교사가 없습니다."
         />
       )}

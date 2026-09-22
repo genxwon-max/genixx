@@ -107,6 +107,49 @@ export const levelSpecs: Record<Level, LevelSpec> = {
   },
 };
 
+/* ───────────────────────── 출제 예시 (2026-09-21 협의) ───────────────────────── */
+
+/**
+ * 문항 카드 칸마다 보여 주는 예시 — 출제 화면의 칸 아래 「예) …」 줄.
+ *
+ * 협의에서 「Tag A · B · 재능 평가 관점을 무엇을 어떻게 적는지 모르겠다」가 나왔다. 발주서
+ * 문장만 두면 칸마다 쓰는 사람의 해석이 달라져 검수에서 되돌아온다. 한 문항(국어 [4국04-02]
+ * 낱말의 의미 관계)을 끝까지 따라가는 예시로 맞춰 두었다 — 칸마다 다른 문항의 예시를 두면
+ * 칸 사이가 어떻게 이어지는지가 안 보인다.
+ */
+export const cardExamples = {
+  standardCode: "[4국04-02]",
+  standardText: "낱말과 낱말의 의미 관계를 파악한다.",
+  tagADetail: "반대말 짝 식별",
+  tagAIntent: "‘밝다–어둡다’처럼 뜻이 맞서는 낱말 짝을 알아보는지 확인한다.",
+  tagB: "언어 · LANG-01 어휘·의미 — 인지단계 S2와 함께 [LANG · LANG-01 · S2]로 읽힌다",
+} as const;
+
+/**
+ * 재능 평가 관점 예시 — 단계마다 다르다. 같은 [4국04-02] 문항을 단계를 올려 가며 적은 것이다.
+ *
+ *   인지 처리 위계 구체  이 문항을 풀 때 머릿속에서 어떤 처리가 몇 단계로 일어나는가
+ *   인지 능력 관련 수준  그 처리를 해내면 어떤 수준의 능력을 가진 것으로 읽는가
+ */
+export const perspectiveExamples: Record<Level, { hierarchy: string; ability: string }> = {
+  S1: {
+    hierarchy: "보기 낱말을 하나씩 보고 ‘기분을 나타내는 말’인지 가려낸다 — 재인 1단계, 추론 없음.",
+    ability: "학년 교과서 수준의 감정 어휘를 보고 알아보는 수준(어휘 재인).",
+  },
+  S2: {
+    hierarchy: "두 낱말의 뜻을 떠올림 → 둘 사이 관계(반대 · 포함)를 파악 → 같은 관계의 짝을 고름.",
+    ability: "낱말 사이의 의미 관계를 설명 없이도 가려내는 수준(관계 이해). 오개념 오답에 끌리면 관계를 뜻이 비슷한 것으로 읽는 단계.",
+  },
+  S3: {
+    hierarchy: "제시된 짝의 관계를 파악 → 그 관계를 새 낱말에 적용 → 짝이 되는 낱말을 직접 써냄.",
+    ability: "배운 의미 관계를 낯선 낱말에 옮겨 쓰는 수준(적용 · 산출). 관계는 맞고 낱말이 어색하면 부분점수.",
+  },
+  S4: {
+    hierarchy: "여러 낱말 짝의 공통 규칙을 찾음 → 규칙을 말로 일반화 → 규칙에 맞는 새 짝과 그 까닭을 구성.",
+    ability: "의미 관계를 스스로 규칙으로 세우고 근거를 대는 수준(일반화 · 정당화) — 언어 재능 신호가 나오는 자리.",
+  },
+};
+
 /** 문항 카드 ⑤의 「형식 · 배점 · b모수」 한 줄 */
 export function formatLine(level: Level) {
   const s = levelSpecs[level];
@@ -449,8 +492,15 @@ export const boundaryRules = [
 
 /* ───────────────────────── 학년 · 성취기준 (§7.2) ───────────────────────── */
 
-export type GradeBand = "3-4" | "5-6";
+export type GradeBand = "1-2" | "3-4" | "5-6";
 
+/**
+ * 성취기준 코드가 묶는 학년군 — 코드 접두(2 · 4 · 6)가 여기서 나온다.
+ *
+ * ⚠ 이 목록(gradeBands)은 옛 콘솔(/admin)의 고르개가 그대로 돈다. 1·2학년군을 여기에
+ *   넣으면 옛 콘솔에도 새 선택지가 생기므로 따로 둔다(BAND_12). 새 콘솔은 학년군을 고르지
+ *   않고 학년 하나(GradeNo)를 고른다 — 아래 grades 주석.
+ */
 export const gradeBands: { id: GradeBand; label: string; prefix: string; note: string }[] = [
   {
     id: "3-4",
@@ -466,14 +516,56 @@ export const gradeBands: { id: GradeBand; label: string; prefix: string; note: s
   },
 ];
 
-export const gradeBandOf = (id: GradeBand) => gradeBands.find((g) => g.id === id)!;
+const BAND_12 = {
+  id: "1-2" as GradeBand,
+  label: "초등 1·2학년",
+  prefix: "2",
+  note: "성취기준 코드가 [2XX]로 시작합니다. 한글 읽기·셈이 막 자리 잡는 때라 발문을 짧게 씁니다.",
+};
+
+/** 세 학년군 전부 — 코드 대조처럼 학년군을 가리지 않고 찾아야 하는 자리가 쓴다 */
+export const allGradeBands = [BAND_12, ...gradeBands];
+
+export const gradeBandOf = (id: GradeBand) => allGradeBands.find((g) => g.id === id)!;
+
+/**
+ * 학년 — 새 콘솔(/admin2)은 「3·4학년」처럼 묶어 적지 않고 1학년 ~ 6학년을 하나씩 적는다.
+ *
+ * 협의(2026-09-21)에서 정했다. 묶어 적으면 3학년 아이와 4학년 아이의 문항 · 검사지가 한 칸에
+ * 섞여, 편성하는 사람이 「이 문항이 몇 학년 것인가」를 문항을 열어 봐야 알았다.
+ *
+ * 학년군(GradeBand)은 버리지 않는다. 성취기준 코드는 교육과정이 두 학년씩 묶어 매기므로
+ * ([4국04-02]는 3·4학년 공통) 코드 대조는 여전히 학년군으로 한다 — bandOfGrade.
+ */
+export type GradeNo = 1 | 2 | 3 | 4 | 5 | 6;
+
+export const grades: GradeNo[] = [1, 2, 3, 4, 5, 6];
+
+export const gradeText = (g: GradeNo) => `${g}학년`;
+
+export const gradeOptions = grades.map((g) => ({ value: String(g), label: gradeText(g) }));
+
+export const bandOfGrade = (g: GradeNo): GradeBand => (g <= 2 ? "1-2" : g <= 4 ? "3-4" : "5-6");
+
+/** 학년군의 앞 학년 — 학년 없이 학년군만 적힌 옛 값을 읽을 때 쓴다 */
+export const firstGradeOf = (band: GradeBand): GradeNo => (band === "1-2" ? 1 : band === "3-4" ? 3 : 5);
+
+/**
+ * 적힌 글자에서 학년을 읽는다 — 「초등 4학년」 → 4, 「초등 3~4학년」 → 3(앞 학년).
+ * 못 읽으면 학년군의 앞 학년.
+ */
+export function gradeFrom(text: string | undefined, band: GradeBand): GradeNo {
+  const m = /([1-6])/.exec(text ?? "");
+  const g = m ? (Number(m[1]) as GradeNo) : firstGradeOf(band);
+  return bandOfGrade(g) === band ? g : firstGradeOf(band);
+}
 
 /**
  * 성취기준 코드 형식 — [4국04-02] · [4수01-10] · [6과03-01]
  *
  * 발주서 §7.2: 코드 없는 문항은 접수 반려. 학년 접두 숫자가 맞아야 한다.
  */
-const CODE_RE = /^\[?([46])([가-힣]{1,3})(\d{2})-(\d{2})\]?$/;
+const CODE_RE = /^\[?([246])([가-힣]{1,3})(\d{2})-(\d{2})\]?$/;
 
 export function checkStandardCode(code: string, band: GradeBand) {
   const t = code.trim();
@@ -491,6 +583,7 @@ export function checkStandardCode(code: string, band: GradeBand) {
 
 /** 화면에 그대로 쓰는 예시 코드 */
 export const codeSamples: Record<GradeBand, string[]> = {
+  "1-2": ["[2국02-01]", "[2수01-03]", "[2슬01-01]"],
   "3-4": ["[4국04-02]", "[4수01-10]", "[4과10-01]"],
   "5-6": ["[6국02-03]", "[6수01-07]", "[6과03-01]"],
 };
@@ -532,7 +625,7 @@ export const submitChecklist: CheckItem[] = [
     id: "chk-condition",
     text: "발문의 조건과 채점 기준의 요소가 1:1로 일치하는가? (발문에 없는 제약으로 채점하지 않음)",
   },
-  { id: "chk-examples", text: "인정/불인정 예 각 2개가 있고, 불인정 사유가 병기되었는가?" },
+  { id: "chk-examples", text: "인정 예가 2개 이상 있고, 채점 기준과 맞는가?" },
   { id: "chk-set", text: "같은 세트의 앞 문항이 뒤 문항의 답·답안 구조를 노출하지 않는가?" },
   {
     id: "chk-figure",

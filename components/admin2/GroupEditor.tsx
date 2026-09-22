@@ -104,10 +104,7 @@ export default function GroupEditor({
                 </button>
               </div>
             </FormRow>
-            <FormRow
-              label="묶음 지시문"
-              hint={`응시 화면에서 「[${g.from + 1}~${g.to + 1}] 지시문」으로 섭니다`}
-            >
+            <FormRow label="묶음 지시문">
               <input
                 className="a2-input"
                 value={g.material.lead ?? ""}

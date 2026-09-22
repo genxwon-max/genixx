@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { gradeBands, type GradeBand } from "@/lib/blueprint";
+import { grades, gradeText, type GradeNo } from "@/lib/blueprint";
 import { planSubjects } from "@/lib/roundPlanStore";
 import type { ItemDraft } from "@/lib/itemStore";
 import { FormRow } from "@/components/admin2/ui";
@@ -33,7 +33,7 @@ import { FormRow } from "@/components/admin2/ui";
  *   좁아진다. 세우는 두 화면(회차 생성 · 회차 편성)이 같은 줄을 쓰는 것이 요점이다.
  */
 export default function PlanPicker({
-  band,
+  grade,
   subjects,
   onChange,
   disabled = false,
@@ -41,11 +41,11 @@ export default function PlanPicker({
   pickedOf,
   hint,
 }: {
-  band: GradeBand;
+  grade: GradeNo;
   subjects: ItemDraft["subject"][];
-  onChange: (next: { band: GradeBand; subjects: ItemDraft["subject"][] }) => void;
+  onChange: (next: { grade: GradeNo; subjects: ItemDraft["subject"][] }) => void;
   disabled?: boolean;
-  pickedOf?: (subject: ItemDraft["subject"], band: GradeBand) => number;
+  pickedOf?: (subject: ItemDraft["subject"], grade: GradeNo) => number;
   /** 세우는 화면만 아는 말 — 과목 줄 아래에 덧붙는다 */
   hint?: React.ReactNode;
 }) {
@@ -58,18 +58,18 @@ export default function PlanPicker({
     if (j < 0 || j >= subjects.length) return;
     const next = [...subjects];
     [next[i], next[j]] = [next[j], next[i]];
-    onChange({ band, subjects: next });
+    onChange({ grade, subjects: next });
   };
 
   const drop = (subject: ItemDraft["subject"]) => {
-    const held = pickedOf?.(subject, band) ?? 0;
+    const held = pickedOf?.(subject, grade) ?? 0;
     if (held > 0) {
       const ok = window.confirm(
         `${subject}에는 이미 ${held}문항이 담겨 있습니다.\n\n빼도 담아 둔 검사지는 지우지 않습니다 — 다시 넣으면 그대로 돌아옵니다. 이번 회차에서만 내보내지 않습니다.\n\n뺄까요?`,
       );
       if (!ok) return;
     }
-    onChange({ band, subjects: subjects.filter((s) => s !== subject) });
+    onChange({ grade, subjects: subjects.filter((s) => s !== subject) });
   };
 
   return (
@@ -80,13 +80,13 @@ export default function PlanPicker({
           className="a2-select"
           style={{ maxWidth: "14rem" }}
           aria-label="학년"
-          value={band}
+          value={grade}
           disabled={disabled}
-          onChange={(e) => onChange({ band: e.target.value as GradeBand, subjects })}
+          onChange={(e) => onChange({ grade: Number(e.target.value) as GradeNo, subjects })}
         >
-          {gradeBands.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.label}
+          {grades.map((g) => (
+            <option key={g} value={g}>
+              {gradeText(g)}
             </option>
           ))}
         </select>
@@ -118,7 +118,7 @@ export default function PlanPicker({
             disabled={disabled || !adding}
             onClick={() => {
               if (!adding) return;
-              onChange({ band, subjects: [...subjects, adding] });
+              onChange({ grade, subjects: [...subjects, adding] });
               setAdding("");
             }}
           >

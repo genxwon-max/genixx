@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { GradeBand } from "@/lib/blueprint";
+import type { GradeNo } from "@/lib/blueprint";
 import { questionCountText, subjects } from "@/lib/exam";
 import { roundStateLabels } from "@/lib/admin";
 import { n } from "@/lib/admin2";
@@ -15,7 +15,7 @@ import {
   blankNote,
   checkPeriod,
   createRound,
-  defaultBand,
+  defaultGrade,
   planSubjects,
 } from "@/lib/roundPlanStore";
 import BodyEditor from "@/components/admin2/BodyEditor";
@@ -54,7 +54,7 @@ export default function NewRoundForm() {
   /* 응시 정원 — **0이면 제한 없음**. 파일럿은 전면 무료라 정원을 두지 않는 것이
      기본값이고, 숫자를 적으면 그만큼만 받는다 */
   const [target, setTarget] = useState(0);
-  const [band, setBand] = useState<GradeBand>(defaultBand);
+  const [grade, setGrade] = useState<GradeNo>(defaultGrade);
   const [picked, setPicked] = useState<ItemDraft["subject"][]>([...planSubjects]);
   const [notice, setNotice] = useState(blankNote());
   const [caution, setCaution] = useState(blankNote());
@@ -72,7 +72,7 @@ export default function NewRoundForm() {
     if (bad.length > 0) return setErrors(bad);
 
     const id = createRound(
-      { label, opensOn, opensAt, closesOn, closesAt, target, band, subjects: picked, notice, caution },
+      { label, opensOn, opensAt, closesOn, closesAt, target, grade, subjects: picked, notice, caution },
       prefs.staffName || "운영자",
     );
     /* 만들고 바로 편성으로 보낸다. 목록에 줄만 하나 늘려 두면 「이제 뭘 하지」가 남는데,
@@ -190,10 +190,10 @@ export default function NewRoundForm() {
             더 감싸지 않는다 — 감싸면 이름표가 두 겹이 되고, 편성 화면(ADM-05-4)과 여기가
             같은 줄을 다른 깊이로 그리게 된다 */}
         <PlanPicker
-          band={band}
+          grade={grade}
           subjects={picked}
           onChange={(next) => {
-            setBand(next.band);
+            setGrade(next.grade);
             setPicked(next.subjects);
           }}
         />

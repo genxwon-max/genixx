@@ -67,6 +67,7 @@ export default function Generator({
   const [form, setForm] = useState<ItemForm>("single");
   const [place, setPlace] = useState<BandUnit>({
     band: "3-4",
+    gradeNo: 3,
     subject: "국어",
     unit: "",
     unitNo: "",
@@ -86,6 +87,7 @@ export default function Generator({
     form,
     subject: place.subject,
     band: place.band,
+    gradeNo: place.gradeNo,
     unit: place.unit,
     unitNo: place.unitNo,
     unitTerm: place.unitTerm,
@@ -177,6 +179,7 @@ export default function Generator({
               onChange={(patch) => {
                 setPlace((p) => ({
                   band: patch.band ?? p.band,
+                  gradeNo: patch.gradeNo ?? p.gradeNo,
                   subject: patch.subject ?? p.subject,
                   unit: patch.unit ?? p.unit,
                   unitNo: patch.unitNo ?? p.unitNo,

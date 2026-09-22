@@ -929,6 +929,13 @@
   .a2-card .a2-textarea:disabled {
     background-color: var(--a2-raised);
   }
+  /* 문항 카드 칸 안의 예시(「예) …」)는 한 단 더 옅게 — --a2-ink-4는 본문 글자용이라 흰 칸 위에서
+     적은 글과 거의 같은 색으로 서서, 빈 칸이 채워진 칸처럼 읽혔다. 치면 사라지는 글이므로
+     본문 대비 기준을 따르지 않는다 */
+  .a2-card .a2-input::placeholder,
+  .a2-card .a2-textarea::placeholder {
+    color: #a3aab6;
+  }
 
   /* 한 칸 안에 쌓인 조각 사이에는 선을 긋는다 — 칸 안의 칸이다.
      ⚠ 위의 테두리 걷기보다 뒤에 둔다. 앞에 두면 조각이 입력일 때 border: 0에 지워진다 */

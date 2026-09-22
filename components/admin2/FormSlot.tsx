@@ -17,6 +17,7 @@ import {
 import { itemTypes, typeTextOf, type ItemDraft } from "@/lib/itemStore";
 import type { PlanSlot } from "@/lib/roundPlanStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
+import ItemPreview from "@/components/admin2/ItemPreview";
 import TableBox from "@/components/admin2/TableBox";
 import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
 import { FormRow, Panel, Status, Tag } from "@/components/admin2/ui";
@@ -197,6 +198,11 @@ export default function FormSlot({
   const [draftIds, setDraftIds] = useState<string[]>(savedIds);
   const [chosen, setChosen] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  /* AI 문항 추천 — 몇 문항을 뽑을지. 치는 중의 글자를 그대로 든다(빈칸 · 두 자리 입력) */
+  const [want, setWant] = useState("10");
+  const [suggested, setSuggested] = useState<string | null>(null);
+  /* 평가 미리보기 — 열려 있으면 지금 보는 문항 차례 */
+  const [previewAt, setPreviewAt] = useState<number | null>(null);
 
   const dirty =
     draftIds.length !== savedIds.length || draftIds.some((id, k) => id !== savedIds[k]);
@@ -221,7 +227,7 @@ export default function FormSlot({
     (i) =>
       i.state === "approved" &&
       i.subject === slot.subject &&
-      i.band === slot.band &&
+      (slot.grade ? i.gradeNo === slot.grade : i.band === slot.band) &&
       !draftIds.includes(i.id),
   );
 
@@ -235,7 +241,7 @@ export default function FormSlot({
    */
   const save = () => {
     if (!dirty || locked) return;
-    const target = form ?? createForm(roundId, slot.subject, slot.band, by);
+    const target = form ?? createForm(roundId, slot.subject, slot.band, by, slot.grade);
     const added = draftIds.filter((id) => !savedIds.includes(id)).length;
     const dropped = savedIds.filter((id) => !draftIds.includes(id)).length;
     const what = [added && `${added}문항 담음`, dropped && `${dropped}문항 뺌`].filter(Boolean);
@@ -268,6 +274,30 @@ export default function FormSlot({
       [next[k + dir], next[k]] = [next[k], next[k + dir]];
       return next;
     });
+
+  /**
+   * AI 문항 추천 — 「국어 10문항 추천」.
+   *
+   * 조합 제안(SUGGEST_MIX 열 문항)을 문항 수를 받아 뽑는 꼴로 넓혔다(2026-09-21 협의). 단계 비율은
+   * 밑그림(3 · 3 · 2 · 2)을 따르고, 한 단계가 모자라면 남은 승인 문항으로 채운다(lib/formStore.ts
+   * suggestItems). 초안을 갈아 끼울 뿐이라 잘못 눌러도 취소로 돌아온다.
+   *
+   * ⚠ 이름이 AI이지만 뽑는 규칙은 발주서의 것뿐이다 — 단계 배분 · 앵커 · 공개 이력 · 정답률.
+   *   「이 문항이 이 학년에 맞는가」는 여기서 알 수 없어 사람이 담은 목록을 보고 확정한다.
+   */
+  const wantNo = Math.floor(Number(want));
+  const wantOk = Number.isFinite(wantNo) && wantNo >= 1 && wantNo <= 60;
+  const recommend = () => {
+    if (!wantOk) return;
+    const r = suggestItems(slot, items, wantNo);
+    setDraftIds(r.itemIds);
+    setSuggested(
+      `${slot.label} ${wantNo}문항을 추천해 담았습니다 — ${r.itemIds.length}문항` +
+        (r.itemIds.length < wantNo ? ` (승인 문항이 ${r.pool}건뿐입니다)` : "") +
+        (r.short.length > 0 ? ` · 모자란 단계 ${r.short.join(", ")}` : "") +
+        ". 저장해야 검사지에 들어갑니다.",
+    );
+  };
 
   const toggle = (id: string) =>
     setChosen((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -343,30 +373,74 @@ export default function FormSlot({
           title="담은 문항"
           meta={`${picked.length}문항`}
           actions={
-            !locked && (
-              <>
-                {picked.length > 0 && (
-                  <button type="button" className="a2-btn a2-btn-sm" onClick={() => setDraftIds([])}>
-                    모두 빼기
+            <>
+              {/* 확정한 검사지도 미리 본다 — 잠긴 뒤에 「실제로 이렇게 나가나」를 보는 일이 더 잦다 */}
+              <button
+                type="button"
+                className="a2-btn a2-btn-sm"
+                disabled={picked.length === 0}
+                title={
+                  picked.length === 0 ? "담은 문항이 없습니다" : "아이가 받는 화면으로 한 문항씩 넘겨 봅니다"
+                }
+                onClick={() => setPreviewAt(0)}
+              >
+                평가 미리보기
+              </button>
+              {!locked && (
+                <>
+                  {picked.length > 0 && (
+                    <button type="button" className="a2-btn a2-btn-sm" onClick={() => setDraftIds([])}>
+                      모두 빼기
+                    </button>
+                  )}
+                  {/* 추천은 초안을 갈아 끼울 뿐이다 — 잘못 눌러도 취소로 돌아온다 */}
+                  <span className="inline-flex items-center gap-1">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="a2-input a2-num h-[26px]"
+                      style={{ width: "3.25rem" }}
+                      value={want}
+                      aria-label="추천할 문항 수"
+                      aria-invalid={!wantOk}
+                      onChange={(e) => setWant(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    />
+                    <span className="a2-t-xs text-(--a2-ink-3)">문항</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="a2-btn a2-btn-sm a2-btn-primary"
+                    disabled={!wantOk || (pool.length === 0 && picked.length === 0)}
+                    title={
+                      !wantOk
+                        ? "1에서 60 사이의 문항 수를 적어 주세요"
+                        : picked.length > 0
+                          ? "지금 담은 것을 추천으로 갈아 끼웁니다"
+                          : undefined
+                    }
+                    onClick={recommend}
+                  >
+                    AI 문항 추천
                   </button>
-                )}
-                {/* 제안은 초안을 갈아 끼울 뿐이다 — 잘못 눌러도 취소로 돌아온다.
-                    뽑는 규칙은 발주서에 적힌 것뿐이고 「이 문항이 이 학년에 맞는가」는
-                    여기서 알 수 없다 */}
-                <button
-                  type="button"
-                  className="a2-btn a2-btn-sm"
-                  disabled={pool.length === 0 && picked.length === 0}
-                  title={picked.length > 0 ? "지금 담은 것을 제안으로 갈아 끼웁니다" : undefined}
-                  onClick={() => setDraftIds(suggestItems(slot, items).itemIds)}
-                >
-                  조합 제안
-                </button>
-              </>
-            )
+                </>
+              )}
+            </>
           }
           flush
         >
+          {suggested && !locked && (
+            <p className="a2-note m-2" style={{ borderLeftColor: "var(--a2-info)" }}>
+              <span>{suggested}</span>
+              <button
+                type="button"
+                className="ml-auto shrink-0 text-(--a2-ink-4) hover:text-(--a2-ink)"
+                onClick={() => setSuggested(null)}
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </p>
+          )}
           <TableBox>
             <table className="a2-table">
               <thead>
@@ -599,6 +673,22 @@ export default function FormSlot({
       )}
 
       <LeaveDialog guard={guard} />
+
+      {/* 평가 미리보기 — 담은 차례(초안 기준) 그대로 한 문항씩. 번호는 검사지 전체에서 잇는다 */}
+      {previewAt !== null && picked[previewAt] && (
+        <ItemPreview
+          key={picked[previewAt].id}
+          item={picked[previewAt]}
+          onClose={() => setPreviewAt(null)}
+          nav={{
+            title: `${slot.label} 미리보기`,
+            at: previewAt,
+            total: picked.length,
+            go: setPreviewAt,
+            offset: picked.slice(0, previewAt).reduce((sum, i) => sum + i.questions.length, 0),
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -142,7 +142,6 @@ export default function Preview({
           <h3 className="a2-title-lg mt-1">{row.student} 님의 재능 리포트</h3>
           <p className="mt-2 flex flex-wrap items-center gap-1.5">
             <Tag accent>{row.typeName}</Tag>
-            <span className="a2-t-sm text-(--a2-ink-3)">신뢰도 {row.confidence}</span>
           </p>
 
           <div className="mt-5 grid gap-5">

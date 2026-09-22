@@ -1,4 +1,4 @@
-import type { GradeBand } from "./blueprint";
+import type { GradeBand, GradeNo } from "./blueprint";
 
 /**
  * 교과서 단원 목록 — 문항 상세의 「교과 단원」 고르개가 쓴다.
@@ -229,18 +229,30 @@ export const unitPlace = (u: TextbookUnit) => (u.no === null ? `${u.kind} 단원
 /** 문항에 적는 단원 번호 — 두 자리. 번호 없는 단원은 비운다 */
 export const unitNoOf = (u: TextbookUnit) => (u.no === null ? "" : String(u.no).padStart(2, "0"));
 
-const bandGrades = (band: GradeBand) => (band === "3-4" ? [3, 4] : [5, 6]);
+/**
+ * 어느 학년의 단원을 볼 것인가 — 학년군(옛 콘솔)이나 학년 하나(새 콘솔).
+ *
+ * 새 콘솔은 학년을 하나씩 고른다. 3학년 문항의 고르개에 4학년 단원까지 서 있으면 학년을 따로
+ * 고른 뜻이 없어진다.
+ *
+ * ⚠ 1·2학년 교과서 단원은 아직 옮기지 않았다. 그 학년은 목록이 비고, 단원 칸이 손으로 적는
+ *   칸으로 바뀐다(BandUnitRows).
+ */
+export type UnitScope = GradeBand | GradeNo;
+
+const scopeGrades = (scope: UnitScope): number[] =>
+  typeof scope === "number" ? [scope] : scope === "1-2" ? [1, 2] : scope === "3-4" ? [3, 4] : [5, 6];
 
 /** 학년에 드는 단원 — 과목 → 학년 → 학기 → 교과서 차례 */
-export function unitsForBand(band: GradeBand): TextbookUnit[] {
-  const grades = bandGrades(band);
+export function unitsForBand(scope: UnitScope): TextbookUnit[] {
+  const grades = scopeGrades(scope);
   return textbookUnits.filter((u) => grades.includes(u.grade));
 }
 
 /** 고르개의 묶음 — 「국어 · 3학년 1학기」마다 한 덩이 */
-export function unitGroups(band: GradeBand) {
+export function unitGroups(scope: UnitScope) {
   const groups: { label: string; units: TextbookUnit[] }[] = [];
-  for (const u of unitsForBand(band)) {
+  for (const u of unitsForBand(scope)) {
     const label = `${u.subject} · ${u.grade}학년 ${u.term}학기`;
     const last = groups[groups.length - 1];
     if (last?.label === label) last.units.push(u);
@@ -261,11 +273,11 @@ export function unitGroups(band: GradeBand) {
  */
 export function findUnit(
   item: { subject: string; unit: string; unitNo: string; unitTerm: string },
-  band: GradeBand,
+  scope: UnitScope,
 ): TextbookUnit | null {
   const title = item.unit.trim();
   if (!title) return null;
-  const same = unitsForBand(band).filter((u) => u.subject === item.subject && u.title === title);
+  const same = unitsForBand(scope).filter((u) => u.subject === item.subject && u.title === title);
   if (item.unitTerm) return same.find((u) => termOf(u) === item.unitTerm) ?? null;
   /* 학년-학기가 없는 옛 문항. 같은 이름이 여러 학기에 있으면(수학 「분수의 나눗셈」) 짐작하지
      않는다 — 짐작한 학년·학기를 옆에 적어 두면 고른 것으로 읽혀 아무도 다시 고르지 않는다.

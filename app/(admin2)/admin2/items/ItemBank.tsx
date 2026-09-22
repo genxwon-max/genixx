@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { LEVELS, gradeBands, levelSpecs } from "@/lib/blueprint";
+import { LEVELS, gradeOptions, gradeText, levelSpecs } from "@/lib/blueprint";
 import { n } from "@/lib/admin2";
 import {
   stateLabel,
@@ -12,7 +12,7 @@ import {
   type ItemDraft,
   type ItemState,
 } from "@/lib/itemStore";
-import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
+import DataTable, { type Col, type CsvSpec, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 
 /**
@@ -88,13 +88,13 @@ const COLS: Col<ItemDraft>[] = [
     cell: (r) => <Tag>{r.subject}</Tag>,
   },
   {
-    key: "band",
+    key: "grade",
     head: "학년",
     width: "4.5rem",
     nowrap: true,
     hide: "md",
-    sort: (r) => r.band,
-    cell: (r) => <span className="a2-mono a2-t-sm">{r.band}</span>,
+    sort: (r) => r.gradeNo,
+    cell: (r) => <span className="a2-t-sm">{gradeText(r.gradeNo)}</span>,
   },
   {
     key: "level",
@@ -217,6 +217,38 @@ const COLS: Col<ItemDraft>[] = [
   },
 ];
 
+/**
+ * 문항 정보 CSV — 표에 없는 분류 값(단원 · 성취기준 · Tag A/B · 난이도 · 배점)까지 싣는다.
+ *
+ * ⚠ 보기 · 정답 · 모범답안 · 채점 기준은 싣지 않는다. 목록에 그리지 않는 까닭과 같다 —
+ *   내려받은 파일은 콘솔 밖으로 나가 돌아다니고, 거기에 정답이 있으면 파일 자체가 유출 경로다.
+ */
+const ITEM_CSV: CsvSpec<ItemDraft> = {
+  name: "문항정보",
+  cols: [
+    { head: "문항 ID", value: (r) => r.code || r.id },
+    { head: "상태", value: (r) => stateLabel[r.state] },
+    { head: "과목", value: (r) => r.subject },
+    { head: "학년", value: (r) => gradeText(r.gradeNo) },
+    { head: "단계", value: (r) => r.level },
+    { head: "구성", value: (r) => formTextOf(r) },
+    { head: "유형", value: (r) => typeTextOf(r) },
+    { head: "교과 단원", value: (r) => [r.unitTerm, r.unitNo && `${Number(r.unitNo)}단원`, r.unit].filter(Boolean).join(" ") },
+    { head: "성취기준 코드", value: (r) => r.standardCode },
+    { head: "Tag A", value: (r) => r.tagA },
+    { head: "Tag B", value: (r) => r.tagB },
+    { head: "난이도(b)", value: (r) => r.b },
+    { head: "배점", value: (r) => r.points },
+    { head: "앵커", value: (r) => (r.anchor ? "앵커" : "") },
+    { head: "발문", value: (r) => r.stem },
+    { head: "출처", value: (r) => (r.origin === "ai" ? "AI 초안" : "사람") },
+    { head: "출제자", value: (r) => r.authorName },
+    { head: "정답률(%)", value: (r) => r.correctRate },
+    { head: "만든 때", value: (r) => r.createdAt },
+    { head: "고친 때", value: (r) => r.updatedAt },
+  ],
+};
+
 /* 상태는 머리의 탭이 맡는다. 같은 조건을 두 군데서 걸면 탭에서 「승인됨」을 고른 채
    거르개에서 「작성 중」을 골라 0줄이 나오고, 어느 쪽이 이겼는지 화면에 안 적힌다 */
 const FILTERS: Filter<ItemDraft>[] = [
@@ -229,8 +261,8 @@ const FILTERS: Filter<ItemDraft>[] = [
   {
     id: "band",
     label: "학년",
-    options: gradeBands.map((g) => ({ value: g.id, label: g.label })),
-    match: (r, v) => r.band === v,
+    options: gradeOptions,
+    match: (r, v) => String(r.gradeNo) === v,
   },
   {
     id: "level",
@@ -320,6 +352,7 @@ export default function ItemBank() {
         getKey={(r) => r.id}
         filters={FILTERS}
         searchHint="문항 ID · 발문 · 단원 · 출제자"
+        csv={ITEM_CSV}
         empty={current.empty}
         showCount={false}
       />
