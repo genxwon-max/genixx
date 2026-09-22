@@ -180,6 +180,9 @@ export default function StudentDetail({ row }: { row: StudentRow }) {
                 <span className="a2-label">응시 상태</span>
                 <div className="flex h-8 items-center">
                   <Status tone={examTone[row.exam]}>{examStateLabel[row.exam].label}</Status>
+                  <span className="ml-2 a2-t-sm text-(--a2-ink-3)">
+                    응시 누적 <span className="a2-num text-(--a2-ink)">{row.attempts}</span>회
+                  </span>
                 </div>
               </label>
             </div>

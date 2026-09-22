@@ -1,7 +1,18 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { ANCHOR_RATIO, LEVELS, levelSpecs, talentOf, type GradeBand, type Level } from "./blueprint";
+import {
+  ANCHOR_RATIO,
+  LEVELS,
+  bandOfGrade,
+  firstGradeOf,
+  gradeBandOf,
+  levelSpecs,
+  talentOf,
+  type GradeBand,
+  type GradeNo,
+  type Level,
+} from "./blueprint";
 import { rounds } from "./admin";
 import type { ItemDraft } from "./itemStore";
 
@@ -35,6 +46,11 @@ export type ExamForm = {
   round: string;
   subject: ItemDraft["subject"];
   band: GradeBand;
+  /**
+   * 학년 — 새 콘솔이 만든 검사지만 든다. 새 콘솔은 학년 하나에 검사지 한 벌을 짠다
+   * (lib/blueprint.ts grades 주석). 없으면 학년군의 앞 학년으로 읽는다(formGradeOf).
+   */
+  grade?: GradeNo;
   title: string;
   /** 담긴 문항 번호. 순서가 곧 출제 순서다. */
   itemIds: string[];
@@ -258,12 +274,18 @@ function patch(id: string, change: Partial<ExamForm>, entry?: Omit<FormLogEntry,
   );
 }
 
+/** 이 검사지의 학년 — 학년 없이 학년군만 든 옛 검사지는 앞 학년(3·4 → 3)으로 읽는다 */
+export const formGradeOf = (f: Pick<ExamForm, "band" | "grade">): GradeNo => f.grade ?? firstGradeOf(f.band);
+
 export function createForm(
   round: string,
   subject: ItemDraft["subject"],
-  band: GradeBand,
+  bandIn: GradeBand,
   by: string,
+  /** 새 콘솔만 넘긴다 — 있으면 학년군은 이 학년에서 따라 나온다 */
+  grade?: GradeNo,
 ): ExamForm {
+  const band = grade ? bandOfGrade(grade) : bandIn;
   const list = read();
   const label = rounds.find((r) => r.id === round)?.label ?? round;
   const form: ExamForm = {
@@ -271,7 +293,8 @@ export function createForm(
     round,
     subject,
     band,
-    title: `${label} · ${subject} · ${band === "3-4" ? "초등 3~4학년" : "초등 5~6학년"}`,
+    ...(grade ? { grade } : {}),
+    title: `${label} · ${subject} · ${grade ? `초등 ${grade}학년` : gradeBandOf(band).label}`,
     itemIds: [],
     state: "draft",
     createdAt: now(),
@@ -408,7 +431,10 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
     out.push({ tone: "block", text: `다른 과목의 문항이 ${wrongSubject.length}건 섞였습니다.` });
   }
 
-  const wrongBand = picked.filter((i) => i.band !== form.band);
+  /* 학년을 든 검사지(새 콘솔)는 학년 하나로 대조한다. 옛 검사지는 학년군으로 */
+  const wrongBand = picked.filter((i) =>
+    form.grade ? i.gradeNo !== form.grade : i.band !== form.band,
+  );
   if (wrongBand.length > 0) {
     out.push({
       tone: "block",
@@ -486,16 +512,25 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
  * 같은 단계 안에서는 앵커를 먼저, 그다음 정답률이 한가운데(50%)에 가까운 것을
  * 먼저 고른다. 너무 쉽거나 너무 어려운 문항은 변별에 보태는 것이 적다.
  */
-export function suggestItems(form: Pick<ExamForm, "subject" | "band">, items: ItemDraft[]) {
+export function suggestItems(
+  form: Pick<ExamForm, "subject" | "band" | "grade">,
+  items: ItemDraft[],
+  /** 몇 문항을 뽑을지 — 넘기지 않으면 SUGGEST_MIX(10문항) */
+  total?: number,
+) {
   const pool = items.filter(
-    (i) => i.state === "approved" && i.subject === form.subject && i.band === form.band,
+    (i) =>
+      i.state === "approved" &&
+      i.subject === form.subject &&
+      (form.grade ? i.gradeNo === form.grade : i.band === form.band),
   );
 
   const picked: ItemDraft[] = [];
   const short: string[] = [];
+  const mix = total === undefined ? SUGGEST_MIX : mixFor(total);
 
   for (const level of LEVELS) {
-    const want = SUGGEST_MIX[level];
+    const want = mix[level];
     const rank = pool
       .filter((i) => i.level === level)
       .sort((x, y) => {
@@ -509,7 +544,37 @@ export function suggestItems(form: Pick<ExamForm, "subject" | "band">, items: It
     if (rank.length < want) short.push(`${level} ${rank.length}/${want}`);
   }
 
-  return { itemIds: picked.map((i) => i.id), picked, short };
+  /* 수를 정해 부른 추천(「10문항 추천」)은 그 수를 채운다. 한 단계가 모자라면 남은 문항에서
+     같은 차례(앵커 → 정답률 한가운데)로 메운다 — 모자란 단계는 short에 그대로 남는다 */
+  if (total !== undefined && picked.length < total) {
+    const rest = pool
+      .filter((i) => !picked.includes(i))
+      .sort((x, y) => {
+        if (!!x.disclosed !== !!y.disclosed) return x.disclosed ? 1 : -1;
+        if (x.anchor !== y.anchor) return x.anchor ? -1 : 1;
+        return Math.abs((x.correctRate ?? 60) - 50) - Math.abs((y.correctRate ?? 60) - 50);
+      });
+    picked.push(...rest.slice(0, total - picked.length));
+  }
+  /* 출제 차례는 단계 차례로 — 쉬운 것에서 어려운 것으로 */
+  picked.sort((x, y) => LEVELS.indexOf(x.level) - LEVELS.indexOf(y.level));
+
+  return { itemIds: picked.map((i) => i.id), picked, short, pool: pool.length };
+}
+
+/**
+ * 문항 수를 단계에 나눈다 — SUGGEST_MIX(3 · 3 · 2 · 2)의 비율 그대로.
+ *
+ * 비율대로 나누고 남는 것은 낮은 단계부터 하나씩 얹는다. 10이면 밑그림과 같고, 12면 4·3·3·2.
+ */
+export function mixFor(total: number): Record<Level, number> {
+  const base = LEVELS.reduce((s, l) => s + SUGGEST_MIX[l], 0);
+  const out = Object.fromEntries(
+    LEVELS.map((l) => [l, Math.floor((SUGGEST_MIX[l] * total) / base)]),
+  ) as Record<Level, number>;
+  let left = total - LEVELS.reduce((s, l) => s + out[l], 0);
+  for (let k = 0; left > 0; k = (k + 1) % LEVELS.length, left--) out[LEVELS[k]] += 1;
+  return out;
 }
 
 /** 한 문항이 어느 확정 검사지에 실렸는가 — 앵커 화면이 노출 이력으로 쓴다 */

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { gradeBands, type GradeBand } from "@/lib/blueprint";
+import { gradeOptions, gradeText, type GradeNo } from "@/lib/blueprint";
 import { roundStateLabels, roundStates, type RoundState } from "@/lib/admin";
 import { n, roundTone } from "@/lib/admin2";
 import { useForms } from "@/lib/formStore";
 import { useItems, type ItemDraft } from "@/lib/itemStore";
-import { bandFor, planOf, slotsFor, slotsOf, usePlans, useRounds } from "@/lib/roundPlanStore";
+import { gradeFor, planOf, slotsFor, slotsOf, usePlans, useRounds } from "@/lib/roundPlanStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Status } from "@/components/admin2/ui";
 
@@ -48,7 +48,7 @@ type Row = {
   roundState: RoundState;
   opensOn: string;
   closesOn: string;
-  band: GradeBand;
+  grade: GradeNo;
   bandLabel: string;
   cells: Cell[];
   /** 이 회차가 보는 칸 수 = 넣은 과목 수 */
@@ -115,7 +115,7 @@ export default function FormsView() {
     () =>
       rounds.map((r): Row => {
         const plan = planOf(plans, r.id);
-        const band = bandFor(plan);
+        const grade = gradeFor(plan);
         const slots = slotsOf(r.id, forms, items, slotsFor(plan));
 
         const cells = slots.map(
@@ -137,8 +137,8 @@ export default function FormsView() {
           roundState: plan.state,
           opensOn: plan.opensOn,
           closesOn: plan.closesOn,
-          band,
-          bandLabel: gradeBands.find((g) => g.id === band)?.label ?? band,
+          grade,
+          bandLabel: gradeText(grade),
           cells,
           slots: slots.length,
           built,
@@ -195,10 +195,11 @@ export default function FormsView() {
            제 칸에 세운다 — 같은 과목이라도 학년이 다르면 다른 검사지다 */
         key: "band",
         head: "학년",
-        width: "9rem",
+        width: "5rem",
         nowrap: true,
         hide: "lg",
         value: (r) => r.bandLabel,
+        sort: (r) => r.grade,
         cell: (r) => r.bandLabel,
       },
       {
@@ -284,8 +285,8 @@ export default function FormsView() {
       {
         id: "band",
         label: "학년",
-        options: gradeBands.map((g) => ({ value: g.id, label: g.label })),
-        match: (r, v) => r.band === v,
+        options: gradeOptions,
+        match: (r, v) => String(r.grade) === v,
       },
       {
         id: "plan",

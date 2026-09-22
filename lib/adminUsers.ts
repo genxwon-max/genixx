@@ -310,6 +310,13 @@ export type StudentRow = {
   guardian: string;
   guardianId: string;
   exam: ExamState;
+  /**
+   * 응시 누적 횟수 — 이 접속코드로 지금까지 응시를 시작한 회차 수(지금 보는 중인 회차 포함).
+   *
+   * 「코드가 안 먹는다」는 문의의 절반은 이미 응시를 마친 코드로 다시 들어오려는 경우라,
+   * 목록에서 코드 옆에 이 수가 서 있어야 전화로 바로 가린다. 미응시면 0.
+   */
+  attempts: number;
   state: UserState;
   joinedAt: string;
 };
@@ -342,6 +349,8 @@ function makeStudents(count: number, from: readonly Omit<ParentRow, "kids">[]): 
       guardian: parent.name,
       guardianId: parent.id,
       exam,
+      /* 난수를 따로 굴린다 — 명부의 r()를 한 번 더 부르면 그 뒤 학생의 이름 · 코드가 전부 밀린다 */
+      attempts: exam === "not-started" ? 0 : 1 + Math.floor(rng(5150 + i)() * 3),
       state: r() > 0.95 ? "dormant" : "active",
       joinedAt: dateFrom(Math.floor(r() * 430)),
     };

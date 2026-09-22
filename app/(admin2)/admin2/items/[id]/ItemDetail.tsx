@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { checkStandardCode, gradeBands, levelAllowed, type Level } from "@/lib/blueprint";
+import { allGradeBands, checkStandardCode, levelAllowed, type Level } from "@/lib/blueprint";
 import { itemTone } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
 import {
@@ -34,7 +34,6 @@ import {
 import { LeaveDialog, PageSaveBar, useUnsavedGuard } from "@/components/admin2/EditGuard";
 import {
   Body,
-  FormBlock,
   FormRow,
   PageHead,
   Panel,
@@ -75,7 +74,7 @@ const PARAGRAPH_GAP = String.fromCharCode(10, 10);
  *   ① 문항 구성  단일인가 세트인가
  *   ② 분류      단일일 때만. 문항 ID · 학년 · 교과 단원 · 인지단계 · Tag A · Tag B ·
  *               형식 · 난이도|배점
- *   ③ 문항      지문 · 문항 · 정답·채점 기준 · 인정|불인정 예 · 재능 평가 관점 ·
+ *   ③ 문항      지문 · 문항 · 정답·채점 기준 · 인정 예 · 재능 평가 관점 ·
  *               오답 설계 의도 (세트는 지문 아래 목록 → 문항 상세)
  *   ④ 제출 전 자가 체크리스트  열네 줄 · 제출 확인 · 출제자 유의|검토 요청
  * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 앵커 판.
@@ -119,7 +118,7 @@ const PARAGRAPH_GAP = String.fromCharCode(10, 10);
  * 그래서 판이 줄었다. 난이도·문항 구성·지문은 각각 판 하나에 칸 하나뿐이었는데, 이름표를
  * 왼쪽으로 돌리자 판 제목과 이름표가 같은 말을 두 번 하게 됐다. 난이도는 분류 줄에,
  * 지문은 문항 판의 첫 줄로 들어갔다. 맨 위 문항 구성은 판 제목 없이 줄 하나만 세운다.
- * 늘 맞춰 보는 두 칸(난이도 · 배점, 인정 예 · 불인정 예)은 한 줄에 반반으로 선다(FormRowPair).
+ * 늘 맞춰 보는 두 칸(난이도 · 배점)은 한 줄에 반반으로 선다(FormRowPair).
  *
  * ── 세트는 목록 ──
  * 세트 안의 문항을 죄다 펼쳐 놓으면 셋만 되어도 화면이 스무 칸을 넘어가 지금 몇 번을
@@ -283,7 +282,7 @@ export default function ItemDetail({ id }: { id: string }) {
   const bandBroken = (view.form === "single" ? qs.slice(0, 1) : qs).filter(
     (q) =>
       !checkStandardCode(q.standardCode, view.band).ok &&
-      gradeBands.some((g) => g.id !== view.band && checkStandardCode(q.standardCode, g.id).ok),
+      allGradeBands.some((g) => g.id !== view.band && checkStandardCode(q.standardCode, g.id).ok),
   ).length;
 
   /* 검수 이력에 메모를 함께 편다. 메모를 쓰는 판은 걷었지만 거기 쌓인 기록은 걷지 않는다 —
@@ -661,10 +660,7 @@ export default function ItemDetail({ id }: { id: string }) {
             <div className="a2-form a2-form-lg a2-card">
               {/* 보기 상자의 네모 테두리와 「[1~4]」 번호는 응시 화면이 그린다. 여기서는 상자 위
                   지시문과 상자 안에 들어갈 것만 쓴다 */}
-              <FormRow
-                label="지시문"
-                hint="응시 화면에서 자료 위에 「[1~4] 지시문」으로 섭니다. 비우면 「다음을 읽고 물음에 답하시오.」"
-              >
+              <FormRow label="지시문">
                 <input
                   className="a2-input"
                   value={content.material.lead ?? ""}
@@ -678,11 +674,8 @@ export default function ItemDetail({ id }: { id: string }) {
                   }
                 />
               </FormRow>
-              {/* 블록을 쌓으면 칸이 길어져 왼쪽 이름표가 가운데에 묻힌다 — 이름을 위에 얹는다 */}
-              <FormBlock
-                title={view.form === "set" ? "보기 · 지문 — 네모 상자 안에 들어갈 것" : "지문"}
-                req={view.form === "set"}
-              >
+              {/* 다른 칸처럼 이름을 왼쪽에 둔다(2026-09-22 요청) */}
+              <FormRow label={view.form === "set" ? "보기 · 지문" : "지문"} req={view.form === "set"}>
                 <BlockEditor
                   blocks={content.material.blocks}
                   disabled={locked}
@@ -690,7 +683,7 @@ export default function ItemDetail({ id }: { id: string }) {
                     setContent({ ...content, material: { ...content.material, blocks } })
                   }
                 />
-              </FormBlock>
+              </FormRow>
               {view.form === "single" && (
                 <QuestionContentRows
                   key={qs[0].id}

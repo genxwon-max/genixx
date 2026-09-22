@@ -1,7 +1,7 @@
 "use client";
 
-import type { GradeBand } from "@/lib/blueprint";
-import { useForms } from "@/lib/formStore";
+import { gradeText, type GradeNo } from "@/lib/blueprint";
+import { formGradeOf, useForms } from "@/lib/formStore";
 import type { ItemDraft } from "@/lib/itemStore";
 import PlanPicker from "@/components/admin2/PlanPicker";
 import { FormRow, Panel } from "@/components/admin2/ui";
@@ -31,8 +31,8 @@ export default function SlotPicker({
   locked,
   round,
 }: {
-  value: { band: GradeBand; subjects: ItemDraft["subject"][] };
-  onChange: (next: { band: GradeBand; subjects: ItemDraft["subject"][] }) => void;
+  value: { grade: GradeNo; subjects: ItemDraft["subject"][] };
+  onChange: (next: { grade: GradeNo; subjects: ItemDraft["subject"][] }) => void;
   locked: boolean;
   /** 담긴 문항 수를 세는 데만 쓴다 */
   round: string;
@@ -40,8 +40,9 @@ export default function SlotPicker({
   const forms = useForms();
 
   /* 그 과목·학년에 담긴 문항 수 — 뺄 때 무엇을 잃는지(잃지는 않지만) 알려 주는 값 */
-  const pickedOf = (subject: string, band: string) =>
-    forms.find((f) => f.round === round && f.subject === subject && f.band === band)?.itemIds.length ?? 0;
+  const pickedOf = (subject: string, grade: GradeNo) =>
+    forms.find((f) => f.round === round && f.subject === subject && formGradeOf(f) === grade)?.itemIds
+      .length ?? 0;
 
   return (
     <Panel title="평가 과목 편성" flush>
@@ -52,7 +53,7 @@ export default function SlotPicker({
           <>
             <FormRow label="학년">
               <span className="a2-t-sm text-(--a2-ink-2)">
-                {value.band === "3-4" ? "초등 3·4학년" : "초등 5·6학년"}
+                {gradeText(value.grade)}
               </span>
             </FormRow>
             <FormRow
@@ -64,7 +65,7 @@ export default function SlotPicker({
           </>
         ) : (
           <PlanPicker
-            band={value.band}
+            grade={value.grade}
             subjects={value.subjects}
             pickedOf={pickedOf}
             onChange={onChange}

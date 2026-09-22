@@ -123,7 +123,6 @@ export default function ReportDetail({ id }: { id: string }) {
                     </span>
                   ),
                 },
-                { k: "신뢰도", v: <Tag>{row.confidence}</Tag> },
                 { k: "조립", v: <span className="a2-mono">{row.assembledAt}</span> },
                 {
                   k: "검토",

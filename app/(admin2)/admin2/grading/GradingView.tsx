@@ -167,25 +167,9 @@ export default function GradingView() {
         value: (t) => t.stem,
         cell: (t) => <span className="a2-t-sm text-(--a2-ink-2)">{t.stem}</span>,
       },
-      {
-        key: "ai",
-        head: "AI 판정",
-        width: "8rem",
-        nowrap: true,
-        value: (t) => `${rubric[t.aiLevel].label} ${t.confidence}`,
-        sort: (t) => t.confidence,
-        cell: (t) => (
-          <span className="inline-flex flex-col">
-            <Level level={t.aiLevel} />
-            <span
-              className="a2-mono a2-t-xs"
-              style={{ color: isRouted(t) ? "var(--a2-danger)" : "var(--a2-ink-4)" }}
-            >
-              확신도 {t.confidence.toFixed(2)}
-            </span>
-          </span>
-        ),
-      },
+      /* 「AI 판정 · 확신도」 칸은 걷었다(2026-09-21 협의). 목록에서 AI 값과 확신도가 먼저
+         보이면 채점자가 그 값을 기준 삼아 확인만 하고 넘어가게 된다 — 목록은 사람이 매긴 값과
+         누가 매겼는지만 세운다. AI 값은 채점 화면(ScoreBench)에서 근거와 함께 본다 */
       {
         key: "human",
         head: "사람 확정",
@@ -194,13 +178,7 @@ export default function GradingView() {
         value: (t) => (t.human ? rubric[t.human.level].label : "대기"),
         cell: (t) =>
           t.human ? (
-            <span className="inline-flex flex-col">
-              <Level level={t.human.level} />
-              {/* 바꾼 자리가 어디인지가 이 화면이 남기는 것이다 */}
-              <span className="a2-t-xs text-(--a2-ink-4)">
-                {t.human.level === t.aiLevel ? "AI와 같음" : "AI에서 바꿈"}
-              </span>
-            </span>
+            <Level level={t.human.level} />
           ) : (
             <span className="a2-t-xs font-semibold" style={{ color: "var(--a2-warn)" }}>
               대기
@@ -262,15 +240,6 @@ export default function GradingView() {
         label: "과목",
         options: [...new Set(scores.map((t) => t.subject))].map((v) => ({ value: v, label: v })),
         match: (t, x) => t.subject === x,
-      },
-      {
-        id: "ai",
-        label: "AI 판정",
-        options: (["full", "partial", "none"] as RubricLevel[]).map((v) => ({
-          value: v,
-          label: rubric[v].label,
-        })),
-        match: (t, x) => t.aiLevel === x,
       },
     ],
     [scores],

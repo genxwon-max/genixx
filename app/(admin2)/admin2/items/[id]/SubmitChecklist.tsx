@@ -90,9 +90,8 @@ function machineNote(id: string, item: ItemDraft): Note | null {
       /* 선택형은 칸이 열려 있어도 개수를 따지지 않는다 — 정오로 채점한다 */
       return hit(
         (q) =>
-          !hasChoices(q.type) &&
-          (exampleCount(q.acceptExamples) < 2 || exampleCount(q.rejectExamples) < 2),
-        "인정 · 불인정 예가 2개에 못 미칩니다",
+          !hasChoices(q.type) && exampleCount(q.acceptExamples) < 2,
+        "인정 예가 2개에 못 미칩니다",
       );
     case "chk-set":
       return item.form === "single" ? none("단일 문항입니다") : null;

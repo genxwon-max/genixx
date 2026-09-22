@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { roundStates } from "@/lib/admin";
 import { useAdminPrefs, recordAction } from "@/lib/adminStore";
-import type { GradeBand } from "@/lib/blueprint";
+import type { GradeNo } from "@/lib/blueprint";
 import { useForms } from "@/lib/formStore";
 import { useItems, type ItemDraft } from "@/lib/itemStore";
 import {
-  bandFor,
+  gradeFor,
   canonNote,
   checkPeriod,
   closeRound,
@@ -110,7 +110,7 @@ export default function RoundPlanView({ id }: { id: string }) {
     opensAt: savedPeriod.opensAt,
     closesOn: savedPeriod.closesOn,
     closesAt: savedPeriod.closesAt,
-    band: bandFor(plan),
+    grade: gradeFor(plan),
     subjects: subjectsFor(plan),
     notice: noteOf(plan.notice),
     caution: noteOf(plan.caution),
@@ -152,8 +152,8 @@ export default function RoundPlanView({ id }: { id: string }) {
     }
     /* 편성은 값이 실제로 달라졌을 때만 내보낸다 — 그러지 않으면 저장을 누를 때마다
        「편성을 정했습니다」가 회차 기록에 한 줄씩 쌓인다 */
-    if (v.band !== bandFor(plan) || v.subjects.join("|") !== subjectsFor(plan).join("|")) {
-      setRoundPlan(round.id, { band: v.band, subjects: v.subjects }, by);
+    if (v.grade !== gradeFor(plan) || v.subjects.join("|") !== subjectsFor(plan).join("|")) {
+      setRoundPlan(round.id, { grade: v.grade, subjects: v.subjects }, by);
     }
     /* 저장소가 다듬은 꼴을 초안에도 되돌려 넣는다. 넣지 않으면 줄 끝 빈 칸 하나로
        초안과 저장분이 어긋난 채로 남아, 저장 줄이 영영 켜져 있게 된다 */
@@ -326,9 +326,9 @@ export default function RoundPlanView({ id }: { id: string }) {
               <SlotPicker
                 round={round.id}
                 locked={plan.state !== "draft"}
-                value={{ band: v.band, subjects: v.subjects }}
-                onChange={(next: { band: GradeBand; subjects: ItemDraft["subject"][] }) =>
-                  draft.patch({ band: next.band, subjects: next.subjects })
+                value={{ grade: v.grade, subjects: v.subjects }}
+                onChange={(next: { grade: GradeNo; subjects: ItemDraft["subject"][] }) =>
+                  draft.patch({ grade: next.grade, subjects: next.subjects })
                 }
               />
 

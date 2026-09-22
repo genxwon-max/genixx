@@ -92,6 +92,20 @@ const cols: Col<StudentRow>[] = [
     ),
   },
   {
+    // 코드 문의에서 「이미 본 코드인가」를 가르는 값 — 접속코드 · 계정 상태와 함께 읽는다
+    key: "attempts",
+    head: "응시 누적",
+    width: "5rem",
+    num: true,
+    value: (s) => s.attempts,
+    cell: (s) => (
+      <>
+        {s.attempts}
+        <span className="a2-t-xs text-(--a2-ink-4)">회</span>
+      </>
+    ),
+  },
+  {
     key: "state",
     head: "계정 상태",
     width: "5.5rem",
@@ -163,6 +177,7 @@ export default function StudentsTable({ rows, empty }: { rows: StudentRow[]; emp
       getKey={(s) => s.id}
       filters={filters}
       searchHint="이름 · 접속코드 · 학교 · 보호자"
+      csv={{ name: "학생_접속코드" }}
       empty={empty}
       // 줄 수는 끈다 — 탭의 개수 알약과 쪽 넘김 줄이 이미 같은 수를 적는다
       showCount={false}

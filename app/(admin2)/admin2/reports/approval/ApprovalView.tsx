@@ -14,7 +14,7 @@ import {
   type SendRow,
 } from "@/lib/reportSendStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { PageHead, SeedNote, Status, Tab, Tag } from "@/components/admin2/ui";
+import { PageHead, SeedNote, Status, Tab } from "@/components/admin2/ui";
 
 /**
  * EXP-08 리포트 승인 — 목록.
@@ -109,15 +109,6 @@ export default function ApprovalView() {
         ),
       },
       {
-        key: "conf",
-        head: "신뢰도",
-        width: "5.5rem",
-        nowrap: true,
-        hide: "md",
-        value: (r) => r.confidence,
-        cell: (r) => <Tag>{r.confidence}</Tag>,
-      },
-      {
         key: "assembled",
         head: "조립",
         width: "6.5rem",
@@ -196,12 +187,6 @@ export default function ApprovalView() {
 
   const filters: Filter<SendRow>[] = useMemo(
     () => [
-      {
-        id: "conf",
-        label: "신뢰도",
-        options: ["높음", "보통", "참고"].map((v) => ({ value: v, label: v })),
-        match: (r, v) => r.confidence === v,
-      },
       {
         id: "check",
         label: "검토",

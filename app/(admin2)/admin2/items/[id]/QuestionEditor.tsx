@@ -18,9 +18,11 @@ import {
 } from "@/lib/itemStore";
 import {
   LEVELS,
+  cardExamples,
   codeSamples,
   levelAllowed,
   levelSpecs,
+  perspectiveExamples,
   subskillsOf,
   talentOf,
   talents,
@@ -36,10 +38,8 @@ import BodyEditor from "@/components/admin2/BodyEditor";
 import type { ContentQuestion } from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import {
-  BlockPart,
   CellLine,
   FormBlock,
-  FormBlockPair,
   FormRow,
   FormRowPair,
   SubRow,
@@ -57,7 +57,7 @@ import {
  *
  *   분류  (문항 ID · 학년 · 교과 단원은 묶음이 쥔다) 인지단계 · Tag A · 출제 의도 · Tag B ·
  *         형식 · 난이도|배점
- *   문항  (지문은 묶음이 쥔다) 문항 · 정답·채점 기준 · 인정|불인정 예 ·
+ *   문항  (지문은 묶음이 쥔다) 문항 · 정답·채점 기준 · 인정 예 ·
  *         재능 평가 관점 · 오답 설계 의도
  *
  * ── 칸은 형식과 상관없이 전부 열어 둔다 ──
@@ -324,6 +324,9 @@ export function QuestionClassRows({
           코드 형식이 틀렸다는 줄도 칸 아래에 적지 않는다 — 제출 단추의 풍선 도움말이 짚고,
           학년을 벗어난 코드는 학년 줄이 짚는다.
 
+          예시는 칸 안의 회색 글(placeholder)로 둔다 — 치기 시작하면 저절로 사라진다(2026-09-22 요청,
+          lib/blueprint.ts cardExamples). 칸 아래 줄로 두었을 때는 다 적은 뒤에도 남아 화면을 길게 했다.
+
           학습 요소는 옛 「Tag A 세부」 칸(tagADetail)을 그대로 쓴다. 목록·검수 화면이 Tag A 한
           줄을 그 칸으로 짓는다(lib/itemStore.ts syncTags) */}
       <FormRow label="Tag A (학력)" req>
@@ -334,7 +337,7 @@ export function QuestionClassRows({
               value={q.standardCode}
               disabled={disabled}
               onChange={(e) => set({ standardCode: e.target.value })}
-              placeholder={codeSamples[band][0]}
+              placeholder={`예) ${codeSamples[band][0]}`}
               aria-invalid={!std.ok}
               aria-label="성취기준 코드"
             />
@@ -344,6 +347,7 @@ export function QuestionClassRows({
               value={q.standardText}
               disabled={disabled}
               onChange={(e) => set({ standardText: e.target.value })}
+              placeholder={`예) ${cardExamples.standardText}`}
               aria-label="성취기준 내용"
             />
           </div>
@@ -355,6 +359,7 @@ export function QuestionClassRows({
             value={q.tagADetail}
             disabled={disabled}
             onChange={(e) => set({ tagADetail: e.target.value })}
+            placeholder={`예) ${cardExamples.tagADetail}`}
             aria-label="학습 요소"
           />
         </CellLine>
@@ -370,6 +375,7 @@ export function QuestionClassRows({
           value={q.tagAIntent}
           disabled={disabled}
           onChange={(e) => set({ tagAIntent: e.target.value })}
+          placeholder={`예) ${cardExamples.tagAIntent}`}
           aria-label="출제 의도"
         />
       </FormRow>
@@ -500,13 +506,13 @@ export function QuestionClassRows({
 }
 
 /**
- * 문항 하나의 문항 줄 — 문항 · 정답·채점 기준 · 인정|불인정 예 · 재능 평가 관점 ·
+ * 문항 하나의 문항 줄 — 문항 · 정답·채점 기준 · 인정 예 · 재능 평가 관점 ·
  * 오답 설계 의도.
  *
  * 지문은 이 위에 선다. 세트면 문항들이 함께 읽는 것이라 묶음이 쥐고, 문항 상세(ItemDetail)가
  * 그린다.
  *
- * 정답 · 채점 기준과 인정 · 불인정 예는 이름을 왼쪽이 아니라 **위에** 얹는다(FormBlock).
+ * 모든 칸이 이름을 왼쪽에, 값을 오른쪽에 둔다(FormRow). 답 칸만 칸 편집기가 넓어 이름을 위에 얹는다.
  * 모범답안 · 부분점수 · 예시는 한 줄에 마흔 자가 넘는 글이라, 왼쪽 이름 기둥만큼 칸을 좁히면
  * 줄이 두 배로 접힌다. 종이 문항 카드도 이 칸들만 머리 띠를 위에 얹는다.
  */
@@ -673,7 +679,7 @@ export function QuestionContentRows({
 
       {/* 발문 아래 자료 — 이 문항에만 딸린 사진 · 표 · 〈보기〉 상자. 세트가 함께 읽는 것은 지문 칸에 쓴다 */}
       {content && onContent && (
-        <FormBlock title="발문 아래 자료 — 이 문항에만 딸린 〈보기〉 상자 · 사진 · 표">
+        <FormRow label="발문 아래 자료">
           <BlockEditor
             blocks={content.blocks ?? []}
             disabled={disabled}
@@ -683,7 +689,7 @@ export function QuestionContentRows({
               onContent({ ...content, blocks: blocks.length > 0 ? blocks : undefined })
             }
           />
-        </FormBlock>
+        </FormRow>
       )}
 
       {/* 답 칸 — 보기를 고르지 않는 문항이 학생에게 여는 칸과 칸마다의 정답 */}
@@ -709,9 +715,13 @@ export function QuestionContentRows({
         </FormBlock>
       )}
 
-      <FormBlock title="정답 · 채점 기준" req>
+      {/* 정답 · 채점 기준도 다른 칸처럼 이름을 왼쪽에, 값을 오른쪽에 둔다(2026-09-22 요청). 머리 띠를
+          위에 얹던 때는 이 덩이만 다른 모양이라 카드를 훑는 눈이 여기서 한 번 끊겼다 */}
+      {/* 정답과 모범답안은 한 줄 「정답 및 채점기준」으로 합친다(2026-09-22 요청). 고르는 문항은 칸 안
+          첫 줄에 고른 정답을 읽기로 세우고, 그 아래에 모범답안을 적는다 */}
+      <FormRow label="정답 및 채점기준" req>
         {picks && (
-          <BlockPart title="정답">
+          <CellLine label="정답">
             <div className="a2-cell-pad flex items-center a2-t-sm text-(--a2-ink-2)">
               {q.type === "ox" ? (
                 (OX_CHOICES[q.answer] ?? "—")
@@ -724,11 +734,11 @@ export function QuestionContentRows({
                 "—"
               )}
             </div>
-          </BlockPart>
+          </CellLine>
         )}
         {/* 답 칸 편집기가 서면 허용 답안은 칸마다 거기서 받는다 */}
         {q.type === "short" && !(content && onContent) && (
-          <BlockPart title="허용 답안" req>
+          <CellLine label="허용 답안">
             <GrowTextarea
               line
               className="a2-textarea a2-textarea-lg"
@@ -737,9 +747,9 @@ export function QuestionContentRows({
               onChange={(e) => set({ shortAnswers: e.target.value })}
               aria-label="허용 답안"
             />
-          </BlockPart>
+          </CellLine>
         )}
-        <BlockPart title={picks ? "모범답안" : "모범답안(단답·서술형)"} req>
+        <CellLine label="모범답안">
           <GrowTextarea
             className="a2-textarea a2-textarea-lg"
             rows={4}
@@ -748,51 +758,36 @@ export function QuestionContentRows({
             onChange={(e) => set({ explain: e.target.value })}
             aria-label="모범답안"
           />
-        </BlockPart>
-        <BlockPart title="부분점수/루브릭" req={needsRubric(q.type)}>
-          <GrowTextarea
-            className="a2-textarea a2-textarea-lg"
-            rows={5}
-            value={q.rubric}
-            disabled={disabled}
-            onChange={(e) => set({ rubric: e.target.value })}
-            aria-label="부분점수/루브릭"
-          />
-        </BlockPart>
-      </FormBlock>
+        </CellLine>
+      </FormRow>
+      <FormRow label="부분점수/루브릭" req={needsRubric(q.type)}>
+        <GrowTextarea
+          className="a2-textarea a2-textarea-lg"
+          rows={5}
+          value={q.rubric}
+          disabled={disabled}
+          onChange={(e) => set({ rubric: e.target.value })}
+          aria-label="부분점수/루브릭"
+        />
+      </FormRow>
 
       {/* 「2개 이상」은 머리 띠에 적고, 개수는 체크리스트가 사람에게 묻는다. 선택형이 아닌
-          문항에서 비어 있을 때만 제출이 막힌다(missingCard) */}
-      <FormBlockPair
-        left={{
-          title: "인정 예 (2개 이상)",
-          req: !picks,
-          children: (
-            <GrowTextarea
-              className="a2-textarea a2-textarea-lg"
-              rows={7}
-              value={q.acceptExamples}
-              disabled={disabled}
-              onChange={(e) => set({ acceptExamples: e.target.value })}
-              aria-label="인정 예"
-            />
-          ),
-        }}
-        right={{
-          title: "불인정 예 (2개 이상)",
-          req: !picks,
-          children: (
-            <GrowTextarea
-              className="a2-textarea a2-textarea-lg"
-              rows={7}
-              value={q.rejectExamples}
-              disabled={disabled}
-              onChange={(e) => set({ rejectExamples: e.target.value })}
-              aria-label="불인정 예"
-            />
-          ),
-        }}
-      />
+          문항에서 비어 있을 때만 제출이 막힌다(missingCard).
+
+          불인정 예 칸은 걷었다(2026-09-21 협의). 채점 기준과 인정 예가 이미 경계를 긋고, 불인정
+          예를 두 개씩 채우는 일이 출제 시간만 늘렸다. 옛 문항에 적혀 있던 불인정 예(rejectExamples)는
+          지우지 않고 저장분에 남는다 */}
+      <FormRow label="인정 예 (2개 이상)" req={!picks}>
+        <GrowTextarea
+          className="a2-textarea a2-textarea-lg"
+          rows={5}
+          value={q.acceptExamples}
+          disabled={disabled}
+          onChange={(e) => set({ acceptExamples: e.target.value })}
+          placeholder={"예) · 밝다 – 어둡다\n· 높다 – 낮다"}
+          aria-label="인정 예"
+        />
+      </FormRow>
 
       <FormRow label="재능 평가 관점" req>
         <SubRows>
@@ -803,6 +798,7 @@ export function QuestionContentRows({
               value={q.perspectiveHierarchy}
               disabled={disabled}
               onChange={(e) => set({ perspectiveHierarchy: e.target.value })}
+              placeholder={`예) ${perspectiveExamples[q.level].hierarchy}`}
               aria-label="인지 처리 위계 구체"
             />
           </SubRow>
@@ -813,6 +809,7 @@ export function QuestionContentRows({
               value={q.perspectiveAbility}
               disabled={disabled}
               onChange={(e) => set({ perspectiveAbility: e.target.value })}
+              placeholder={`예) ${perspectiveExamples[q.level].ability}`}
               aria-label="인지 능력 관련 수준"
             />
           </SubRow>

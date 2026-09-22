@@ -4,7 +4,9 @@ import { useSyncExternalStore } from "react";
 import type { StaffRoleId } from "./admin";
 import {
   LEVELS,
+  bandOfGrade,
   checkStandardCode,
+  gradeFrom,
   levelAllowed,
   levelSpecs,
   SUBJECT_LETTER,
@@ -12,6 +14,7 @@ import {
   subskillsOf,
   tagBCoord,
   type GradeBand,
+  type GradeNo,
   type Level,
   type TalentId,
 } from "./blueprint";
@@ -417,8 +420,15 @@ export type ItemDraft = {
   retireReason?: string;
   version: number;
   /* ── 발주서 Ver.4.1 문항 카드 (lib/blueprint.ts) ── */
-  /** 학년 — 성취기준 코드의 접두를 결정한다 */
+  /** 학년군 — 성취기준 코드의 접두를 결정한다. 학년(gradeNo)에서 따라 나온다 */
   band: GradeBand;
+  /**
+   * 학년 — 1 ~ 6. 새 콘솔은 이 값으로 적고 고르고 거른다(lib/blueprint.ts grades 주석).
+   *
+   * band와 늘 맞춘다(syncGrade). 옛 콘솔은 band만 고치므로, band가 학년과 어긋나면
+   * 그 학년군의 앞 학년으로 물러선다.
+   */
+  gradeNo: GradeNo;
   /** 단원명 — 교과서 단원 목록(lib/curriculumUnits.ts)에서 고른다 */
   unit: string;
   /** 단원 번호 — 고른 단원이 그 학기 교과서의 몇 단원인가 */
@@ -509,6 +519,8 @@ export type ItemDraft = {
    * 기록에서 가장 중요한 값이라 자리를 갈라 둔다.
    */
   aiAudit?: AiAudit;
+  /** AI 검수를 몇 번 돌렸나 — 제출을 거듭해도 쌓인다. 상한은 AI_AUDIT_MAX */
+  aiAuditCount?: number;
   /**
    * 문항을 만든 때.
    *
@@ -524,20 +536,25 @@ export type ItemDraft = {
 };
 
 /**
- * AI 검수가 남긴 것.
+ * AI 검수가 남긴 것 — **이번 제출분**의 결과.
  *
- * AI는 검수자다 — 사람 검수자와 같은 자리에 같은 형식으로 결론을 쌓는다.
+ * AI는 결론을 내지 않는다(runAiAudit 주석). verdict는 검수자에게 건네는 권고다.
  *
- *   승인  걸린 것이 하나도 없음. 문항 은행으로 올라간다.
- *   보류  규칙으로는 못 가리는 것(warns)이 남음. 짚어만 두고 사람에게 넘긴다.
- *   반려  규칙을 그대로 어긴 것(blocks)이 있음. 사유 코드와 고칠 곳을 적어 되돌린다.
+ *   통과 권고  걸린 것이 하나도 없음
+ *   확인 필요  규칙으로는 못 가리는 것(warns)이 남음
+ *   반려 권고  규칙을 그대로 어긴 것(blocks)이 있음. 사유 코드와 고칠 곳을 적는다
+ *
+ * 다시 제출하면 비운다(submitItem) — 앞 제출분의 결과가 고친 문항에 붙어 있으면 검수자가 그것을
+ * 지금 문항의 결과로 읽는다. 몇 번 돌았는지는 aiAuditCount가 따로 센다.
  */
 export type AiAudit = {
   at: string;
+  /** 이 문항의 몇 번째 AI 검수인가(1 · 2). 옛 저장분에는 없다 */
+  round?: number;
   checks: { id: ReviewCheckId; ok: boolean; notes: string[] }[];
   blocks: number;
   warns: number;
-  /** approve 승인함 · hold 사람에게 넘김 · reject 반려함 */
+  /** approve 통과 권고 · hold 확인 필요 · reject 반려 권고 */
   verdict: AiVerdict;
   /** 반려했을 때의 사유 코드 — 사람이 고르는 것과 같은 목록을 쓴다 */
   code?: RejectCode;
@@ -2304,7 +2321,10 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
   const level = (raw.level ?? "S1") as Level;
   const spec = levelSpecs[level];
   const talent = (raw.talent ?? "LANG") as TalentId;
-  const band = (raw.band ?? "3-4") as GradeBand;
+  const band0 = (raw.band ?? "3-4") as GradeBand;
+  /* 학년이 없던 저장분 — 「초등 4학년」은 4로, 「초등 3~4학년」은 앞 학년(3)으로 읽는다 */
+  const gradeNo = raw.gradeNo && bandOfGrade(raw.gradeNo) === band0 ? raw.gradeNo : gradeFrom(raw.grade, band0);
+  const band = bandOfGrade(gradeNo);
   /* 분류가 문항에만 있던 시절의 값. 문항에 그 칸이 없으면 이걸 물려준다 */
   const tags: QuestionTags = {
     standardCode: raw.standardCode ?? "",
@@ -2331,13 +2351,16 @@ function fill(raw: Partial<ItemDraft>): ItemDraft {
     passageImages: raw.passageImages ?? [],
     questions,
     band,
-    /* 「초등 3~4학년군」으로 저장된 옛 문항을 읽을 때 「초등 3~4학년」으로 맞춘다 —
-       화면에서 부르는 이름을 바꿨으므로 저장분만 옛 이름으로 남아 있으면 안 된다 */
-    grade: (raw.grade ?? "").replace("학년군", "학년"),
+    gradeNo,
+    /* 학년 글자는 학년 번호에서 다시 짓는다 — 「초등 3~4학년(군)」으로 저장된 옛 문항도
+       「초등 3학년」으로 읽힌다. 화면에서 부르는 이름과 저장분이 달라지지 않게 */
+    grade: gradeLabelOf(gradeNo),
     unit: raw.unit ?? "",
     unitNo: raw.unitNo ?? "",
     unitTerm: raw.unitTerm ?? "",
     anchor: raw.anchor ?? false,
+    /* 횟수를 세기 전의 저장분 — 결과가 붙어 있으면 한 번 돈 것으로 센다 */
+    aiAuditCount: raw.aiAuditCount ?? (raw.aiAudit ? 1 : 0),
     guidance: raw.guidance ?? "",
     reviewRequest: raw.reviewRequest ?? "",
     checks: raw.checks ?? [],
@@ -2421,18 +2444,45 @@ export function patchItem(id: string, patch: Partial<ItemDraft>) {
       read().map((i) =>
         i.id === id
           ? syncQuestions(
-              {
-                ...i,
-                ...patch,
-                ...(unsign && i.signedAt ? { signedAt: "" } : {}),
-                updatedAt: now(),
-              },
+              syncGrade(
+                {
+                  ...i,
+                  ...patch,
+                  ...(unsign && i.signedAt ? { signedAt: "" } : {}),
+                  updatedAt: now(),
+                },
+                patch,
+              ),
               patch,
             )
           : i,
       ),
     ),
   );
+}
+
+/**
+ * 학년 글자 — 옛 콘솔과 검수 화면이 이 글자를 그대로 읽는다.
+ *
+ * ⚠ const 화살표로 두지 말 것. SEED가 이 파일 위쪽에서 fill을 부르는데, 그 시점에 아래쪽
+ *   const는 아직 서지 않았다(TDZ). function 선언은 끌어올려진다.
+ */
+export function gradeLabelOf(g: GradeNo) {
+  return `초등 ${g}학년`;
+}
+
+/**
+ * 학년 · 학년군 · 학년 글자를 한 벌로 맞춘다.
+ *
+ * 새 콘솔은 학년(gradeNo)을 고친다 — 학년군과 글자가 따라온다. 옛 콘솔은 학년군(band)만
+ * 고친다 — 학년이 그 학년군 밖이면 앞 학년으로 물러선다. 셋이 어긋나면 목록은 4학년,
+ * 코드 대조는 5·6학년으로 서는 문항이 생긴다.
+ */
+function syncGrade(item: ItemDraft, patch: Partial<ItemDraft>): ItemDraft {
+  const gradeNo =
+    patch.gradeNo ??
+    (patch.band && bandOfGrade(item.gradeNo) !== patch.band ? gradeFrom("", patch.band) : item.gradeNo);
+  return { ...item, gradeNo, band: bandOfGrade(gradeNo), grade: gradeLabelOf(gradeNo) };
 }
 
 /**
@@ -2459,6 +2509,7 @@ const UNSIGNED_KEYS = new Set<string>([
   "reviewDraft",
   "comments",
   "aiAudit",
+  "aiAuditCount",
   "anchor",
   "retiredAt",
   "retiredBy",
@@ -2535,6 +2586,8 @@ export type GenerateSpec = {
   form: ItemForm;
   subject: ItemDraft["subject"];
   band: GradeBand;
+  /** 학년 — 새 콘솔만 넘긴다. 있으면 band보다 앞선다 */
+  gradeNo?: GradeNo;
   /** 예상 난이도 b — difficulties 넷 중 하나. null이면 아직 안 골랐다 */
   b: number | null;
   talent: TalentId;
@@ -2603,11 +2656,13 @@ export function checkSpec(spec: GenerateSpec): string[] {
   /* 새 콘솔은 교과 단원을 골라야 과목이 정해진다. 학년을 옮겨 목록 밖이 된 단원도 막는다 —
      3학년 단원을 단 5·6학년 문항이 생긴다 */
   if (spec.unitTerm !== undefined) {
-    if (!spec.unitTerm || !spec.unit.trim()) bad.push("교과 단원을 골라 주세요.");
-    else {
+    /* 학년-학기가 없는 단원은 목록이 없는 학년(1·2학년)에서 손으로 적은 것이다 */
+    if (!spec.unit.trim()) bad.push("교과 단원을 골라 주세요.");
+    else if (spec.unitTerm) {
       const grade = Number(spec.unitTerm.split("-")[0]);
-      const grades = spec.band === "3-4" ? [3, 4] : [5, 6];
-      if (!grades.includes(grade)) bad.push("고른 교과 단원이 학년과 맞지 않습니다.");
+      /* 새 콘솔은 학년 하나를 고른다 — 3학년 문항에 4학년 단원을 달 수 없다 */
+      const ok = spec.gradeNo ? grade === spec.gradeNo : bandOfGrade(grade as GradeNo) === spec.band;
+      if (!ok) bad.push("고른 교과 단원이 학년과 맞지 않습니다.");
     }
   }
   if (spec.points !== undefined && !(spec.points > 0)) {
@@ -2737,8 +2792,9 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
   const base = {
     code: "",
     subject: spec.subject,
-    band: spec.band,
-    grade: spec.band === "3-4" ? "초등 3~4학년" : "초등 5~6학년",
+    band: spec.gradeNo ? bandOfGrade(spec.gradeNo) : spec.band,
+    gradeNo: spec.gradeNo ?? gradeFrom("", spec.band),
+    grade: gradeLabelOf(spec.gradeNo ?? gradeFrom("", spec.band)),
     assets: [],
     version: 1,
     unit: spec.unit.trim(),
@@ -3066,7 +3122,8 @@ export function codePrefix(item: ItemDraft): string {
   const first = item.questions[0];
   /* 만든 날. 씨앗과 옛 저장분에는 createdAt이 없어 updatedAt으로 메운다(fill) */
   const day = (item.createdAt || item.updatedAt || "").replace(/\D/g, "").slice(2, 8);
-  const grade = item.band.replace("-", "");
+  /* 학년 자리는 학년 하나다(3). 학년군으로 적던 때는 「34」였다 */
+  const grade = String(item.gradeNo);
   const subject = SUBJECT_LETTER[item.subject] ?? "X";
   const type = itemTypes.find((t) => t.id === first.type)?.letter ?? "X";
   return `${day || "000000"}-${grade}-${subject}-${type}-${first.level}`;
@@ -3098,7 +3155,8 @@ function withCodes(list: ItemDraft[]): ItemDraft[] {
 
 /** 제출 — 검수 목록으로 넘어간다. 제출 후에는 출제자가 고칠 수 없다(EXP-02-5). */
 export function submitItem(id: string) {
-  patchItem(id, { state: "submitted" });
+  /* 이번 제출분은 AI가 아직 안 봤다 — 앞 제출분의 결과를 떼어 낸다(AiAudit 주석) */
+  patchItem(id, { state: "submitted", aiAudit: undefined });
 }
 
 /** 제출 회수 — 검수자가 아직 손대지 않았을 때 되돌려 고친다 */
@@ -3150,46 +3208,77 @@ const APPROVE_TEXT =
   "· 1차 내용 — 정답 유일성, 보기 중복, 정답 길이 단서\n" +
   "· 2차 태깅 — 단계·형식 매핑, 성취기준 코드, 재능 좌표\n" +
   "· 3차 윤리·편향 — 특정 계층·지역·성별을 가리키는 표현\n" +
-  "규칙으로 대조할 수 있는 범위에서 본 결론입니다. 승인 뒤에도 사람이 사용 중지로 되돌릴 수 있습니다.";
+  "규칙으로 대조할 수 있는 범위에서 본 것입니다. 교과 내용 · 학년 이독성은 검수자가 봅니다.";
+
+/**
+ * AI 검수 횟수의 상한 — 한 문항에 두 번까지(2026-09-21 협의).
+ *
+ * 흐름은 「출제 → AI 검수 → 검수자(반려) → 출제 → AI 검수 → 검수자(승인) → 문항 은행」이다.
+ * 반려되어 고쳐 올린 문항에 AI를 한 번 더 대 보는 것까지가 AI의 몫이고, 그 뒤로도 되돌아오는
+ * 문항은 AI가 짚을 것이 이미 다 짚힌 것이라 사람이 본다.
+ */
+export const AI_AUDIT_MAX = 2;
+
+/** 이 문항에 AI 검수를 더 돌릴 수 있는가 — 검수 대기이고, 이번 제출분을 아직 안 봤고, 두 번을 안 넘었을 때 */
+export const aiAuditable = (i: ItemDraft) =>
+  i.state === "submitted" && !i.aiAudit && (i.aiAuditCount ?? 0) < AI_AUDIT_MAX;
+
+/**
+ * 검수자가 볼 차례인가 — 이번 제출분에 AI 검수를 마쳤거나, 두 번을 다 써서 더 돌릴 수 없을 때.
+ * 검수자의 승인 · 반려는 이것이 참일 때만 열린다(ReviewPanel).
+ */
+export const humanReviewable = (i: ItemDraft) =>
+  i.state === "submitted" && (!!i.aiAudit || (i.aiAuditCount ?? 0) >= AI_AUDIT_MAX);
+
+/** AI 검수가 권하는 것 — 결론이 아니라 검수자에게 건네는 말이다 */
+export const aiVerdictLabel: Record<AiVerdict, string> = {
+  approve: "통과 권고",
+  hold: "확인 필요",
+  reject: "반려 권고",
+};
 
 /**
  * AI 검수를 돌린다 (EXP-03-2).
  *
- * AI는 사전 점검이 아니라 **검수자**다. 사람 검수자와 같은 자리에 같은 형식으로
- * 결론을 쌓는다 — 3단 소견, 사유 코드, 소견문. 결론은 셋 중 하나다.
+ * ── AI는 결론을 내지 않는다 ──
+ * 한동안 AI가 검수자 자리에 앉아 승인 · 반려를 직접 냈다. 협의(2026-09-21)에서 흐름을 바꿨다 —
+ * AI는 규칙 대조 결과를 남기고, 승인 · 반려는 늘 검수자가 한다. 그래서 여기서는 상태를 바꾸지
+ * 않고 검수 기록(reviews)에도 쌓지 않는다. 결과는 aiAudit에 담기고, 검수 목록 · 검수판이 그것을
+ * 보여 주며 인쇄 · 다운로드한다(lib/auditReport.ts).
  *
- *   승인  걸린 것이 하나도 없다. 문항 은행으로 올라간다.
- *   보류  규칙으로는 가릴 수 없는 것(warns)이 남았다. 짚어만 두고 사람에게 넘긴다.
- *   반려  규칙을 그대로 어겼다(blocks). 사유 코드와 고칠 곳을 적어 되돌린다.
+ *   통과 권고  걸린 것이 하나도 없다
+ *   확인 필요  규칙으로는 가릴 수 없는 것(warns)이 남았다
+ *   반려 권고  규칙을 그대로 어겼다(blocks). 사유 코드와 고칠 곳을 적는다
  *
- * ⚠ 승인은 **규칙으로 대조할 수 있는 범위 안에서의 결론**이다. 교과 내용이 실제로
- *   맞는지와 이 학년 아이가 읽을 수 있는지는 규칙으로 가려지지 않는다. 그래서
- *   확인이 필요한 것이 하나라도 남으면 승인하지 않고 사람에게 넘기고, 승인한 것도
- *   검수 기록에 「AI 검수」로 남겨 누가 통과시킨 문항인지 뒤에서 셀 수 있게 한다.
- *
- * 검수 대기가 아닌 문항은 건너뛴다. 이미 결론이 난 것에 소견을 덧붙이면 기록이
- * 어느 시점의 것인지 알 수 없어진다.
+ * 돌릴 수 있는 문항만 돈다(aiAuditable) — 이번 제출분을 이미 봤거나 두 번을 다 쓴 문항은 건너뛴다.
  */
 export function runAiAudit(ids: string[]): {
   done: number;
   approved: number;
   held: number;
   rejected: number;
+  ids: string[];
 } {
   const at = now();
   let done = 0;
   let approved = 0;
   let rejected = 0;
+  const ran: string[] = [];
 
   const next = read().map((item) => {
-    if (!ids.includes(item.id) || item.state !== "submitted") return item;
+    if (!ids.includes(item.id) || !aiAuditable(item)) return item;
     const result = auditItem(item);
     const rejection = auditRejection(result);
     const verdict: AiVerdict = rejection ? "reject" : result.warns > 0 ? "hold" : "approve";
     done += 1;
+    ran.push(item.id);
+    if (verdict === "approve") approved += 1;
+    if (verdict === "reject") rejected += 1;
+    const round = (item.aiAuditCount ?? 0) + 1;
 
     const audit: AiAudit = {
       at,
+      round,
       checks: result.checks.map((c) => ({
         id: c.id,
         ok: c.ok,
@@ -3204,63 +3293,28 @@ export function runAiAudit(ids: string[]): {
       text: rejection ? rejection.text : verdict === "approve" ? APPROVE_TEXT : undefined,
     };
 
-    /* 보류 — 상태를 건드리지 않는다. 규칙 밖의 일이 남았다는 것을 짚어만 두고,
-       결론은 이 문항을 열어 보는 사람이 낸다. */
-    if (verdict === "hold") return { ...item, aiAudit: audit };
-
-    /* 3단 소견. 반려는 걸린 칸만 「걸림」으로 두고 나머지는 확인 안 함(null)으로
-       남긴다 — 한 칸이 걸려 되돌리는 것이라 나머지를 본 것은 아니다. 승인은 셋 다
-       「통과」로 채운다. 결론을 낸 것이므로 통과라고 적지 않으면 그 기록으로는
-       무엇을 보고 승인했는지 알 수 없다. */
-    const checks: ReviewCheckResult[] = result.checks.map((c) => {
-      const blocked = c.findings.filter((f) => f.tone === "block");
-      return {
-        id: c.id,
-        ok: verdict === "approve" ? true : blocked.length > 0 ? false : null,
-        reason: blocked.find((f) => f.reason)?.reason,
-        note: c.findings.map((f) => f.text).join("\n"),
-      };
-    });
-
-    const text = rejection ? rejection.text : APPROVE_TEXT;
-    if (rejection) rejected += 1;
-    else approved += 1;
-
     return {
       ...item,
-      state: (rejection ? "rejected" : "approved") as ItemState,
-      updatedAt: at,
       aiAudit: audit,
-      reviews: [
-        ...item.reviews,
-        {
-          at,
-          by: AI_REVIEWER,
-          round: item.reviews.length + 1,
-          verdict: (rejection ? "reject" : "approve") as ReviewVerdict,
-          checks,
-          code: rejection?.code,
-          text,
-          machine: true,
-        },
-      ],
-      reviewDraft: undefined,
+      aiAuditCount: round,
+      /* 출제자도 볼 수 있게 한 줄 남긴다. 결론이 아니므로 kind는 note다 */
       comments: [
         ...item.comments,
         {
           at,
           by: AI_REVIEWER,
           role: "ai" as const,
-          kind: (rejection ? "reject" : "approve") as CommentKind,
-          code: rejection?.code,
-          text,
+          kind: "note" as CommentKind,
+          text:
+            `AI 검수 ${round}/${AI_AUDIT_MAX}회 — ${aiVerdictLabel[verdict]}` +
+            ` (규칙 위반 ${result.blocks} · 확인 필요 ${result.warns}). 검수자에게 넘깁니다.`,
         },
       ],
     };
   });
 
   write(next);
-  return { done, approved, held: done - approved - rejected, rejected };
+  return { done, approved, held: done - approved - rejected, rejected, ids: ran };
 }
 
 /** 쓰다 만 검수를 문항에 붙여 둔다. 결론이 나기 전까지 상태는 그대로다. */
@@ -3489,7 +3543,9 @@ export function missingSubmit(i: ItemDraft) {
 }
 
 /**
- * 문항 카드의 나머지 칸 — 출제 의도 · 인정/불인정 예 · 재능 평가 관점.
+ * 문항 카드의 나머지 칸 — 출제 의도 · 인정 예 · 재능 평가 관점.
+ *
+ * 불인정 예는 묻지 않는다(2026-09-21 협의로 출제 화면에서 걷었다). 옛 문항에 적힌 것은 남는다.
  *
  * missingContent와 가른 것은 옛 콘솔(components/admin/ItemCard.tsx) 때문이다. 그 화면에는
  * 이 칸들이 없어서, 한 함수에 넣으면 옛 콘솔에서 쓴 문항은 영영 제출하지 못한다.
@@ -3503,7 +3559,6 @@ export function missingCard(i: ItemDraft) {
        비었다고 막지는 않는다 */
     if (!hasChoices(q.type)) {
       if (!q.acceptExamples.trim()) out.push(`${tag}인정 예`);
-      if (!q.rejectExamples.trim()) out.push(`${tag}불인정 예`);
     }
     if (!q.perspectiveHierarchy.trim() || !q.perspectiveAbility.trim()) {
       out.push(`${tag}재능 평가 관점`);

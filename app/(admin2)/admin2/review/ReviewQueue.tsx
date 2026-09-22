@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { levelSpecs } from "@/lib/blueprint";
+import { gradeText, levelSpecs } from "@/lib/blueprint";
 import { n } from "@/lib/admin2";
+import { downloadAuditCsv, printAudit } from "@/lib/auditReport";
 import {
+  AI_AUDIT_MAX,
+  aiAuditable,
+  aiVerdictLabel,
   formTextOf,
+  humanReviewable,
   reviewChecks,
   runAiAudit,
   stateLabel,
@@ -52,11 +57,11 @@ function progressOf(i: ItemDraft) {
   return i.reviewDraft?.checks.filter((c) => c.ok !== null).length ?? 0;
 }
 
-type TabId = "waiting" | "started" | "ai" | "approved" | "rejected";
+type TabId = "ai" | "human" | "started" | "approved" | "rejected";
 
 export default function ReviewQueue() {
   const items = useItems();
-  const [tab, setTab] = useState<TabId>("waiting");
+  const [tab, setTab] = useState<TabId>("ai");
 
   /* 오래 기다린 것이 위로. 넘긴 시각을 따로 들고 있지 않으므로 마지막으로 고친 때를
      쓴다 — 제출이 곧 마지막 손질이라 실제로 같은 값이다 */
@@ -78,25 +83,33 @@ export default function ReviewQueue() {
     [items],
   );
 
+  /*
+   * 탭이 곧 검수 흐름이다(2026-09-21 협의) —
+   *   출제 → AI 검수 → 검수자(승인 · 반려) → 문항 은행 / 반려면 출제로 되돌아가 다시 AI 검수.
+   *
+   * 「AI 검수 대기」는 이번 제출분을 AI가 아직 안 본 것, 「검수자 대기」는 AI 결과가 붙어 사람이
+   * 볼 차례인 것이다. AI를 두 번 다 쓴 문항은 곧장 검수자 대기에 선다(lib/itemStore.ts humanReviewable).
+   * 「AI 초안」 탭은 걷고 출처 거르개로 옮겼다 — 흐름 탭 사이에 출처 탭이 끼면 어느 탭이 차례인지 흐려진다.
+   */
   const tabs = useMemo(
     () => [
       {
-        id: "waiting" as TabId,
-        label: stateLabel.submitted,
-        rows: waiting,
-        empty: "검수를 기다리는 문항이 없습니다.",
+        id: "ai" as TabId,
+        label: "AI 검수 대기",
+        rows: waiting.filter(aiAuditable),
+        empty: "AI 검수를 기다리는 문항이 없습니다.",
+      },
+      {
+        id: "human" as TabId,
+        label: "검수자 대기",
+        rows: waiting.filter(humanReviewable),
+        empty: "검수자의 판단을 기다리는 문항이 없습니다.",
       },
       {
         id: "started" as TabId,
         label: "짚는 중",
         rows: waiting.filter((i) => i.reviewDraft),
         empty: "누군가 열어 둔 검수가 없습니다.",
-      },
-      {
-        id: "ai" as TabId,
-        label: "AI 초안",
-        rows: waiting.filter((i) => i.origin === "ai"),
-        empty: "AI가 만든 초안이 검수 대기에 없습니다.",
       },
       {
         id: "approved" as TabId,
@@ -120,34 +133,32 @@ export default function ReviewQueue() {
   /*
    * AI 검수를 돌린다 (EXP-03-2).
    *
-   * 대상은 **검수 대기 전부**다. 지금 보고 있는 탭이 아니라 큐 전체를 돌린다 — 「승인됨」
-   * 탭을 보고 있다고 승인된 문항을 다시 검수할 수는 없고, 탭마다 대상이 달라지면 같은
-   * 단추가 화면마다 다른 일을 한다.
+   * 대상은 **AI 검수 대기 전부**다 — 지금 보고 있는 탭이 아니라 돌릴 수 있는 문항 전체. 탭마다
+   * 대상이 달라지면 같은 단추가 화면마다 다른 일을 한다.
    *
-   * 물어보고 돌린다. 규칙에 걸린 것은 그 자리에서 반려되어 출제자에게 돌아가고, 걸린 것이
-   * 없으면 승인되어 문항 은행으로 오른다 — 한 번 누르면 여러 문항의 상태가 함께 바뀐다.
+   * AI는 결론을 내지 않는다. 결과만 붙이고 문항은 검수자 대기로 넘어간다 — 상태가 바뀌지 않으므로
+   * 묻지 않고 돌린다. 한 문항에 두 번까지다(AI_AUDIT_MAX).
    *
-   * ⚠ AI 검수는 규칙 대조다. 교과 내용이 맞는지, 이 학년 아이가 읽을 수 있는지는 여기서
-   *   가려지지 않아 「사람에게 넘김」으로 남는다(lib/itemAudit.ts).
+   * 돌린 뒤에는 그 묶음의 결과를 인쇄 · 다운로드할 수 있다. 문항마다의 결과는 문항 상세의
+   * 검수판에서도 뽑는다.
    */
-  const [audited, setAudited] = useState<string | null>(null);
-  const queue = waiting;
+  const [audited, setAudited] = useState<{ text: string; ids: string[] } | null>(null);
+  const queue = useMemo(() => waiting.filter(aiAuditable), [waiting]);
+  const batch = useMemo(
+    () => (audited ? items.filter((i) => audited.ids.includes(i.id)) : []),
+    [audited, items],
+  );
 
   const audit = () => {
     if (queue.length === 0) return;
-    const ok = window.confirm(
-      `검수 대기 ${n(queue.length)}건에 AI 검수를 돌립니다.\n\n` +
-        "규칙을 어긴 문항은 사유를 적어 출제자에게 되돌아가고,\n" +
-        "걸린 것이 없는 문항은 승인되어 문항 은행으로 오릅니다.\n\n돌릴까요?",
-    );
-    if (!ok) return;
     const r = runAiAudit(queue.map((i) => i.id));
-    setAudited(
-      `${n(r.done)}건을 검수했습니다 — 승인 ${n(r.approved)} · 반려 ${n(r.rejected)} · 사람에게 넘김 ${n(r.held)}.` +
-        (r.held > 0
-          ? " 넘긴 문항은 상태를 바꾸지 않았습니다. 규칙으로 가릴 수 없는 것이 남아 있어 결론은 사람이 냅니다."
-          : ""),
-    );
+    setAudited({
+      text:
+        `${n(r.done)}건을 AI로 검수했습니다 — 통과 권고 ${n(r.approved)} · 확인 필요 ${n(r.held)} · 반려 권고 ${n(r.rejected)}. ` +
+        "상태는 바꾸지 않았고, 모두 검수자 대기로 넘어갔습니다.",
+      ids: r.ids,
+    });
+    setTab("human");
   };
 
   const cols = useMemo<Col<ItemDraft>[]>(
@@ -173,13 +184,14 @@ export default function ReviewQueue() {
         cell: (r) => <Tag>{r.subject}</Tag>,
       },
       {
-        key: "band",
+        key: "grade",
         head: "학년",
-        width: "4rem",
+        width: "4.5rem",
         nowrap: true,
         hide: "md",
-        value: (r) => r.band,
-        cell: (r) => <span className="a2-mono">{r.band}</span>,
+        value: (r) => gradeText(r.gradeNo),
+        sort: (r) => r.gradeNo,
+        cell: (r) => gradeText(r.gradeNo),
       },
       {
         key: "level",
@@ -253,9 +265,16 @@ export default function ReviewQueue() {
          */
         key: "progress",
         head: "검수",
-        width: "7.5rem",
+        width: "9rem",
         nowrap: true,
-        value: (r) => (r.reviewDraft ? `짚는 중 ${progressOf(r)}` : r.aiAudit ? "AI 검수 완료" : "아직"),
+        value: (r) =>
+          r.reviewDraft
+            ? `짚는 중 ${progressOf(r)}`
+            : r.aiAudit
+              ? `AI ${aiVerdictLabel[r.aiAudit.verdict]}`
+              : aiAuditable(r)
+                ? "AI 검수 전"
+                : "",
         sort: (r) => (r.reviewDraft ? -progressOf(r) - 10 : r.aiAudit ? -1 : 0),
         cell: (r) =>
           r.reviewDraft ? (
@@ -263,15 +282,36 @@ export default function ReviewQueue() {
               짚는 중 {progressOf(r)}/{reviewChecks.length}
             </span>
           ) : r.aiAudit ? (
-            <span
-              className="a2-t-sm"
-              title={`${r.aiAudit.at} · 규칙 위반 ${r.aiAudit.blocks} · 확인 필요 ${r.aiAudit.warns}`}
-            >
-              <Status tone="info">AI 검수 완료</Status>
+            <span title={`${r.aiAudit.at} · 규칙 위반 ${r.aiAudit.blocks} · 확인 필요 ${r.aiAudit.warns}`}>
+              <Status
+                tone={r.aiAudit.verdict === "reject" ? "danger" : r.aiAudit.verdict === "hold" ? "warn" : "ok"}
+              >
+                AI {aiVerdictLabel[r.aiAudit.verdict]}
+              </Status>
             </span>
+          ) : aiAuditable(r) ? (
+            <span className="a2-t-sm text-(--a2-ink-4)">AI 검수 전</span>
           ) : (
-            <span className="a2-t-sm text-(--a2-ink-4)">아직</span>
+            dash
           ),
+      },
+      {
+        /* AI 검수는 한 문항에 두 번까지다 — 몇 번 썼는지가 늘 보여야 두 번째를 아껴 쓴다 */
+        key: "aiCount",
+        head: "AI 횟수",
+        width: "5rem",
+        nowrap: true,
+        hide: "md",
+        value: (r) => `${r.aiAuditCount ?? 0}/${AI_AUDIT_MAX}`,
+        sort: (r) => r.aiAuditCount ?? 0,
+        cell: (r) => (
+          <span
+            className="a2-mono a2-t-sm"
+            style={{ color: (r.aiAuditCount ?? 0) >= AI_AUDIT_MAX ? "var(--a2-danger)" : "var(--a2-ink-3)" }}
+          >
+            {r.aiAuditCount ?? 0}/{AI_AUDIT_MAX}
+          </span>
+        ),
       },
       {
         key: "updatedAt",
@@ -289,7 +329,7 @@ export default function ReviewQueue() {
         cell: (r) =>
           /* 판정이 끝난 줄은 검수할 것이 없다. 같은 글자의 단추를 세워 두면 눌러 놓고
              왜 검수판이 안 열리는지 상세까지 들어가 확인하게 된다 */
-          r.state === "submitted" ? (
+          humanReviewable(r) ? (
             <Link
               href={`/admin2/items/${r.id}`}
               className="a2-btn a2-btn-sm a2-btn-primary"
@@ -311,9 +351,17 @@ export default function ReviewQueue() {
     [],
   );
 
-  /* 출처(AI 초안)는 머리의 탭이 맡는다. 같은 조건을 두 군데서 걸면 서로 부딪친다 */
   const filters = useMemo<Filter<ItemDraft>[]>(
     () => [
+      {
+        id: "origin",
+        label: "출처",
+        options: [
+          { value: "ai", label: "AI 초안" },
+          { value: "human", label: "사람" },
+        ],
+        match: (r, v) => (v === "ai" ? r.origin === "ai" : r.origin !== "ai"),
+      },
       {
         id: "subject",
         label: "과목",
@@ -341,6 +389,11 @@ export default function ReviewQueue() {
             type="button"
             className="a2-btn a2-btn-primary"
             disabled={queue.length === 0}
+            title={
+              queue.length === 0
+                ? "AI 검수를 기다리는 문항이 없습니다"
+                : `AI 검수는 한 문항에 ${AI_AUDIT_MAX}번까지 돌릴 수 있습니다`
+            }
             onClick={audit}
           >
             AI 문항 검수
@@ -364,15 +417,33 @@ export default function ReviewQueue() {
       {audited && (
         <Body className="pb-0">
           <p className="a2-note" style={{ borderLeftColor: "var(--a2-info)" }}>
-            <span>{audited}</span>
-            <button
-              type="button"
-              className="ml-auto shrink-0 text-(--a2-ink-4) hover:text-(--a2-ink)"
-              onClick={() => setAudited(null)}
-              aria-label="닫기"
-            >
-              ×
-            </button>
+            <span>{audited.text}</span>
+            <span className="ml-auto flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                className="a2-btn a2-btn-sm"
+                disabled={batch.length === 0}
+                onClick={() => printAudit(batch)}
+              >
+                결과 인쇄
+              </button>
+              <button
+                type="button"
+                className="a2-btn a2-btn-sm"
+                disabled={batch.length === 0}
+                onClick={() => downloadAuditCsv(batch)}
+              >
+                결과 다운로드
+              </button>
+              <button
+                type="button"
+                className="text-(--a2-ink-4) hover:text-(--a2-ink)"
+                onClick={() => setAudited(null)}
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </span>
           </p>
         </Body>
       )}
