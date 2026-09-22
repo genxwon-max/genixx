@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
 import { labelCheck } from "@/lib/labelCheck";
-import { bandOf, gradeLabel, slotOf } from "@/lib/reportAssets";
-import { resetTemplate, saveTemplate, useTemplateById } from "@/lib/reportAssetStore";
+import { bandOf, gradeLabel, isCustomSlot, slotOf } from "@/lib/reportAssets";
+import { removeSlot, resetTemplate, saveTemplate, useTemplateById } from "@/lib/reportAssetStore";
 import { axes } from "@/lib/result";
 import {
   LeaveDialog,
@@ -72,7 +73,9 @@ function Desk({
   back: React.ReactNode;
 }) {
   const by = useAdminPrefs().staffName || "운영자";
+  const router = useRouter();
   const slot = slotOf(row.slot);
+  const custom = isCustomSlot(row.slot);
 
   const draft = useEditDraft({ title: row.title, text: row.text });
   const v = draft.value;
@@ -95,18 +98,39 @@ function Desk({
         title={slot.label}
         back={back}
         actions={
-          row.edited ? (
-            <button type="button" className="a2-btn" onClick={() => resetTemplate(row.id)}>
-              기본 문구로 되돌리기
-            </button>
-          ) : undefined
+          <>
+            {row.edited && !custom && (
+              <button type="button" className="a2-btn" onClick={() => resetTemplate(row.id)}>
+                기본 문구로 되돌리기
+              </button>
+            )}
+            {/* 운영자가 더한 자리만 지운다 — 칸 하나가 아니라 자리 전체(학년대 넷의 문구 · 규칙)가 사라진다 */}
+            {custom && (
+              <button
+                type="button"
+                className="a2-btn a2-btn-danger"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      `「${slot.label}」 자리를 지웁니다.\n학년마다 쓴 문구와 조립 규칙이 함께 사라집니다. 이미 발행된 리포트는 그대로입니다.\n\n지울까요?`,
+                    )
+                  )
+                    return;
+                  router.push("/admin2/reports/templates");
+                  removeSlot(row.slot);
+                }}
+              >
+                이 자리 지우기
+              </button>
+            )}
+          </>
         }
       />
 
       <Body className="grid gap-3">
         <Panel title="이 칸" meta={row.id} flush>
           <div className="a2-form">
-            <FormRow label="학년대">
+            <FormRow label="학년">
               <Tag accent>{gradeLabel(row.grade)}</Tag>
             </FormRow>
             <FormRow label="재능 축">
@@ -136,7 +160,11 @@ function Desk({
               )}
             </FormRow>
             <FormRow label="이 자리의 규칙">
-              <span className="a2-t-sm text-(--a2-ink-2)">{slot.guide}</span>
+              {slot.guide ? (
+                <span className="a2-t-sm text-(--a2-ink-2)">{slot.guide}</span>
+              ) : (
+                <span className="a2-t-sm text-(--a2-ink-4)">자리를 만들 때 적어 둔 안내가 없습니다.</span>
+              )}
             </FormRow>
           </div>
         </Panel>

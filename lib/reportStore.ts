@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import type { ExamRecord } from "./examStore";
 import { confidenceOf, decideType, scoreAxes } from "./result";
 import { assembleFrom } from "./reportAssetStore";
-import { bandFromGrade } from "./surveyBands";
+import { templateGradeFrom } from "./reportAssets";
 import { labelCheck } from "./labelCheck";
 
 /**
@@ -551,7 +551,7 @@ export function ensureReport(
 
   const blocks: ReportBlock[] = top
     ? assembleFrom({
-        grade: bandFromGrade(grade),
+        grade: templateGradeFrom(grade),
         topAxis: top.axis.id,
         topScore: top.score ?? 0,
         lowAxis: low?.axis.id ?? null,
