@@ -58,7 +58,7 @@ export function detailModeLabel(mode: DetailMode) {
 const ALLOWED_TAGS = new Set([
   "P", "BR", "HR",
   "H1", "H2", "H3", "H4",
-  "STRONG", "B", "EM", "I", "U", "S", "DEL", "MARK", "SMALL",
+  "STRONG", "B", "EM", "I", "U", "S", "DEL", "MARK", "SMALL", "SUP", "SUB",
   "UL", "OL", "LI",
   "BLOCKQUOTE", "PRE", "CODE",
   "A", "IMG",
