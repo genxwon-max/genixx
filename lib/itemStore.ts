@@ -168,7 +168,8 @@ export type ItemForm = "single" | "set";
    화면에는 이름 둘만 세운다 — 두 낱말이 스스로 설명하는 것에 곁들이는 말을 붙이면
    읽을 것만 늘어난다 */
 export const itemForms: { id: ItemForm; label: string }[] = [
-  { id: "single", label: "단일" },
+  /* 화면 이름은 「독립」(2026-09-22 요청) — 값(single)은 저장분과 옛 콘솔이 읽으므로 그대로 둔다 */
+  { id: "single", label: "독립" },
   { id: "set", label: "세트" },
 ];
 
@@ -3056,7 +3057,7 @@ export function typeTextOf(i: ItemDraft) {
  * 것이기 때문이다 — 회차에 담을 때 몇 칸을 먹는지가 거기서 정해진다.
  */
 export function formTextOf(i: ItemDraft) {
-  return i.form === "set" ? `세트 ${i.questions.length}문항` : "단일";
+  return i.form === "set" ? `세트 ${i.questions.length}문항` : "독립";
 }
 
 /**

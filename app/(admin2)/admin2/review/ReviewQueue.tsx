@@ -212,7 +212,7 @@ export default function ReviewQueue() {
         nowrap: true,
         value: (r) => formTextOf(r),
         cell: (r) =>
-          r.form === "set" ? <Tag accent>{formTextOf(r)}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">단일</span>,
+          r.form === "set" ? <Tag accent>{formTextOf(r)}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">독립</span>,
       },
       {
         key: "type",
