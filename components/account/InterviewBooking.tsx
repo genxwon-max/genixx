@@ -115,11 +115,14 @@ export default function InterviewBooking({ variant = 2 }: { variant?: Variant })
   const slots = date && counselor ? slotsOf(bookings, counselor, date, span) : [];
 
   /* 걸음을 되돌릴 때 아래를 지운다 */
+  /* 길이는 날짜보다 위에 있는 조건이다. 30분으로 자리가 있던 사람이 60분으로는 하루가
+     통째로 잠길 수 있어, 바꾸면 상담사부터 다시 고른다 — 고른 사람을 남겨 두면 잠긴
+     시간표만 보고 「이 사람은 안 되는구나」로 읽고 만다. 날짜는 남긴다 */
   const pickSpan = (v: Span) => {
     setSpan(v);
+    setCounselorId("");
+    setMode("");
     setStart("");
-    /* 30분으로 잡히던 사람이 60분으로는 자리가 없을 수 있다. 고른 사람은 그대로 두고
-       시간표에서 잠긴 칸으로 보이게 한다 — 골라 둔 사람이 말없이 사라지면 다시 찾는다 */
   };
   const pickDate = (v: string) => {
     setDate(v);
