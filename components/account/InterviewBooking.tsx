@@ -3,14 +3,24 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addMonths, monthCells, monthOf, monthText, today, weekdayKo, WEEK_KO } from "@/lib/calendar";
+import {
+  addDays,
+  addMonths,
+  monthCells,
+  monthOf,
+  monthText,
+  today,
+  weekdayKo,
+  WEEK_KO,
+} from "@/lib/calendar";
 import {
   book,
   cancelBooking,
-  dayStarts,
-  freeAt,
+  counselorsOn,
   hasRoom,
   inWindow,
+  LEAD_DAYS,
+  slotsOf,
   useBookings,
   WINDOW_DAYS,
   type Booking,
@@ -39,17 +49,21 @@ import { card, listTd, listTh } from "./ui";
 /**
  * 면담 예약 (/my/interviews) — 결과 해석 면담을 보호자가 직접 잡는다.
  *
- * 차례를 **날짜 → 시각 → 상담사**로 둔다. 사람을 먼저 고르면 그 사람이 이번 주에 비지
- * 않을 때 처음으로 돌아가야 하는데, 보호자가 실제로 쥐고 있는 조건은 대개 「아이 학원
- * 없는 목요일 저녁」이지 특정 전문가가 아니다. 시각을 먼저 좁히면 그 자리에 설 수 있는
- * 사람만 서므로, 고를 수 없는 사람을 읽는 일이 없다.
+ * 차례는 **날짜 → 상담사 → 시각**이다. 날짜로 그 날 자리가 남은 전문가만 추리고, 전문가를
+ * 고르면 그 사람의 하루 시간표가 열린다. 사람을 고른 다음에 시각을 보는 까닭은, 보호자가
+ * 「누구와 이야기하는가」를 먼저 정하고 싶어 하기 때문이다 — 시각부터 좁히면 같은 시간에
+ * 선 사람들 가운데 누구인지 모르는 채로 골라야 한다.
+ *
+ * 시간표는 **빈 칸만 추리지 않고 근무 시간을 통째로 편다.** 이미 찬 자리는 눌리지 않게
+ * 잠가 두되 자리 자체는 보인다 — 없는 칸으로 지워 버리면 「그 시간에 원래 일을 안 하는
+ * 것」인지 「누가 먼저 잡은 것」인지 구별되지 않는다.
  *
  * 한 걸음을 고치면 그 아래는 지운다 — 날짜를 바꿨는데 시각이 남아 있으면 그 시각이 새
  * 날짜에도 비어 있는 것처럼 보인다.
  *
  * 각 자리가 정말 비어 있는지는 lib/counselStore.ts 한 곳에서만 센다(startsOf). 달력 칸과
- * 시각 목록이 저마다 세면 어느 날 둘이 갈려, 켜져 있는 날짜를 눌렀는데 시각이 하나도
- * 없는 일이 생긴다.
+ * 시간표가 저마다 세면 어느 날 둘이 갈려, 켜져 있는 날짜를 눌렀는데 시각이 하나도 없는
+ * 일이 생긴다.
  *
  * ⚠ 여기서 잡는 것은 **보호자가 신청하는 해석 면담**이다. 판정이 경계선에 선 사례를
  *   전문가가 불러 확인하는 면담(EXP-06)은 우리가 대상을 고르는 일이라 이 화면에 없다.
@@ -89,35 +103,34 @@ export default function InterviewBooking({ variant = 2 }: { variant?: Variant })
 
   /* 오늘은 하이드레이션이 끝난 뒤에만 읽는다 — 서버가 그린 달력과 갈리면 칸이 흔들린다 */
   const now = hydrated ? today() : "";
-  const ym = month || (now ? monthOf(now) : "");
+  /* 처음 펴는 달은 이번 달이 아니라 **가장 이른 날이 든 달**이다. 달 말에 이번 달을 펴면
+     고를 수 있는 칸이 하나도 없는 달력이 먼저 보인다 */
+  const ym = month || (now ? monthOf(addDays(now, LEAD_DAYS)) : "");
 
   const student = mine.find((s) => s.id === studentId) ?? (mine.length === 1 ? mine[0] : null);
   const counselor = counselorId ? counselorOf(counselorId) : null;
 
-  const starts = date ? dayStarts(bookings, date, span) : [];
-  const free = date && start ? freeAt(bookings, date, start, span) : [];
+  /* 그 날 자리가 남은 전문가 → 고른 전문가의 하루 시간표. 차례가 곧 화면 차례다 */
+  const open = date ? counselorsOn(bookings, date, span) : [];
+  const slots = date && counselor ? slotsOf(bookings, counselor, date, span) : [];
 
   /* 걸음을 되돌릴 때 아래를 지운다 */
   const pickSpan = (v: Span) => {
     setSpan(v);
     setStart("");
-    setCounselorId("");
-    setMode("");
+    /* 30분으로 잡히던 사람이 60분으로는 자리가 없을 수 있다. 고른 사람은 그대로 두고
+       시간표에서 잠긴 칸으로 보이게 한다 — 골라 둔 사람이 말없이 사라지면 다시 찾는다 */
   };
   const pickDate = (v: string) => {
     setDate(v);
+    setCounselorId("");
+    setMode("");
     setStart("");
-    setCounselorId("");
-    setMode("");
-  };
-  const pickStart = (v: string) => {
-    setStart(v);
-    setCounselorId("");
-    setMode("");
   };
   const pickCounselor = (c: Counselor) => {
     setCounselorId(c.id);
     setMode(c.modes[0]);
+    setStart("");
   };
 
   const ready = !!student && !!date && !!start && !!counselor && !!mode;
@@ -163,8 +176,10 @@ export default function InterviewBooking({ variant = 2 }: { variant?: Variant })
           면담
         </h1>
         <p className={`mt-2 text-[13px] leading-[1.7] ${t.muted}`}>
-          결과지를 함께 읽는 자리입니다. 날짜와 시간을 고르시면 그 시간에 자리가 있는 전문가가
-          나옵니다. 신청하신 가정만 진행하며, 오늘부터 {WINDOW_DAYS}일 안에서 잡으실 수 있습니다.
+          결과지를 함께 읽는 자리입니다. 날짜를 고르시면 그 날 자리가 있는 전문가가 나오고,
+          전문가를 고르시면 그분의 시간표가 열립니다. 신청하신 가정만 진행하며, 전문가가
+          결과지를 미리 읽고 들어오므로 신청일로부터 {LEAD_DAYS}일 뒤부터 {WINDOW_DAYS}일
+          안에서 잡으실 수 있습니다.
         </p>
       </header>
 
@@ -330,71 +345,19 @@ export default function InterviewBooking({ variant = 2 }: { variant?: Variant })
             </div>
           </section>
 
-          {/* ③ 시간 */}
+          {/* ③ 상담사 — 그 날 자리가 남은 사람만 */}
           {date && (
             <section className="mt-8">
-              <SectionTitle note={`${spanLabel(span)} 면담으로 낼 수 있는 시간입니다.`}>
-                {date.slice(5).replace("-", "월 ")}일({weekdayKo(date)}) 시간
-              </SectionTitle>
+              <SectionTitle note="이 날 자리가 남은 전문가만 세웁니다.">상담 전문가</SectionTitle>
 
-              {starts.length === 0 ? (
+              {open.length === 0 ? (
                 <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
                   이 날은 {spanLabel(span)} 면담 자리가 없습니다. 다른 날이나 30분 면담을 보아
                   주세요.
                 </p>
               ) : (
-                <div className={`${card} space-y-4 p-4 sm:p-5`}>
-                  {(
-                    [
-                      ["오전", starts.filter((s) => s < "12:00")],
-                      ["오후", starts.filter((s) => s >= "12:00")],
-                    ] as const
-                  ).map(([label, list]) =>
-                    list.length === 0 ? null : (
-                      <div key={label}>
-                        <p className="mb-2 text-[12.5px] font-semibold text-soft-muted">{label}</p>
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-                          {list.map((s) => {
-                            const on = s === start;
-                            return (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => pickStart(s)}
-                                aria-pressed={on}
-                                className={`rounded-[10px] border py-2.5 text-[13.5px] font-semibold tabular-nums transition-colors ${
-                                  on
-                                    ? "border-soft-primary bg-soft-primary text-white"
-                                    : "border-soft-line bg-white text-soft-ink hover:border-soft-primary"
-                                }`}
-                              >
-                                {s}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* ④ 상담사 */}
-          {date && start && (
-            <section className="mt-8">
-              <SectionTitle note="이 시간에 자리가 있는 전문가만 세웁니다.">
-                상담 전문가
-              </SectionTitle>
-
-              {free.length === 0 ? (
-                <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
-                  이 시간에 자리가 있는 전문가가 없습니다. 다른 시간을 골라 주세요.
-                </p>
-              ) : (
                 <ul className="space-y-2.5">
-                  {free.map((c) => (
+                  {open.map((c) => (
                     <li key={c.id}>
                       <CounselorCard
                         c={c}
@@ -409,8 +372,72 @@ export default function InterviewBooking({ variant = 2 }: { variant?: Variant })
             </section>
           )}
 
-          {/* ⑤ 방식 · 미리 적어 두는 말 · 신청 */}
-          {counselor && mode && (
+          {/* ④ 시간 — 고른 전문가의 하루. 찬 자리는 잠근 채로 보인다 */}
+          {date && counselor && (
+            <section className="mt-8">
+              <SectionTitle
+                note={`${counselor.person.name} 전문가의 ${spanLabel(span)} 면담 시간표입니다. 흐린 시간은 이미 예약된 자리입니다.`}
+              >
+                {date.slice(5).replace("-", "월 ")}일({weekdayKo(date)}) 시간
+              </SectionTitle>
+
+              {slots.length === 0 ? (
+                <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
+                  이 날은 면담을 받지 않는 날입니다. 다른 날을 골라 주세요.
+                </p>
+              ) : (
+                <div className={`${card} space-y-4 p-4 sm:p-5`}>
+                  {(
+                    [
+                      ["오전", slots.filter((v) => v.start < "12:00")],
+                      ["오후", slots.filter((v) => v.start >= "12:00")],
+                    ] as const
+                  ).map(([label, list]) =>
+                    list.length === 0 ? null : (
+                      <div key={label}>
+                        <p className="mb-2 text-[12.5px] font-semibold text-soft-muted">{label}</p>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
+                          {list.map((v) => {
+                            const on = v.start === start;
+                            return (
+                              <button
+                                key={v.start}
+                                type="button"
+                                disabled={!v.open}
+                                onClick={() => setStart(v.start)}
+                                aria-pressed={on}
+                                /* 잠긴 칸에도 「예약 완료」를 붙여 준다 — 흐린 것만으로는
+                                   화면을 읽어 주는 장치에 아무것도 남지 않는다 */
+                                aria-label={v.open ? v.start : `${v.start} 예약 완료`}
+                                className={`rounded-[10px] border py-2.5 text-[13.5px] font-semibold tabular-nums transition-colors ${
+                                  on
+                                    ? "border-soft-primary bg-soft-primary text-white"
+                                    : v.open
+                                      ? "border-soft-line bg-white text-soft-ink hover:border-soft-primary"
+                                      : "cursor-not-allowed border-transparent bg-slate-50 text-slate-300 line-through"
+                                }`}
+                              >
+                                {v.start}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                  {slots.every((v) => !v.open) && (
+                    <p className="text-[12.5px] leading-[1.7] text-soft-muted">
+                      이 날 {counselor.person.name} 전문가의 {spanLabel(span)} 자리는 모두
+                      찼습니다. 다른 전문가나 다른 날을 골라 주세요.
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ⑤ 방식 · 미리 적어 두는 말 · 신청 — 시각까지 고른 뒤에 편다 */}
+          {counselor && mode && start && (
             <section className="mt-8">
               <SectionTitle>면담 방식과 신청</SectionTitle>
 

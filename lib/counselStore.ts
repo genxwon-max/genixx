@@ -105,10 +105,11 @@ export function useBookings(): Booking[] {
 }
 
 /* ───────────────────────── 예약 창 ─────────────────────────
-   오늘은 잡지 않는다. 면담원에게도 준비할 것이 있고, 당일 신청은 전화로 받는 일이다. */
+   코앞의 날짜는 잡지 않는다. 면담원이 그 아이의 결과지·설문·채점 기록을 미리 읽고 들어와야
+   하고, 급한 신청은 전화로 받는 일이다. */
 
-/** 가장 이른 날 — 내일부터 */
-export const LEAD_DAYS = 1;
+/** 가장 이른 날 — 이레 뒤부터 */
+export const LEAD_DAYS = 7;
 /** 가장 늦은 날 — 여드레 뒤까지가 아니라 넉넉히 두 달 */
 export const WINDOW_DAYS = 60;
 
@@ -159,16 +160,28 @@ export function startsOf(rows: Booking[], c: Counselor, date: string, span: Span
   });
 }
 
-/** 그 날 누구든 낼 수 있는 시작 시각 — 시각 고르개가 세우는 눈금 */
-export function dayStarts(rows: Booking[], date: string, span: Span): string[] {
-  const all = new Set<string>();
-  for (const c of counselors) for (const s of startsOf(rows, c, date, span)) all.add(s);
-  return [...all].sort();
+/** 그 날 자리가 하나라도 남은 상담사 — 날짜를 고른 뒤 세우는 목록 */
+export function counselorsOn(rows: Booking[], date: string, span: Span): Counselor[] {
+  return counselors.filter((c) => startsOf(rows, c, date, span).length > 0);
 }
 
-/** 그 날 그 시각에 자리가 있는 상담사 */
-export function freeAt(rows: Booking[], date: string, start: string, span: Span): Counselor[] {
-  return counselors.filter((c) => startsOf(rows, c, date, span).includes(start));
+/** 시간 고르개의 칸 하나 */
+export type Slot = { start: string; open: boolean };
+
+/**
+ * 고른 상담사의 그 날 시간표 — **빈 칸만 추리지 않고 근무 시간을 통째로** 펴고,
+ * 이미 찬 자리는 open: false로 내려 보낸다.
+ *
+ * 비는 칸만 세우면 목록이 날마다 다른 모양으로 서서, 보호자는 「10시가 없는 것」인지
+ * 「10시에는 원래 일을 안 하는 것」인지 알 수 없다. 근무표를 그대로 펴고 찬 자리를
+ * 잠가 두면 그 사람의 하루가 보이고, 다른 시간을 고를 때 어림을 할 수 있다.
+ *
+ * 60분은 다음 칸까지 비어야 열린다 — 퇴근 직전 칸과 점심 앞 칸이 잠기는 까닭이다.
+ */
+export function slotsOf(rows: Booking[], c: Counselor, date: string, span: Span): Slot[] {
+  if (!worksOn(c, date)) return [];
+  const open = new Set(startsOf(rows, c, date, span));
+  return cellsOf(c).map((start) => ({ start, open: open.has(start) }));
 }
 
 /** 그 날 자리가 하나라도 있는가 — 달력 칸을 켜고 끄는 값 */
