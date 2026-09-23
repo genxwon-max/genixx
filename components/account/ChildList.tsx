@@ -266,7 +266,11 @@ export default function ChildList() {
               ) : (
                 <Button
                   nativeButton={false}
-                  render={<Link href="/exam/payment" />}
+                  /* 체크해 둔 아이를 결제 화면까지 데리고 간다 — 저쪽에서 다시 고르게 하면
+                     같은 목록을 두 번 훑는다 */
+                  render={
+                    <Link href={`/my/payments?students=${chosen.map((c) => c.id).join(",")}`} />
+                  }
                   className={rowShape}
                 >
                   응시권 결제 {chosen.length}명
@@ -421,7 +425,10 @@ function ChildRow({
         {left > 0 ? (
           <span className="font-semibold text-soft-ink tabular-nums">{left}매</span>
         ) : (
-          <Link href="/exam/payment" className="font-semibold text-rose-600 hover:underline">
+          <Link
+            href={`/my/payments?students=${student.id}`}
+            className="font-semibold text-rose-600 hover:underline"
+          >
             결제 필요
           </Link>
         )}

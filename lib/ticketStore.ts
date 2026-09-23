@@ -15,8 +15,10 @@ import type { TrackId } from "./examCatalog";
  * 벌이라, 두 학년을 받으면 초등 3-4학년에서 낸 국어가 5-6학년에도 「제출완료」로 선다.
  * 실제로도 한 회차에 두 학년 시험을 볼 까닭이 없다.
  *
- * ⚠ 결제·발급은 여기서 일어나지 않는다. 보유 수(owned)는 결제 결과가 넘어오는 자리이고,
- *   지금은 시연용 씨앗 3매로 둔다. 붙일 때는 결제 API가 내려 주는 값으로 갈아 끼운다.
+ * ⚠ 보유 수(owned)는 결제 결과가 넘어오는 자리다. 지금은 시연용 씨앗 3매에서 출발하고,
+ *   회원 존의 결제 화면(/my/payments)이 grantTickets로 얹는다. 붙일 때는 결제 API가
+ *   승인 결과로 내려 주는 값으로 갈아 끼운다 — 그때 grantTickets를 부르는 자리가
+ *   결제 성공 응답을 받는 자리로 옮겨 간다.
  */
 
 /** 접수 한 건 — at이 접수한 시각 */
@@ -136,6 +138,18 @@ export function spendTicket(studentId: string, round: string, track: TrackId): b
     used: [...w.used, { round, track, at: new Date().toISOString() }],
   });
   return true;
+}
+
+/**
+ * 발급 — 결제가 끝난 응시권을 이 학생 앞으로 얹는다.
+ *
+ * 쓴 기록(used)은 건드리지 않는다. 보유 수만 는다 — 접수는 아이가 제 화면에서 하는
+ * 일이고, 보호자가 결제했다고 해서 어느 평가에 쓸지까지 정해지는 것은 아니다.
+ */
+export function grantTickets(studentId: string, count: number) {
+  if (count <= 0) return;
+  const w = readWallet(studentId);
+  writeWallet(studentId, { ...w, owned: w.owned + count });
 }
 
 /** 시연용 — 쓴 기록을 지우고 씨앗 매수로 되돌린다 */
