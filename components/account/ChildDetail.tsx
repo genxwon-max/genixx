@@ -166,7 +166,10 @@ export default function ChildDetail({ id }: { id: string }) {
             평가 한 벌(회차 × 학년)에 한 매를 씁니다. 과목마다 드는 것이 아닙니다.
           </p>
         </div>
-        <Link href="/exam/payment" className="rounded-full bg-soft-primary px-6 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark">
+        <Link
+          href={`/my/payments?students=${student.id}`}
+          className="rounded-full bg-soft-primary px-6 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark"
+        >
           응시권 결제
         </Link>
       </section>
