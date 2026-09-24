@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { briefOf, counselModes, type Counselor } from "@/lib/counselors";
+import {
+  briefOf,
+  counselModes,
+  counselTopics,
+  feeText,
+  spanLabel,
+  type Counselor,
+} from "@/lib/counselors";
 import { peopleDisclaimer } from "@/lib/people";
 import { WEEK_KO } from "@/lib/calendar";
 
@@ -73,7 +80,16 @@ export default function CounselorCard({
           ))}
         </span>
 
-        <span className="mt-2.5 flex flex-wrap items-center gap-2">
+        {/* 고르는 데 필요한 값 셋 — 무엇을 맡나 · 어떻게 만나나 · 얼마나 · 얼마 */}
+        <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {c.topics.map((v) => (
+            <span
+              key={v}
+              className="rounded-full bg-soft-primary-soft px-2.5 py-0.5 text-[11.5px] font-semibold text-soft-primary"
+            >
+              {counselTopics[v]}
+            </span>
+          ))}
           {c.modes.map((m) => (
             <span
               key={m}
@@ -82,6 +98,12 @@ export default function CounselorCard({
               {counselModes[m]}
             </span>
           ))}
+        </span>
+
+        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-[12.5px] font-semibold text-soft-ink">
+            {c.spans.map((v) => feeText(v)).join(" · ")}
+          </span>
           {/* 상세는 카드 안의 버튼이다. 라벨 안이라 클릭이 선택으로 번지지 않게 막는다 */}
           <button
             type="button"
@@ -165,6 +187,11 @@ export function CounselorDetail({ c, onClose }: { c: Counselor; onClose: () => v
         </Block>
 
         <Block title="면담 안내">
+          <li>
+            길이 · 값 — {c.spans.map((v) => feeText(v)).join(" · ")}
+            {c.spans.length === 1 && `(${spanLabel(c.spans[0])} 면담만 받습니다)`}
+          </li>
+          <li>맡는 물음 — {c.topics.map((v) => counselTopics[v]).join(" · ")}</li>
           <li>
             방식 — {c.modes.map((m) => counselModes[m]).join(" · ")}
           </li>

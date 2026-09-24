@@ -469,7 +469,16 @@ export default function PaymentHub({
                   <tr key={o.id}>
                     <td className={`${listTd} tabular-nums`}>{o.id}</td>
                     <td className={`${listTd} tabular-nums`}>{o.paidAt}</td>
-                    <td className={`${listTd} text-left text-soft-ink`}>{o.productName}</td>
+                    <td className={`${listTd} text-left text-soft-ink`}>
+                      {o.productName}
+                      {/* 한 벌이 아니면 몇 벌인지 적는다 — 면담 두 자리를 한 번에 사면
+                          금액만 보고는 두 배로 낸 것처럼 읽힌다 */}
+                      {o.qty > 1 && (
+                        <span className="mt-0.5 block text-[12px] tabular-nums text-soft-muted">
+                          {orderWon(o.unit)} × {o.qty}
+                        </span>
+                      )}
+                    </td>
                     <td className={`${listTd} text-left`}>
                       {o.students.map((s) => s.name).join(" · ")}
                     </td>

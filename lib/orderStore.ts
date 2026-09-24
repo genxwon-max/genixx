@@ -11,10 +11,13 @@ import { pad } from "./calendar";
  * 여기는 보호자가 **내 결제**를 보는 자리라, 가린 이름 대신 누구 몫으로 산 것인지가
  * 남아야 한다 — 아이가 셋이면 「어느 아이 응시권을 샀더라」가 곧바로 물음이 된다.
  *
- * ── 한 건에 학생이 여럿 ──
+ * ── 한 건에 여럿 ──
  * 결제 한 번에 아이를 여럿 고를 수 있다. 아이마다 주문을 쪼개면 같은 날 같은 카드로
  * 세 줄이 서고, 취소·환불이 들어왔을 때 셋 중 어느 줄인지를 사람이 맞춰야 한다.
- * 수량(qty)을 따로 들지 않는 까닭도 같다 — 인원이 곧 수량이라 두 값을 들면 갈린다.
+ *
+ * 그래서 **몇 벌을 샀는가(qty)**가 인원과 따로 있다. 응시권은 아이마다 한 장이라 둘이
+ * 같지만, 면담은 아이 하나를 놓고 30분 자리 둘을 잡는 일이 있어 인원으로는 셈이 안 된다.
+ * 적지 않으면 인원을 그대로 쓴다.
  *
  * ── 금액은 결제 시점의 값을 박는다 ──
  * 상품(lib/productStore.ts)의 가격은 관리자가 언제든 고친다. 주문이 상품 번호만 들고
@@ -48,9 +51,11 @@ export type Order = {
   /** 응시권인가 — 발급까지 함께 일어난 주문인지가 내역에서 읽혀야 한다 */
   grantsTicket: boolean;
   students: OrderStudent[];
-  /** 한 사람 몫 */
+  /** 한 사람 몫 · 한 자리 몫 */
   unit: number;
-  /** 실제로 낸 금액 = unit × 인원 */
+  /** 몇 벌인가 — 적지 않으면 인원 수 */
+  qty: number;
+  /** 실제로 낸 금액 = unit × qty */
   amount: number;
   method: OrderMethod;
 };
@@ -125,16 +130,18 @@ function nextId(rows: Order[]) {
   return `${head}${String(max + 1).padStart(6, "0")}`;
 }
 
-export type OrderInput = Omit<Order, "id" | "paidAt" | "amount">;
+export type OrderInput = Omit<Order, "id" | "paidAt" | "amount" | "qty"> & { qty?: number };
 
 /** 결제 한 건을 적는다. 응시권 발급은 부르는 쪽이 따로 한다(lib/ticketStore.ts) */
 export function placeOrder(input: OrderInput): Order {
   const rows = read();
+  const qty = input.qty ?? input.students.length;
   const made: Order = {
     ...input,
+    qty,
     id: nextId(rows),
     paidAt: stamp(),
-    amount: input.unit * input.students.length,
+    amount: input.unit * qty,
   };
   write([made, ...rows]);
   return made;
