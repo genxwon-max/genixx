@@ -16,9 +16,14 @@ import {
 /**
  * 보호자가 잡는 결과 해석 면담 예약 (/my/interviews).
  *
- * 네이버 예약처럼 **날짜 → 시각 → 사람** 차례로 좁힌다. 사람을 먼저 고르게 하면 그
- * 사람이 이번 주에 자리가 없을 때 처음으로 돌아가 다시 고르게 되는데, 보호자에게 급한
- * 것은 대개 「이번 주 토요일 저녁에 되는 사람」이지 특정 전문가가 아니다.
+ * 네이버 예약처럼 **사람 → 날짜 → 시각** 차례로 좁히고, 마지막에 결제한다. 누구와
+ * 이야기하는가가 먼저다 — 결과지를 놓고 한 시간을 나누는 자리라, 시각이 맞는다고 아무
+ * 전문가나 만나게 할 수 없다. 사람이 정해지면 달력도 시간표도 그 사람 것 하나뿐이다.
+ *
+ * ── 한 번에 여러 자리 ──
+ * 30분 두 칸, 60분 두 칸처럼 **한 번에 여러 자리**를 잡을 수 있다(bookMany). 한 시간으로
+ * 모자라 다음 주에 또 잡는 집이 있고, 그때마다 결제를 따로 하면 같은 상담이 영수증 두
+ * 장으로 갈린다. 자리마다 예약 한 줄을 세우되 결제 번호(orderId) 하나로 묶는다.
  *
  * ── 빈자리는 두 겹이다 ──
  * 상담사의 근무 칸(lib/counselors.ts의 cellsOf)에서 **시연용 가짜 일정**(seedBusy)과
@@ -49,6 +54,11 @@ export type Booking = {
   mode: CounselMode;
   /** 보호자가 미리 적어 보내는 궁금한 점 */
   note: string;
+  /**
+   * 이 자리를 산 결제 번호(lib/orderStore.ts). 한 번에 여러 자리를 잡으면 같은 번호를
+   * 나눠 갖는다. 옛 줄에는 없을 수 있어 물음표를 붙인다.
+   */
+  orderId?: string;
   /** 신청한 시각 */
   madeAt: string;
   state: BookingState;
@@ -160,10 +170,9 @@ export function startsOf(rows: Booking[], c: Counselor, date: string, span: Span
   });
 }
 
-/** 그 날 자리가 하나라도 남은 상담사 — 날짜를 고른 뒤 세우는 목록 */
-export function counselorsOn(rows: Booking[], date: string, span: Span): Counselor[] {
-  return counselors.filter((c) => startsOf(rows, c, date, span).length > 0);
-}
+/** 고른 상담사가 그 날 자리가 남았는가 — 달력 칸을 켜고 끄는 값 */
+export const hasRoomOn = (rows: Booking[], c: Counselor, date: string, span: Span) =>
+  startsOf(rows, c, date, span).length > 0;
 
 /** 시간 고르개의 칸 하나 */
 export type Slot = { start: string; open: boolean };
@@ -184,10 +193,6 @@ export function slotsOf(rows: Booking[], c: Counselor, date: string, span: Span)
   return cellsOf(c).map((start) => ({ start, open: open.has(start) }));
 }
 
-/** 그 날 자리가 하나라도 있는가 — 달력 칸을 켜고 끄는 값 */
-export const hasRoom = (rows: Booking[], date: string, span: Span) =>
-  counselors.some((c) => startsOf(rows, c, date, span).length > 0);
-
 /* ───────────────────────── 신청 ───────────────────────── */
 
 function stamp() {
@@ -204,27 +209,57 @@ function nextId(rows: Booking[], date: string) {
   return `${head}${String(max + 1).padStart(4, "0")}`;
 }
 
-export type BookingInput = Omit<Booking, "id" | "madeAt" | "state">;
+export type BookingInput = Omit<Booking, "id" | "madeAt" | "state" | "start">;
+
+/** 한 번에 잡을 수 있는 자리 수. 넷을 넘겨 잡는 집은 전화로 받는 것이 빠르다 */
+export const MAX_SLOTS = 4;
 
 /**
- * 신청.
+ * 신청 — 고른 자리를 한꺼번에 잡는다.
  *
- * 저장하기 직전에 자리를 한 번 더 본다 — 다른 탭에서 같은 자리를 먼저 잡았을 수 있다.
- * 자리가 없으면 null을 돌려주고, 부르는 쪽이 목록을 다시 그린다.
+ * 저장하기 직전에 자리를 **다시 센다.** 화면을 열어 둔 사이 다른 탭에서 같은 칸을 먼저
+ * 잡았을 수 있다. 하나라도 막혀 있으면 아무것도 쓰지 않고 null을 돌려준다 — 넷 가운데
+ * 셋만 잡히면 보호자는 무엇이 잡혔는지 영수증을 보고서야 알게 된다.
+ *
+ * 번호는 자리마다 따로 붙이고(CS-2610-0001 · 0002), 결제 번호는 넘겨받은 것을 함께
+ * 박는다. 예약은 자리 단위로 취소되지만 결제는 한 건이기 때문이다.
  */
-export function book(input: BookingInput): Booking | null {
+export function bookMany(input: BookingInput, starts: string[]): Booking[] | null {
   const rows = read();
   const c = counselors.find((x) => x.id === input.counselorId);
-  if (!c || !startsOf(rows, c, input.date, input.span).includes(input.start)) return null;
+  if (!c || starts.length === 0 || starts.length > MAX_SLOTS) return null;
 
-  const made: Booking = {
-    ...input,
-    id: nextId(rows, input.date),
-    madeAt: stamp(),
-    state: "booked",
-  };
-  write([made, ...rows]);
+  const free = new Set(startsOf(rows, c, input.date, input.span));
+  if (!starts.every((v) => free.has(v))) return null;
+
+  const at = stamp();
+  const made: Booking[] = [];
+  let seq = rows;
+  for (const start of [...starts].sort()) {
+    const row: Booking = {
+      ...input,
+      start,
+      id: nextId(seq, input.date),
+      madeAt: at,
+      state: "booked",
+    };
+    made.push(row);
+    seq = [row, ...seq];
+  }
+  write(seq);
   return made;
+}
+
+/**
+ * 잡아 둔 자리에 결제 번호를 붙인다.
+ *
+ * 자리를 **먼저 잡고** 결제를 적은 뒤에 부른다. 순서를 뒤집어 결제부터 적으면, 그 찰나에
+ * 다른 탭이 같은 칸을 가져갔을 때 자리 없는 영수증이 남는다. 돈은 자리가 확보된 다음에만
+ * 적는다.
+ */
+export function attachOrder(ids: string[], orderId: string) {
+  const keys = new Set(ids);
+  write(read().map((b) => (keys.has(b.id) ? { ...b, orderId } : b)));
 }
 
 /** 취소 — 줄을 지우지 않고 상태만 바꾼다. 지난 신청이 있었다는 사실은 남아야 한다 */
