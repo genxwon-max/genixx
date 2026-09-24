@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { TrackId } from "./examCatalog";
+import { isTrackId, type TrackId } from "./examCatalog";
 
 /**
  * 학생이 들고 있는 응시권과 **접수 기록**.
@@ -55,11 +55,32 @@ function readStore(): Store {
   if (raw === cacheRaw) return cacheStore;
   cacheRaw = raw;
   try {
-    cacheStore = raw ? (JSON.parse(raw) as Store) : {};
+    cacheStore = raw ? clean(JSON.parse(raw) as Store) : {};
   } catch {
     cacheStore = {};
   }
   return cacheStore;
+}
+
+/**
+ * 읽을 때 한 번 훑어 **없어진 학년 칸의 접수 기록을 버린다.**
+ *
+ * 평가가 학년 칸 셋(e34 · e56 · m12)에서 학년 아홉(e1 ~ m3)으로 갈리면서 옛 칸 번호가
+ * 사라졌다. 저장분에 그 번호가 남아 있으면 화면이 없는 칸을 그리려다 멈춘다 — 접수 기록은
+ * 시연용으로 쌓인 값이라 옮겨 붙이지 않고 버린다. 보유 매수(owned)는 그대로 둔다.
+ *
+ * 저장소를 옮겨 쓰는 일(migration)을 따로 두지 않고 읽는 자리에서 거른다. 브라우저마다
+ * 언제 열지 알 수 없어, 한 번 도는 이사 코드는 결국 누군가의 브라우저를 건너뛴다.
+ */
+function clean(store: Store): Store {
+  let touched = false;
+  const next: Store = {};
+  for (const [id, wallet] of Object.entries(store)) {
+    const used = (wallet.used ?? []).filter((u) => isTrackId(u.track));
+    if (used.length !== (wallet.used ?? []).length) touched = true;
+    next[id] = { ...wallet, used };
+  }
+  return touched ? next : store;
 }
 
 /* 저장분이 없는 학생은 늘 같은 씨앗 객체를 돌려준다 — 새 객체면 구독이 끝없이 다시 그린다 */

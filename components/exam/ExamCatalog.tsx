@@ -13,6 +13,7 @@ import {
   schoolLevels,
   trackFromGrade,
   trackLabel,
+  trackOf,
   tracks,
   type Availability,
   type Track,
@@ -31,11 +32,12 @@ import { btnBox, btnBoxDisabled } from "./ui";
  * 접수하기 탭 (/exam/apply) — 평가를 골라 접수한다.
  *
  *   제목      가운데 큰 「접수하기」
- *   왼쪽      학년군 카테고리 — 전체 · 초등학교(3-4 · 5-6학년) · 중학교(1-2학년)
+ *   왼쪽      학년 카테고리 — 전체 · 초등학교(1~6학년) · 중학교(1~3학년)
  *   오른쪽    검색(접수 상태 · 검색어) → 건수와 보기 방식 → 평가 목록 → 페이지
  *
  * ── 해가 쌓여도 버티는 모양 ──
- * 평가는 해마다 네 시기, 시기마다 학년군 수만큼 열린다(「2026 3-1 평가」 · 「3-2」 …).
+ * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다(「2026 3분기 초1 평가」 · 「초2」 …).
+ * 학년이 아홉이라 한 해에 서른여섯, 세 해가 쌓이면 백을 넘는다.
  * 연도·회차를 탭이나 고르개로 세우면 해가 늘 때마다 고를 것이 는다. 그래서 목록은 지난
  * 평가까지 **한 줄로 모두** 두고, 찾는 일은 검색어와 페이지가 맡는다.
  *
@@ -210,7 +212,7 @@ export default function ExamCatalog() {
                 type="search"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="평가명으로 찾기 (예: 2025, 3-1, 5-6학년)"
+                placeholder="평가명으로 찾기 (예: 2026, 3분기, 초4)"
                 className="h-10 w-full rounded-[4px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none placeholder:text-slate-400 focus:border-soft-primary"
               />
             </Field>
@@ -329,7 +331,7 @@ function Field({
   );
 }
 
-/* ───────────────────────── 왼쪽 학년군 카테고리 ───────────────────────── */
+/* ───────────────────────── 왼쪽 학년 카테고리 ───────────────────────── */
 
 function GradeCategory({
   filter,
@@ -394,7 +396,9 @@ function GradeCategory({
                   : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
               }`}
             >
-              {id === "all" ? "전체" : trackLabel(id)}
+              {/* 학년이 아홉이라 가로 줄에서는 짧은 이름을 쓴다 — 「초등학교 4학년」이 열
+                  개 서면 두 줄이 넘고, 고르개가 목록보다 커진다 */}
+              {id === "all" ? "전체" : trackOf(id).tag}
             </button>
           );
         })}
