@@ -51,9 +51,8 @@ import { card } from "./ui";
  * 결제만 되고 접수가 남으면, 보호자는 돈을 낸 뒤에도 아이가 왜 시험을 못 보는지 모른 채 학생
  * 화면을 뒤지게 된다.
  *
- * ⚠ 지금 저장소의 평가는 학년 칸 셋(초3-4 · 초5-6 · 중1-2)으로 열린다(lib/examCatalog.ts).
- *   학년마다 따로 열리게 바뀌어도 이 화면은 그대로다 — 아이의 학년이 평가 하나를 가리키는
- *   구조라, 칸이 셋이든 아홉이든 목록에 서는 줄 수가 같다.
+ * 평가는 초1~중3 학년마다 따로 열린다(lib/examCatalog.ts). 칸이 셋이든 아홉이든 이 화면에
+ * 서는 줄 수는 같다 — 아이의 학년이 평가 하나를 가리키기 때문이다.
  *
  * ⚠ 시연 화면이다. 실제 결제창은 열리지 않고 카드번호 같은 결제 정보도 받지 않는다.
  */
@@ -316,7 +315,7 @@ export default function ExamPayPanel({
           <SectionTitle
             note={
               track
-                ? `${trackLabel(track)} 평가입니다. 분기마다 한 번 열립니다.`
+                ? `${trackLabel(track)} 평가입니다. 학년마다 따로 열리고, 분기에 한 번입니다.`
                 : "학생을 고르면 그 학년의 평가가 섭니다."
             }
           >
@@ -429,7 +428,9 @@ export default function ExamPayPanel({
                               >
                                 {v.season.year}년 {quarterLabel(v.season.quarter)} 평가
                               </span>
-                              <span className="text-[12px] text-soft-muted">{v.name}</span>
+                              <span className="rounded-full border border-soft-line bg-white px-2 py-0.5 text-[11.5px] font-semibold text-soft-muted">
+                                {trackLabel(track)}
+                              </span>
                               <span
                                 className={`text-[12px] font-semibold ${stateTone[v.round.availability]}`}
                               >
