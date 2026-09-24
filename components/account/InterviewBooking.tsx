@@ -123,7 +123,17 @@ function Chip({
   );
 }
 
-export default function InterviewBooking({ variant = 2 }: { variant?: Variant }) {
+export default function InterviewBooking({
+  /**
+   * 결제 화면의 면담 차림표에서 길이를 들고 넘어온다(/my/interviews?span=60).
+   * 고르개의 길이 조건으로 놓는다 — 그 길이를 받지 않는 전문가는 목록에 서지 않는다.
+   */
+  initialSpan,
+  variant = 2,
+}: {
+  initialSpan?: Span;
+  variant?: Variant;
+}) {
   const t = themeOf(variant);
   const hydrated = useHydrated();
   const session = useSession();
@@ -138,7 +148,10 @@ export default function InterviewBooking({ variant = 2 }: { variant?: Variant })
   );
 
   const [studentId, setStudentId] = useState("");
-  const [query, setQuery] = useState<CounselQuery>(blankQuery);
+  const [query, setQuery] = useState<CounselQuery>(() => ({
+    ...blankQuery(),
+    span: initialSpan ?? 0,
+  }));
   const [shown, setShown] = useState(PER_PAGE);
   const [counselorId, setCounselorId] = useState("");
   const [span, setSpan] = useState<Span>(30);
