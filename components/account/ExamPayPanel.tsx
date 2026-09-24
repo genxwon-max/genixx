@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
 import { useCatalogRounds } from "@/lib/catalogRounds";
 import {
   availabilityLabel,
   dotDate,
   evalName,
+  quarterLabel,
+  QUARTERS,
+  seasonOf,
   trackFromGrade,
   trackLabel,
-  tracks,
   type Availability,
   type TrackId,
 } from "@/lib/examCatalog";
@@ -18,70 +19,57 @@ import { useHydrated } from "@/lib/examStore";
 import { orderMethods, orderWon, placeOrder, useOrders, type OrderMethod } from "@/lib/orderStore";
 import { paidPrice, useProducts } from "@/lib/productStore";
 import { useRoster, type Student } from "@/lib/roster";
-import {
-  grantTickets,
-  spendTicket,
-  usedInRound,
-  useTickets,
-  walletOf,
-} from "@/lib/ticketStore";
+import { grantTickets, spendTicket, usedInRound, useTickets, walletOf } from "@/lib/ticketStore";
 import { useSession } from "@/lib/authStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
 import { CheckIcon } from "@/components/Icons";
-import { PickBox } from "./SendCodes";
-import { card, listTd, listTh } from "./ui";
+import { card } from "./ui";
 
 /**
- * 결제 › 진단평가 — 열려 있는 평가를 골라, 그 평가를 볼 학생을 고르고 결제한다.
+ * 결제 › 진단평가 — **학생을 먼저 고르고**, 그 아이가 볼 평가를 고른다.
  *
- * 결제가 끝나면 **그 자리에서 접수까지 끝난다.** 응시권을 한 매 발급하고 곧바로 이 평가에
- * 쓴다(grantTickets → spendTicket). 결제만 되고 접수가 따로 남으면, 보호자는 돈을 낸 뒤에도
- * 아이가 왜 시험을 못 보는지 모른 채 학생 화면을 뒤지게 된다.
+ * ── 왜 학생이 먼저인가 ──
+ * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다. 학년이 초1~중3으로 갈리면 한 해에만
+ * 서른 줄이 넘고, 해가 쌓이면 백 줄이 된다. 그 목록을 통째로 펴 놓고 「학년이 맞지 않습니다」를
+ * 스무 줄 적는 것은 보호자에게 우리 사정을 읽게 하는 일이다.
  *
- * ── 목록은 평가 하나가 한 줄 ──
- * 평가는 해마다 네 시기, 시기마다 학년 칸 셋으로 열린다(「2026 3-1 평가」 · 「3-2」…).
- * 해가 쌓이면 줄이 수십이 되므로 조회 조건(상태 · 학년 칸 · 검색어)을 먼저 세웠다.
- * 기본은 **접수 중**이다 — 이 화면을 여는 까닭이 거의 늘 「지금 접수할 것」이라서.
+ * 아이를 먼저 고르면 학년이 정해지고, 남는 것은 **그 아이가 볼 수 있는 평가 네 개(분기)**뿐이다.
+ * 고를 수 없는 줄이 아예 서지 않으므로 목록이 해마다 길어지지 않는다. 학년 고르개를 따로 두지
+ * 않는 까닭도 같다 — 아이의 학년은 명부에 이미 있고, 보호자가 그것을 다시 고를 이유가 없다.
  *
- * ── 고를 수 없는 아이를 막는 자리 ──
- * 학년이 그 평가의 학년 칸과 다르거나, 같은 시기에 이미 다른 학년으로 접수한 아이는
- * 고를 수 없다(lib/ticketStore.ts의 한 회차 한 학년 규칙). 까닭을 줄에 적어 둔다 —
- * 회색으로만 두면 왜 못 고르는지 물어야 한다.
+ * ── 조회는 해와 분기로 ──
+ * 남는 축은 시간뿐이다. 연도를 고르고 분기(1~4)로 좁힌다. 지난 평가는 기본으로 접어 둔다 —
+ * 이 화면을 여는 까닭은 거의 늘 「이번에 볼 것」이라서.
+ *
+ * ── 형제자매 ──
+ * 같은 학년 칸의 아이는 함께 고를 수 있다. 학년이 다르면 볼 평가가 다르므로 잠그고 까닭을
+ * 적는다 — 그때는 아이마다 따로 결제한다.
+ *
+ * ── 결제가 곧 접수 ──
+ * 결제가 끝나면 응시권을 한 매 발급하고 그 자리에서 이 평가에 쓴다(grantTickets → spendTicket).
+ * 결제만 되고 접수가 남으면, 보호자는 돈을 낸 뒤에도 아이가 왜 시험을 못 보는지 모른 채 학생
+ * 화면을 뒤지게 된다.
+ *
+ * ⚠ 지금 저장소의 평가는 학년 칸 셋(초3-4 · 초5-6 · 중1-2)으로 열린다(lib/examCatalog.ts).
+ *   학년마다 따로 열리게 바뀌어도 이 화면은 그대로다 — 아이의 학년이 평가 하나를 가리키는
+ *   구조라, 칸이 셋이든 아홉이든 목록에 서는 줄 수가 같다.
  *
  * ⚠ 시연 화면이다. 실제 결제창은 열리지 않고 카드번호 같은 결제 정보도 받지 않는다.
  */
 
-type StatusFilter = "open" | "soon" | "ended" | "all";
-
-const statusOptions: { value: StatusFilter; label: string }[] = [
-  { value: "open", label: "접수 중" },
-  { value: "soon", label: "접수 예정" },
-  { value: "ended", label: "접수 마감" },
-  { value: "all", label: "전체" },
-];
+const methodOrder: OrderMethod[] = ["card", "kakao", "naver", "transfer"];
 
 const stateRank: Record<Availability, number> = { open: 0, soon: 1, ended: 2 };
 
-const methodOrder: OrderMethod[] = ["card", "kakao", "naver", "transfer"];
+const stateTone: Record<Availability, string> = {
+  open: "text-soft-primary",
+  soon: "text-amber-700",
+  ended: "text-slate-400",
+};
 
-/** 한 쪽에 싣는 평가 수 */
-const PER_PAGE = 8;
-
-/** 왜 이 아이를 고를 수 없는가 — 고를 수 있으면 null */
-function blockedReason(
-  student: Student,
-  roundId: string,
-  track: TrackId,
-  used: ReturnType<typeof usedInRound>,
-): string | null {
-  const mine = trackFromGrade(student.grade);
-  if (used?.track === track) return "이미 접수한 평가입니다";
-  if (used) return `이 시기에 ${trackLabel(used.track)}로 접수했습니다`;
-  if (!mine) return student.grade ? `${student.grade}은 대상 학년이 아닙니다` : "학년이 비어 있습니다";
-  if (mine !== track) return `${student.grade} 학생은 ${trackLabel(mine)} 평가를 봅니다`;
-  return null;
-}
+/** 이 아이가 볼 수 있는 학년 칸 — 없으면 아직 평가가 열리지 않은 학년이다 */
+const trackOfStudent = (s: Student) => trackFromGrade(s.grade);
 
 export default function ExamPayPanel({
   initial = [],
@@ -105,12 +93,11 @@ export default function ExamPayPanel({
     [roster, isOrg],
   );
 
-  const [q, setQ] = useState("");
-  const [track, setTrack] = useState<TrackId | "">("");
-  const [status, setStatus] = useState<StatusFilter>("open");
-  const [page, setPage] = useState(1);
-  const [pickedExam, setPickedExam] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set(initial));
+  const [year, setYear] = useState("");
+  const [quarter, setQuarter] = useState<number | 0>(0);
+  const [past, setPast] = useState(false);
+  const [pickedExam, setPickedExam] = useState("");
   const [method, setMethod] = useState<OrderMethod>("card");
   const [agree, setAgree] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -119,104 +106,96 @@ export default function ExamPayPanel({
   const ticketProduct = products.find((p) => p.state === "selling" && p.kind === "assessment");
   const unit = ticketProduct ? paidPrice(ticketProduct) : 0;
 
-  const all = useMemo(
-    () =>
-      rounds
-        .flatMap((round) =>
-          tracks.map((tr) => ({
-            key: `${round.id}:${tr.id}`,
-            round,
-            track: tr,
-            name: evalName(round.id, tr.id, round.label),
-          })),
-        )
+  /* 고른 아이들. 첫 아이의 학년 칸이 이 결제의 학년이 된다 */
+  const chosen = mine.filter((s) => picked.has(s.id));
+  const track: TrackId | null = chosen.length > 0 ? trackOfStudent(chosen[0]) : null;
+
+  /** 이 아이를 함께 고를 수 있는가 — 고를 수 있으면 null */
+  function studentBlock(s: Student): string | null {
+    const mineTrack = trackOfStudent(s);
+    if (!mineTrack) {
+      return s.grade ? `${s.grade}은 아직 평가가 열리지 않았습니다` : "학년이 비어 있습니다";
+    }
+    if (track && mineTrack !== track && !picked.has(s.id)) {
+      return `${s.grade} — 학년이 달라 따로 결제합니다`;
+    }
+    return null;
+  }
+
+  /* 이 학년 칸의 평가만. 줄 수가 한 해 네 개라 손으로 기억해 둘 만큼 무겁지 않다 */
+  const items = !track
+    ? []
+    : rounds
+        .map((round) => ({
+          round,
+          season: seasonOf(round),
+          key: `${round.id}:${track}`,
+          name: evalName(round.id, track, round.label),
+        }))
         .sort(
           (a, b) =>
             stateRank[a.round.availability] - stateRank[b.round.availability] ||
-            b.round.opensOn.localeCompare(a.round.opensOn) ||
-            tracks.indexOf(a.track) - tracks.indexOf(b.track),
-        ),
-    [rounds],
+            b.round.opensOn.localeCompare(a.round.opensOn),
+        );
+
+  const years = [...new Set(items.map((v) => v.season.year))].sort((a, b) => b.localeCompare(a));
+
+  /* 처음 펴는 해는 지금 접수 중인 평가가 있는 해. 없으면 가장 최근 해 */
+  const openYear = items.find((v) => v.round.availability === "open")?.season.year;
+  const activeYear = year || openYear || years[0] || "";
+
+  const found = items.filter(
+    (v) =>
+      v.season.year === activeYear &&
+      (quarter === 0 || v.season.quarter === quarter) &&
+      (past || v.round.availability !== "ended"),
   );
 
-  const found = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return all.filter((it) => {
-      if (status !== "all" && it.round.availability !== status) return false;
-      if (track && it.track.id !== track) return false;
-      if (!needle) return true;
-      return `${it.name} ${trackLabel(it.track.id)} ${it.round.label}`.toLowerCase().includes(needle);
-    });
-  }, [all, q, track, status]);
+  const exam = items.find((v) => v.key === pickedExam) ?? null;
 
-  const pages = Math.max(1, Math.ceil(found.length / PER_PAGE));
-  const current = Math.min(page, pages);
-  const shown = found.slice((current - 1) * PER_PAGE, current * PER_PAGE);
+  const usedOf = (s: Student, roundId: string) =>
+    usedInRound(walletOf(tickets, s.id), roundId);
 
-  const exam = all.find((it) => it.key === pickedExam) ?? null;
+  /** 고른 평가에 이 아이를 넣을 수 없는 까닭 — 넣을 수 있으면 null */
+  function applyBlock(s: Student): string | null {
+    if (!exam || !track) return null;
+    const used = usedOf(s, exam.round.id);
+    if (used?.track === track) return "이미 접수한 평가입니다";
+    if (used) return `이 분기에 ${trackLabel(used.track)}로 접수했습니다`;
+    return null;
+  }
 
-  /**
-   * 평가를 고른다.
-   *
-   * 체크해 둔 아이를 통째로 지우지 않는다 — 학생 목록에서 체크해 넘어온 아이(?students=)가
-   * 평가를 고르는 순간 사라지면, 데리고 온 뜻이 없다. 대신 **이 평가에 고를 수 없게 된
-   * 아이만** 뺀다(학년이 다르거나 이미 접수한 아이).
-   */
-  const pickExam = (key: string) => {
-    setPickedExam(key);
-    setAgree(false);
-    const next = all.find((it) => it.key === key);
-    if (!next) return;
-    setPicked((prev) => {
-      const keep = new Set<string>();
-      for (const id of prev) {
-        const s = mine.find((x) => x.id === id);
-        if (!s) continue;
-        const used = usedInRound(walletOf(tickets, s.id), next.round.id);
-        if (!blockedReason(s, next.round.id, next.track.id, used)) keep.add(id);
-      }
-      return keep;
-    });
-  };
+  const payable = chosen.filter((s) => !applyBlock(s));
+  const total = unit * payable.length;
+  const canPay =
+    !!exam && exam.round.availability === "open" && payable.length > 0 && agree;
 
-  const rows = exam
-    ? mine.map((s) => ({
-        student: s,
-        reason: blockedReason(
-          s,
-          exam.round.id,
-          exam.track.id,
-          usedInRound(walletOf(tickets, s.id), exam.round.id),
-        ),
-      }))
-    : [];
-
-  const chosen = rows.filter((r) => !r.reason && picked.has(r.student.id));
-  const total = unit * chosen.length;
-  const canPay = !!exam && exam.round.availability === "open" && chosen.length > 0 && agree;
-
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
     setPicked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+    /* 아이가 바뀌면 학년 칸이 바뀔 수 있다 — 고른 평가를 들고 가면 남의 학년 평가가 된다 */
+    setPickedExam("");
+    setAgree(false);
+  };
 
   function pay() {
-    if (!exam || chosen.length === 0) return;
+    if (!exam || !track || payable.length === 0) return;
     const order = placeOrder({
-      productId: `EX-${exam.round.id}-${exam.track.id}`,
+      productId: `EX-${exam.round.id}-${track}`,
       productName: `${exam.name} 응시권`,
       grantsTicket: true,
-      students: chosen.map((r) => ({ id: r.student.id, name: r.student.name })),
+      students: payable.map((s) => ({ id: s.id, name: s.name })),
       unit,
       method,
     });
     /* 발급하고 그 자리에서 이 평가에 쓴다 — 결제만 되고 접수가 남으면 아이는 시험을 못 본다 */
-    for (const r of chosen) {
-      grantTickets(r.student.id, 1);
-      spendTicket(r.student.id, exam.round.id, exam.track.id);
+    for (const s of payable) {
+      grantTickets(s.id, 1);
+      spendTicket(s.id, exam.round.id, track);
     }
     setDone(order.id);
   }
@@ -250,7 +229,7 @@ export default function ExamPayPanel({
             type="button"
             onClick={() => {
               setDone(null);
-              setPicked(new Set());
+              setPickedExam("");
               setAgree(false);
             }}
             className={t.btnOutline}
@@ -265,132 +244,64 @@ export default function ExamPayPanel({
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div>
-        {/* ① 평가 고르기 */}
+        {/* ① 학생 — 학년이 정해지면 볼 수 있는 평가가 정해진다 */}
         <section>
-          <SectionTitle note="열려 있는 평가가 한 줄에 하나씩 섭니다.">평가 고르기</SectionTitle>
+          <SectionTitle note="아이의 학년에 맞는 평가만 아래에 섭니다.">
+            평가를 볼 학생
+          </SectionTitle>
 
-          <div className={`${card} p-4 sm:p-5`}>
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                aria-hidden
-              />
-              <input
-                type="search"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="평가 이름 · 학년으로 찾기"
-                aria-label="평가 찾기"
-                className="h-[3rem] w-full rounded-[12px] border border-soft-line bg-white pl-10 pr-4 text-[14px] text-soft-ink outline-none transition-colors placeholder:text-slate-400 focus:border-soft-primary focus:ring-2 focus:ring-soft-primary-soft"
-              />
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2.5">
-              <Field label="접수 상태" id="pay-status">
-                <select
-                  id="pay-status"
-                  value={status}
-                  onChange={(e) => {
-                    setStatus(e.target.value as StatusFilter);
-                    setPage(1);
-                  }}
-                  className="h-10 rounded-[10px] border border-soft-line bg-white px-3 text-[13.5px] text-soft-ink outline-none focus:border-soft-primary"
-                >
-                  {statusOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="학년" id="pay-track">
-                <select
-                  id="pay-track"
-                  value={track}
-                  onChange={(e) => {
-                    setTrack(e.target.value as TrackId | "");
-                    setPage(1);
-                  }}
-                  className="h-10 rounded-[10px] border border-soft-line bg-white px-3 text-[13.5px] text-soft-ink outline-none focus:border-soft-primary"
-                >
-                  <option value="">전체</option>
-                  {tracks.map((tr) => (
-                    <option key={tr.id} value={tr.id}>
-                      {trackLabel(tr.id)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-          </div>
-
-          <p className="mb-2.5 mt-3 text-[13px] text-soft-muted">
-            조건에 맞는 평가 <b className="text-soft-ink">{found.length}개</b>
-            {pages > 1 && ` · ${current}/${pages}쪽`}
-          </p>
-
-          {found.length === 0 ? (
+          {!hydrated ? (
             <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
-              조건에 맞는 평가가 없습니다. 접수 상태를 「전체」로 바꿔 보세요.
+              확인 중입니다…
             </p>
+          ) : mine.length === 0 ? (
+            <div className={`${card} px-5 py-10 text-center`}>
+              <p className="text-[15px] font-bold text-soft-ink">아직 등록된 학생이 없습니다</p>
+              <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
+                응시권은 학생 앞으로 발급됩니다. 학생을 먼저 등록해 주세요.
+              </p>
+              <Link href="/my/children/new" className={`${t.btnAction} mt-5`}>
+                등록하러 가기
+              </Link>
+            </div>
           ) : (
-            <ul className={`${card} divide-y divide-slate-100`}>
-              {shown.map((it) => {
-                const on = pickedExam === it.key;
-                const open = it.round.availability === "open";
+            <ul className="grid gap-2.5 sm:grid-cols-2">
+              {mine.map((s) => {
+                const on = picked.has(s.id);
+                const block = studentBlock(s);
+                const mineTrack = trackOfStudent(s);
                 return (
-                  <li key={it.key}>
+                  <li key={s.id}>
                     <label
-                      className={`flex cursor-pointer items-start gap-3.5 p-4 transition-colors sm:p-5 ${
-                        on ? "bg-soft-primary-soft" : "hover:bg-slate-50"
-                      } ${open ? "" : "cursor-not-allowed"}`}
+                      className={`flex cursor-pointer items-start gap-3 rounded-[14px] border p-4 transition-colors ${
+                        on
+                          ? "border-2 border-soft-primary bg-soft-primary-soft"
+                          : block
+                            ? "cursor-not-allowed border-soft-line bg-slate-50"
+                            : "border-soft-line bg-white hover:border-soft-primary"
+                      }`}
                     >
                       <input
-                        type="radio"
-                        name="exam"
+                        type="checkbox"
                         checked={on}
-                        disabled={!open}
-                        onChange={() => pickExam(it.key)}
-                        className="mt-1 h-4 w-4 accent-[#365eef]"
+                        disabled={!!block}
+                        onChange={() => toggle(s.id)}
+                        className="mt-0.5 h-4 w-4 accent-[#365eef]"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span
-                            className={`text-[15px] font-bold ${open ? "text-soft-ink" : "text-slate-400"}`}
-                          >
-                            {it.name}
-                          </span>
-                          <span className="rounded-full border border-soft-line bg-white px-2 py-0.5 text-[11.5px] font-semibold text-soft-muted">
-                            {trackLabel(it.track.id)}
-                          </span>
-                          <span
-                            className={`text-[12px] font-semibold ${
-                              open
-                                ? "text-soft-primary"
-                                : it.round.availability === "soon"
-                                  ? "text-amber-700"
-                                  : "text-slate-400"
-                            }`}
-                          >
-                            {availabilityLabel[it.round.availability]}
-                          </span>
-                        </span>
-                        <span className="mt-1.5 block text-[12.5px] leading-[1.7] text-soft-muted">
-                          접수 {dotDate(it.round.opensOn)} – {dotDate(it.round.closesOn)}
-                          {it.round.subjects.length > 0 && (
-                            <>
-                              {" · "}
-                              {it.round.subjects.map((s) => s.name).join(" · ")} (
-                              {it.round.subjects.reduce((m, s) => m + s.minutes, 0)}분)
-                            </>
+                        <span
+                          className={`block text-[15px] font-bold ${block ? "text-slate-400" : "text-soft-ink"}`}
+                        >
+                          {s.name}
+                          {s.grade && (
+                            <span className="ml-1.5 text-[12.5px] font-semibold text-soft-muted">
+                              {s.grade}
+                            </span>
                           )}
                         </span>
-                      </span>
-                      <span className="shrink-0 text-[14px] font-bold tabular-nums text-soft-ink">
-                        {open ? orderWon(unit) : "—"}
+                        <span className="mt-1 block text-[12.5px] leading-[1.7] text-soft-muted">
+                          {block ?? (mineTrack ? `${trackLabel(mineTrack)} 평가 대상` : "")}
+                        </span>
                       </span>
                     </label>
                   </li>
@@ -398,122 +309,166 @@ export default function ExamPayPanel({
               })}
             </ul>
           )}
-
-          {pages > 1 && (
-            <div className="mt-3 flex items-center justify-center gap-2">
-              <button
-                type="button"
-                disabled={current === 1}
-                onClick={() => setPage(current - 1)}
-                className={`${t.btnQuiet} disabled:opacity-40`}
-              >
-                이전
-              </button>
-              <span className="text-[13px] tabular-nums text-soft-muted">
-                {current} / {pages}
-              </span>
-              <button
-                type="button"
-                disabled={current === pages}
-                onClick={() => setPage(current + 1)}
-                className={`${t.btnQuiet} disabled:opacity-40`}
-              >
-                다음
-              </button>
-            </div>
-          )}
         </section>
 
-        {/* ② 학생 고르기 */}
+        {/* ② 평가 — 그 학년 것만, 해와 분기로 */}
         <section className="mt-8">
-          <SectionTitle note="고른 학생이 이 평가를 응시합니다.">평가를 볼 학생</SectionTitle>
+          <SectionTitle
+            note={
+              track
+                ? `${trackLabel(track)} 평가입니다. 분기마다 한 번 열립니다.`
+                : "학생을 고르면 그 학년의 평가가 섭니다."
+            }
+          >
+            평가 고르기
+          </SectionTitle>
 
-          {!exam ? (
+          {!track ? (
             <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
-              먼저 평가를 골라 주세요. 학년에 맞는 학생만 고를 수 있습니다.
+              먼저 위에서 학생을 골라 주세요.
             </p>
           ) : (
-            <div className={`${card} overflow-x-auto`}>
-              <table className="w-full min-w-[28rem] border-collapse">
-                <caption className="sr-only">이 평가를 응시할 학생 고르기</caption>
-                <colgroup>
-                  <col className="w-[3rem]" />
-                  <col className="w-[26%]" />
-                  <col />
-                  <col className="w-[30%]" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th className={listTh}>
-                      <span className="sr-only">선택</span>
-                    </th>
-                    <th className={listTh}>이름</th>
-                    <th className={listTh}>학교 · 학년</th>
-                    <th className={listTh}>접수</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!hydrated ? (
-                    <tr>
-                      <td colSpan={4} className={`${listTd} py-12`}>
-                        확인 중입니다…
-                      </td>
-                    </tr>
-                  ) : rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className={`${listTd} py-12`}>
-                        <p className="text-[15px] font-bold text-soft-ink">
-                          아직 등록된 학생이 없습니다
-                        </p>
-                        <Link href="/my/children/new" className={`${t.btnAction} mt-4`}>
-                          등록하러 가기
-                        </Link>
-                      </td>
-                    </tr>
-                  ) : (
-                    rows.map(({ student: s, reason }) => {
-                      const on = !reason && picked.has(s.id);
-                      return (
-                        <tr
-                          key={s.id}
-                          className={on ? "bg-soft-primary-soft/60" : undefined}
-                          onClick={() => !reason && toggle(s.id)}
+            <>
+              <div className={`${card} flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:p-5`}>
+                <span className="flex items-center gap-2">
+                  <label htmlFor="pay-year" className="text-[12.5px] font-semibold text-soft-muted">
+                    연도
+                  </label>
+                  <select
+                    id="pay-year"
+                    value={activeYear}
+                    onChange={(e) => {
+                      setYear(e.target.value);
+                      setPickedExam("");
+                    }}
+                    className="h-10 rounded-[10px] border border-soft-line bg-white px-3 text-[13.5px] text-soft-ink outline-none focus:border-soft-primary"
+                  >
+                    {years.map((y) => (
+                      <option key={y} value={y}>
+                        {y}년
+                      </option>
+                    ))}
+                  </select>
+                </span>
+
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-0.5 text-[12.5px] font-semibold text-soft-muted">분기</span>
+                  {[0, ...QUARTERS].map((q) => {
+                    const on = quarter === q;
+                    return (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => {
+                          setQuarter(q);
+                          setPickedExam("");
+                        }}
+                        aria-pressed={on}
+                        className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                          on
+                            ? "border-soft-primary bg-soft-primary text-white"
+                            : "border-soft-line bg-white text-soft-muted hover:border-soft-primary"
+                        }`}
+                      >
+                        {q === 0 ? "전체" : quarterLabel(q)}
+                      </button>
+                    );
+                  })}
+                </span>
+
+                <label className="ml-auto flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-soft-muted">
+                  <input
+                    type="checkbox"
+                    checked={past}
+                    onChange={(e) => {
+                      setPast(e.target.checked);
+                      setPickedExam("");
+                    }}
+                    className="h-4 w-4 accent-[#365eef]"
+                  />
+                  지난 평가도 보기
+                </label>
+              </div>
+
+              <p className="mb-2.5 mt-3 text-[13px] text-soft-muted">
+                {activeYear}년 {quarter === 0 ? "전체 분기" : quarterLabel(quarter)} ·{" "}
+                <b className="text-soft-ink">{found.length}개</b>
+              </p>
+
+              {found.length === 0 ? (
+                <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
+                  이 조건에 열린 평가가 없습니다. 다른 분기나 연도를 보아 주세요.
+                </p>
+              ) : (
+                <ul className={`${card} divide-y divide-slate-100`}>
+                  {found.map((v) => {
+                    const on = pickedExam === v.key;
+                    const open = v.round.availability === "open";
+                    return (
+                      <li key={v.key}>
+                        <label
+                          className={`flex items-start gap-3.5 p-4 transition-colors sm:p-5 ${
+                            on ? "bg-soft-primary-soft" : open ? "hover:bg-slate-50" : ""
+                          } ${open ? "cursor-pointer" : "cursor-not-allowed"}`}
                         >
-                          <td className={listTd} onClick={(e) => e.stopPropagation()}>
-                            <PickBox
-                              checked={on}
-                              disabled={!!reason}
-                              onChange={() => toggle(s.id)}
-                              label={`${s.name} 선택`}
-                            />
-                          </td>
-                          <td
-                            className={`${listTd} text-left text-[14px] font-bold ${
-                              reason ? "text-slate-400" : "text-soft-ink"
-                            }`}
-                          >
-                            {s.name}
-                          </td>
-                          <td className={`${listTd} text-left`}>
-                            {s.school ?? "—"}
-                            {s.grade && <span className="ml-1.5">{s.grade}</span>}
-                          </td>
-                          <td className={`${listTd} text-left`}>
-                            {reason ? (
-                              <span className="text-[12.5px] text-slate-400">{reason}</span>
-                            ) : (
-                              <span className="text-[12.5px] font-semibold text-soft-primary">
-                                결제하면 바로 접수됩니다
+                          <input
+                            type="radio"
+                            name="exam"
+                            checked={on}
+                            disabled={!open}
+                            onChange={() => {
+                              setPickedExam(v.key);
+                              setAgree(false);
+                            }}
+                            className="mt-1 h-4 w-4 accent-[#365eef]"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span
+                                className={`text-[15px] font-bold ${open ? "text-soft-ink" : "text-slate-400"}`}
+                              >
+                                {v.season.year}년 {quarterLabel(v.season.quarter)} 평가
                               </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              <span className="text-[12px] text-soft-muted">{v.name}</span>
+                              <span
+                                className={`text-[12px] font-semibold ${stateTone[v.round.availability]}`}
+                              >
+                                {availabilityLabel[v.round.availability]}
+                              </span>
+                            </span>
+                            <span className="mt-1.5 block text-[12.5px] leading-[1.7] text-soft-muted">
+                              접수 {dotDate(v.round.opensOn)} – {dotDate(v.round.closesOn)}
+                              {v.round.subjects.length > 0 && (
+                                <>
+                                  {" · "}
+                                  {v.round.subjects.map((s) => s.name).join(" · ")} (
+                                  {v.round.subjects.reduce((m, s) => m + s.minutes, 0)}분)
+                                </>
+                              )}
+                            </span>
+                            {/* 이 평가에 넣을 수 없는 아이가 있으면 줄에서 알린다 */}
+                            {on &&
+                              chosen
+                                .filter((s) => applyBlock(s))
+                                .map((s) => (
+                                  <span
+                                    key={s.id}
+                                    className="mt-1 block text-[12px] font-semibold text-amber-700"
+                                  >
+                                    {s.name} — {applyBlock(s)}
+                                  </span>
+                                ))}
+                          </span>
+                          <span className="shrink-0 text-[14px] font-bold tabular-nums text-soft-ink">
+                            {open ? orderWon(unit) : "—"}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </section>
 
@@ -558,10 +513,13 @@ export default function ExamPayPanel({
             결제 금액
           </p>
           <dl className="space-y-2.5 px-5 py-4 text-[13.5px]">
-            <Line k="평가" v={exam?.name ?? "—"} />
-            <Line k="학년" v={exam ? trackLabel(exam.track.id) : "—"} />
+            <Line
+              k="평가"
+              v={exam ? `${exam.season.year}년 ${quarterLabel(exam.season.quarter)}` : "—"}
+            />
+            <Line k="학년" v={track ? trackLabel(track) : "—"} />
+            <Line k="학생" v={payable.length > 0 ? payable.map((s) => s.name).join(" · ") : "—"} />
             <Line k="한 사람 몫" v={orderWon(unit)} />
-            <Line k="인원" v={`${chosen.length}명`} />
             <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
               <dt className="font-semibold text-soft-ink">최종 결제금액</dt>
               <dd className="text-[17px] font-bold tabular-nums text-soft-ink">
@@ -571,11 +529,6 @@ export default function ExamPayPanel({
           </dl>
 
           <div className="border-t border-slate-100 px-5 py-4">
-            {chosen.length > 0 && (
-              <p className="mb-3 text-[12.5px] leading-[1.7] text-soft-muted">
-                {chosen.map((r) => r.student.name).join(" · ")} 앞으로 접수됩니다.
-              </p>
-            )}
             <label className="flex cursor-pointer items-start gap-2.5">
               <input
                 type="checkbox"
@@ -593,41 +546,24 @@ export default function ExamPayPanel({
             </label>
 
             <button type="button" onClick={pay} disabled={!canPay} className={`${t.btnPrimary} mt-4`}>
-              {!exam
-                ? "평가를 골라 주세요"
-                : chosen.length === 0
-                  ? "학생을 골라 주세요"
-                  : total === 0
-                    ? `${chosen.length}명 무료로 접수하기`
-                    : `${orderWon(total)} 결제하기`}
+              {chosen.length === 0
+                ? "학생을 골라 주세요"
+                : !exam
+                  ? "평가를 골라 주세요"
+                  : payable.length === 0
+                    ? "접수할 수 있는 학생이 없습니다"
+                    : total === 0
+                      ? `${payable.length}명 무료로 접수하기`
+                      : `${orderWon(total)} 결제하기`}
             </button>
             <p className="mt-2.5 text-[11.5px] leading-[1.7] text-soft-muted">
-              응시를 시작하기 전에는 전액 환불됩니다. 응시를 시작한 뒤에는 환불이 제한됩니다.
+              결제와 동시에 접수됩니다. 응시를 시작하기 전에는 전액 환불되며, 시작한 뒤에는 환불이
+              제한됩니다.
             </p>
           </div>
         </div>
       </aside>
     </div>
-  );
-}
-
-/** 고르개 한 칸 — 이름표 + 고르개 */
-function Field({
-  label,
-  id,
-  children,
-}: {
-  label: string;
-  id: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="flex items-center gap-2">
-      <label htmlFor={id} className="text-[12.5px] font-semibold text-soft-muted">
-        {label}
-      </label>
-      {children}
-    </span>
   );
 }
 

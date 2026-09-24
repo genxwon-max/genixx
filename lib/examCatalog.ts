@@ -101,6 +101,28 @@ export function evalName(roundId: string, track: TrackId, fallback = roundId) {
   return m ? `${m[1]} ${m[2]}-${seq} 평가` : `${fallback} ${trackOf(track).short} 평가`;
 }
 
+/**
+ * 평가가 열린 **해와 분기** — 「2026년 3분기」.
+ *
+ * 평가는 해마다 네 시기(2 · 5 · 8 · 11월)로 열린다. 시기 번호는 회차 번호에 이미 들어
+ * 있지만(2026-3), 관리자가 손으로 만든 회차는 그 꼴이 아닐 수 있어 **접수 시작 달**에서도
+ * 뽑을 수 있게 해 둔다. 둘 다 없는 회차는 없다 — 기간은 모든 회차가 들고 있다.
+ *
+ * 목록을 해 · 분기로 접는 화면(보호자 결제 · 접수하기)이 저마다 이 셈을 두면, 어느 날
+ * 한쪽만 고쳐져 같은 평가가 다른 분기에 선다.
+ */
+export function seasonOf(round: { id: string; opensOn: string }): { year: string; quarter: number } {
+  const m = /^(\d{4})-([1-4])$/.exec(round.id);
+  if (m) return { year: m[1], quarter: Number(m[2]) };
+  const month = Number(round.opensOn.slice(5, 7)) || 1;
+  return { year: round.opensOn.slice(0, 4), quarter: Math.floor((month - 1) / 3) + 1 };
+}
+
+export const QUARTERS = [1, 2, 3, 4] as const;
+
+/** 「3분기」 */
+export const quarterLabel = (q: number) => `${q}분기`;
+
 /** 「초등학교 3-4학년」 */
 export const trackLabel = (id: TrackId) => `${trackOf(id).level} ${trackOf(id).grades}`;
 
