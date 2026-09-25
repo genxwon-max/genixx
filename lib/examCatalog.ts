@@ -9,30 +9,29 @@ import type { RoundState } from "./admin";
  * 있는 것을 그대로 읽고, 여기에는 학생 화면에만 필요한 것 — 학년 칸과 카드 사진,
  * 회차를 부르는 이름 — 만 둔다.
  *
- * ── 학년 칸에 학년 하나 ──
- * 초1부터 중3까지 아홉, **학년마다 따로 열린다.** 처음에는 셋(초3-4 · 초5-6 · 중1-2)으로
- * 묶어 두었는데, 묶음으로 열면 3학년과 4학년이 같은 검사지를 받는다. 한 해 차이로 배우는
- * 것이 갈리는 시기라, 묶어 놓으면 아래 학년은 못 푼 문항이 많고 위 학년은 쉬운 문항이
- * 많아 둘 다 자기 자리를 못 본다. 문항 은행이 이미 학년마다 성취기준을 갈라 들고 있고
- * (lib/blueprint.ts의 GradeNo), 해설 템플릿도 초1~중3 학년마다 따로 쓴다.
+ * ── 초3부터 초6까지 넷 ──
+ * 진단평가 절차가 정한 대상 학년은 **초등 3~6학년**이고, **학년마다 따로 열린다.**
+ * 한 해 차이로 배우는 것이 갈리는 시기라 묶어 놓으면 아래 학년은 못 푼 문항이 많고 위
+ * 학년은 쉬운 문항이 많아 둘 다 자기 자리를 못 본다. 문항 은행도 학년마다 성취기준을
+ * 갈라 들고 있고(lib/blueprint.ts의 GradeNo), 해설 템플릿도 학년마다 따로 쓴다.
  *
  * 그래도 이 칸을 문항 은행의 학년과 한 타입으로 묶지 않는다. 저쪽은 성취기준 코드가
  * 갈리는 자리에서 끊은 값이고, 이쪽은 학생이 「내 시험」을 찾는 칸이다 — 한 타입으로 묶으면
  * 카드 사진을 바꾸는 일에 문항 은행이 함께 흔들린다.
  *
- * ── 고등학교는 없다 ──
- * trackFromGrade가 고등학교를 null로 돌려준다. 진단 대상이 초·중이라, 고1 학생이 명부에
- * 오르면 「대상 학년이 아닙니다」로 서야지 가까운 칸에 붙어서는 안 된다.
+ * ── 초1·2와 중학교, 고등학교는 없다 ──
+ * trackFromGrade가 셋 다 null로 돌려준다. 절차가 정한 대상이 초3~6이라, 초2나 중2 학생이
+ * 명부에 오르면 「대상 학년이 아닙니다」로 서야지 가까운 칸에 붙어서는 안 된다.
  *
- * ⚠ 카드 사진은 넷을 아홉이 나눠 쓴다. 학년마다 사진을 새로 찍기 전까지는 학년대로 묶어
- *   같은 사진을 쓴다 — 아홉 칸에 같은 사진 하나를 깔면 카드가 구별되지 않는다.
+ * 한동안 초1~중3 아홉 칸으로 열어 두었다. 그때 접수한 기록에는 없어진 칸 번호가 남아
+ * 있으므로, 응시권 저장소가 읽을 때 걸러 버린다(lib/ticketStore.ts).
  */
 
-export type TrackId = "e1" | "e2" | "e3" | "e4" | "e5" | "e6" | "m1" | "m2" | "m3";
+export type TrackId = "e3" | "e4" | "e5" | "e6";
 
 export type Track = {
   id: TrackId;
-  level: "초등학교" | "중학교";
+  level: "초등학교";
   /** 카드 머리의 학년 — 「4학년」 */
   grades: string;
   /** 한 줄로 부를 때 — 「초등 4학년」 */
@@ -43,7 +42,7 @@ export type Track = {
   alt: string;
 };
 
-/* 사진 넷을 학년대로 나눠 쓴다 */
+/* 사진 넷 · 학년 넷이라 학년마다 한 장씩 돌아간다 */
 const PHOTO = {
   make: {
     image: "/promo-trace-make.webp",
@@ -72,28 +71,17 @@ const elementary = (n: number, photo: { image: string; alt: string }): Track => 
   ...photo,
 });
 
-const middle = (n: number, photo: { image: string; alt: string }): Track => ({
-  id: `m${n}` as TrackId,
-  level: "중학교",
-  grades: `${n}학년`,
-  short: `중등 ${n}학년`,
-  tag: `중${n}`,
-  ...photo,
-});
-
 export const tracks: Track[] = [
-  elementary(1, PHOTO.make),
-  elementary(2, PHOTO.make),
-  elementary(3, PHOTO.write),
+  elementary(3, PHOTO.make),
   elementary(4, PHOTO.write),
   elementary(5, PHOTO.observe),
-  elementary(6, PHOTO.observe),
-  middle(1, PHOTO.speak),
-  middle(2, PHOTO.speak),
-  middle(3, PHOTO.speak),
+  elementary(6, PHOTO.speak),
 ];
 
-export const schoolLevels = ["초등학교", "중학교"] as const;
+export const schoolLevels = ["초등학교"] as const;
+
+/** 대상 학년 — 「초등 3~6학년」 */
+export const trackRangeText = `${tracks[0].short} ~ ${tracks[tracks.length - 1].grades}`;
 
 export const isTrackId = (v: string): v is TrackId => tracks.some((t) => t.id === v);
 
@@ -103,26 +91,25 @@ export const trackOf = (id: TrackId) => tracks.find((t) => t.id === id)!;
  * 명부의 학년 글자에서 내 학년 칸을 찾는다.
  *
  * 명부 칸은 「초등 4학년」·「중등 2학년」처럼 들어온다(자녀 등록 화면). 첫 숫자와 학교급
- * 글자만 본다 — 「초등학교 4학년」·「초4」·「중3」 어느 꼴로 들어와도 같은 칸에 닿는다.
+ * 글자만 본다 — 「초등학교 4학년」·「초4」 어느 꼴로 들어와도 같은 칸에 닿는다.
  *
- * 고등학교와 범위를 벗어난 숫자는 null이다. 억지로 가까운 칸에 붙이면 아이가 제 학년이
+ * 중학교 · 고등학교와 초1 · 초2는 null이다. 억지로 가까운 칸에 붙이면 아이가 제 학년이
  * 아닌 시험을 내 것으로 안다.
  */
 export function trackFromGrade(grade?: string): TrackId | null {
   const t = (grade ?? "").trim();
   const n = Number(t.match(/\d/)?.[0] ?? "");
   if (!n) return null;
-  if (t.includes("고")) return null;
-  if (t.includes("중")) return n >= 1 && n <= 3 ? (`m${n}` as TrackId) : null;
-  return n >= 1 && n <= 6 ? (`e${n}` as TrackId) : null;
+  if (t.includes("중") || t.includes("고")) return null;
+  return n >= 3 && n <= 6 ? (`e${n}` as TrackId) : null;
 }
 
 /**
  * 학생 화면에서 부르는 평가 이름 — 「2026 3분기 초4 평가」.
  *
  * 앞에는 언제(해 · 분기), 뒤에는 누구 것(학년)이 온다. 예전에는 「2026 3-1 평가」처럼
- * 시기 번호에 학년 차례를 붙여 불렀는데, 학년이 아홉이 되면서 뒷번호가 무엇을 가리키는지
- * 읽히지 않게 되었다 — 「3-7」을 보고 중1을 떠올릴 사람은 없다.
+ * 시기 번호에 학년 차례를 붙여 불렀는데, 뒷번호가 무엇을 가리키는지 읽히지 않았다 —
+ * 「3-2」를 보고 초4를 떠올릴 사람은 없다.
  *
  * 「회차」라는 말은 학생 화면에서 쓰지 않는다. 해마다 분기가 넷씩 쌓이므로 연도와 분기로
  * 부르는 편이 짧고, 관리자가 부르는 회차 번호(2026-3)와도 한눈에 이어진다.
@@ -157,7 +144,7 @@ export const QUARTERS = [1, 2, 3, 4] as const;
 /** 「3분기」 */
 export const quarterLabel = (q: number) => `${q}분기`;
 
-/** 「초등학교 3-4학년」 */
+/** 「초등학교 4학년」 */
 export const trackLabel = (id: TrackId) => `${trackOf(id).level} ${trackOf(id).grades}`;
 
 /**

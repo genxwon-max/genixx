@@ -125,9 +125,10 @@ export const REGIONS = [
 
 const MAILS = ["gmail.com", "naver.com", "daum.net", "kakao.com", "hanmail.net"] as const;
 
-/** 학년 다섯. 목록의 거르개는 「등장한 학년」만 쓰지만, 상세의 학년 고르개는 이 전부를
-    쓴다 — 아무도 없는 학년으로 진급한 학생을 옮길 자리가 없으면 그 칸은 못 고치는 칸이다 */
-export const GRADES = ["초3", "초4", "초5", "초6", "중1"] as const;
+/** 학년 넷 — 진단평가 대상(초3~6)과 같다. 목록의 거르개는 「등장한 학년」만 쓰지만, 상세의
+    학년 고르개는 이 전부를 쓴다 — 아무도 없는 학년으로 진급한 학생을 옮길 자리가 없으면
+    그 칸은 못 고치는 칸이다 */
+export const GRADES = ["초3", "초4", "초5", "초6"] as const;
 
 /** 아이디 앞 두 글자만 남기고 가린 형태. 실제 이름과 이어지지 않게 따로 뽑는다 */
 const MAIL_HEADS = [

@@ -5,6 +5,7 @@ import { useSession } from "@/lib/authStore";
 import { SUBJECT_IDS } from "@/lib/exam";
 import { dotDate, roomHref } from "@/lib/examCatalog";
 import { submittedCount, useExamRecord, type ExamRecord } from "@/lib/examStore";
+import { useClaimSet } from "@/lib/setStore";
 import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
 import StudentOnly from "./StudentOnly";
 
@@ -21,6 +22,8 @@ export default function ExamTake() {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
+  /* 가입을 마친 학생이 이 탭에 먼저 닿을 수 있다 — 셋트를 물려받고 갈래를 맞춘다 */
+  useClaimSet(session?.role === "student" ? studentId : null);
   const rows = useRegistrations(studentId);
 
   if (session && session.role !== "student") return <StudentOnly role={session.role} />;

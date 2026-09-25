@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
 import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
-import { FREE_QUESTIONS, assessment, questionCount } from "@/lib/exam";
+import { FREE_TOTAL, SET_QUESTIONS, assessment, questionCount } from "@/lib/exam";
 import {
   availabilityLabel,
   dotDate,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/examCatalog";
 import { resetStudent } from "@/lib/examStore";
 import { examWindow } from "@/lib/popup";
+import { useClaimSet } from "@/lib/setStore";
 import { findById } from "@/lib/roster";
 import { resetWallet } from "@/lib/ticketStore";
 import { applyAction, useApplyFlow, type ApplyAction } from "./ApplyFlow";
@@ -32,12 +33,12 @@ import { btnBox, btnBoxDisabled } from "./ui";
  * 접수하기 탭 (/exam/apply) — 평가를 골라 접수한다.
  *
  *   제목      가운데 큰 「접수하기」
- *   왼쪽      학년 카테고리 — 전체 · 초등학교(1~6학년) · 중학교(1~3학년)
+ *   왼쪽      학년 카테고리 — 전체 · 초등학교(3~6학년)
  *   오른쪽    검색(접수 상태 · 검색어) → 건수와 보기 방식 → 평가 목록 → 페이지
  *
  * ── 해가 쌓여도 버티는 모양 ──
- * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다(「2026 3분기 초1 평가」 · 「초2」 …).
- * 학년이 아홉이라 한 해에 서른여섯, 세 해가 쌓이면 백을 넘는다.
+ * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다(「2026 3분기 초3 평가」 · 「초4」 …).
+ * 학년이 넷이라 한 해에 열여섯, 세 해가 쌓이면 쉰을 넘는다.
  * 연도·회차를 탭이나 고르개로 세우면 해가 늘 때마다 고를 것이 는다. 그래서 목록은 지난
  * 평가까지 **한 줄로 모두** 두고, 찾는 일은 검색어와 페이지가 맡는다.
  *
@@ -74,17 +75,21 @@ type Item = {
   mine: boolean;
   action: ApplyAction;
   onApply: () => void;
+  /** 무료로 접수해 둔 평가를 유료로 올린다 */
+  onUpgrade: () => void;
 };
 
 export default function ExamCatalog() {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
   const asGuardian = session?.asGuardian === true;
-  /* 로그인 전 — 접수 대신 무료 체험으로 보낸다(ExamGate가 이 모드로 부른다) */
+  /* 로그인 전 — 접수 대신 셋트 창으로 보낸다(ExamGate가 이 모드로 부른다) */
   const guest = !session;
   const rounds = useCatalogRounds();
   const { wallet, begin, dialog } = useApplyFlow(studentId);
   const mine = trackFromGrade(findById(studentId)?.grade);
+  /* 셋트를 풀고 가입한 학생이 이 탭에 먼저 닿을 수 있다 — 그 평가를 무료로 접수해 둔다 */
+  useClaimSet(guest ? null : studentId);
 
   const [filter, setFilter] = useState<Filter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -113,6 +118,7 @@ export default function ExamCatalog() {
             } as const)
           : applyAction(round, track.id, wallet, asGuardian),
         onApply: () => begin(round, track.id),
+        onUpgrade: () => begin(round, track.id, true),
       })),
     )
     .filter((it) => filter === "all" || it.track.id === filter)
@@ -149,10 +155,10 @@ export default function ExamCatalog() {
         <PageTitle
           sub={
             <>
-              회원가입 없이 보고 싶은 평가를 골라 과목마다 {FREE_QUESTIONS}문항까지 무료로 풀어 볼
+              회원가입 없이 보고 싶은 평가를 골라 교과 하나로 1셋트 {SET_QUESTIONS}문항을 풀어 볼
               수 있습니다.
               <br />
-              전체 문항 응시와 결과 리포트는{" "}
+              셋트를 풀고 가입하면 무료시험 {FREE_TOTAL}문항으로 이어집니다. 결과 리포트는{" "}
               <Link href="/signup" className="font-semibold text-soft-primary hover:underline">
                 회원가입
               </Link>{" "}
@@ -396,8 +402,8 @@ function GradeCategory({
                   : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
               }`}
             >
-              {/* 학년이 아홉이라 가로 줄에서는 짧은 이름을 쓴다 — 「초등학교 4학년」이 열
-                  개 서면 두 줄이 넘고, 고르개가 목록보다 커진다 */}
+              {/* 가로 줄에서는 짧은 이름을 쓴다 — 「초등학교 4학년」이 다섯 개 서면 두 줄이
+                  넘고, 고르개가 목록보다 커진다 */}
               {id === "all" ? "전체" : trackOf(id).tag}
             </button>
           );
@@ -611,7 +617,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
                   {availabilityLabel[it.round.availability]}
                 </td>
                 <td className={`${td} text-center`}>
-                  <ActionCell action={it.action} onApply={it.onApply} />
+                  <ActionCell action={it.action} onApply={it.onApply} onUpgrade={it.onUpgrade} />
                 </td>
               </tr>
             ))
@@ -622,14 +628,34 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
   );
 }
 
-function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => void }) {
+function ActionCell({
+  action,
+  onApply,
+  onUpgrade,
+}: {
+  action: ApplyAction;
+  onApply: () => void;
+  onUpgrade: () => void;
+}) {
   if (action.kind === "done") {
     return (
       <span className="flex flex-col items-center gap-1">
-        <span className="text-[13px] font-semibold text-soft-primary">접수 완료</span>
+        <span className="text-[13px] font-semibold text-soft-primary">
+          {action.tier === "free" ? "무료시험 접수" : "유료시험 접수"}
+        </span>
         <Link href="/exam" className="text-[12px] text-soft-ink underline-offset-2 hover:underline">
           {action.label}
         </Link>
+        {/* 무료로 본 아이가 결제할 자리 — 목록을 떠나지 않고 올린다 */}
+        {action.tier === "free" && (
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="text-[12px] text-soft-primary underline-offset-2 hover:underline"
+          >
+            유료시험으로 올리기
+          </button>
+        )}
       </span>
     );
   }
@@ -653,7 +679,7 @@ function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => v
 
 /* ───────────────────────── 카드 ───────────────────────── */
 
-function ExamCard({ round, track, name, mine, action, onApply }: Item) {
+function ExamCard({ round, track, name, mine, action, onApply, onUpgrade }: Item) {
   const total = round.subjects.reduce((sum, s) => sum + s.minutes, 0);
 
   return (
@@ -709,10 +735,21 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
         <div className="mt-auto pt-5">
           {action.kind === "done" ? (
             <>
-              <p className="mb-2 text-[13px] font-semibold text-soft-primary">접수 완료</p>
+              <p className="mb-2 text-[13px] font-semibold text-soft-primary">
+                {action.tier === "free" ? "무료시험 접수 완료" : "유료시험 접수 완료"}
+              </p>
               <Link href="/exam" className={`${btnBox} w-full`}>
                 {action.label}
               </Link>
+              {action.tier === "free" && (
+                <button
+                  type="button"
+                  onClick={onUpgrade}
+                  className="mt-2 w-full text-[12px] text-soft-primary underline-offset-2 hover:underline"
+                >
+                  유료시험으로 올리기
+                </button>
+              )}
             </>
           ) : action.kind === "try" ? (
             <button

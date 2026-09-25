@@ -10,6 +10,15 @@ import { isTrackId, type TrackId } from "./examCatalog";
  * 평가 카드를 접수할 때 한 매를 쓴다. 접수한 평가만 「응시하기」 탭에 올라온다. 과목마다
  * 쓰는 것이 아니라 **평가 한 벌(회차 × 학년)에 한 매**다.
  *
+ * ── 무료시험은 응시권을 쓰지 않는다 ──
+ * 접수 기록에 갈래(tier)를 함께 적는다. 무료시험은 가입한 학생이면 누구나 보는 것이라
+ * 응시권이 들지 않고, 유료시험만 한 매를 쓴다. 남은 매수(ticketsLeft)가 유료 접수만 세는
+ * 까닭이 이것이다 — 무료 접수까지 세면 무료시험을 본 아이는 결제한 응시권을 이미 쓴 것이
+ * 된다.
+ *
+ * 같은 회차에서 무료로 접수한 뒤 유료로 올리는 일은 있다. 그때는 줄을 새로 만들지 않고
+ * 그 줄의 갈래만 올린다(spendTicket) — 한 회차 한 학년이라는 규칙은 그대로다.
+ *
  * ── 한 회차에는 한 학년 ──
  * 같은 회차에서 두 학년을 접수할 수 없다. 응시 기록(lib/examStore.ts)이 학생마다 한
  * 벌이라, 두 학년을 받으면 초등 3-4학년에서 낸 국어가 5-6학년에도 「제출완료」로 선다.
@@ -21,8 +30,11 @@ import { isTrackId, type TrackId } from "./examCatalog";
  *   결제 성공 응답을 받는 자리로 옮겨 간다.
  */
 
+/** 접수에 매기는 갈래 — 무료시험은 응시권이 들지 않는다 */
+export type UseTier = "free" | "paid";
+
 /** 접수 한 건 — at이 접수한 시각 */
-export type TicketUse = { round: string; track: TrackId; at: string };
+export type TicketUse = { round: string; track: TrackId; tier: UseTier; at: string };
 
 export type Wallet = {
   /** 받은 응시권 */
@@ -65,9 +77,12 @@ function readStore(): Store {
 /**
  * 읽을 때 한 번 훑어 **없어진 학년 칸의 접수 기록을 버린다.**
  *
- * 평가가 학년 칸 셋(e34 · e56 · m12)에서 학년 아홉(e1 ~ m3)으로 갈리면서 옛 칸 번호가
- * 사라졌다. 저장분에 그 번호가 남아 있으면 화면이 없는 칸을 그리려다 멈춘다 — 접수 기록은
- * 시연용으로 쌓인 값이라 옮겨 붙이지 않고 버린다. 보유 매수(owned)는 그대로 둔다.
+ * 학년 칸은 셋(e34 · e56 · m12)에서 아홉(e1 ~ m3)으로 갈렸다가, 진단평가 절차가 정한
+ * 대상 학년에 맞춰 넷(e3 ~ e6)으로 좁았다. 저장분에 옛 번호가 남아 있으면 화면이 없는
+ * 칸을 그리려다 멈춘다 — 접수 기록은 시연용으로 쌓인 값이라 옮겨 붙이지 않고 버린다.
+ * 보유 매수(owned)는 그대로 둔다.
+ *
+ * 갈래(tier)가 없는 옛 줄은 유료로 본다 — 그때는 응시권을 써서 접수하는 길뿐이었다.
  *
  * 저장소를 옮겨 쓰는 일(migration)을 따로 두지 않고 읽는 자리에서 거른다. 브라우저마다
  * 언제 열지 알 수 없어, 한 번 도는 이사 코드는 결국 누군가의 브라우저를 건너뛴다.
@@ -76,8 +91,11 @@ function clean(store: Store): Store {
   let touched = false;
   const next: Store = {};
   for (const [id, wallet] of Object.entries(store)) {
-    const used = (wallet.used ?? []).filter((u) => isTrackId(u.track));
-    if (used.length !== (wallet.used ?? []).length) touched = true;
+    const raw = wallet.used ?? [];
+    const used = raw
+      .filter((u) => isTrackId(u.track))
+      .map((u) => (u.tier ? u : { ...u, tier: "paid" as UseTier }));
+    if (used.length !== raw.length || used.some((u, k) => u !== raw[k])) touched = true;
     next[id] = { ...wallet, used };
   }
   return touched ? next : store;
@@ -129,11 +147,17 @@ export function useTickets(): Store {
   return useSyncExternalStore(subscribe, readStore, () => EMPTY_STORE);
 }
 
+/** 훅 밖에서 한 사람의 지갑을 읽는다 — 화면이 열릴 때 한 번 맞추는 자리에서 쓴다 */
+export const getWallet = (studentId: string) => readWallet(studentId);
+
 /** useTickets()로 받은 저장소에서 한 사람 몫을 꺼낸다 */
 export const walletOf = (store: Store, studentId: string): Wallet =>
   store[studentId] ?? SEED_WALLET;
 
-export const ticketsLeft = (w: Wallet) => Math.max(0, w.owned - w.used.length);
+/** 쓴 응시권 — 유료 접수만 센다 */
+export const ticketsSpent = (w: Wallet) => w.used.filter((u) => u.tier === "paid").length;
+
+export const ticketsLeft = (w: Wallet) => Math.max(0, w.owned - ticketsSpent(w));
 
 /** 이 회차에 이미 접수한 학년 — 없으면 null */
 export const usedInRound = (w: Wallet, round: string) =>
@@ -143,20 +167,48 @@ export const usedInRound = (w: Wallet, round: string) =>
 export const isApplied = (w: Wallet, round: string, track: TrackId) =>
   usedInRound(w, round)?.track === track;
 
+/** 이 평가를 어느 갈래로 접수했는가 — 접수하지 않았으면 null */
+export const tierApplied = (w: Wallet, round: string, track: TrackId): UseTier | null => {
+  const u = usedInRound(w, round);
+  return u && u.track === track ? u.tier : null;
+};
+
 /**
- * 접수 — 응시권 한 매를 이 평가에 쓴다.
+ * 유료 접수 — 응시권 한 매를 이 평가에 쓴다.
  *
- * 이미 접수한 평가면 쓰지 않고 true, 남은 매수가 없거나 같은 회차에 다른 학년을
+ * 같은 평가를 무료로 접수해 두었으면 줄을 새로 만들지 않고 갈래만 올리고 한 매를 쓴다.
+ * 이미 유료로 접수한 평가면 쓰지 않고 true, 남은 매수가 없거나 같은 회차에 **다른 학년**을
  * 접수해 두었으면 false.
  */
 export function spendTicket(studentId: string, round: string, track: TrackId): boolean {
   const w = readWallet(studentId);
   const same = usedInRound(w, round);
-  if (same) return same.track === track;
+  if (same && same.track !== track) return false;
+  if (same?.tier === "paid") return true;
   if (ticketsLeft(w) <= 0) return false;
+  const at = new Date().toISOString();
   writeWallet(studentId, {
     ...w,
-    used: [...w.used, { round, track, at: new Date().toISOString() }],
+    used: same
+      ? w.used.map((u) => (u.round === round ? { ...u, tier: "paid" as UseTier, at } : u))
+      : [...w.used, { round, track, tier: "paid" as UseTier, at }],
+  });
+  return true;
+}
+
+/**
+ * 무료 접수 — 응시권을 쓰지 않고 이 평가를 무료시험으로 접수한다.
+ *
+ * 가입한 학생이 셋트를 물려받는 자리에서 부른다(lib/setStore.ts). 같은 회차에 이미 접수한
+ * 것이 있으면 손대지 않는다 — 유료 접수를 무료로 끌어내리거나, 다른 학년을 덮어써서는
+ * 안 된다.
+ */
+export function applyFree(studentId: string, round: string, track: TrackId): boolean {
+  const w = readWallet(studentId);
+  if (usedInRound(w, round)) return false;
+  writeWallet(studentId, {
+    ...w,
+    used: [...w.used, { round, track, tier: "free" as UseTier, at: new Date().toISOString() }],
   });
   return true;
 }

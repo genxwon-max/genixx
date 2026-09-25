@@ -8,12 +8,12 @@ export async function generateMetadata({
 }: PageProps<"/exam/session/trial/[round]/[track]">): Promise<Metadata> {
   const { round, track } = await params;
   return {
-    title: isTrackId(track) ? `${evalName(round, track)} 무료 체험` : "무료 체험",
+    title: isTrackId(track) ? `${evalName(round, track)} 셋트 문항` : "셋트 문항",
     robots: { index: false, follow: false },
   };
 }
 
-/** 무료 체험 창 — 로그인 없이 연다(ExamGate를 두르지 않는다). 평가 목록이 별도 창으로 띄운다 */
+/** 셋트 창 — 로그인 없이 연다(ExamGate를 두르지 않는다). 평가 목록이 별도 창으로 띄운다 */
 export default async function TrialPage({
   params,
 }: PageProps<"/exam/session/trial/[round]/[track]">) {

@@ -224,45 +224,42 @@ export function cellsOf(slot: Slot): { axis: AxisId | null; band: Band | null }[
  * 열쇠를 도로 풀 때 어디가 사이인지 알 수 없다.
  */
 /**
- * 템플릿의 학년 — 초등 1~6학년 · 중학교 1~3학년을 하나씩 (2026-09-22 요청).
+ * 템플릿의 학년 — 진단평가 대상인 초등 3~6학년을 하나씩 (2026-09-22 요청).
  *
- * 한동안 학년대 넷(초3~4 · 초5~6 · 중1 · 중2~3, SurveyBand)으로 문구를 갈랐다. 문항 은행이 학년을
+ * 한동안 학년대(초3~4 · 초5~6 · 중1 · 중2~3, SurveyBand)로 문구를 갈랐다. 문항 은행이 학년을
  * 하나씩 적게 되면서 여기도 학년마다 따로 쓴다 — 3학년과 4학년에게 하는 말이 다를 수 있다.
  * 옛 학년대 문구는 그 학년대에 드는 학년마다 옮겨 담는다(씨앗은 seedTemplates, 고친 것은
  * lib/reportAssetStore.ts의 read가 옮긴다).
+ *
+ * 초1 · 초2와 중학교 칸은 뒀다가 뺐다. 진단평가 절차가 대상을 초3~6으로 정해, 그 학년의
+ * 리포트가 나갈 일이 없다 — 나가지 않는 학년의 문구를 관리자가 채우고 있으면 그것이
+ * 오해다.
  */
-export type TemplateGrade = "e1" | "e2" | "e3" | "e4" | "e5" | "e6" | "m1" | "m2" | "m3";
+export type TemplateGrade = "e3" | "e4" | "e5" | "e6";
 
 export const templateGrades: { id: TemplateGrade; label: string; short: string; band: SurveyBand }[] = [
-  { id: "e1", label: "초등 1학년", short: "초1", band: "e34" },
-  { id: "e2", label: "초등 2학년", short: "초2", band: "e34" },
   { id: "e3", label: "초등 3학년", short: "초3", band: "e34" },
   { id: "e4", label: "초등 4학년", short: "초4", band: "e34" },
   { id: "e5", label: "초등 5학년", short: "초5", band: "e56" },
   { id: "e6", label: "초등 6학년", short: "초6", band: "e56" },
-  { id: "m1", label: "중학교 1학년", short: "중1", band: "m1" },
-  { id: "m2", label: "중학교 2학년", short: "중2", band: "m23" },
-  { id: "m3", label: "중학교 3학년", short: "중3", band: "m23" },
 ];
 
-/** 옛 학년대 → 그 학년대에 드는 학년. 1 · 2학년은 옛 학년대가 없어 빈 칸으로 시작한다 */
+/** 옛 학년대 → 그 학년대에 드는 학년 */
 export const gradesOfBand: Record<SurveyBand, TemplateGrade[]> = {
   e34: ["e3", "e4"],
   e56: ["e5", "e6"],
-  m1: ["m1"],
-  m23: ["m2", "m3"],
 };
 
 /**
- * 명부의 학년 글자(「초4」 · 「4학년」 · 「중2」)에서 템플릿 학년을 고른다. 못 읽으면 초등 3학년.
- * lib/surveyBands.ts의 bandFromGrade와 같은 규칙으로 읽는다.
+ * 명부의 학년 글자(「초4」 · 「4학년」)에서 템플릿 학년을 고른다. 못 읽으면 초등 3학년.
+ * lib/surveyBands.ts의 bandFromGrade와 같은 규칙으로 읽는다 — 대상이 아닌 학년도 문구는
+ * 어딘가에 붙어야 하므로 가장 어린 칸으로 둔다.
  */
 export function templateGradeFrom(grade?: string): TemplateGrade {
   const t = (grade ?? "").trim();
+  if (t.includes("중") || t.includes("고")) return "e3";
   const n = Number(t.match(/\d/)?.[0] ?? "");
-  if (t.includes("고")) return "m3";
-  if (t.includes("중")) return n >= 1 && n <= 3 ? (`m${n}` as TemplateGrade) : "m1";
-  return n >= 1 && n <= 6 ? (`e${n}` as TemplateGrade) : "e3";
+  return n >= 3 && n <= 6 ? (`e${n}` as TemplateGrade) : "e3";
 }
 
 export const keyOf = (slot: SlotId, grade: TemplateGrade, axis: AxisId | null, band: Band | null) =>

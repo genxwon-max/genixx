@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 
-/** 응시 화면(실제 응시 · 무료 체험)인가 — 둘 다 /exam/session 아래에 있다 */
+/** 응시 화면(실제 응시 · 셋트)인가 — 둘 다 /exam/session 아래에 있다 */
 export const isExamScreen = (pathname: string) => pathname.startsWith("/exam/session/");
 
 /**
