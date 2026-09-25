@@ -468,8 +468,9 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
  * 늘어놓아 아무 데나 바로 갈 수 있게 했다. S위계로 묶지 않는다 — 위계는 채점과 리포트가
  * 읽는 축이지 학생에게 보일 이름이 아니다.
  *
- * 응답 여부를 색으로만 알리지 않는다. 채운 문항은 번호가 진해지고 밑에 짧은 줄이
- * 그어진다. 색을 못 보는 아이도 같은 정보를 얻어야 한다.
+ * 답한 문항은 **밝은 회색**으로 깔린다 — 끝낸 칸이 가라앉고 남은 칸이 흰 바탕으로 도드라져,
+ * 어디를 더 해야 하는지가 먼저 읽힌다. 색조가 아니라 밝기 차이라 색을 못 보는 아이도 같이
+ * 읽히고, 낱낱의 상태는 번호마다 붙인 aria-label(「문항 3 응답함」)이 따로 말한다.
  */
 export function QuestionPad({
   list,
@@ -565,27 +566,22 @@ export function QuestionPad({
                   aria-current={current ? "step" : undefined}
                   aria-label={`문항 ${i + 1} ${state}`}
                   title={`문항 ${i + 1} · ${kindLabel(q)} · ${state}`}
-                  className={`flex h-9 w-9 flex-col items-center justify-center rounded-[2px] border text-[13px] tabular-nums transition-colors ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-[2px] border text-[13px] tabular-nums transition-colors ${
                     current
                       ? "border-exam-text bg-exam-text font-bold text-white"
                       : lockedHere
                         ? "border-dashed border-exam-line font-medium text-exam-muted/60 hover:bg-exam-raised"
-                        : here
-                          ? /* 같은 쪽에 함께 서 있는 문항 — 지금 보이지만 짚은 것은 아니다 */
-                            "border-exam-text font-bold text-exam-text hover:bg-exam-raised"
-                          : ok
-                            ? "border-exam-muted font-bold text-exam-text hover:bg-exam-raised"
+                        : ok
+                          ? /* 답한 문항 — 밝은 회색을 깔아 「끝낸 칸」으로 보이게 한다. 남은
+                               칸이 흰 바탕으로 도드라져, 어디를 더 해야 하는지가 먼저 읽힌다 */
+                            "border-exam-line bg-exam-raised font-medium text-exam-muted hover:bg-slate-200"
+                          : here
+                            ? /* 같은 쪽에 함께 서 있는 문항 — 지금 보이지만 짚은 것은 아니다 */
+                              "border-exam-text font-bold text-exam-text hover:bg-exam-raised"
                             : "border-exam-line font-medium text-exam-muted hover:bg-exam-raised"
                   }`}
                 >
                   {i + 1}
-                  {/* 응답 표시 — 색이 아니라 형태로도 남긴다 */}
-                  <span
-                    aria-hidden
-                    className={`mt-0.5 h-px w-3.5 ${
-                      ok ? (current ? "bg-white" : "bg-exam-text") : "bg-transparent"
-                    }`}
-                  />
                 </button>
               </li>
             );
