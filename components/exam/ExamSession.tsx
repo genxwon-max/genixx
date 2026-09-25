@@ -8,9 +8,8 @@ import {
   blankFilled,
   examOrderOf,
   joinBlanks,
-  questionCount,
-  questionsOf,
   screensOf,
+  tierQuestions,
   SLOT,
   slotValues,
   splitBlanks,
@@ -73,7 +72,15 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   const [entered, setEntered] = useState(false);
 
   const meta = subjectOf(subject)!;
-  const list = questionsOf(subject);
+  /**
+   * 이 아이에게 열린 문항 — 갈래가 정한다(무료시험 20문항 · 유료시험 편성 수).
+   *
+   * 문항 은행 전체를 세지 않는다. 무료시험을 보는 아이에게 「총 50문항」이라 적고 20문항만
+   * 열면 시험이 끊긴 것으로 읽히고, 제출도 영원히 막힌다 — 아래 셈이 모두 이 목록을 센다.
+   */
+  const list = tierQuestions(record.tier, subject, record.setSubject);
+  /** 갈래를 올리면 열릴 문항 — 문항 이동판이 점선으로 세운다 */
+  const full = examOrderOf(subject);
   const rec = record.subjects[subject];
   const running = rec.status === "ready" || rec.status === "in-progress";
 
@@ -158,6 +165,7 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
     return (
       <StartGate
         subject={subject}
+        count={list.length}
         onStart={async () => {
           await enterFullscreen();
           startSubject(studentId, subject);
@@ -169,8 +177,11 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
 
   /* 넘기는 단위는 **화면**이다 — 기본은 문제 하나, 세트 안의 작은 묶음(group)이면 그
      문제들이 함께 선다. 세트면 왼쪽 자료는 그대로 둔 채 오른쪽만 바뀐다 */
-  const order = examOrderOf(subject);
-  const screens = screensOf(subject);
+  const order = list;
+  /* 갈래가 여는 문항만 남긴다 — 묶음이 한도에 걸치면 열린 문항만 한 화면에 선다 */
+  const screens = screensOf(subject)
+    .map((sc) => sc.filter((q) => order.includes(q)))
+    .filter((sc) => sc.length > 0);
   const screen = screens[Math.min(index, screens.length - 1)];
   const question = screen[0];
   const doneCount = list.filter((q) => isAnswered(q, rec.answers[q.id])).length;
@@ -187,7 +198,7 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
           <div className="flex items-baseline gap-3">
             <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
             <span className="hidden text-[12px] text-exam-muted sm:block">
-              총 {questionCount(subject)}문항 · 제한 {limitMin}분
+              총 {order.length}문항 · 제한 {limitMin}분
             </span>
           </div>
           <p className="text-[12px] font-medium tabular-nums text-exam-muted">
@@ -218,12 +229,22 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
           subject={subject}
           /* 세트면 같은 자료를 읽는 문제들이 「함께 서 있는 것」이다 — 지금 오른쪽에 선
              문제는 isCurrent가 따로 말한다 */
-          isHere={(q) => q.setId === question.setId}
+          isHere={(q) => q.setId === question.setId && order.includes(q)}
           isCurrent={(q) => screen.includes(q)}
-          isDone={(q) => isAnswered(q, rec.answers[q.id])}
-          onPick={goTo}
+          isDone={(q) => order.includes(q) && isAnswered(q, rec.answers[q.id])}
+          isLocked={(q) => !order.includes(q)}
+          onPick={(q) => {
+            if (order.includes(q)) goTo(q);
+          }}
           doneLabel="답한 문항"
           doneVerb="응답함"
+          footnote={
+            /* 무료시험을 보는 아이에게 남은 문항을 숨기지 않는다. 다만 지금 풀 수 없다는
+               것을 점선과 이 줄로 함께 말한다 */
+            record.tier === "paid" || full.length === order.length
+              ? undefined
+              : `점선 번호(문항 ${order.length + 1}~)는 유료시험으로 접수하면 풀 수 있습니다.`
+          }
         />
       </div>
 
@@ -327,7 +348,7 @@ export function QuestionPad({
   isCurrent: (q: Question) => boolean;
   /** 이 문항을 채웠는가 — 응시 때는 「답했는가」, 해석 때는 「해석을 적었는가」 */
   isDone: (q: Question) => boolean;
-  /** 무료 체험에서 가입해야 열리는 문항 — 점선 테두리로 세운다 */
+  /** 지금 갈래에서 아직 열리지 않은 문항 — 점선 테두리로 세운다 */
   isLocked?: (q: Question) => boolean;
   onPick: (q: Question) => void;
   doneLabel: string;
@@ -337,7 +358,15 @@ export function QuestionPad({
 }) {
   /* 위계로 묶지 않는다 — 학생에게는 푸는 차례대로 번호만 늘어놓는다 */
   const list = examOrderOf(subject);
-  const doneCount = list.filter(isDone).length;
+  /**
+   * 셈은 **열린 문항만** 센다.
+   *
+   * 번호판에는 잠긴 문항까지 늘어놓는다 — 지금 풀 수 없는 것도 있다는 사실을 숨기지 않기
+   * 위해서다. 그런데 「답한 문항 0 / 20」이라 적으면 셋트 4문항을 다 푼 아이도 한참 남은
+   * 것으로 읽는다. 세는 것과 보이는 것은 다른 층이다.
+   */
+  const open = list.filter((q) => !isLocked(q));
+  const doneCount = open.filter(isDone).length;
 
   return (
     <aside
@@ -398,12 +427,12 @@ export function QuestionPad({
         <div className="flex items-baseline justify-between gap-2">
           <dt className="text-exam-muted">{doneLabel}</dt>
           <dd className="font-semibold tabular-nums text-exam-text">
-            {doneCount} / {list.length}
+            {doneCount} / {open.length}
           </dd>
         </div>
         <div className="mt-1.5 flex items-baseline justify-between gap-2">
           <dt className="text-exam-muted">남은 문항</dt>
-          <dd className="font-semibold tabular-nums text-exam-text">{list.length - doneCount}</dd>
+          <dd className="font-semibold tabular-nums text-exam-text">{open.length - doneCount}</dd>
         </div>
       </dl>
 
@@ -414,7 +443,16 @@ export function QuestionPad({
 
 /* ───────────────────────── 응시 전 안내 ───────────────────────── */
 
-function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => void }) {
+/** 응시 전 안내 — 문항 수는 **이 아이에게 열린 수**를 적는다(갈래가 정한다) */
+function StartGate({
+  subject,
+  count,
+  onStart,
+}: {
+  subject: SubjectId;
+  count: number;
+  onStart: () => void;
+}) {
   const meta = subjectOf(subject)!;
   const config = useExamConfig();
   const limitMin = config.limits[subject];
@@ -432,7 +470,7 @@ function StartGate({ subject, onStart }: { subject: SubjectId; onStart: () => vo
 
         <ul className="mt-6 space-y-2.5 border-t border-exam-line pt-6 text-[13px] leading-relaxed text-exam-muted">
           <li>
-            · 문항 <b className="text-exam-text">{questionCount(subject)}개</b> · 제한 시간{" "}
+            · 문항 <b className="text-exam-text">{count}개</b> · 제한 시간{" "}
             <b className="text-exam-text">{limitMin}분</b> (남은 시간은 오른쪽 위에 표시됩니다)
           </li>
           <li>
@@ -482,8 +520,8 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
   const record = useExamRecord(studentId);
   const rec = record.subjects[subject];
   const meta = subjectOf(subject)!;
-  /* 응시 때와 같은 차례·같은 번호로 되짚는다 */
-  const list = examOrderOf(subject);
+  /* 응시 때와 같은 차례·같은 번호로 되짚는다 — 갈래가 열지 않은 문항은 풀지 않았으므로 뺀다 */
+  const list = tierQuestions(record.tier, subject, record.setSubject);
   const [index, setIndex] = useState(0);
   const [warn, setWarn] = useState(false);
 
@@ -1410,7 +1448,7 @@ export function numbersText(order: Question[], screen: Question[]) {
 /**
  * 가운데 칸 — 세트 차례 줄 아래에 이 화면의 문제(보통 하나, 묶음이면 여럿)를 세운다.
  * 묶음 머리 자료(groupBrief)가 있으면 문제들 위에 먼저 둔다.
- * 응시와 무료 체험이 같은 틀을 쓰고, 문제를 어떻게 그릴지는 부르는 쪽이 정한다.
+ * 응시와 셋트가 같은 틀을 쓰고, 문제를 어떻게 그릴지는 부르는 쪽이 정한다.
  */
 export function ScreenColumn({
   order,
@@ -1461,7 +1499,7 @@ export function QuestionBody({
   /** 학생에게 보이는 문제 번호 — 푸는 차례로 매긴다 */
   num: number;
   value: number | string | undefined;
-  /** 답을 어디에 적을지는 부르는 쪽이 정한다 — 응시는 응시 기록에, 무료 체험은 화면 안에만 */
+  /** 답을 어디에 적을지는 부르는 쪽이 정한다 — 응시는 응시 기록에, 셋트는 셋트 저장소에 */
   onAnswer: (value: number | string) => void;
 }) {
   return (

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { setSurvey, useExamRecord, useHydrated, type SurveyKey } from "@/lib/examStore";
+import {
+  reopenSurvey,
+  setSurvey,
+  useExamRecord,
+  useHydrated,
+  type SurveyKey,
+} from "@/lib/examStore";
 import { useSurveyDoc, type SurveyDoc } from "@/lib/surveyStore";
 import { bandFromGrade } from "@/lib/surveyBands";
 import { findById } from "@/lib/roster";
@@ -17,6 +23,11 @@ const scale = ["전혀 아니다", "아니다", "보통이다", "그렇다", "�
  * 관리자가 고치고 있는 초안은 여기 오지 않는다 — 발행한 것만 응답자에게 간다.
  * 제출할 때 판 번호를 함께 적어, 뒤에 문항이 바뀌어도 이 응답이 무엇에 대한
  * 답이었는지 남게 한다.
+ *
+ * ── 수정과 재응시 ──
+ * 앞서 제출한 답이 있으면 그것을 띄운 채 연다(절차 8단계의 「설문 수정」). 답은 문항의
+ * 차례가 아니라 **문항 열쇠**(SurveyItem.id)로 담아 둔다 — 관리자가 문항 하나를 지우거나
+ * 차례를 바꿔도 남은 답이 엉뚱한 문항에 붙지 않는다.
  */
 export default function SurveyForm({
   surveyKey,
@@ -33,12 +44,15 @@ export default function SurveyForm({
      바뀐다 — 그 사이에 답을 고를 수는 없으므로(하이드레이션 전) 안전하다. */
   const doc = useSurveyDoc(surveyKey, bandFromGrade(student?.grade));
   const config = doc.live;
-  const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [text, setText] = useState("");
+  /* 앞서 낸 답 — 다시 열었을 때 이것이 첫 값이 된다. 문항 열쇠로 담는다 */
+  const saved = record.surveyAnswers[surveyKey];
+  const [answers, setAnswers] = useState<Record<string, number>>(() => ({ ...saved?.items }));
+  const [text, setText] = useState(saved?.text ?? "");
   const [warn, setWarn] = useState(false);
 
   const done = record.surveys[surveyKey] === "done";
-  const answered = Object.keys(answers).length;
+  /* 지금 판에 있는 문항만 센다 — 지워진 문항의 옛 답이 남아 있어도 「다 답했다」가 되지 않는다 */
+  const answered = config.items.filter((it) => answers[it.id] !== undefined).length;
   const complete = answered === config.items.length;
 
   if (hydrated && done) {
@@ -52,18 +66,32 @@ export default function SurveyForm({
             </span>
             <h2 className="mt-6 text-[20px] font-black text-exam-text">설문이 제출되었습니다</h2>
             <p className="mt-3 text-[13px] leading-relaxed text-exam-muted">
-              이 창을 닫으면 응시 현황 표의 제출 상태가 <b>제출완료</b>로 바뀝니다.
+              이 창을 닫으면 응시 현황 표의 제출 상태가 <b>제출완료</b>로 바뀝니다. 나중에 생각이
+              달라지면 현황 표에서 다시 열어 고칠 수 있습니다.
             </p>
             <div className="mt-7 grid gap-2">
               <button type="button" onClick={() => window.close()} className={btnPrimary}>
                 창 닫기
               </button>
+              {/* 고칠 길과 처음부터 다시 할 길을 갈라 둔다 — 고치려던 사람이 답을 다 잃으면
+                  그 사람은 두 번 다시 고치지 않는다 */}
               <button
                 type="button"
-                onClick={() => setSurvey(studentId, surveyKey, "none")}
+                onClick={() => reopenSurvey(studentId, surveyKey, true)}
                 className={btnGhost}
               >
-                다시 작성하기
+                답을 그대로 두고 수정하기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  reopenSurvey(studentId, surveyKey, false);
+                  setAnswers({});
+                  setText("");
+                }}
+                className="text-[12px] text-exam-muted hover:underline"
+              >
+                처음부터 다시 답하기
               </button>
             </div>
           </div>
@@ -77,7 +105,7 @@ export default function SurveyForm({
       setWarn(true);
       return;
     }
-    setSurvey(studentId, surveyKey, "done", doc.liveVersion);
+    setSurvey(studentId, surveyKey, "done", doc.liveVersion, { items: answers, text });
   };
 
   return (
@@ -112,7 +140,7 @@ export default function SurveyForm({
               </p>
               <div className="mt-3 grid grid-cols-5 gap-1">
                 {scale.map((label, v) => {
-                  const on = answers[i] === v;
+                  const on = answers[item.id] === v;
                   return (
                     <label
                       key={label}
@@ -124,11 +152,11 @@ export default function SurveyForm({
                     >
                       <input
                         type="radio"
-                        name={`q-${i}`}
+                        name={`q-${item.id}`}
                         checked={on}
                         onChange={() => {
                           setWarn(false);
-                          setAnswers((a) => ({ ...a, [i]: v }));
+                          setAnswers((a) => ({ ...a, [item.id]: v }));
                         }}
                         className="sr-only"
                       />
@@ -193,7 +221,7 @@ export default function SurveyForm({
             aria-disabled={!complete}
             className={`flex-1 ${complete ? btnPrimary : btnDisabled}`}
           >
-            설문 제출
+            {saved ? "수정 제출" : "설문 제출"}
           </button>
         </div>
       </div>

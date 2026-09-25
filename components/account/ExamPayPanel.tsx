@@ -15,7 +15,7 @@ import {
   type Availability,
   type TrackId,
 } from "@/lib/examCatalog";
-import { useHydrated } from "@/lib/examStore";
+import { raiseTier, useHydrated } from "@/lib/examStore";
 import { orderMethods, orderWon, placeOrder, useOrders, type OrderMethod } from "@/lib/orderStore";
 import { paidPrice, useProducts } from "@/lib/productStore";
 import { useRoster, type Student } from "@/lib/roster";
@@ -30,9 +30,9 @@ import { card } from "./ui";
  * 결제 › 진단평가 — **학생을 먼저 고르고**, 그 아이가 볼 평가를 고른다.
  *
  * ── 왜 학생이 먼저인가 ──
- * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다. 학년이 초1~중3으로 갈리면 한 해에만
- * 서른 줄이 넘고, 해가 쌓이면 백 줄이 된다. 그 목록을 통째로 펴 놓고 「학년이 맞지 않습니다」를
- * 스무 줄 적는 것은 보호자에게 우리 사정을 읽게 하는 일이다.
+ * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다. 학년이 넷이면 한 해에 열여섯 줄이고,
+ * 해가 쌓이면 곧 백 줄이 된다. 그 목록을 통째로 펴 놓고 「학년이 맞지 않습니다」를 스무 줄
+ * 적는 것은 보호자에게 우리 사정을 읽게 하는 일이다.
  *
  * 아이를 먼저 고르면 학년이 정해지고, 남는 것은 **그 아이가 볼 수 있는 평가 네 개(분기)**뿐이다.
  * 고를 수 없는 줄이 아예 서지 않으므로 목록이 해마다 길어지지 않는다. 학년 고르개를 따로 두지
@@ -47,11 +47,12 @@ import { card } from "./ui";
  * 적는다 — 그때는 아이마다 따로 결제한다.
  *
  * ── 결제가 곧 접수 ──
- * 결제가 끝나면 응시권을 한 매 발급하고 그 자리에서 이 평가에 쓴다(grantTickets → spendTicket).
+ * 결제가 끝나면 응시권을 한 매 발급하고 그 자리에서 이 평가에 쓰며, 응시 기록의 갈래를 유료로
+ * 올린다(grantTickets → spendTicket → raiseTier).
  * 결제만 되고 접수가 남으면, 보호자는 돈을 낸 뒤에도 아이가 왜 시험을 못 보는지 모른 채 학생
  * 화면을 뒤지게 된다.
  *
- * 평가는 초1~중3 학년마다 따로 열린다(lib/examCatalog.ts). 칸이 셋이든 아홉이든 이 화면에
+ * 평가는 초3~6 학년마다 따로 열린다(lib/examCatalog.ts). 칸이 넷이든 아홉이든 이 화면에
  * 서는 줄 수는 같다 — 아이의 학년이 평가 하나를 가리키기 때문이다.
  *
  * ⚠ 시연 화면이다. 실제 결제창은 열리지 않고 카드번호 같은 결제 정보도 받지 않는다.
@@ -195,6 +196,8 @@ export default function ExamPayPanel({
     for (const s of payable) {
       grantTickets(s.id, 1);
       spendTicket(s.id, exam.round.id, track);
+      /* 결제로 들어온 접수는 유료시험이다 — 응시 기록의 갈래도 함께 올려야 문항이 열린다 */
+      raiseTier(s.id, "paid");
     }
     setDone(order.id);
   }

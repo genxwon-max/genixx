@@ -297,7 +297,7 @@ export default function ResultView() {
           <p className="text-[12px] leading-relaxed text-soft-muted">
             참여 설문:{" "}
             {doneSurveys.length === 0
-              ? "없음 (학생 응답만 반영)"
+              ? "없음 (지필 응답만 반영)"
               : doneSurveys.map((k) => surveyMeta[k].who).join(" · ")}
             {" · "}측정 축 {measured.length} / {scores.length}
           </p>

@@ -6,7 +6,7 @@ import { useSession } from "@/lib/authStore";
 import {
   answerText,
   autoGraded,
-  examOrderOf,
+  tierQuestions,
   keyText,
   markOf,
   shortAnswer,
@@ -98,10 +98,15 @@ const MARK: Record<Mark, { sign: string; label: string; tone: string }> = {
 
 type Line = { q: Question; no: number; value: number | string | undefined; mark: Mark };
 
-/** 한 과목의 정오표 줄 — 응시 때와 같은 차례 · 같은 번호 */
+/**
+ * 한 과목의 정오표 줄 — 응시 때와 같은 차례 · 같은 번호.
+ *
+ * 갈래가 연 문항만 싣는다. 무료시험을 본 아이의 정오표에 풀지 않은 문항을 「답 안 함」으로
+ * 스무 줄 세우면, 다 푼 아이가 자기 시험을 망친 것으로 읽는다.
+ */
 function linesOf(subject: SubjectId, record: ExamRecord): Line[] {
   const answers = record.subjects[subject].answers;
-  return examOrderOf(subject).map((q, i) => ({
+  return tierQuestions(record.tier, subject, record.setSubject).map((q, i) => ({
     q,
     no: i + 1,
     value: answers[q.id],

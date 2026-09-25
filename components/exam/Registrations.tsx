@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
 import { assessment } from "@/lib/exam";
 import { evalName, trackOf, type TrackId } from "@/lib/examCatalog";
-import { useWallet } from "@/lib/ticketStore";
+import { useWallet, type UseTier } from "@/lib/ticketStore";
 import { btnBox } from "./ui";
 
 /**
@@ -30,6 +30,8 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
 export type Registration = {
   round: string;
   track: TrackId;
+  /** 무료시험으로 접수한 것인가 유료시험인가 */
+  tier: UseTier;
   /** 접수 시각 (ISO) */
   at: string;
   /** 평가가 목록에서 사라졌으면 없다 */
@@ -109,7 +111,20 @@ export function RegTable({
             rows.map((r, i) => (
               <tr key={`${r.round}-${r.track}`}>
                 <td className={`${td} tabular-nums`}>{rows.length - i}</td>
-                <td className={`${td} text-center font-semibold text-soft-ink`}>{r.title}</td>
+                <td className={`${td} text-center font-semibold text-soft-ink`}>
+                  {r.title}
+                  {/* 갈래를 검사명 옆에 둔다 — 무료로 본 아이가 「왜 20문항뿐인가」를
+                      물을 자리가 여기다 */}
+                  <span
+                    className={`ml-2 whitespace-nowrap rounded-[4px] px-1.5 py-0.5 align-[1px] text-[11px] font-bold ${
+                      r.tier === "free"
+                        ? "bg-slate-100 text-soft-muted"
+                        : "bg-soft-primary text-white"
+                    }`}
+                  >
+                    {r.tier === "free" ? "무료시험" : "유료시험"}
+                  </span>
+                </td>
                 <td className={`${td} text-center tabular-nums`}>{day(r.at)}</td>
                 <td className={`${td} text-center`}>{renderLast(r)}</td>
               </tr>

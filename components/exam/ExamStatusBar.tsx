@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isSubjectId, questionsOf } from "@/lib/exam";
+import { isSubjectId, tierQuestions } from "@/lib/exam";
 import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { useExamConfig } from "@/lib/roundStore";
@@ -17,7 +17,7 @@ function pad(n: number) {
  * 응시 중 화면 오른쪽 위에 붙는 응답 수 · 남은 시간 · 포기하기.
  *
  * 전체화면을 끄는 단추는 두지 않는다 — 나가는 길은 「포기하기」 하나고, ESC도 같은 물음을
- * 연다(lib/fullscreen.ts). 무료 체험은 시계가 없어 「체험 그만하기」만 선다.
+ * 연다(lib/fullscreen.ts). 셋트는 시계가 없어 「셋트 그만하기」만 선다.
  */
 export default function ExamStatusBar() {
   const pathname = usePathname();
@@ -43,11 +43,13 @@ export default function ExamStatusBar() {
   }, [live]);
 
   if (pathname.startsWith("/exam/session/trial/")) {
-    return canExit ? <ExitLink>체험 그만하기</ExitLink> : null;
+    return canExit ? <ExitLink>셋트 그만하기</ExitLink> : null;
   }
   if (!subject || !rec || !hydrated || !live) return null;
 
-  const done = questionsOf(subject).filter((q) => isAnswered(q, rec.answers[q.id])).length;
+  /* 갈래가 연 문항만 센다 — 무료시험을 보는 아이에게 「3/20」이라 적으면 끝이 안 보인다 */
+  const opened = tierQuestions(record.tier, subject, record.setSubject);
+  const done = opened.filter((q) => isAnswered(q, rec.answers[q.id])).length;
   const started = rec.startedAt ? new Date(rec.startedAt).getTime() : now;
   const elapsed = Math.max(0, Math.floor((now - started) / 1000));
   /* 시작할 때 박아 둔 값을 쓴다 — 관리자가 도중에 줄여도 이 시계는 줄지 않는다 */
@@ -63,7 +65,7 @@ export default function ExamStatusBar() {
         </span>
         <span className="text-[14px] font-black tabular-nums text-exam-text">
           {done}
-          <span className="text-exam-muted">/{questionsOf(subject).length}</span>
+          <span className="text-exam-muted">/{opened.length}</span>
         </span>
       </div>
 

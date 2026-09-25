@@ -31,10 +31,14 @@ import { surveys } from "./survey";
  *
  * ── 학년대 ──
  *
- * 한 갈래(어머니·아버지·교사)가 학년대(초3~4 · 초5~6 · 중1 · 중2~3)마다 한 벌씩
- * 있다. 초3에게 묻는 말과 중3에게 묻는 말이 같을 수 없어서다. 그래서 저장 단위는
- * 갈래가 아니라 **갈래+학년대**이고, 그 열쇠가 SurveyDocId(`mother:e34`)다.
- * 학생 명부의 학년 글자로 학년대를 고르는 일은 lib/surveyBands.ts가 한다.
+ * 한 갈래(학생·어머니·아버지·교사)가 학년대(초3~4 · 초5~6)마다 한 벌씩 있다. 초3에게
+ * 묻는 말과 초6에게 묻는 말이 같을 수 없어서다. 그래서 저장 단위는 갈래가 아니라
+ * **갈래+학년대**이고, 그 열쇠가 SurveyDocId(`mother:e34`)다. 학생 명부의 학년 글자로
+ * 학년대를 고르는 일은 lib/surveyBands.ts가 한다.
+ *
+ * 갈래나 학년대가 줄면 저장분에 없어진 열쇠가 남는다. fill·readLog가 읽을 때 지금 열쇠
+ * 목록(surveyDocIds)에 없는 것을 버린다 — 한 번 도는 이사 코드를 두면 언제 열지 알 수
+ * 없는 브라우저를 결국 건너뛴다.
  */
 
 export type SurveyItem = {
@@ -117,7 +121,7 @@ const SEED_AT = "2026-03-02 09:40";
 
 function seedForm(key: SurveyKey, band: SurveyBand): SurveyForm {
   const c = surveys[key];
-  /* 네 학년대가 같은 문항으로 시작한다. 무엇이 어떻게 달라야 하는지는 교육 쪽에서
+  /* 두 학년대가 같은 문항으로 시작한다. 무엇이 어떻게 달라야 하는지는 교육 쪽에서
      정할 일이라 여기서 지어내지 않는다. 관리자가 학년대를 골라 고치면 그때부터
      갈라지고, 「다른 학년대에도 이 문항 쓰기」로 도로 맞출 수도 있다. */
   return {
@@ -225,7 +229,10 @@ function readLog(): SurveyLogEntry[] {
   if (raw === logRaw) return logValue;
   logRaw = raw;
   try {
-    logValue = raw ? (JSON.parse(raw) as SurveyLogEntry[]) : SEED_LOG;
+    /* 없어진 갈래·학년대의 기록은 버린다 — 지금 화면에 그 칸이 없다 */
+    logValue = raw
+      ? (JSON.parse(raw) as SurveyLogEntry[]).filter((e) => surveyDocIds.includes(e.docId))
+      : SEED_LOG;
   } catch {
     logValue = SEED_LOG;
   }

@@ -386,14 +386,128 @@ export function shortAnswer(q: Question, value: number | string | undefined): st
     .join(", ");
 }
 
+/* ───────────────────────── 시험 세 갈래 ───────────────────────── */
+
 /**
- * 무료 체험(/exam/try)에서 가입 없이 풀어 보는 문항 수 — **평가 하나의 과목마다**.
+ * 시험은 세 갈래로 이어진다 — **셋트 → 무료시험 → 유료시험**.
  *
- * 앞에서부터 이만큼만 열고, 나머지는 회원가입을 권하는 판으로 막는다. 과목마다 세는
- * 까닭은 보호자가 궁금한 과목이 저마다라서다 — 평가 전체로 세면 국어를 넘기다가 수학은
- * 한 문항도 못 보고 막힌다.
+ *   set    가입 전에 한 교과만 골라 푸는 1셋트(4문항). 다 풀면 회원가입으로 넘어간다.
+ *   free   가입한 학생이 결제 없이 푸는 무료시험. 셋트 4문항을 물려받아 모두 20문항이다.
+ *   paid   접수·결제를 거치는 유료시험. 수 20 · 과 20 · 국 10, 과목당 40분.
+ *
+ * 갈래를 셋으로 두는 까닭은 **가입과 결제라는 두 문턱을 따로 넘게** 하는 것이다. 한 문턱에
+ * 몰아 두면 문항이 어떤 모양인지 보지 못한 채 결제를 결정해야 한다. 셋트는 가입을 권하는
+ * 자리이고, 무료시험은 결제를 권하는 자리다.
+ *
+ * 셋트 답은 버리지 않고 무료시험의 앞 문항으로 물려받는다 — 절차가 「1셋트 문항을 풀고
+ * 회원 가입하면 나머지 문항으로 넘어간다」이므로, 같은 문항을 두 번 풀리면 20문항이라고
+ * 적어 놓은 셈이 어긋난다(lib/setStore.ts가 그 답을 들고 있다).
  */
-export const FREE_QUESTIONS = 5;
+export type ExamTier = "set" | "free" | "paid";
+
+export const tiers: { id: ExamTier; label: string; short: string; desc: string }[] = [
+  {
+    id: "set",
+    label: "셋트 문항",
+    short: "셋트",
+    desc: "가입 없이 한 교과를 골라 풀어 봅니다",
+  },
+  {
+    id: "free",
+    label: "무료시험",
+    short: "무료",
+    desc: "가입하면 결제 없이 세 과목을 풀 수 있습니다",
+  },
+  {
+    id: "paid",
+    label: "유료시험",
+    short: "유료",
+    desc: "접수한 학생이 과목마다 따로 응시합니다",
+  },
+];
+
+export const tierOf = (id: ExamTier) => tiers.find((t) => t.id === id)!;
+
+export const isExamTier = (v: string): v is ExamTier => tiers.some((t) => t.id === v);
+
+/**
+ * 셋트 하나의 문항 수 — 가입 전에 풀어 보는 만큼.
+ *
+ * 세트 문항(Question.setId)의 「세트」와 이름이 닿아 있지만 같은 것이 아니다. 저쪽은 자료
+ * 하나를 나눠 읽는 묶음이라 셋일 수도 다섯일 수도 있고, 이쪽은 절차가 정한 **수**다. 앞에서
+ * 부터 이만큼을 열고 묶음이 한도에 걸치면 열린 문항만 세운다.
+ */
+export const SET_QUESTIONS = 4;
+
+/**
+ * 무료시험이 과목마다 여는 문항 수 — 합이 20이다.
+ *
+ * 절차의 예시를 그대로 옮긴 것이다. 「과(1셋트 4문항) + 16문항(국4, 과4, 수8)」이라 적혀
+ * 있으므로, 셋트로 푼 과학 4문항을 포함하면 국 4 · 수 8 · 과 8이 된다.
+ *
+ * ── 셋트 문항은 이 안에 든다 ──
+ * 셋트를 「더하는 것」으로 셈하지 않는다. 더하는 것으로 두면 셋트를 풀지 않고 바로 가입한
+ * 학생은 16문항만 받게 되고, 어느 교과를 골랐는지에 따라 총 문항 수가 갈린다. 셋트는 고른
+ * 과목의 **앞 4문항**이므로 이미 이 배분 안에 있다 — 그래서 어느 교과를 골라도, 아무것도
+ * 고르지 않아도 무료시험은 늘 20문항이고 새로 풀 것은 16문항이다.
+ */
+export const FREE_COUNT: Record<SubjectId, number> = { korean: 4, math: 8, science: 8 };
+
+/** 무료시험 전체 문항 수 — 20 */
+export const FREE_TOTAL = SUBJECT_IDS.reduce((sum, id) => sum + FREE_COUNT[id], 0);
+
+/**
+ * 유료시험 편성 문항 수 — 과목마다. 절차가 정한 정원이다.
+ *
+ * ⚠ 문항 은행이 아직 이만큼을 들고 있지 않은 과목이 있다(수학). 화면은 편성 수를 적되
+ *   **실제로 여는 것은 있는 만큼**이다 — 20문항이라 적고 10문항을 주면 아이는 시험이
+ *   중간에 끊긴 것으로 안다. 모자란 수는 paidShort가 센다.
+ */
+export const PAID_COUNT: Record<SubjectId, number> = { korean: 10, math: 20, science: 20 };
+
+/** 유료시험 편성 문항 수 합 — 50 */
+export const PAID_TOTAL = SUBJECT_IDS.reduce((sum, id) => sum + PAID_COUNT[id], 0);
+
+/** 편성 수에서 몇 문항이 모자란가 — 0이면 다 차 있다 */
+export const paidShort = (subject: SubjectId, bank: Bank = questions) =>
+  Math.max(0, PAID_COUNT[subject] - questionCount(subject, bank));
+
+/**
+ * 이 갈래가 이 과목에서 여는 문항 수.
+ *
+ * 셋트를 고른 교과(setSubject)는 셋트 갈래에서만 쓴다 — 그 갈래는 고른 한 과목만 열고
+ * 나머지는 0이다. 무료시험과 유료시험은 편성 수를 쓰되, 문항 은행에 있는 것보다 많이
+ * 열지 않는다. 적어 놓은 수만큼 열려고 빈 문항을 세우면 시험이 끊긴 것으로 읽힌다.
+ */
+export function tierCount(
+  tier: ExamTier,
+  subject: SubjectId,
+  setSubject: SubjectId | null = null,
+  bank: Bank = questions,
+): number {
+  const have = questionCount(subject, bank);
+  if (tier === "set") return subject === setSubject ? Math.min(SET_QUESTIONS, have) : 0;
+  return Math.min(tier === "free" ? FREE_COUNT[subject] : PAID_COUNT[subject], have);
+}
+
+/** 이 갈래에서 여는 문항 — 푸는 차례로 앞에서부터 */
+export function tierQuestions(
+  tier: ExamTier,
+  subject: SubjectId,
+  setSubject: SubjectId | null = null,
+  bank: Bank = questions,
+): Question[] {
+  return examOrderOf(subject, bank).slice(0, tierCount(tier, subject, setSubject, bank));
+}
+
+/** 이 갈래의 전 과목 문항 수 — 「무료시험 20문항」 */
+export function tierTotal(
+  tier: ExamTier,
+  setSubject: SubjectId | null = null,
+  bank: Bank = questions,
+): number {
+  return SUBJECT_IDS.reduce((sum, id) => sum + tierCount(tier, id, setSubject, bank), 0);
+}
 
 /**
  * 이 과목의 문항 수.

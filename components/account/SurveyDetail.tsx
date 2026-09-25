@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useExamRecord, useHydrated, surveyKeys, type SurveyKey } from "@/lib/examStore";
+import {
+  isSelfSurvey,
+  useExamRecord,
+  useHydrated,
+  surveyKeys,
+  type SurveyKey,
+} from "@/lib/examStore";
 import { recordSurveySend, useRoster } from "@/lib/roster";
 import { surveyWindow } from "@/lib/popup";
 import { ArrowRight } from "@/components/Icons";
@@ -28,6 +34,7 @@ import { AccHead, btnPrimary, card, field as input } from "./ui";
  */
 /** 줄머리에 적는 짧은 이름. 저장소의 who는 「담당 교사·교수」처럼 길어 줄을 넘긴다. */
 const shortWho: Record<SurveyKey, string> = {
+  student: "학생",
   mother: "어머니",
   father: "아버지",
   teacher: "교사",
@@ -74,7 +81,8 @@ export default function SurveyDetail({ id }: { id: string }) {
         <div className="min-w-0 flex-1">
           <AccHead
             id="ASM-05"
-            title={`${student.name} 학생 설문`}
+            /* 「학생 설문」은 이제 갈래 하나의 이름이다 — 화면 제목과 겹치지 않게 달리 부른다 */
+            title={`${student.name} 설문 관리`}
             back={{ href: "/my/surveys", label: "설문 목록으로" }}
           />
         </div>
@@ -96,6 +104,7 @@ export default function SurveyDetail({ id }: { id: string }) {
             who={shortWho[key]}
             studentId={student.id}
             submitted={record.surveys[key] === "done"}
+            self={isSelfSurvey(key)}
             sent={student.surveySends?.[key] ?? null}
             /* 어머니·아버지 설문은 등록할 때 받아 둔 보호자 연락처에서 출발한다.
                교사는 우리가 알 수 없는 번호라 비워 두고 직접 받는다. */
@@ -112,8 +121,8 @@ export default function SurveyDetail({ id }: { id: string }) {
       <p className="mt-4 text-[12.5px] leading-[1.7] text-soft-muted">
         문자로 보낸 링크는 로그인 없이 열립니다. 아버지·교사께 계정을 따로 만들어 달라고
         하지 않으셔도 됩니다. 평소 모습 그대로 답하시면 되고, 보호자의 양육 태도를
-        평가하거나 리포트에 출력하지 않습니다. 교사 설문이 없어도 나머지 축으로 해석은
-        진행됩니다.
+        평가하거나 리포트에 출력하지 않습니다. 학생 설문은 아이가 자기 화면에서 직접 하며,
+        교사 설문이 없어도 나머지 축으로 해석은 진행됩니다.
       </p>
 
       <Toast message={toast} onClose={() => setToast(null)} />
@@ -126,14 +135,18 @@ export default function SurveyDetail({ id }: { id: string }) {
 /**
  * 설문 하나 — 이름 · 상태 · 번호 · [발송] · [작성]이 한 줄에 선다.
  *
- * 설명을 줄마다 달지 않는다. 셋이 서로 다른 사람이라는 것과 링크가 로그인 없이 열린다는
+ * 설명을 줄마다 달지 않는다. 넷이 서로 다른 사람이라는 것과 링크가 로그인 없이 열린다는
  * 것은 표 아래에 한 번만 적으면 되고, 여기에서 볼 것은 「어디로 보낼까」와 「보냈나」다.
+ *
+ * 학생 설문(self)은 보낼 곳도 대신 열 자리도 없다. 상태만 세우고 누가 하는 것인지 적는다 —
+ * 번호 칸과 버튼을 세워 두면 보호자가 아이 몫을 대신 채우게 된다.
  */
 function SurveyRow({
   surveyKey,
   who,
   studentId,
   submitted,
+  self,
   sent,
   fallbackPhone,
   onSent,
@@ -143,6 +156,8 @@ function SurveyRow({
   who: string;
   studentId: string;
   submitted: boolean;
+  /** 학생 본인이 자기 화면에서 하는 설문인가 */
+  self: boolean;
   /** 마지막으로 문자를 보낸 기록 */
   sent: { phone: string; at: string } | null;
   fallbackPhone: string;
@@ -188,31 +203,39 @@ function SurveyRow({
         )}
       </p>
 
-      <input
-        type="tel"
-        inputMode="numeric"
-        aria-label={`${who} 휴대전화 번호`}
-        value={phone}
-        onChange={(e) => {
-          setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13));
-          setBad(false);
-        }}
-        placeholder="010-1234-5678"
-        aria-invalid={bad}
-        className={`h-11 min-w-[10rem] flex-1 tabular-nums ${
-          bad ? input.replace("border-soft-line", "border-[#e5484d]") : input
-        }`.replace("h-[3.25rem] ", "")}
-      />
+      {self ? (
+        <p className="flex-1 text-[13px] leading-relaxed text-soft-muted">
+          학생이 응시 현황 화면에서 직접 작성합니다.
+        </p>
+      ) : (
+        <>
+          <input
+            type="tel"
+            inputMode="numeric"
+            aria-label={`${who} 휴대전화 번호`}
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13));
+              setBad(false);
+            }}
+            placeholder="010-1234-5678"
+            aria-invalid={bad}
+            className={`h-11 min-w-[10rem] flex-1 tabular-nums ${
+              bad ? input.replace("border-soft-line", "border-[#e5484d]") : input
+            }`.replace("h-[3.25rem] ", "")}
+          />
 
-      <Button variant="outline" onClick={send} className={pill}>
-        {sent ? "재발송" : "발송"}
-      </Button>
-      <Button
-        onClick={() => surveyWindow(`/survey/${surveyKey}?student=${studentId}`)}
-        className={pill}
-      >
-        작성
-      </Button>
+          <Button variant="outline" onClick={send} className={pill}>
+            {sent ? "재발송" : "발송"}
+          </Button>
+          <Button
+            onClick={() => surveyWindow(`/survey/${surveyKey}?student=${studentId}`)}
+            className={pill}
+          >
+            작성
+          </Button>
+        </>
+      )}
     </div>
   );
 }

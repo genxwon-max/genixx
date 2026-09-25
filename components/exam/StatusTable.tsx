@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { assessment, questionCount, questionsOf, subjects } from "@/lib/exam";
+import { assessment, subjects, tierOf, tierQuestions } from "@/lib/exam";
 import {
   allSubmitted,
   finalize,
+  isSelfSurvey,
   missingSurveys,
+  reopenSurvey,
   resetStudent,
   submittedCount,
   surveyKeys,
@@ -16,6 +18,7 @@ import {
   useHydrated,
   type SurveyKey,
 } from "@/lib/examStore";
+import { useClaimSet } from "@/lib/setStore";
 import { useSession } from "@/lib/authStore";
 import { formatCode, recordSurveySend, useRoster } from "@/lib/roster";
 import { examWindow, surveyWindow } from "@/lib/popup";
@@ -79,6 +82,8 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   const config = useExamConfig();
   const studentId = session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
+  /* 셋트를 풀고 가입한 학생이 이 화면에 바로 닿을 수 있다 — 그 답을 물려받아 둔다 */
+  useClaimSet(session?.role === "student" ? studentId : null);
   const roster = useRoster();
   const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
   /** 문자를 보낼 설문 — 번호 받는 창이 열려 있다 */
@@ -134,11 +139,14 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
         </div>
       )}
 
-      <dl className={`mt-5 grid grid-cols-2 divide-x divide-slate-100 sm:grid-cols-4 ${panel}`}>
+      <dl
+        className={`mt-5 grid grid-cols-2 divide-x divide-slate-100 sm:grid-cols-3 lg:grid-cols-5 ${panel}`}
+      >
         {[
           { t: "성명", v: student?.name ?? session?.name ?? "-" },
           { t: "학년", v: student?.grade ?? "초등 4학년" },
           { t: "접속코드", v: student ? formatCode(student.code) : "-" },
+          { t: "응시 갈래", v: tierOf(record.tier).label },
           { t: "제출 과목", v: `${hydrated ? submittedCount(record) : 0} / ${subjects.length}` },
         ].map((i) => (
           <div key={i.t} className="px-5 py-4">
@@ -151,7 +159,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
       {/* 표 1 — 과목별 평가 */}
       <section className="mt-9">
         <SectionTitle
-          note={`과목마다 따로 응시하며, 제한 시간은 과목마다 다를 수 있어 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
+          note={`지금 ${tierOf(record.tier).label}으로 응시하고 있습니다. 과목마다 따로 응시하며, 문항 수와 제한 시간은 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
         >
           평가 응시 현황
         </SectionTitle>
@@ -182,8 +190,9 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
             <tbody>
               {subjects.map((s, i) => {
                 const rec = record.subjects[s.id];
+                const opened = tierQuestions(record.tier, s.id, record.setSubject);
                 const answered = hydrated
-                  ? questionsOf(s.id).filter((q) => isAnswered(q, rec.answers[q.id])).length
+                  ? opened.filter((q) => isAnswered(q, rec.answers[q.id])).length
                   : 0;
                 const reflecting = rec.status === "submitted" && !rec.reflectionAt;
                 const st = reflecting
@@ -197,7 +206,10 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                 return (
                   <tr key={s.id}>
                     {i === 0 && (
-                      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`} rowSpan={3}>
+                      <td
+                        className={`${td} bg-slate-50/60 font-bold text-soft-ink`}
+                        rowSpan={subjects.length}
+                      >
                         필수 평가
                       </td>
                     )}
@@ -205,7 +217,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                         색점은 뜻 없이 눈만 잡아끈다. */}
                     <td className={`${tdStrong} text-left`}>{s.name}</td>
                     <td className={`${td} tabular-nums`}>
-                      {answered}/{questionCount(s.id)}
+                      {answered}/{opened.length}
                     </td>
                     <td className={`${td} tabular-nums`}>
                       {/* 이미 시작했다면 그 아이가 받은 시간을 적는다. 지금 설정을 적으면
@@ -249,20 +261,20 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
 
       {/* 표 2 — 설문 */}
       <section className="mt-9">
-        <SectionTitle note="어머니·아버지 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다.">
+        <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 어머니·아버지는 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
           설문 제출 현황
         </SectionTitle>
 
         <div className="overflow-x-auto">
           <table className={govTable}>
-            <caption className="sr-only">보호자·교사 설문 제출 현황</caption>
+            <caption className="sr-only">학생·보호자·교사 설문 제출 현황</caption>
             <colgroup>
               <col className="w-[110px]" />
               <col />
               <col className="w-[130px]" />
               <col className="w-[100px]" />
               <col className="w-[150px]" />
-              <col className="w-[130px]" />
+              <col className="w-[170px]" />
             </colgroup>
             <thead>
               <tr>
@@ -271,7 +283,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                 <th className={th}>대상</th>
                 <th className={th}>진행상태</th>
                 <th className={th}>제출일시</th>
-                <th className={th}>문자</th>
+                <th className={th}>작성 · 문자</th>
               </tr>
             </thead>
             <tbody>
@@ -283,7 +295,10 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                 return (
                   <tr key={key}>
                     {i === 0 && (
-                      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`} rowSpan={3}>
+                      <td
+                        className={`${td} bg-slate-50/60 font-bold text-soft-ink`}
+                        rowSpan={surveyKeys.length}
+                      >
                         선택 설문
                       </td>
                     )}
@@ -295,7 +310,35 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                     <td className={`${td} tabular-nums`}>{fmt(record.surveyAt[key])}</td>
                     <td className={td}>
                       {state === "done" ? (
-                        <span className={btnSmMuted}>제출됨</span>
+                        /* 낸 뒤에도 고칠 길과 처음부터 다시 할 길을 둔다(절차 8단계) —
+                           고치려던 사람이 답을 다 잃으면 그 사람은 두 번 다시 고치지 않는다 */
+                        <span className="inline-flex flex-col items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              reopenSurvey(studentId, key, true);
+                              openSurvey(key);
+                            }}
+                            className={btnSm}
+                          >
+                            수정하기
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              reopenSurvey(studentId, key, false);
+                              openSurvey(key);
+                            }}
+                            className="text-[11px] text-soft-muted underline-offset-2 hover:text-soft-ink hover:underline"
+                          >
+                            처음부터 다시
+                          </button>
+                        </span>
+                      ) : isSelfSurvey(key) ? (
+                        /* 학생 설문은 보낼 곳이 없다 — 본인이 여기서 바로 연다 */
+                        <button type="button" onClick={() => openSurvey(key)} className={btnSm}>
+                          설문 작성
+                        </button>
                       ) : sent ? (
                         /* 이미 보냈으면 보냈다는 표시를 세우고, 다시 보낼 길만 작게 둔다 */
                         <span className="inline-flex flex-col items-center gap-0.5">
@@ -447,17 +490,16 @@ function FinalDialog({
   onConfirm: () => void;
   onSurvey: (key: SurveyKey) => void;
 }) {
-  const guardians = missing.filter((k) => k !== "teacher");
-  const teacherMissing = missing.includes("teacher");
+  /* 빠진 설문을 갈래로 묶어 한 줄로 말한다 — 「어머니 · 아버지 · 교사가 빠졌습니다」를
+     세 줄로 적으면 읽는 사람은 무엇을 먼저 할지 못 고른다 */
+  const names = [
+    missing.includes("student") && "학생 설문",
+    missing.some((k) => k === "mother" || k === "father") && "학부모 설문",
+    missing.includes("teacher") && "지도교사 설문",
+  ].filter((v): v is string => Boolean(v));
 
   const headline =
-    guardians.length > 0 && teacherMissing
-      ? "학부모 설문과 지도교사 설문이 모두 빠져 있습니다."
-      : guardians.length > 0
-        ? "학부모 설문이 빠져 있습니다."
-        : teacherMissing
-          ? "지도교사 설문이 빠져 있습니다."
-          : "모든 설문이 제출되었습니다.";
+    names.length === 0 ? "모든 설문이 제출되었습니다." : `${names.join(" · ")}이 빠져 있습니다.`;
 
   return (
     <div
@@ -491,15 +533,16 @@ function FinalDialog({
                 ))}
               </ul>
               <p className="mt-4 rounded border border-rose-300 bg-rose-50 px-4 py-3.5 text-[13px] leading-relaxed text-rose-700">
-                <b>설문이 빠진 상태로도 결과는 발행됩니다.</b> 다만 보호자·교사 관찰은 학생
-                응답만으로 확인하기 어려운 <b>발현 조건</b>을 보는 자료이므로, 빠지면 해당 해석
-                항목이 제외되고 리포트의 신뢰도 표기가 &lsquo;참고&rsquo; 수준으로 내려갑니다.
-                가능하면 설문을 마친 뒤 제출하시길 권합니다.
+                <b>설문이 빠진 상태로도 결과는 발행됩니다.</b> 다만 학생 응답은 아이 자신만 아는
+                것을, 보호자·교사 관찰은 지필만으로 확인하기 어려운 <b>발현 조건</b>을 보는
+                자료입니다. 빠지면 해당 해석 항목이 제외되고 리포트의 신뢰도 표기가
+                &lsquo;참고&rsquo; 수준으로 내려갑니다. 지금 내지 않으셔도 결과를 받은 뒤에 내거나
+                고칠 수 있습니다.
               </p>
             </>
           ) : (
             <p className="rounded border border-emerald-300 bg-emerald-50 px-4 py-3.5 text-[13px] leading-relaxed text-emerald-800">
-              학생 응답과 관찰 설문이 모두 모였습니다. 교차 검증이 가능한 상태로 분석이 진행됩니다.
+              학생 설문과 관찰 설문이 모두 모였습니다. 교차 검증이 가능한 상태로 분석이 진행됩니다.
             </p>
           )}
         </div>

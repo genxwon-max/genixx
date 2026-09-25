@@ -1,21 +1,36 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { SUBJECT_IDS, type SubjectId } from "./exam";
+import { SUBJECT_IDS, type ExamTier, type SubjectId } from "./exam";
 import { getExamConfig } from "./roundStore";
 
 /** 설문 상태 — 미제출 / 제출 완료 */
 export type SurveyState = "none" | "done";
 
-/** 설문 주체 */
-export type SurveyKey = "mother" | "father" | "teacher";
+/**
+ * 설문 주체 — 학생 · 어머니 · 아버지 · 지도교사 넷.
+ *
+ * 학생 설문이 앞에 선다. 진단평가 절차에서 학생 설문은 **무료시험 바로 뒤**, 학부모 설문은
+ * 유료시험 뒤에 오므로 차례가 그렇다. 넷을 한 목록으로 두는 까닭은 제출 현황·리포트 근거를
+ * 세는 자리가 한 군데라서다 — 갈래마다 따로 세면 어느 화면 하나는 늘 빠뜨린다.
+ */
+export type SurveyKey = "student" | "mother" | "father" | "teacher";
 
-export const surveyKeys: SurveyKey[] = ["mother", "father", "teacher"];
+export const surveyKeys: SurveyKey[] = ["student", "mother", "father", "teacher"];
+
+/** 학생 본인이 답하는 설문 — 문자로 링크를 보낼 대상이 아니다 */
+export const isSelfSurvey = (key: SurveyKey) => key === "student";
 
 export const surveyMeta: Record<
   SurveyKey,
   { label: string; who: string; note: string; required: boolean }
 > = {
+  student: {
+    label: "학생 설문",
+    who: "학생 본인",
+    note: "무료시험을 마친 뒤 학생이 직접",
+    required: false,
+  },
   mother: {
     label: "학부모 설문 (어머니)",
     who: "어머니",
@@ -113,9 +128,41 @@ export const reflectionReasons: Record<"blank" | "choice" | "essay", ReflectionR
 export const reflectionReasonText = (kind: "blank" | "choice" | "essay", id?: string) =>
   (id && reflectionReasons[kind].find((r) => r.id === id)?.text) || "";
 
+/** 설문에 적어 낸 답 — 문항 열쇠(SurveyItem.id)로 담는다 */
+export type SurveyAnswer = {
+  /** 문항 id → 고른 칸(0~4) */
+  items: Record<string, number>;
+  /** 마지막 자유 서술 */
+  text: string;
+};
+
 export type ExamRecord = {
+  /**
+   * 이 학생이 지금 보고 있는 갈래 — 무료시험이 기본이다.
+   *
+   * 가입만 하면 무료시험(20문항)이 열리고, 유료 접수를 하면 「paid」로 올라 편성 문항 수
+   * (수 20 · 과 20 · 국 10)까지 열린다. 한 번 오른 갈래는 내려가지 않는다 — 결제한 아이의
+   * 문항이 어느 날 줄어들면 그것은 우리 잘못이다.
+   *
+   * ⚠ 유료시험의 「공통 문항」은 아직 없다. 지금은 같은 문항 은행에서 더 많이 열고, 앞서
+   *   푼 답을 그대로 이어 쓴다. 유료용 문항이 오면 여기서부터 갈린다.
+   */
+  tier: ExamTier;
+  /**
+   * 셋트에서 고른 교과 — 가입 전에 푼 4문항이 어느 과목의 것인가.
+   * null이면 셋트를 풀지 않고 바로 가입한 학생이다.
+   */
+  setSubject: SubjectId | null;
   subjects: Record<SubjectId, SubjectRecord>;
   surveys: Record<SurveyKey, SurveyState>;
+  /**
+   * 설문에 적어 낸 답.
+   *
+   * 예전에는 제출했다는 사실(surveys)과 시각만 남기고 답은 버렸다. 그래서 「설문 수정」이
+   * 다시 처음부터 답하는 일이 되었다 — 절차가 수정을 「분석 결과를 정교하게 하는 일」로
+   * 두었으므로, 앞서 답한 것을 그대로 띄우고 고칠 자리만 고치게 해야 한다.
+   */
+  surveyAnswers: Partial<Record<SurveyKey, SurveyAnswer>>;
   surveyAt: Partial<Record<SurveyKey, string>>;
   /**
    * 어느 판(version)의 설문에 답한 것인지. 설문 원본은 관리자 화면(ADM-14)에서
@@ -141,11 +188,17 @@ const emptySubject: SubjectRecord = {
 };
 
 export const initialRecord: ExamRecord = {
+  tier: "free",
+  setSubject: null,
   subjects: Object.fromEntries(SUBJECT_IDS.map((id) => [id, emptySubject])) as Record<
     SubjectId,
     SubjectRecord
   >,
-  surveys: { mother: "none", father: "none", teacher: "none" },
+  surveys: Object.fromEntries(surveyKeys.map((k) => [k, "none"])) as Record<
+    SurveyKey,
+    SurveyState
+  >,
+  surveyAnswers: {},
   surveyAt: {},
   surveyVersion: {},
   finalized: false,
@@ -167,8 +220,11 @@ function normalize(raw: Partial<ExamRecord> | undefined): ExamRecord {
     SUBJECT_IDS.map((id) => [id, { ...emptySubject, ...raw?.subjects?.[id] }]),
   ) as Record<SubjectId, SubjectRecord>;
   return {
+    tier: raw?.tier ?? "free",
+    setSubject: raw?.setSubject ?? null,
     subjects,
     surveys: { ...initialRecord.surveys, ...raw?.surveys },
+    surveyAnswers: { ...raw?.surveyAnswers },
     surveyAt: { ...raw?.surveyAt },
     surveyVersion: { ...raw?.surveyVersion },
     finalized: raw?.finalized ?? false,
@@ -346,21 +402,94 @@ export function restartSubject(studentId: string, subject: SubjectId) {
   });
 }
 
-/** 제출 시각과 함께 「몇 판에 답한 것인지」를 적는다 */
+/**
+ * 제출 시각과 함께 「몇 판에 답한 것인지」, 그리고 **적어 낸 답**을 적는다.
+ *
+ * 답을 함께 담는 까닭은 「설문 수정」이다(절차 8단계). 제출했다는 사실만 남기면 수정이
+ * 처음부터 다시 답하는 일이 되고, 그러면 아무도 수정하지 않는다.
+ */
 export function setSurvey(
   studentId: string,
   key: SurveyKey,
   state: SurveyState,
   version?: number,
+  answer?: SurveyAnswer,
 ) {
   const current = readRecord(studentId);
   const done = state === "done";
   writeRecord(studentId, {
     ...current,
     surveys: { ...current.surveys, [key]: state },
+    surveyAnswers: done && answer ? { ...current.surveyAnswers, [key]: answer } : current.surveyAnswers,
     surveyAt: { ...current.surveyAt, [key]: done ? new Date().toISOString() : undefined },
     surveyVersion: { ...current.surveyVersion, [key]: done ? version : undefined },
   });
+}
+
+/**
+ * 설문을 다시 열어 준다 — **재응시**와 **수정** 둘 다 이 함수를 쓴다.
+ *
+ * 다른 것은 앞서 적은 답을 남기는지뿐이다.
+ *   수정    남긴다. 고칠 자리만 고치고 다시 제출한다.
+ *   재응시  버린다. 처음부터 다시 답한다.
+ *
+ * 제출 시각과 판 번호는 둘 다 지운다 — 다시 제출할 때 새로 적힌다. 지우지 않으면 고치는
+ * 중인 설문에 옛 제출 시각이 붙어, 현황 표가 「제출완료」와 「작성 중」 사이에서 흔들린다.
+ */
+export function reopenSurvey(studentId: string, key: SurveyKey, keepAnswers: boolean) {
+  const current = readRecord(studentId);
+  const answers = { ...current.surveyAnswers };
+  if (!keepAnswers) delete answers[key];
+  writeRecord(studentId, {
+    ...current,
+    surveys: { ...current.surveys, [key]: "none" },
+    surveyAnswers: answers,
+    surveyAt: { ...current.surveyAt, [key]: undefined },
+    surveyVersion: { ...current.surveyVersion, [key]: undefined },
+  });
+}
+
+/* ───────────────────────── 갈래 ───────────────────────── */
+
+/**
+ * 가입 전에 푼 셋트를 이 학생 앞으로 물려받는다.
+ *
+ * 답만 옮기고 **시계는 건드리지 않는다**(status는 ready, startedAt은 null). 셋트를 푼 날과
+ * 가입한 날이 다를 수 있는데, 옮기면서 응시를 시작한 것으로 적으면 그 아이의 제한 시간은
+ * 이미 지난 것이 된다.
+ *
+ * 고른 교과는 기록에 남긴다 — 무료시험이 그 과목만 4문항을 더 여는 근거다(FREE_EXTRA).
+ */
+export function claimSet(
+  studentId: string,
+  subject: SubjectId,
+  answers: Record<string, number | string>,
+) {
+  const current = readRecord(studentId);
+  /* 이미 물려받았거나 그 과목을 풀기 시작했으면 덮지 않는다 — 아이가 쓴 것이 먼저다 */
+  if (current.setSubject) return;
+  const rec = current.subjects[subject];
+  if (rec.startedAt) return;
+  writeRecord(studentId, {
+    ...current,
+    setSubject: subject,
+    subjects: {
+      ...current.subjects,
+      [subject]: { ...rec, answers: { ...answers, ...rec.answers } },
+    },
+  });
+}
+
+/**
+ * 갈래를 올린다 — 무료시험에서 유료시험으로.
+ *
+ * 내려가지 않는다. 결제한 아이의 문항이 줄어드는 일은 없어야 한다.
+ */
+export function raiseTier(studentId: string, tier: ExamTier) {
+  const order: ExamTier[] = ["set", "free", "paid"];
+  const current = readRecord(studentId);
+  if (order.indexOf(tier) <= order.indexOf(current.tier)) return;
+  writeRecord(studentId, { ...current, tier });
 }
 
 /** 최종 제출 — 설문이 빠져 있어도 진행할 수 있다 */
@@ -386,7 +515,7 @@ export function submittedCount(record: ExamRecord) {
   return SUBJECT_IDS.filter((id) => record.subjects[id].status === "submitted").length;
 }
 
-/** 아직 제출되지 않은 설문 목록 */
+/** 아직 제출되지 않은 설문 목록 — 재응시 기회를 권하는 자리가 이것을 읽는다 */
 export function missingSurveys(record: ExamRecord) {
   return surveyKeys.filter((k) => record.surveys[k] !== "done");
 }
