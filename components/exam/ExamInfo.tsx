@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import {
+  FREE_COUNT,
+  FREE_LIMIT_MIN,
   FREE_TOTAL,
   PAID_COUNT,
   SET_QUESTIONS,
@@ -30,7 +32,8 @@ import { examMenu } from "@/lib/examNav";
 const stepDesc: Record<string, string> = {
   "/exam/apply":
     "분기와 학년을 골라 무료시험 또는 유료시험으로 접수합니다. 로그인하지 않았다면 여기서 1셋트를 풀어 볼 수 있습니다.",
-  "/exam": "접수한 평가를 과목마다 따로 응시하고, 마친 뒤 설문에 답합니다.",
+  "/exam":
+    "무료시험은 20문항을 한 번에, 유료시험은 과목마다 따로 응시하고, 마친 뒤 설문에 답합니다.",
   "/exam/answers": "응시를 마친 과목의 정답과 내 답을 비교합니다.",
   "/exam/report": "전문가 검토를 거친 결과 리포트를 확인합니다.",
 };
@@ -55,7 +58,7 @@ export default function ExamInfo() {
         {[
           { t: "대상 학년", d: trackRangeText },
           { t: "과목", d: on.map((s) => s.short).join(" · ") || "-" },
-          { t: "제한 시간", d: limitText || "-" },
+          { t: "제한 시간", d: `무료시험 ${FREE_LIMIT_MIN}분 · 유료시험 ${limitText || "-"}` },
           { t: "응시 횟수", d: "해마다 4회 (1~4분기)" },
         ].map((s) => (
           <div key={s.t} className="rounded-[10px] border border-soft-line bg-white px-5 py-4">
@@ -86,7 +89,8 @@ export default function ExamInfo() {
               {t.id === "set"
                 ? `교과 1개 · ${SET_QUESTIONS}문항`
                 : t.id === "free"
-                  ? `세 과목 · 모두 ${FREE_TOTAL}문항`
+                  ? subjects.map((s) => `${s.short} ${FREE_COUNT[s.id]}`).join(" · ") +
+                    `문항 · 모두 ${FREE_TOTAL}문항`
                   : on.map((s) => `${s.short} ${PAID_COUNT[s.id]}`).join(" · ") + "문항"}
             </span>
             {t.id === "paid" && short.length > 0 && (
@@ -126,8 +130,15 @@ export default function ExamInfo() {
         <section className="rounded-[10px] border border-soft-line bg-white p-6">
           <h2 className="text-[17px] font-bold text-soft-ink">응시 전에 확인해 주세요</h2>
           <ul className="mt-3 space-y-2 text-[14px] leading-relaxed text-soft-muted">
-            <li>· 과목은 한 번에 몰아 보지 않고 과목마다 따로 응시합니다.</li>
-            <li>· 한 과목을 모두 풀어야 그 과목을 제출할 수 있습니다.</li>
+            <li>
+              · 무료시험은 과목을 고르지 않고 {FREE_TOTAL}문항을 한 번에 이어서 풉니다. 제한
+              시간은 {FREE_LIMIT_MIN}분입니다.
+            </li>
+            <li>
+              · 유료시험은 한 번에 몰아 보지 않고 과목마다 따로 응시합니다. 제한 시간은
+              과목마다 따로 흐릅니다.
+            </li>
+            <li>· 답하지 않은 문항이 남아 있어도 제출할 수 있습니다.</li>
             <li>
               ·{" "}
               {config.autoSubmit
@@ -137,7 +148,7 @@ export default function ExamInfo() {
             <li>· 제출한 뒤에는 문제마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>
             <li>· 응시를 마치면 학생 설문, 이어서 학부모 설문에 답합니다. 필수는 아닙니다.</li>
             <li>· 설문은 낸 뒤에도 다시 열어 고칠 수 있고, 아직 안 낸 분은 나중에 내도 됩니다.</li>
-            <li>· 중간에 포기하면 해당 과목의 응시 기회가 사라집니다.</li>
+            <li>· 중간에 포기하면 그 시험의 응시 기회가 사라집니다.</li>
           </ul>
         </section>
         <section className="rounded-[10px] border border-soft-line bg-white p-6">

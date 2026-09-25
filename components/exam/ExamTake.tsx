@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useSession } from "@/lib/authStore";
-import { SUBJECT_IDS } from "@/lib/exam";
+import { SUBJECT_IDS, freeOrder } from "@/lib/exam";
 import { dotDate, roomHref } from "@/lib/examCatalog";
-import { submittedCount, useExamRecord, type ExamRecord } from "@/lib/examStore";
+import { allSubmitted, submittedCount, useExamRecord, type ExamRecord } from "@/lib/examStore";
 import { useClaimSet } from "@/lib/setStore";
 import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
 import StudentOnly from "./StudentOnly";
@@ -52,6 +52,8 @@ const cellBtnGhost =
 function TakeCell({ row, record }: { row: Registration; record: ExamRecord }) {
   const href = roomHref(row.round, row.track);
   const started = SUBJECT_IDS.some((id) => record.subjects[id].status !== "ready");
+  /* 무료시험은 과목이 아니라 시험 하나다 — 「제출 1/3과목」이 아니라 문항 수로 센다 */
+  const free = row.tier === "free";
   const all = row.info?.subjects.length ?? SUBJECT_IDS.length;
 
   if (record.finalized) {
@@ -79,16 +81,31 @@ function TakeCell({ row, record }: { row: Registration; record: ExamRecord }) {
     );
   }
 
+  /* 무료시험은 한 번에 내는 시험이라, 내고 나면 이 탭에서 더 할 일이 없다 — 남은 일은
+     설문과 최종 제출이고 그것은 평가 판에 있다 */
+  if (free && allSubmitted(record)) {
+    return (
+      <span className="flex flex-col items-center gap-1.5">
+        <span className="font-semibold text-soft-ink">제출 완료</span>
+        <Link href={href} className="text-[12px] text-soft-primary hover:underline">
+          설문 · 최종 제출
+        </Link>
+      </span>
+    );
+  }
+
   return (
     <span className="flex flex-col items-center gap-1.5">
       <Link href={href} className={cellBtn}>
         {started ? "이어서 응시" : "응시하기"}
       </Link>
-      {started && (
-        <span className="text-[12px] tabular-nums text-soft-muted">
-          제출 {submittedCount(record)}/{all}과목
-        </span>
-      )}
+      <span className="text-[12px] tabular-nums text-soft-muted">
+        {free
+          ? `${freeOrder().length}문항 · 한 번에 응시`
+          : started
+            ? `제출 ${submittedCount(record)}/${all}과목`
+            : `${all}과목 · 과목마다 따로 응시`}
+      </span>
     </span>
   );
 }

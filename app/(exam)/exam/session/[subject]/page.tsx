@@ -26,7 +26,7 @@ export default async function ExamSessionPage({ params }: PageProps<"/exam/sessi
 
   return (
     <ExamGate padded>
-      <ExamSession subject={subject} />
+      <ExamSession scope={{ kind: "subject", subject }} />
     </ExamGate>
   );
 }

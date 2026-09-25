@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { assessment, subjects, tierOf, tierQuestions } from "@/lib/exam";
+import {
+  FREE_LIMIT_MIN,
+  assessment,
+  freeOrder,
+  subjects,
+  tierOf,
+  tierQuestions,
+} from "@/lib/exam";
 import {
   allSubmitted,
   finalize,
@@ -16,6 +23,7 @@ import {
   surveyMeta,
   useExamRecord,
   useHydrated,
+  type ExamRecord,
   type SurveyKey,
 } from "@/lib/examStore";
 import { useClaimSet } from "@/lib/setStore";
@@ -107,6 +115,9 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   }
 
   const openExam = (subject: string) => examWindow(`/exam/session/${subject}`);
+  /** 무료시험은 과목을 고르지 않는다 — 20문항이 한 창에서 이어진다 */
+  const openFree = () => examWindow("/exam/session/free");
+  const isFree = record.tier === "free";
   const openSurvey = (key: SurveyKey) => surveyWindow(`/survey/${key}?student=${studentId}`);
 
   return (
@@ -147,7 +158,13 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
           { t: "학년", v: student?.grade ?? "초등 4학년" },
           { t: "접속코드", v: student ? formatCode(student.code) : "-" },
           { t: "응시 갈래", v: tierOf(record.tier).label },
-          { t: "제출 과목", v: `${hydrated ? submittedCount(record) : 0} / ${subjects.length}` },
+          {
+            /* 무료시험은 과목이 아니라 시험 하나라, 센 것도 문항이어야 한다 */
+            t: isFree ? "응답 문항" : "제출 과목",
+            v: isFree
+              ? `${hydrated ? freeOrder().filter((q) => isAnswered(q, record.subjects[q.subject].answers[q.id])).length : 0} / ${freeOrder().length}`
+              : `${hydrated ? submittedCount(record) : 0} / ${subjects.length}`,
+          },
         ].map((i) => (
           <div key={i.t} className="px-5 py-4">
             <dt className="text-[11px] font-bold text-soft-muted">{i.t}</dt>
@@ -159,14 +176,20 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
       {/* 표 1 — 과목별 평가 */}
       <section className="mt-9">
         <SectionTitle
-          note={`지금 ${tierOf(record.tier).label}으로 응시하고 있습니다. 과목마다 따로 응시하며, 문항 수와 제한 시간은 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`}
+          note={
+            isFree
+              ? `무료시험은 과목을 고르지 않고 ${freeOrder().length}문항을 한 번에 이어서 풉니다. 응시 버튼을 누르면 별도 창이 열립니다.`
+              : `지금 ${tierOf(record.tier).label}으로 응시하고 있습니다. 과목마다 따로 응시하며, 문항 수와 제한 시간은 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`
+          }
         >
           평가 응시 현황
         </SectionTitle>
 
         <div className="overflow-x-auto">
           <table className={govTable}>
-            <caption className="sr-only">과목별 응시 현황</caption>
+            <caption className="sr-only">
+              {isFree ? "무료시험 응시 현황" : "과목별 응시 현황"}
+            </caption>
             <colgroup>
               <col className="w-[110px]" />
               <col />
@@ -188,7 +211,23 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
               </tr>
             </thead>
             <tbody>
-              {subjects.map((s, i) => {
+              {/* 무료시험은 시험 하나다 — 과목마다 줄을 세우면 세 번 들어가는 것으로 읽힌다 */}
+              {isFree ? (
+                <FreeRow
+                  answered={
+                    hydrated
+                      ? freeOrder().filter((q) =>
+                          isAnswered(q, record.subjects[q.subject].answers[q.id]),
+                        ).length
+                      : 0
+                  }
+                  total={freeOrder().length}
+                  record={record}
+                  asGuardian={asGuardian}
+                  onOpen={openFree}
+                />
+              ) : (
+                subjects.map((s, i) => {
                 const rec = record.subjects[s.id];
                 const opened = tierQuestions(record.tier, s.id, record.setSubject);
                 const answered = hydrated
@@ -253,7 +292,8 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
                     </td>
                   </tr>
                 );
-              })}
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -382,8 +422,10 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
             {record.finalized
               ? "최종 제출이 완료되었습니다."
               : examDone
-                ? "세 과목의 답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작됩니다."
-                : "세 과목을 모두 제출하고 문항별 해석까지 작성해야 최종 제출할 수 있습니다."}
+                ? "답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작됩니다."
+                : isFree
+                  ? `무료시험 ${freeOrder().length}문항을 제출하고 문항별 해석까지 작성해야 최종 제출할 수 있습니다.`
+                  : "세 과목을 모두 제출하고 문항별 해석까지 작성해야 최종 제출할 수 있습니다."}
           </p>
           <p className="mt-1 text-[12px] text-soft-muted">
             최종 제출 후에는 답안을 수정할 수 없습니다.
@@ -467,6 +509,79 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
       <Toast message={toast} onClose={() => setToast(null)} />
 
     </div>
+  );
+}
+
+/**
+ * 무료시험 한 줄 — 과목 셋을 한 판으로 접어 보여 준다.
+ *
+ * 문항 수 · 제한 시간 · 진행 상태가 모두 시험 하나의 것이다. 과목 이름은 「국어 · 수학 ·
+ * 과학」으로 한 칸에 적는다 — 무엇이 들었는지는 알려 주되, 따로 들어가는 자리가 아니라는
+ * 것을 줄 하나로 말한다.
+ */
+function FreeRow({
+  answered,
+  total,
+  record,
+  asGuardian,
+  onOpen,
+}: {
+  answered: number;
+  total: number;
+  record: ExamRecord;
+  asGuardian: boolean;
+  onOpen: () => void;
+}) {
+  const recs = subjects.map((s) => record.subjects[s.id]);
+  const submitted = recs.every((r) => r.status === "submitted");
+  const forfeited = recs.some((r) => r.status === "forfeited");
+  const started = recs.some((r) => r.startedAt);
+  const reflecting = submitted && recs.some((r) => !r.reflectionAt);
+  const exhausted = forfeited && recs.some((r) => r.attemptsLeft <= 0);
+
+  const st = reflecting
+    ? stateText.reflecting
+    : submitted
+      ? stateText.submitted
+      : forfeited
+        ? stateText.forfeited
+        : started
+          ? stateText["in-progress"]
+          : stateText.ready;
+
+  return (
+    <tr>
+      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`}>무료시험</td>
+      <td className={`${tdStrong} text-left`}>
+        {subjects.map((s) => s.short).join(" · ")}
+        <span className="ml-2 text-[12px] font-medium text-soft-muted">한 번에 이어서 응시</span>
+      </td>
+      <td className={`${td} tabular-nums`}>
+        {answered}/{total}
+      </td>
+      <td className={`${td} tabular-nums`}>{recs[0].limitMin ?? FREE_LIMIT_MIN}분</td>
+      <td className={td}>
+        <span className={st.className}>{st.label}</span>
+      </td>
+      <td className={`${td} tabular-nums`}>{fmt(recs[0].submittedAt)}</td>
+      <td className={td}>
+        {asGuardian ? (
+          <span className={btnSmMuted}>열람 불가</span>
+        ) : reflecting ? (
+          <button type="button" onClick={onOpen} className={btnSm}>
+            해석 작성
+          </button>
+        ) : submitted ? (
+          <span className={btnSmMuted}>완료</span>
+        ) : exhausted ? (
+          <span className={btnSmMuted}>기회 소진</span>
+        ) : (
+          <button type="button" onClick={onOpen} className={btnSm}>
+            {answered > 0 ? "이어서" : "평가 시작"}
+          </button>
+        )}
+      </td>
+    </tr>
   );
 }
 

@@ -277,7 +277,7 @@ function TrialRun({
         )}
 
         <QuestionPad
-          subject={subject}
+          list={order}
           isHere={(q) => !!question && q.setId === question.setId && isFree(q)}
           isCurrent={(q) => !!screen && screen.includes(q)}
           isDone={(q) => isFree(q) && isAnswered(q, answers[q.id])}

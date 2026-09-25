@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { CatalogRound } from "@/lib/catalogRounds";
-import { FREE_TOTAL, PAID_COUNT, subjects } from "@/lib/exam";
+import { FREE_COUNT, FREE_TOTAL, PAID_COUNT, subjects } from "@/lib/exam";
 import { dotDate, evalName, trackLabel, type TrackId } from "@/lib/examCatalog";
 import { raiseTier } from "@/lib/examStore";
 import {
@@ -102,7 +102,7 @@ export function useApplyFlow(studentId: string) {
         <Summary round={applied.round} track={applied.track} />
         <p className="mt-4 text-[14px] leading-relaxed text-soft-muted">
           {applied.tier === "free"
-            ? `무료시험으로 접수했습니다. 응시하기 탭에서 과목을 하나씩 ${FREE_TOTAL}문항까지 응시할 수 있습니다.`
+            ? `무료시험으로 접수했습니다. 응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
             : "유료시험으로 접수했습니다. 응시하기 탭에서 과목을 하나씩 응시할 수 있습니다."}
         </p>
         <div className="mt-6 flex justify-end gap-2">
@@ -144,7 +144,7 @@ export function useApplyFlow(studentId: string) {
             onPick={() => setPick("free")}
             title="무료시험"
             cost="응시권 0매"
-            desc={`세 과목을 더해 ${FREE_TOTAL}문항. 결제 없이 응시하고 요약 리포트를 받습니다.`}
+            desc={`${subjects.map((x) => `${x.short} ${FREE_COUNT[x.id]}`).join(" · ")}문항을 한 번에 이어서 풉니다. 결제 없이 응시하고 요약 리포트를 받습니다.`}
             note={pending.upgrade ? "이미 무료시험으로 접수했습니다" : undefined}
           />
           <TierChoice
@@ -153,7 +153,7 @@ export function useApplyFlow(studentId: string) {
             onPick={() => setPick("paid")}
             title="유료시험"
             cost={`응시권 1매 (남은 응시권 ${left}매)`}
-            desc={`${subjects.map((x) => `${x.short} ${PAID_COUNT[x.id]}`).join(" · ")}문항. 정밀 리포트와 전문가 해석으로 이어집니다.`}
+            desc={`${subjects.map((x) => `${x.short} ${PAID_COUNT[x.id]}`).join(" · ")}문항을 과목마다 따로 응시합니다. 정밀 리포트와 전문가 해석으로 이어집니다.`}
             note={paidBlocked ? "남은 응시권이 없습니다. 보호자께 요청해 주세요" : undefined}
           />
         </ul>

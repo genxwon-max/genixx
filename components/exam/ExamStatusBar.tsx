@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isSubjectId, tierQuestions } from "@/lib/exam";
+import { FREE_LIMIT_MIN, SUBJECT_IDS, freeOrder, isSubjectId, tierQuestions } from "@/lib/exam";
 import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { useExamConfig } from "@/lib/roundStore";
@@ -30,7 +30,21 @@ export default function ExamStatusBar() {
 
   const slug = pathname.startsWith("/exam/session/") ? pathname.split("/")[3] : null;
   const subject = slug && isSubjectId(slug) ? slug : null;
-  const rec = subject ? record.subjects[subject] : null;
+  /**
+   * 무료시험(/exam/session/free)은 과목 셋을 한 판으로 본다.
+   *
+   * 세 기록이 함께 움직이므로(startFree · submitFree) 시계와 상태는 어느 하나를 봐도 같다.
+   * 응답 수만 스물을 통째로 세어야 한다 — 국어 기록 하나만 세면 「2/4」가 떠서, 스무 문항을
+   * 푸는 아이가 거의 다 온 줄 안다.
+   */
+  const free = slug === "free";
+  const rec = free ? record.subjects[SUBJECT_IDS[0]] : subject ? record.subjects[subject] : null;
+  const opened = free
+    ? freeOrder()
+    : subject
+      ? tierQuestions(record.tier, subject, record.setSubject)
+      : [];
+  const answersOf = (q: (typeof opened)[number]) => record.subjects[q.subject].answers[q.id];
   // 안내 화면을 지나 실제 응시가 시작된 뒤에만 노출한다
   const live = !!rec?.startedAt && (rec.status === "ready" || rec.status === "in-progress");
 
@@ -45,15 +59,14 @@ export default function ExamStatusBar() {
   if (pathname.startsWith("/exam/session/trial/")) {
     return canExit ? <ExitLink>셋트 그만하기</ExitLink> : null;
   }
-  if (!subject || !rec || !hydrated || !live) return null;
+  if (!rec || !hydrated || !live) return null;
 
-  /* 갈래가 연 문항만 센다 — 무료시험을 보는 아이에게 「3/20」이라 적으면 끝이 안 보인다 */
-  const opened = tierQuestions(record.tier, subject, record.setSubject);
-  const done = opened.filter((q) => isAnswered(q, rec.answers[q.id])).length;
+  /* 갈래가 연 문항만 센다 — 무료시험을 보는 아이에게 「3/50」이라 적으면 끝이 안 보인다 */
+  const done = opened.filter((q) => isAnswered(q, answersOf(q))).length;
   const started = rec.startedAt ? new Date(rec.startedAt).getTime() : now;
   const elapsed = Math.max(0, Math.floor((now - started) / 1000));
   /* 시작할 때 박아 둔 값을 쓴다 — 관리자가 도중에 줄여도 이 시계는 줄지 않는다 */
-  const limitMin = rec.limitMin ?? config.limits[subject];
+  const limitMin = rec.limitMin ?? (free ? FREE_LIMIT_MIN : config.limits[subject!]);
   const remain = Math.max(0, limitMin * 60 - elapsed);
   const low = remain < config.warnMin * 60;
 

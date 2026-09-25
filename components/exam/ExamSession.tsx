@@ -6,9 +6,13 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   answerText,
   blankFilled,
+  FREE_LIMIT_MIN,
+  SUBJECT_IDS,
   examOrderOf,
+  freeOrder,
   joinBlanks,
   screensOf,
+  subjects,
   tierQuestions,
   SLOT,
   slotValues,
@@ -23,17 +27,24 @@ import {
   type Table,
 } from "@/lib/exam";
 import {
+  finishFreeReflection,
   finishReflection,
+  forfeitFree,
   forfeitSubject,
+  restartFree,
   restartSubject,
   reflectionReasons,
   setAnswer,
   setReflection,
   setReflectionPick,
+  startFree,
   startSubject,
+  submitFree,
   submitSubject,
   useExamRecord,
   useHydrated,
+  type ExamRecord,
+  type ExamStatus,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { renderDetail } from "@/lib/richText";
@@ -57,7 +68,138 @@ export function isAnswered(q: Question, value: number | string | undefined) {
   return typeof value === "string" && value.trim().length >= (q.minLength ?? 1);
 }
 
-export default function ExamSession({ subject }: { subject: SubjectId }) {
+/**
+ * 응시 한 판이 보는 범위 — **과목 하나**이거나 **무료시험 전체**다.
+ *
+ * 유료시험은 과목마다 따로 들어간다(과목당 40분이 과목을 갈라 놓는 근거다). 무료시험은
+ * 과목을 고르지 않고 20문항을 한 번에 이어서 푼다 — 절차가 그것을 시험 하나로 적고 있다.
+ *
+ * 둘이 화면을 나눠 쓰는 까닭은 아이가 보는 것이 같아서다. 왼쪽 자료 · 가운데 문제 ·
+ * 오른쪽 문항 이동판 · 시계 · 제출 · 해석 작성이 모두 그대로다. 다른 것은 **무엇을 한 판으로
+ * 세는가**뿐이라, 그 셈만 아래 Sheet로 모으고 화면은 하나로 둔다.
+ */
+export type ExamScope = { kind: "subject"; subject: SubjectId } | { kind: "free" };
+
+/**
+ * 한 판의 상태와 손잡이.
+ *
+ * 저장은 그대로 과목마다 나뉘어 있다(lib/examStore.ts). 무료시험은 그 셋을 하나로 합쳐
+ * 읽고, 고칠 때는 셋을 한 번에 움직인다 — 국어만 제출되고 수학은 미시작으로 남는 상태가
+ * 생기면 아이는 한 번 낸 시험이 왜 반만 끝났는지 알 수 없다.
+ */
+type Sheet = {
+  /** 화면 머리에 적는 이름 — 「수학」 · 「무료시험」 */
+  title: string;
+  /** 지금 열린 문항 — 푸는 차례대로 */
+  list: Question[];
+  /** 갈래를 올리면 열릴 문항까지 — 문항 이동판이 점선으로 세운다 */
+  full: Question[];
+  /** 한 화면에 함께 서는 문항 묶음 */
+  screens: Question[][];
+  /** 문항 이동판을 과목으로 갈라 세울까 — 과목이 섞인 판(무료시험)만 그렇다 */
+  grouped: boolean;
+  answers: Record<string, number | string>;
+  reflections: Record<string, string>;
+  reflectionPicks: Record<string, string>;
+  status: ExamStatus;
+  startedAt: string | null;
+  reflectionAt: string | null;
+  attemptsLeft: number;
+  limitMin: number;
+  /** 이번 회차에서 빠진 판인가 — 무료시험은 과목을 통째로 보므로 늘 false다 */
+  disabled: boolean;
+  start: () => void;
+  submit: () => void;
+  forfeit: () => void;
+  restart: () => void;
+  answer: (q: Question, v: number | string) => void;
+  reflect: (q: Question, text: string) => void;
+  pick: (q: Question, reasonId: string | null) => void;
+  finish: () => void;
+};
+
+/** 여럿을 하나로 접을 때 — 하나라도 있으면 그것, 없으면 기본값 */
+function foldStatus(list: ExamStatus[]): ExamStatus {
+  if (list.every((s) => s === "submitted")) return "submitted";
+  if (list.some((s) => s === "forfeited")) return "forfeited";
+  if (list.some((s) => s === "in-progress")) return "in-progress";
+  return "ready";
+}
+
+function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Sheet {
+  const config = useExamConfig();
+
+  if (scope.kind === "free") {
+    const list = freeOrder();
+    const recs = SUBJECT_IDS.map((id) => record.subjects[id]);
+    const merge = <T,>(pick: (r: (typeof recs)[number]) => Record<string, T>) =>
+      Object.assign({}, ...recs.map(pick)) as Record<string, T>;
+    /* 과목 차례대로 화면을 잇는다 — 번호는 1부터 20까지 죽 이어진다 */
+    const screens = SUBJECT_IDS.flatMap((id) =>
+      screensOf(id)
+        .map((sc) => sc.filter((q) => list.includes(q)))
+        .filter((sc) => sc.length > 0),
+    );
+    return {
+      title: "무료시험",
+      list,
+      grouped: true,
+      /* 무료시험에서 잠긴 문항은 유료시험이 여는 것이다 — 세 과목을 모두 늘어놓는다 */
+      full: SUBJECT_IDS.flatMap((id) => examOrderOf(id)),
+      screens,
+      answers: merge((r) => r.answers),
+      reflections: merge((r) => r.reflections),
+      reflectionPicks: merge((r) => r.reflectionPicks),
+      status: foldStatus(recs.map((r) => r.status)),
+      startedAt: recs.map((r) => r.startedAt).find(Boolean) ?? null,
+      /* 셋이 다 끝나야 해석이 끝난 것이다 */
+      reflectionAt: recs.every((r) => r.reflectionAt) ? recs[0].reflectionAt : null,
+      attemptsLeft: Math.min(...recs.map((r) => r.attemptsLeft)),
+      limitMin: recs[0].limitMin ?? FREE_LIMIT_MIN,
+      disabled: false,
+      start: () => startFree(studentId, FREE_LIMIT_MIN),
+      submit: () => submitFree(studentId),
+      forfeit: () => forfeitFree(studentId),
+      restart: () => restartFree(studentId),
+      answer: (q, v) => setAnswer(studentId, q.subject, q.id, v),
+      reflect: (q, text) => setReflection(studentId, q.subject, q.id, text),
+      pick: (q, reasonId) => setReflectionPick(studentId, q.subject, q.id, reasonId),
+      finish: () => finishFreeReflection(studentId),
+    };
+  }
+
+  const subject = scope.subject;
+  const rec = record.subjects[subject];
+  const list = tierQuestions(record.tier, subject, record.setSubject);
+  return {
+    title: subjectOf(subject)!.name,
+    list,
+    grouped: false,
+    full: examOrderOf(subject),
+    screens: screensOf(subject)
+      .map((sc) => sc.filter((q) => list.includes(q)))
+      .filter((sc) => sc.length > 0),
+    answers: rec.answers,
+    reflections: rec.reflections,
+    reflectionPicks: rec.reflectionPicks,
+    status: rec.status,
+    startedAt: rec.startedAt,
+    reflectionAt: rec.reflectionAt,
+    attemptsLeft: rec.attemptsLeft,
+    limitMin: rec.limitMin ?? config.limits[subject],
+    disabled: !config.enabled[subject],
+    start: () => startSubject(studentId, subject),
+    submit: () => submitSubject(studentId, subject),
+    forfeit: () => forfeitSubject(studentId, subject),
+    restart: () => restartSubject(studentId, subject),
+    answer: (q, v) => setAnswer(studentId, subject, q.id, v),
+    reflect: (q, text) => setReflection(studentId, subject, q.id, text),
+    pick: (q, reasonId) => setReflectionPick(studentId, subject, q.id, reasonId),
+    finish: () => finishReflection(studentId, subject),
+  };
+}
+
+export default function ExamSession({ scope }: { scope: ExamScope }) {
   const hydrated = useHydrated();
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
@@ -71,18 +213,15 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   /** 안내 화면을 지나 실제 응시를 시작했는지 */
   const [entered, setEntered] = useState(false);
 
-  const meta = subjectOf(subject)!;
   /**
-   * 이 아이에게 열린 문항 — 갈래가 정한다(무료시험 20문항 · 유료시험 편성 수).
+   * 이 판이 여는 문항과 손잡이 — 과목 하나이거나 무료시험 스물이다.
    *
    * 문항 은행 전체를 세지 않는다. 무료시험을 보는 아이에게 「총 50문항」이라 적고 20문항만
    * 열면 시험이 끊긴 것으로 읽히고, 제출도 영원히 막힌다 — 아래 셈이 모두 이 목록을 센다.
    */
-  const list = tierQuestions(record.tier, subject, record.setSubject);
-  /** 갈래를 올리면 열릴 문항 — 문항 이동판이 점선으로 세운다 */
-  const full = examOrderOf(subject);
-  const rec = record.subjects[subject];
-  const running = rec.status === "ready" || rec.status === "in-progress";
+  const sheet = useSheet(studentId, scope, record);
+  const { list, full } = sheet;
+  const running = sheet.status === "ready" || sheet.status === "in-progress";
 
   /**
    * 제한 시간은 **시작할 때의 값**을 쓴다.
@@ -90,18 +229,19 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
    * 회차 설정(ADM-05)에서 관리자가 도중에 시간을 줄여도 지금 풀고 있는 아이의 시계는
    * 줄지 않는다. 아직 시작하지 않았으면 지금 설정을 그대로 보여 준다.
    */
-  const limitMin = rec.limitMin ?? config.limits[subject];
+  const limitMin = sheet.limitMin;
+  const startedAt = sheet.startedAt;
 
   useEffect(() => {
     if (!running || !entered) return;
     const tick = () => {
-      const started = rec.startedAt ? new Date(rec.startedAt).getTime() : Date.now();
+      const started = startedAt ? new Date(startedAt).getTime() : Date.now();
       setElapsed(Math.max(0, Math.floor((Date.now() - started) / 1000)));
     };
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [running, entered, rec.startedAt]);
+  }, [running, entered, startedAt]);
 
   /**
    * 시간이 다 되면 자동 제출.
@@ -110,11 +250,12 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
    * 채점자가 무슨 말인지 읽을 수 없고, 그러면 그 아이는 쓸 줄 몰라서가 아니라
    * 시계 때문에 낮은 값을 받는다.
    */
+  const autoSubmit = sheet.submit;
   useEffect(() => {
     if (!running || !entered || !config.autoSubmit) return;
     if (elapsed < (limitMin + config.graceMin) * 60) return;
-    submitSubject(studentId, subject);
-  }, [running, entered, elapsed, limitMin, config.autoSubmit, config.graceMin, studentId, subject]);
+    autoSubmit();
+  }, [running, entered, elapsed, limitMin, config.autoSubmit, config.graceMin, autoSubmit]);
 
   /* ESC · 헤더의 「포기하기」 · 전체화면 해제 — 모두 포기할지 묻는다 */
   useExamExitRequest(running && entered, () => setAskForfeit(true));
@@ -128,25 +269,20 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   }
 
   // 제출 후 → 문항별 해석 작성 → 완료
-  if (rec.status === "submitted") {
-    return rec.reflectionAt ? (
-      <Submitted subject={subject} />
-    ) : (
-      <ReflectionStep subject={subject} studentId={studentId} />
-    );
+  if (sheet.status === "submitted") {
+    return sheet.reflectionAt ? <Submitted title={sheet.title} /> : <ReflectionStep sheet={sheet} />;
   }
-  if (rec.status === "forfeited")
-    return <Forfeited subject={subject} studentId={studentId} attemptsLeft={rec.attemptsLeft} />;
+  if (sheet.status === "forfeited") return <Forfeited sheet={sheet} />;
 
   /* 이번 회차에서 뺀 과목 — 주소를 직접 쳐서 들어오는 길도 막는다. 다만 이미 시작한
      아이는 그대로 마치게 둔다. 중간에 문이 닫히면 그 아이의 답은 갈 곳이 없다. */
-  if (!config.enabled[subject] && !rec.startedAt) {
+  if (sheet.disabled && !sheet.startedAt) {
     return (
       <div className="container-x flex min-h-full items-center py-10">
         <div className={`mx-auto w-full max-w-xl p-8 md:p-10 ${panel}`}>
           <p className={eyebrow}>응시 안내</p>
           <h1 className="mt-3 text-[24px] font-black tracking-tight text-exam-text">
-            {meta.name}은 이번 회차에 보지 않습니다
+            {sheet.title}은 이번 회차에 보지 않습니다
           </h1>
           <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
             이번 회차의 응시 과목에서 빠져 있습니다. 지금까지 본 과목의 기록은 그대로 남아 있습니다.
@@ -164,11 +300,18 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   if (!entered) {
     return (
       <StartGate
-        subject={subject}
+        title={sheet.title}
         count={list.length}
+        limitMin={limitMin}
+        note={
+          scope.kind === "free"
+            ? subjects.map((x) => x.short + " " + tierQuestions("free", x.id).length).join(" · ") +
+              "문항을 한 번에 이어서 풉니다. 과목을 따로 고르지 않습니다."
+            : null
+        }
         onStart={async () => {
           await enterFullscreen();
-          startSubject(studentId, subject);
+          sheet.start();
           setEntered(true);
         }}
       />
@@ -178,13 +321,10 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
   /* 넘기는 단위는 **화면**이다 — 기본은 문제 하나, 세트 안의 작은 묶음(group)이면 그
      문제들이 함께 선다. 세트면 왼쪽 자료는 그대로 둔 채 오른쪽만 바뀐다 */
   const order = list;
-  /* 갈래가 여는 문항만 남긴다 — 묶음이 한도에 걸치면 열린 문항만 한 화면에 선다 */
-  const screens = screensOf(subject)
-    .map((sc) => sc.filter((q) => order.includes(q)))
-    .filter((sc) => sc.length > 0);
+  const screens = sheet.screens;
   const screen = screens[Math.min(index, screens.length - 1)];
   const question = screen[0];
-  const doneCount = list.filter((q) => isAnswered(q, rec.answers[q.id])).length;
+  const doneCount = list.filter((q) => isAnswered(q, sheet.answers[q.id])).length;
   const remain = Math.max(0, limitMin * 60 - elapsed);
   const isLast = index === screens.length - 1;
   const unanswered = list.length - doneCount;
@@ -196,9 +336,11 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
       <div className="shrink-0 border-b border-exam-line bg-exam-panel">
         <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
           <div className="flex items-baseline gap-3">
-            <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
+            <p className="text-[14px] font-bold tracking-tight text-exam-text">{sheet.title}</p>
             <span className="hidden text-[12px] text-exam-muted sm:block">
-              총 {order.length}문항 · 제한 {limitMin}분
+              {/* 무료시험은 과목이 섞여 있어, 지금 푸는 문항의 과목을 함께 적는다 */}
+              {scope.kind === "free" && subjectOf(question.subject)!.short + " · "}총 {order.length}
+              문항 · 제한 {limitMin}분
             </span>
           </div>
           <p className="text-[12px] font-medium tabular-nums text-exam-muted">
@@ -219,19 +361,31 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
               key={q.id}
               q={q}
               num={order.indexOf(q) + 1}
-              value={rec.answers[q.id]}
-              onAnswer={(v) => setAnswer(studentId, subject, q.id, v)}
+              value={sheet.answers[q.id]}
+              onAnswer={(v) => sheet.answer(q, v)}
             />
           )}
         />
 
         <QuestionPad
-          subject={subject}
+          /**
+           * 번호판에 무엇을 늘어놓을까.
+           *
+           * 과목 하나를 볼 때는 잠긴 문항까지 세운다 — 열린 것이 앞에서부터라 번호가 1부터
+           * 죽 이어지고, 점선 번호가 「더 있다」를 말해 준다.
+           *
+           * 무료시험은 열린 것만 세운다. 국어 앞 4 · 수학 앞 8 · 과학 앞 8이라 잠긴 문항이
+           * 사이사이에 끼고, 그것까지 늘어놓으면 스무 문항을 푸는 아이가 40번까지 붙은
+           * 번호판을 보게 된다 — 머리의 「문항 3 / 20」과 번호판이 서로 다른 말을 한다.
+           */
+          list={scope.kind === "free" ? order : full}
+          /* 무료시험은 과목이 섞여 있어 번호판을 과목으로 갈라 세운다 */
+          grouped={sheet.grouped}
           /* 세트면 같은 자료를 읽는 문제들이 「함께 서 있는 것」이다 — 지금 오른쪽에 선
              문제는 isCurrent가 따로 말한다 */
           isHere={(q) => q.setId === question.setId && order.includes(q)}
           isCurrent={(q) => screen.includes(q)}
-          isDone={(q) => order.includes(q) && isAnswered(q, rec.answers[q.id])}
+          isDone={(q) => order.includes(q) && isAnswered(q, sheet.answers[q.id])}
           isLocked={(q) => !order.includes(q)}
           onPick={(q) => {
             if (order.includes(q)) goTo(q);
@@ -243,7 +397,9 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
                것을 점선과 이 줄로 함께 말한다 */
             record.tier === "paid" || full.length === order.length
               ? undefined
-              : `점선 번호(문항 ${order.length + 1}~)는 유료시험으로 접수하면 풀 수 있습니다.`
+              : scope.kind === "free"
+                ? "유료시험으로 접수하면 과목마다 문항이 더 열립니다."
+                : "점선 번호는 유료시험으로 접수하면 풀 수 있습니다."
           }
         />
       </div>
@@ -286,24 +442,24 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
 
       {askForfeit && (
         <ForfeitDialog
-          subjectName={meta.name}
+          subjectName={sheet.title}
           remain={`${pad(Math.floor(remain / 60))}:${pad(remain % 60)}`}
           onCancel={() => {
             /* 전체화면이 꺼진 채 물었으면 이 클릭 안에서 다시 들어간다 */
             enterFullscreen();
             setAskForfeit(false);
           }}
-          onConfirm={() => forfeitSubject(studentId, subject)}
+          onConfirm={() => sheet.forfeit()}
         />
       )}
 
       {askSubmit && (
         <SubmitDialog
-          subjectName={meta.name}
+          subjectName={sheet.title}
           unanswered={unanswered}
           onCancel={() => setAskSubmit(false)}
           onConfirm={() => {
-            submitSubject(studentId, subject);
+            sheet.submit();
             setAskSubmit(false);
           }}
         />
@@ -325,7 +481,8 @@ export default function ExamSession({ subject }: { subject: SubjectId }) {
  * 그어진다. 색을 못 보는 아이도 같은 정보를 얻어야 한다.
  */
 export function QuestionPad({
-  subject,
+  list,
+  grouped = false,
   isHere,
   isCurrent,
   isDone,
@@ -335,7 +492,16 @@ export function QuestionPad({
   doneVerb,
   footnote,
 }: {
-  subject: SubjectId;
+  /** 판에 늘어놓을 문항 — 잠긴 것까지 모두. 푸는 차례 그대로다 */
+  list: Question[];
+  /**
+   * 번호를 과목으로 갈라 세울까.
+   *
+   * 무료시험은 국어 4 · 수학 8 · 과학 8이 한 판에 섞여 있다. 번호만 스물을 늘어놓으면
+   * 13번이 어느 과목인지 알 수 없어, 「과학은 아직 손도 안 댔다」를 눈으로 셀 수 없다.
+   * 번호는 1부터 끝까지 이어 붙이고 머리글만 갈라 둔다.
+   */
+  grouped?: boolean;
   /**
    * 지금 화면에 서 있는 문항인가.
    *
@@ -356,8 +522,6 @@ export function QuestionPad({
   /** 판 맨 아래 안내 — 없으면 두지 않는다 */
   footnote?: string;
 }) {
-  /* 위계로 묶지 않는다 — 학생에게는 푸는 차례대로 번호만 늘어놓는다 */
-  const list = examOrderOf(subject);
   /**
    * 셈은 **열린 문항만** 센다.
    *
@@ -375,9 +539,24 @@ export function QuestionPad({
     >
       <p className="text-[12px] font-semibold tracking-[0.06em] text-exam-muted">문항 이동</p>
 
-      <div className="mt-4">
-        <ol className="flex flex-wrap gap-1.5">
-          {list.map((q, i) => {
+      <div className="mt-4 space-y-4">
+        {/* 과목으로 가르지 않으면 묶음 하나에 전부 담긴다 — 아래 그리는 코드는 하나다 */}
+        {(grouped
+          ? subjects.flatMap((sub) => {
+              const items = list.filter((q) => q.subject === sub.id);
+              return items.length > 0 ? [{ label: sub.short, items }] : [];
+            })
+          : [{ label: null as string | null, items: list }]
+        ).map((group) => (
+          <div key={group.label ?? "all"}>
+            {group.label && (
+              <p className="mb-2 text-[11px] font-bold tracking-[0.06em] text-exam-muted">
+                {group.label}
+              </p>
+            )}
+            <ol className="flex flex-wrap gap-1.5">
+              {group.items.map((q) => {
+            const i = list.indexOf(q);
             const ok = isDone(q);
             const here = isHere(q);
             const current = isCurrent(q);
@@ -419,8 +598,10 @@ export function QuestionPad({
                 </button>
               </li>
             );
-          })}
-        </ol>
+              })}
+            </ol>
+          </div>
+        ))}
       </div>
 
       <dl className="mt-6 border-t border-exam-line pt-4 text-[12px]">
@@ -443,25 +624,28 @@ export function QuestionPad({
 
 /* ───────────────────────── 응시 전 안내 ───────────────────────── */
 
-/** 응시 전 안내 — 문항 수는 **이 아이에게 열린 수**를 적는다(갈래가 정한다) */
+/** 응시 전 안내 — 문항 수는 **이 판에 열린 수**를 적는다(갈래가 정한다) */
 function StartGate({
-  subject,
+  title,
   count,
+  limitMin,
+  note,
   onStart,
 }: {
-  subject: SubjectId;
+  title: string;
   count: number;
+  limitMin: number;
+  /** 무료시험처럼 과목이 섞인 판에서 무엇을 어떻게 푸는지 한 줄 더 적는다 */
+  note?: string | null;
   onStart: () => void;
 }) {
-  const meta = subjectOf(subject)!;
   const config = useExamConfig();
-  const limitMin = config.limits[subject];
   return (
     <div className="container-x flex min-h-full items-center py-10">
       <div className={`mx-auto w-full max-w-xl p-8 md:p-10 ${panel}`}>
         <p className={eyebrow}>응시 안내</p>
         <h1 className="mt-3 text-[24px] font-black tracking-tight text-exam-text">
-          {meta.name} 평가를 시작합니다
+          {title} 평가를 시작합니다
         </h1>
         <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
           시작 버튼을 누르면 <b className="text-exam-text">전체화면</b>으로 전환되고 제한 시간이
@@ -469,6 +653,7 @@ function StartGate({
         </p>
 
         <ul className="mt-6 space-y-2.5 border-t border-exam-line pt-6 text-[13px] leading-relaxed text-exam-muted">
+          {note && <li>· {note}</li>}
           <li>
             · 문항 <b className="text-exam-text">{count}개</b> · 제한 시간{" "}
             <b className="text-exam-text">{limitMin}분</b> (남은 시간은 오른쪽 위에 표시됩니다)
@@ -516,12 +701,9 @@ function StartGate({
  * 정답은 알려 주지 않는다. 맞았는지 틀렸는지를 먼저 알려 주면 아이는 자기 생각을 적는
  * 대신 오답 노트를 쓴다. 여기서 받고 싶은 것은 채점 결과가 아니라 그때의 생각이다.
  */
-function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId: string }) {
-  const record = useExamRecord(studentId);
-  const rec = record.subjects[subject];
-  const meta = subjectOf(subject)!;
-  /* 응시 때와 같은 차례·같은 번호로 되짚는다 — 갈래가 열지 않은 문항은 풀지 않았으므로 뺀다 */
-  const list = tierQuestions(record.tier, subject, record.setSubject);
+function ReflectionStep({ sheet }: { sheet: Sheet }) {
+  /* 응시 때와 같은 차례·같은 번호로 되짚는다 — 판이 열지 않은 문항은 풀지 않았으므로 없다 */
+  const list = sheet.list;
   const [index, setIndex] = useState(0);
   const [warn, setWarn] = useState(false);
 
@@ -529,27 +711,27 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
   /* 고르기만 해도, 쓰기만 해도, 둘 다 해도 된다. 쓰기가 어려운 것과 할 말이 없는
      것은 다른데, 글만 받으면 둘이 똑같이 빈칸으로 남는다. */
   const written = (q: Question) =>
-    Boolean(rec.reflectionPicks[q.id]) || (rec.reflections[q.id] ?? "").trim().length >= 5;
+    Boolean(sheet.reflectionPicks[q.id]) || (sheet.reflections[q.id] ?? "").trim().length >= 5;
   const writtenCount = list.filter(written).length;
   const complete = writtenCount === list.length;
   const isLast = index === list.length - 1;
 
-  const value = rec.answers[question.id];
+  const value = sheet.answers[question.id];
   const picked = question.type === "choice" && typeof value === "number" ? value : null;
   const essayText = question.type === "essay" ? answerText(question, value) : "";
   const blank = question.type === "choice" ? picked === null : essayText.length === 0;
-  const text = rec.reflections[question.id] ?? "";
+  const text = sheet.reflections[question.id] ?? "";
   /* 물음이 셋으로 갈린다 — 못 낸 답 / 고른 답 / 쓴 답 */
   const kind = blank ? "blank" : question.type === "choice" ? "choice" : "essay";
   const reasons = reflectionReasons[kind];
-  const pick = rec.reflectionPicks[question.id];
+  const pick = sheet.reflectionPicks[question.id];
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
       <div className="shrink-0 border-b border-exam-line bg-exam-panel">
         <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
           <div className="flex items-baseline gap-3">
-            <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
+            <p className="text-[14px] font-bold tracking-tight text-exam-text">{sheet.title}</p>
             <span className="text-[12px] text-exam-muted">제출 완료 · 해석 작성</span>
           </div>
           <p className="text-[12px] font-medium tabular-nums text-exam-muted">
@@ -654,7 +836,7 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
                         /* 같은 것을 다시 누르면 지워진다 — 잘못 골랐을 때
                            되돌릴 길이 없으면 아이는 거기서 멈춘다 */
                         onClick={() =>
-                          setReflectionPick(studentId, subject, question.id, on ? null : r.id)
+                          sheet.pick(question, on ? null : r.id)
                         }
                         onChange={() => {}}
                         className="sr-only"
@@ -695,7 +877,7 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
               value={text}
               onChange={(e) => {
                 setWarn(false);
-                setReflection(studentId, subject, question.id, e.target.value);
+                sheet.reflect(question, e.target.value);
               }}
               placeholder={
                 blank
@@ -716,7 +898,8 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
         </section>
 
         <QuestionPad
-          subject={subject}
+          list={list}
+          grouped={sheet.grouped}
           isHere={(q) => q.id === question.id}
           isCurrent={(q) => q.id === question.id}
           isDone={written}
@@ -732,7 +915,7 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
           <p className="hidden text-[12px] leading-tight text-exam-muted sm:block">
             {warn
               ? "아직 답하지 않은 문항이 있습니다. 번호판에서 줄이 없는 번호를 확인하세요."
-              : "고르거나 쓰는 대로 저장됩니다. 모든 문항에 답하면 이 과목이 끝납니다."}
+              : "고르거나 쓰는 대로 저장됩니다. 모든 문항에 답하면 끝납니다."}
           </p>
 
           <div className="flex items-center gap-2">
@@ -757,7 +940,7 @@ function ReflectionStep({ subject, studentId }: { subject: SubjectId; studentId:
                     return;
                   }
                   await leaveFullscreen();
-                  finishReflection(studentId, subject);
+                  sheet.finish();
                 }}
                 aria-disabled={!complete}
                 className={complete ? btnPrimary : btnDisabled}
@@ -911,15 +1094,14 @@ function useCloseExam() {
   };
 }
 
-function Submitted({ subject }: { subject: SubjectId }) {
-  const meta = subjectOf(subject)!;
+function Submitted({ title }: { title: string }) {
   const close = useCloseExam();
   return (
     <Result>
       <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-exam-line text-exam-text">
         <CheckIcon className="h-7 w-7" />
       </span>
-      <h1 className="mt-6 text-[24px] font-black text-exam-text">{meta.name} 응시가 끝났습니다</h1>
+      <h1 className="mt-6 text-[24px] font-black text-exam-text">{title} 응시가 끝났습니다</h1>
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
         답안과 해석이 모두 저장되었습니다. 이 창을 닫으면 진단 현황 화면에서 제출 상태가 갱신됩니다.
       </p>
@@ -932,34 +1114,22 @@ function Submitted({ subject }: { subject: SubjectId }) {
   );
 }
 
-function Forfeited({
-  subject,
-  studentId,
-  attemptsLeft,
-}: {
-  subject: SubjectId;
-  studentId: string;
-  attemptsLeft: number;
-}) {
-  const meta = subjectOf(subject)!;
+function Forfeited({ sheet }: { sheet: Sheet }) {
+  const attemptsLeft = sheet.attemptsLeft;
   const close = useCloseExam();
   return (
     <Result>
       <p className={eyebrow}>응시 중단</p>
       <h1 className="mt-3 text-[24px] font-black text-exam-text">
-        {meta.name} 응시를 포기했습니다
+        {sheet.title} 응시를 포기했습니다
       </h1>
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
-        이 과목의 응시 기회가 소모되었습니다. 남은 기회는{" "}
+        이 시험의 응시 기회가 소모되었습니다. 남은 기회는{" "}
         <b className="tabular-nums text-rose-600">{attemptsLeft}회</b>입니다.
       </p>
       <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
         {attemptsLeft > 0 && (
-          <button
-            type="button"
-            onClick={() => restartSubject(studentId, subject)}
-            className={btnGhost}
-          >
+          <button type="button" onClick={() => sheet.restart()} className={btnGhost}>
             남은 기회로 다시 응시
           </button>
         )}

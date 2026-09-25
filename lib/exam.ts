@@ -416,7 +416,7 @@ export const tiers: { id: ExamTier; label: string; short: string; desc: string }
     id: "free",
     label: "무료시험",
     short: "무료",
-    desc: "가입하면 결제 없이 세 과목을 풀 수 있습니다",
+    desc: "가입하면 세 과목 20문항을 결제 없이 한 번에 풉니다",
   },
   {
     id: "paid",
@@ -499,6 +499,31 @@ export function tierQuestions(
 ): Question[] {
   return examOrderOf(subject, bank).slice(0, tierCount(tier, subject, setSubject, bank));
 }
+
+/**
+ * 무료시험이 한 번에 여는 문항 — **국어 4 → 수학 8 → 과학 8, 모두 20문항**.
+ *
+ * 무료시험은 과목을 고르고 들어가지 않는다. 절차가 「1셋트 + 수, 과, 국 = 총 20문항」
+ * 한 줄로 적고 있으므로, 과목 셋이 아니라 시험 하나다 — 응시도 한 번에 이어서 한다.
+ *
+ * 과목 차례는 과목 목록(subjects) 그대로다. 과목이 바뀌는 자리는 문항 이동판이 머리글로
+ * 갈라 보여 준다 — 번호는 1부터 20까지 죽 이어지고, 아이는 과목이 바뀌는 것만 안다.
+ *
+ * 유료시험은 그대로 과목마다 따로 응시한다. 과목당 40분이라는 제한이 과목을 갈라 놓는
+ * 근거이고, 50문항을 한 자리에서 보게 할 수도 없다.
+ */
+export function freeOrder(bank: Bank = questions): Question[] {
+  return SUBJECT_IDS.flatMap((id) => tierQuestions("free", id, null, bank));
+}
+
+/**
+ * 무료시험 제한 시간(분) — 20문항을 한 번에 본다.
+ *
+ * ⚠ 절차 문서는 유료시험만 「과목당 40분」으로 적고 무료시험 시간은 적지 않았다. 과목당
+ *   40분을 그대로 세 번 주면 두 시간이 되어 20문항에 견주어 지나치게 길다. 문항 수에 맞춰
+ *   60분으로 두었으니, 확정되면 이 값 하나만 고친다.
+ */
+export const FREE_LIMIT_MIN = 60;
 
 /** 이 갈래의 전 과목 문항 수 — 「무료시험 20문항」 */
 export function tierTotal(

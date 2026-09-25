@@ -458,6 +458,79 @@ export function reopenSurvey(studentId: string, key: SurveyKey, keepAnswers: boo
   });
 }
 
+/* ───────────────────────── 무료시험 ───────────────────────── */
+
+/**
+ * 무료시험은 **과목 셋을 한 번에** 본다 — 시작 · 제출 · 포기 · 해석이 세 기록에 함께 적힌다.
+ *
+ * 저장은 그대로 과목마다 나눠 둔다. 문항이 제 과목을 알고 있어(Question.subject) 답은
+ * 자기 자리에 들어가고, 정오표 · 리포트 · 관리자 화면이 모두 과목별 기록을 읽기 때문이다.
+ * 바뀌는 것은 **한 번에 움직인다**는 것뿐이다 — 국어만 제출되고 수학은 미시작으로 남는
+ * 상태가 생기면, 아이는 한 번 낸 시험이 왜 반만 끝났는지 알 수 없다.
+ *
+ * 아래 함수들이 세 과목을 한 번의 저장으로 함께 고치는 까닭도 그것이다. 과목마다 따로
+ * 부르면 그 사이에 창이 닫힐 때 반만 제출된 기록이 남는다.
+ */
+function patchAll(studentId: string, patch: (rec: SubjectRecord) => Partial<SubjectRecord>) {
+  const current = readRecord(studentId);
+  writeRecord(studentId, {
+    ...current,
+    subjects: Object.fromEntries(
+      SUBJECT_IDS.map((id) => [id, { ...current.subjects[id], ...patch(current.subjects[id]) }]),
+    ) as Record<SubjectId, SubjectRecord>,
+  });
+}
+
+/** 무료시험 시작 — 세 과목이 같은 시각에 시작하고 같은 제한 시간을 받는다 */
+export function startFree(studentId: string, limitMin: number) {
+  const at = new Date().toISOString();
+  patchAll(studentId, (rec) =>
+    rec.startedAt ? {} : { status: "in-progress", startedAt: at, limitMin },
+  );
+}
+
+/** 무료시험 제출 */
+export function submitFree(studentId: string) {
+  const at = new Date().toISOString();
+  patchAll(studentId, () => ({ status: "submitted", submittedAt: at }));
+}
+
+/** 무료시험 포기 — 세 과목의 답을 함께 버리고 기회 하나를 쓴다 */
+export function forfeitFree(studentId: string) {
+  const at = new Date().toISOString();
+  patchAll(studentId, (rec) => ({
+    answers: {},
+    status: "forfeited",
+    submittedAt: at,
+    attemptsLeft: Math.max(0, rec.attemptsLeft - 1),
+    reflections: {},
+    reflectionPicks: {},
+    reflectionAt: null,
+  }));
+}
+
+/** 무료시험 다시 보기 */
+export function restartFree(studentId: string) {
+  const current = readRecord(studentId);
+  if (SUBJECT_IDS.some((id) => current.subjects[id].attemptsLeft <= 0)) return;
+  patchAll(studentId, () => ({
+    answers: {},
+    status: "ready",
+    startedAt: null,
+    submittedAt: null,
+    limitMin: null,
+    reflections: {},
+    reflectionPicks: {},
+    reflectionAt: null,
+  }));
+}
+
+/** 무료시험 해석 작성 마침 */
+export function finishFreeReflection(studentId: string) {
+  const at = new Date().toISOString();
+  patchAll(studentId, () => ({ reflectionAt: at }));
+}
+
 /* ───────────────────────── 갈래 ───────────────────────── */
 
 /**
