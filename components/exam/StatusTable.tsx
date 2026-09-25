@@ -453,7 +453,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
               className={
                 examDone
                   ? btnPrimary
-                  : "inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-soft-line bg-slate-50 px-6 py-3 text-sm font-bold text-soft-muted"
+                  : "inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-[2px] border border-soft-line bg-slate-50 px-6 py-3 text-sm font-bold text-soft-muted"
               }
             >
               제출 완료
@@ -613,7 +613,7 @@ function FinalDialog({
       aria-labelledby="final-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
     >
-      <div className="w-full max-w-lg rounded-md border border-soft-line bg-white">
+      <div className="w-full max-w-lg rounded-[2px] border border-soft-line bg-white">
         <div className="border-b border-soft-line px-7 py-5">
           <p className={eyebrow}>최종 제출 확인</p>
           <h2 id="final-title" className="mt-2 text-[19px] font-bold text-soft-ink">
@@ -692,7 +692,7 @@ function SmsDialog({
           e.preventDefault();
           if (ok) onSend(digits);
         }}
-        className="w-full max-w-md rounded-[12px] bg-white p-7 shadow-float"
+        className="w-full max-w-md rounded-[2px] bg-white p-7 shadow-float"
       >
         <h2 id="sms-title" className="text-[19px] font-bold text-soft-ink">
           {label} 링크를 문자로 보냅니다

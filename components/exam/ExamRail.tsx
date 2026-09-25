@@ -71,7 +71,7 @@ export default function ExamRail() {
 
   return (
     <nav aria-label="빠른 메뉴" className="fixed right-5 top-32 z-30 hidden w-[86px] xl:block">
-      <ul className="overflow-hidden rounded-[6px] border border-soft-line bg-white shadow-[0_6px_18px_rgba(15,23,42,0.08)]">
+      <ul className="overflow-hidden rounded-[2px] border border-soft-line bg-white shadow-[0_6px_18px_rgba(15,23,42,0.08)]">
         {items.map((it) => {
           const on = it.href === active;
           return (
@@ -107,7 +107,7 @@ export default function ExamRail() {
       <button
         type="button"
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="mt-2 flex w-full flex-col items-center gap-0.5 rounded-[6px] border border-soft-line bg-white px-2 py-2.5 text-[12px] font-semibold text-soft-muted transition-colors hover:bg-slate-50 hover:text-soft-ink"
+        className="mt-2 flex w-full flex-col items-center gap-0.5 rounded-[2px] border border-soft-line bg-white px-2 py-2.5 text-[12px] font-semibold text-soft-muted transition-colors hover:bg-slate-50 hover:text-soft-ink"
       >
         <svg
           aria-hidden

@@ -30,7 +30,7 @@ export default function AssessmentRoom({ roundId, trackId }: { roundId: string; 
   const back = (
     <Link
       href="/exam"
-      className="inline-flex items-center rounded-[4px] border border-soft-line bg-white px-3.5 py-2 text-[13px] font-semibold text-soft-ink transition-colors hover:bg-slate-50"
+      className="inline-flex items-center rounded-[2px] border border-soft-line bg-white px-3.5 py-2 text-[13px] font-semibold text-soft-ink transition-colors hover:bg-slate-50"
     >
       목록으로
     </Link>

@@ -731,7 +731,7 @@ export default function StudentRegistrar({
                 <p className="flex flex-wrap items-center gap-2 text-[14px] font-bold text-soft-ink">
                   {m.label}
                   {m.default && (
-                    <span className="rounded-full bg-soft-primary-soft px-2.5 py-0.5 text-[11px] font-bold text-soft-primary">
+                    <span className="rounded-[2px] bg-soft-primary-soft px-2.5 py-0.5 text-[11px] font-bold text-soft-primary">
                       기본
                     </span>
                   )}
@@ -823,7 +823,7 @@ function ParentSurveyPrompt({
       aria-labelledby="parent-survey-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
     >
-      <div className="w-full max-w-md rounded-md border border-soft-line bg-white">
+      <div className="w-full max-w-md rounded-[2px] border border-soft-line bg-white">
         <div className="border-b border-soft-line px-6 py-5">
           <p className={eyebrow}>ASM-05 · 학부모 설문</p>
           <h2 id="parent-survey-title" className="mt-2 text-[19px] font-bold text-soft-ink">

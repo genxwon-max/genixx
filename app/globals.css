@@ -69,6 +69,11 @@
   --color-acc-required: #c8382c;
 
   /* 계정 존 버전 2 — 둥글둥글한 톤. clipo.ai 계열의 밝은 파랑과 알약 버튼. */
+  /* 공통 스타일(components/exam/ui.ts)의 둥글기 — 존마다 덮어 쓴다 */
+  --ui-r-pill: 9999px;
+  --ui-r-card: 14px;
+  --ui-r-field: 12px;
+  --ui-r-box: 4px;
   --color-soft-primary: #365eef;
   --color-soft-primary-dark: #2a4bc4;
   --color-soft-primary-soft: #eaf3ff;

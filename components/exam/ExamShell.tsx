@@ -27,12 +27,21 @@ const examScreenColors = {
  * 통째로 밀려 올라가면 헤더(남은 시간)가 화면 밖으로 나가고 하단 바가 흔들린다. 넘치는
  * 것은 본문 안(자료 · 문항 칸)에서만 스크롤된다.
  */
-export function ExamShell({ className, children }: { className: string; children: ReactNode }) {
+export function ExamShell({
+  className,
+  style,
+  children,
+}: {
+  className: string;
+  /** 응시 존 전체에 거는 색과 모서리 — 응시 화면에서는 아래 흰 종이 값이 덧씌워진다 */
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
   const locked = isExamScreen(usePathname());
   return (
     <div
       className={`${className} ${locked ? "h-dvh overflow-hidden" : "min-h-full"} flex flex-col`}
-      style={locked ? examScreenColors : undefined}
+      style={locked ? { ...style, ...examScreenColors } : style}
     >
       {children}
     </div>
@@ -67,4 +76,16 @@ export function ExamSiteNav({ links }: { links: { href: string; label: string }[
       </ul>
     </nav>
   );
+}
+
+/**
+ * 응시 화면에서는 감춘다 — 로고와 이름, 로그아웃 자리.
+ *
+ * 시험지 한 장을 보는 자리에 머리가 둘이면 어느 쪽이 지금 보는 시험인지 읽는 데 시간이
+ * 든다. 응시 중에는 머리를 하나만 두고, 거기에 평가명 · 과목 · 남은 시간만 세운다
+ * (components/exam/ExamStatusBar.tsx).
+ */
+export function ExamSiteBrand({ children }: { children: ReactNode }) {
+  if (isExamScreen(usePathname())) return null;
+  return <>{children}</>;
 }

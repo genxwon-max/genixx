@@ -215,7 +215,7 @@ function TierChoice({
         aria-pressed={on}
         disabled={disabled}
         onClick={onPick}
-        className={`w-full rounded-[4px] border px-5 py-3.5 text-left transition-colors ${
+        className={`w-full rounded-[2px] border px-5 py-3.5 text-left transition-colors ${
           disabled
             ? "cursor-not-allowed border-soft-line bg-slate-50 text-slate-400"
             : on
@@ -236,7 +236,7 @@ function TierChoice({
 
 function Summary({ round, track }: { round: CatalogRound; track: TrackId }) {
   return (
-    <div className="rounded-[4px] border border-soft-line bg-slate-50 px-5 py-4">
+    <div className="rounded-[2px] border border-soft-line bg-slate-50 px-5 py-4">
       <p className="text-[12px] font-semibold text-soft-muted">{trackLabel(track)}</p>
       <p className="mt-1 text-[16px] font-bold text-soft-ink">
         TalentMe {evalName(round.id, track, round.label)}
@@ -292,7 +292,7 @@ function ExamDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="exam-dialog-title"
-        className="w-full max-w-md rounded-md border border-soft-line bg-white px-7 py-6"
+        className="w-full max-w-md rounded-[2px] border border-soft-line bg-white px-7 py-6"
       >
         <p className={eyebrow}>{eyebrowText}</p>
         <h2 id="exam-dialog-title" className="mt-2 text-[19px] font-bold text-soft-ink">

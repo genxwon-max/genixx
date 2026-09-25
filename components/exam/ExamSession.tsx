@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   answerText,
+  assessment,
   blankFilled,
   FREE_LIMIT_MIN,
   SUBJECT_IDS,
@@ -49,6 +50,10 @@ import {
 import { useSession } from "@/lib/authStore";
 import { renderDetail } from "@/lib/richText";
 import { useExamConfig } from "@/lib/roundStore";
+import { quarterLabel, seasonOf, trackOf } from "@/lib/examCatalog";
+import { formatCode, useRoster } from "@/lib/roster";
+import { useWallet } from "@/lib/ticketStore";
+import ExamCover from "./ExamCover";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { btnDanger, btnDisabled, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
@@ -300,6 +305,8 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   if (!entered) {
     return (
       <StartGate
+        scope={scope}
+        studentId={studentId}
         title={sheet.title}
         count={list.length}
         limitMin={limitMin}
@@ -331,24 +338,8 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   const goTo = (q: Question) => setIndex(screens.findIndex((sc) => sc.includes(q)));
 
   return (
+    /* 머리는 응시 존 레이아웃이 한 줄로 세운다(ExamStatusBar) — 여기서 또 그리지 않는다 */
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
-      {/* 문항 머리 — 과목과 지금 문제 번호. S위계는 보이지 않는다 */}
-      <div className="shrink-0 border-b border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          <div className="flex items-baseline gap-3">
-            <p className="text-[14px] font-bold tracking-tight text-exam-text">{sheet.title}</p>
-            <span className="hidden text-[12px] text-exam-muted sm:block">
-              {/* 무료시험은 과목이 섞여 있어, 지금 푸는 문항의 과목을 함께 적는다 */}
-              {scope.kind === "free" && subjectOf(question.subject)!.short + " · "}총 {order.length}
-              문항 · 제한 {limitMin}분
-            </span>
-          </div>
-          <p className="text-[12px] font-medium tabular-nums text-exam-muted">
-            {numbersText(order, screen)} / {order.length}
-          </p>
-        </div>
-      </div>
-
       {/* 본문 — 좌: 자료(보기) / 가운데: 문제 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
         <BriefPanel brief={question.brief} range={setRange(order, question)} />
@@ -574,7 +565,7 @@ export function QuestionPad({
                   aria-current={current ? "step" : undefined}
                   aria-label={`문항 ${i + 1} ${state}`}
                   title={`문항 ${i + 1} · ${kindLabel(q)} · ${state}`}
-                  className={`flex h-9 w-9 flex-col items-center justify-center rounded-[6px] border text-[13px] tabular-nums transition-colors ${
+                  className={`flex h-9 w-9 flex-col items-center justify-center rounded-[2px] border text-[13px] tabular-nums transition-colors ${
                     current
                       ? "border-exam-text bg-exam-text font-bold text-white"
                       : lockedHere
@@ -624,14 +615,33 @@ export function QuestionPad({
 
 /* ───────────────────────── 응시 전 안내 ───────────────────────── */
 
-/** 응시 전 안내 — 문항 수는 **이 판에 열린 수**를 적는다(갈래가 정한다) */
+/**
+ * 응시 전 표지 — 셋트 창과 같은 시험지 표지(components/exam/ExamCover.tsx)를 쓴다.
+ *
+ * 가입 전에 본 종이와 가입한 뒤 받는 종이가 다르면, 아이는 같은 검사를 두 번 처음 보는
+ * 셈이 된다. 다른 것은 표에 적히는 값뿐이다 — 여기서는 학년 · 이름 · 접속코드가 실제로
+ * 채워지고, 응시 과목도 고르는 것이 아니라 **정해진 것**이라 읽기만 한다.
+ *
+ * ── 교시 ──
+ * 유료시험은 과목마다 따로 들어가므로 과목 차례가 곧 교시다(국어 제1교시 · 수학 제2교시 …).
+ * 무료시험은 20문항을 한 번에 보는 한 교시짜리 시험이라 언제나 제1교시다.
+ *
+ * ── 회차 ──
+ * 표지 첫 줄의 해 · 분기는 **접수 기록**에서 읽는다. 회차 설정의 이름(roundLabel)은 관리자가
+ * 손으로 적는 글이라 「2026학년도 1회차(26A)」처럼 표지에 그대로 앉히기 어려운 꼴이 온다.
+ * 접수한 것이 없으면(시연 계정) 회차 설정의 이름으로 물러선다.
+ */
 function StartGate({
+  scope,
+  studentId,
   title,
   count,
   limitMin,
   note,
   onStart,
 }: {
+  scope: ExamScope;
+  studentId: string;
   title: string;
   count: number;
   limitMin: number;
@@ -640,19 +650,90 @@ function StartGate({
   onStart: () => void;
 }) {
   const config = useExamConfig();
+  const hydrated = useHydrated();
+  const wallet = useWallet(studentId);
+  const roster = useRoster();
+  const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
+
+  /* 가장 최근에 접수한 평가 — 표지의 해 · 분기와 학년이 여기서 온다 */
+  const applied = wallet.used[wallet.used.length - 1] ?? null;
+  const season = applied
+    ? `${seasonOf({ id: applied.round, opensOn: "" }).year}학년도 ${quarterLabel(seasonOf({ id: applied.round, opensOn: "" }).quarter)}`
+    : config.roundLabel;
+  const grade = applied ? trackOf(applied.track).grades : (student?.grade ?? "-");
+
+  /* 과목마다 따로 들어가는 유료시험은 과목 차례가 곧 교시다 */
+  const period =
+    scope.kind === "free" ? 1 : subjects.findIndex((x) => x.id === scope.subject) + 1;
+
   return (
-    <div className="container-x flex min-h-full items-center py-10">
-      <div className={`mx-auto w-full max-w-xl p-8 md:p-10 ${panel}`}>
-        <p className={eyebrow}>응시 안내</p>
-        <h1 className="mt-3 text-[24px] font-black tracking-tight text-exam-text">
-          {title} 평가를 시작합니다
-        </h1>
-        <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
-          시작 버튼을 누르면 <b className="text-exam-text">전체화면</b>으로 전환되고 제한 시간이
-          흐르기 시작합니다.
+    <div className="container-x flex min-h-full items-start justify-center py-8">
+      <div className="w-full max-w-[820px]">
+        <ExamCover
+          badge={`제${period}교시`}
+          headline={`${season} GENIXX 진단평가 ${title} 문항지`}
+          title={assessment.name}
+          watermark={`GENIXX${season.slice(0, 4)}`}
+          notice="(이 면의 인적사항이 맞는지 확인한 뒤 아래 버튼을 눌러 시작해 주세요. 시작하면 전체화면으로 바뀌고 제한 시간이 흐르기 시작합니다.)"
+          groups={[
+            {
+              id: "grade",
+              cells: [
+                { kind: "label", text: "학년" },
+                { kind: "value", key: "g", text: grade, width: "w-[5rem]" },
+              ],
+            },
+            {
+              id: "who",
+              cells: [
+                { kind: "label", text: "이름" },
+                {
+                  kind: "value",
+                  key: "name",
+                  text: student?.name ?? "-",
+                  muted: !student,
+                  width: "w-[5rem]",
+                },
+                { kind: "label", text: "ID" },
+                {
+                  kind: "value",
+                  key: "id",
+                  text: student ? formatCode(student.code) : "-",
+                  muted: !student,
+                  width: "w-[7rem]",
+                },
+              ],
+            },
+            {
+              id: "subject",
+              cells: [
+                { kind: "label", text: "응시 과목" },
+                /* 고르는 칸이 아니다 — 무엇을 보는지 적어 둘 뿐이라 onPick을 두지 않는다 */
+                ...subjects.map((x) => ({
+                  kind: "value" as const,
+                  key: x.id,
+                  text: x.short,
+                  on: scope.kind === "free" || scope.subject === x.id,
+                })),
+              ],
+            },
+          ]}
+        />
+
+        {/* ── 종이 바깥 ── */}
+        <button
+          type="button"
+          onClick={onStart}
+          className={`mt-6 w-full py-4 text-[16px] ${btnPrimary}`}
+        >
+          전체화면으로 평가 시작
+          <ArrowRight className="h-5 w-5" />
+        </button>
+        <p className="mt-2.5 text-center text-[11px] text-exam-muted">
+          브라우저가 전체화면을 막는 경우에는 일반 창으로 진행됩니다.
         </p>
 
-        <ul className="mt-6 space-y-2.5 border-t border-exam-line pt-6 text-[13px] leading-relaxed text-exam-muted">
+        <ul className="mt-6 space-y-2 text-center text-[13px] leading-relaxed text-exam-muted">
           {note && <li>· {note}</li>}
           <li>
             · 문항 <b className="text-exam-text">{count}개</b> · 제한 시간{" "}
@@ -665,21 +746,9 @@ function StartGate({
           </li>
           <li>· 답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다.</li>
           <li>· 제출 후에는 문항마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>
-          <li>· 중간에 포기하면 이 과목의 응시 기회가 사라집니다.</li>
+          <li>· 중간에 포기하면 이 시험의 응시 기회가 사라집니다.</li>
           <li>· 보호자는 문제 풀이에 개입할 수 없습니다.</li>
         </ul>
-
-        <button
-          type="button"
-          onClick={onStart}
-          className={`mt-8 w-full py-4 text-[16px] ${btnPrimary}`}
-        >
-          전체화면으로 평가 시작
-          <ArrowRight className="h-5 w-5" />
-        </button>
-        <p className="mt-2.5 text-center text-[11px] text-exam-muted">
-          브라우저가 전체화면을 막는 경우에는 일반 창으로 진행됩니다.
-        </p>
       </div>
     </div>
   );
@@ -747,9 +816,8 @@ function ReflectionStep({ sheet }: { sheet: Sheet }) {
         {/* 가운데 — 문항과 내가 낸 답, 그 아래 새로 열리는 칸 하나 */}
         <section className="order-3 px-6 py-7 lg:order-2 lg:overflow-y-auto lg:px-10 lg:py-9">
           <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
-            <p className="font-myeongjo text-[15px] font-bold text-exam-text">
-              문항 <span className="tabular-nums">{index + 1}</span>
-              <span className="ml-1.5 font-medium text-exam-muted">({kindLabel(question)})</span>
+            <p className="font-myeongjo text-[15px] text-exam-text">
+              <span className="font-bold tabular-nums">{index + 1}.</span>
             </p>
             <p className="text-[12px] font-medium text-exam-muted">제출완료 · 수정 불가</p>
           </div>
@@ -797,7 +865,7 @@ function ReflectionStep({ sheet }: { sheet: Sheet }) {
           ) : (
             <div className="mt-7">
               <p className="text-[12px] font-semibold text-exam-muted">내가 쓴 답</p>
-              <p className="mt-2 min-h-[6rem] whitespace-pre-line rounded-[6px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text">
+              <p className="mt-2 min-h-[6rem] whitespace-pre-line rounded-[2px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text">
                 {essayText || <span className="text-exam-muted">답을 작성하지 않았습니다.</span>}
               </p>
             </div>
@@ -828,7 +896,7 @@ function ReflectionStep({ sheet }: { sheet: Sheet }) {
                 const on = pick === r.id;
                 return (
                   <li key={r.id}>
-                    <label className="group relative flex cursor-pointer items-center gap-3.5 rounded-[6px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500">
+                    <label className="group relative flex cursor-pointer items-center gap-3.5 rounded-[2px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text">
                       <input
                         type="radio"
                         name={`reason-${question.id}`}
@@ -884,7 +952,7 @@ function ReflectionStep({ sheet }: { sheet: Sheet }) {
                   ? "예) 표에서 무엇을 빼야 하는지 몰라서 못 풀었습니다."
                   : "예) 지문에 '씨앗이 자랐는지 보려고'라는 말이 있어서 2번을 골랐습니다."
               }
-              className="mt-3 w-full rounded-[6px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
+              className="mt-3 w-full rounded-[2px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
             />
             <p className="mt-2 flex items-center justify-between gap-3 text-[12px] tabular-nums text-exam-muted">
               <span>맞고 틀리고를 보는 칸이 아닙니다. 점수에 반영되지 않습니다.</span>
@@ -985,7 +1053,7 @@ function SubmitDialog({
       aria-labelledby="submit-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-exam-text/40 p-5"
     >
-      <div className="w-full max-w-md rounded-md border border-exam-line bg-exam-panel p-7">
+      <div className="w-full max-w-md rounded-[2px] border border-exam-line bg-exam-panel p-7">
         <p className={eyebrow}>제출 확인</p>
         <h2 id="submit-title" className="mt-3 text-[20px] font-black text-exam-text">
           {subjectName} 답안을 제출할까요?
@@ -1036,7 +1104,7 @@ function ForfeitDialog({
       aria-labelledby="forfeit-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-exam-text/40 p-5"
     >
-      <div className="w-full max-w-md rounded-md border border-rose-300 bg-exam-panel p-7">
+      <div className="w-full max-w-md rounded-[2px] border border-rose-300 bg-exam-panel p-7">
         <p className={eyebrow}>경고 · 되돌릴 수 없음</p>
         <h2 id="forfeit-title" className="mt-3 text-[20px] font-black text-exam-text">
           {subjectName} 응시를 포기할까요?
@@ -1183,9 +1251,10 @@ export function WithBlanks({ text, compact = false }: { text: string; compact?: 
 export function BriefPanel({ brief, range }: { brief: Brief; range?: string | null }) {
   return (
     <section className="font-myeongjo order-2 border-b border-exam-line bg-exam-panel px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
-      {/* 시험지처럼 「[1~4] 다음 … 답하시오.」 한 줄로 연다 — 자료 이름표 · 제목 · 안내 문구는 두지 않는다 */}
-      <p className="text-[15px] font-bold leading-[1.7] text-exam-text">
-        {range && <span className="mr-1.5 tabular-nums">[{range}]</span>}
+      {/* 시험지처럼 「[1~4] 다음 … 답하시오.」 한 줄로 연다 — 자료 이름표 · 제목 · 안내 문구는
+          두지 않는다. 굵은 글씨는 번호에만 둔다(문항 머리와 같은 약속) */}
+      <p className="text-[15px] leading-[1.7] text-exam-text">
+        {range && <span className="mr-1.5 font-bold tabular-nums">[{range}]</span>}
         {brief.lead ?? "다음을 읽고 물음에 답하시오."}
       </p>
 
@@ -1268,7 +1337,7 @@ function BlockView({ block: b }: { block: Block }) {
             poster={b.poster}
             controls
             preload="metadata"
-            className="w-full rounded-[6px] border border-exam-line bg-black"
+            className="w-full rounded-[2px] border border-exam-line bg-black"
           />
           {b.caption && (
             <figcaption className="mt-2 text-center text-[14px] text-exam-text">
@@ -1561,7 +1630,7 @@ function PendulumClip({ periodSec, caption }: { periodSec: number; caption: stri
   const [playing, setPlaying] = useState(false);
   return (
     <figure className="mx-auto w-full max-w-[18rem]">
-      <div className="relative overflow-hidden rounded-[6px] border border-exam-line bg-[#f4f1ea]">
+      <div className="relative overflow-hidden rounded-[2px] border border-exam-line bg-[#f4f1ea]">
         <svg viewBox="0 0 200 180" className="block w-full" aria-hidden>
           <rect x="60" y="8" width="80" height="8" rx="2" fill="#b58a57" />
           <g
@@ -1596,7 +1665,7 @@ function PendulumClip({ periodSec, caption }: { periodSec: number; caption: stri
           <button
             type="button"
             onClick={() => setPlaying(false)}
-            className="rounded-[4px] border border-exam-line px-2 py-0.5 text-exam-text hover:bg-exam-raised"
+            className="rounded-[2px] border border-exam-line px-2 py-0.5 text-exam-text hover:bg-exam-raised"
           >
             멈추기
           </button>
@@ -1635,8 +1704,9 @@ export function ScreenColumn({
     <div key={screen[0].id} className="order-3 lg:order-2 lg:overflow-y-auto">
       {groupBrief && (
         <section className="font-myeongjo border-b border-exam-line px-6 pt-7 pb-6 lg:px-10">
-          <p className="text-[15px] font-bold leading-[1.7] text-exam-text">
-            <span className="mr-1.5 tabular-nums">
+          {/* 묶음 머리도 굵은 글씨는 번호에만 — 「[1~4] 다음을 읽고 물음에 답하시오.」 */}
+          <p className="text-[15px] leading-[1.7] text-exam-text">
+            <span className="mr-1.5 font-bold tabular-nums">
               {numbersText(order, screen).replace("문항 ", "[")}]
             </span>
             {groupBrief.lead ?? "다음을 읽고 물음에 답하시오."}
@@ -1674,14 +1744,17 @@ export function QuestionBody({
 }) {
   return (
     <section className="font-myeongjo px-6 py-7 lg:px-10 lg:py-9">
-      {/* 시험지처럼 「문항 1 (서술형)」 아래에 발문을 둔다 */}
-      <p className="text-[15px] font-bold text-exam-text">
-        문항 <span className="tabular-nums">{num}</span>
-        <span className="ml-1.5 font-medium text-exam-muted">({kindLabel(q)})</span>
-      </p>
-
-      <h1 className="mt-2.5 whitespace-pre-line text-[15px] font-semibold leading-[1.7] text-exam-text">
-        <WithBlanks text={q.stem} />
+      {/*
+        시험지처럼 **번호를 발문 왼쪽에** 붙인다.
+        굵은 글씨는 번호에만 둔다 — 발문까지 굵으면 한 덩이가 통째로 강조되어, 무엇이 문항을
+        가르는 표시인지 안 보인다. 유형(객관식 · 서술형)은 적지 않는다. 보기가 있으면 고르는
+        문제이고 없으면 쓰는 문제라, 화면이 이미 말하고 있는 것을 글로 한 번 더 적는 셈이다.
+      */}
+      <h1 className="flex gap-2.5 text-[15px] leading-[1.7] text-exam-text">
+        <span className="shrink-0 font-bold tabular-nums">{num}.</span>
+        <span className="whitespace-pre-line">
+          <WithBlanks text={q.stem} />
+        </span>
       </h1>
 
       {q.blocks && q.blocks.length > 0 && <BlockList blocks={q.blocks} className="mt-6" />}
@@ -1700,7 +1773,7 @@ export function QuestionBody({
                 <li key={c}>
                   {/* relative는 숨긴 라디오(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨
                         위를 기준으로 놓여 응시 화면 바깥에 스크롤이 생긴다. */}
-                  <label className="group relative flex cursor-pointer items-start gap-3.5 rounded-[6px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500">
+                  <label className="group relative flex cursor-pointer items-start gap-3.5 rounded-[2px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text">
                     <input
                       type="radio"
                       name={q.id}
@@ -1753,7 +1826,7 @@ export function QuestionBody({
             onChange={(e) => onAnswer(e.target.value)}
             placeholder={q.placeholder}
             aria-label="서술형 답안"
-            className="w-full rounded-md border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-brand-500"
+            className="w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
           />
           <p className="mt-2 text-right font-sans text-[12px] tabular-nums text-exam-muted">
             {(typeof value === "string" ? value : "").trim().length}자
@@ -1836,7 +1909,7 @@ function BlankFields({
                     return (
                       <label
                         key={o}
-                        className={`relative cursor-pointer rounded-[6px] border px-3.5 py-2 text-[14px] transition-colors ${
+                        className={`relative cursor-pointer rounded-[2px] border px-3.5 py-2 text-[14px] transition-colors ${
                           on
                             ? "border-exam-text font-bold text-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
                             : "border-exam-line text-exam-text hover:border-exam-muted"
@@ -2038,7 +2111,7 @@ function DrawPad({
   return (
     <div className="mt-2.5 pl-6">
       <div
-        className="relative aspect-square w-full max-w-[20rem] overflow-hidden rounded-[4px] border border-exam-text/60 bg-white bg-cover bg-center"
+        className="relative aspect-square w-full max-w-[20rem] overflow-hidden rounded-[2px] border border-exam-text/60 bg-white bg-cover bg-center"
         style={background ? { backgroundImage: `url(${background})` } : undefined}
       >
         <canvas
@@ -2058,7 +2131,7 @@ function DrawPad({
           type="button"
           onClick={() => setEraser(false)}
           aria-pressed={!eraser}
-          className={`rounded-[4px] border px-2.5 py-1 ${!eraser ? "border-exam-text font-bold text-exam-text" : "border-exam-line text-exam-muted"}`}
+          className={`rounded-[2px] border px-2.5 py-1 ${!eraser ? "border-exam-text font-bold text-exam-text" : "border-exam-line text-exam-muted"}`}
         >
           펜
         </button>
@@ -2066,14 +2139,14 @@ function DrawPad({
           type="button"
           onClick={() => setEraser(true)}
           aria-pressed={eraser}
-          className={`rounded-[4px] border px-2.5 py-1 ${eraser ? "border-exam-text font-bold text-exam-text" : "border-exam-line text-exam-muted"}`}
+          className={`rounded-[2px] border px-2.5 py-1 ${eraser ? "border-exam-text font-bold text-exam-text" : "border-exam-line text-exam-muted"}`}
         >
           지우개
         </button>
         <button
           type="button"
           onClick={clear}
-          className="ml-auto rounded-[4px] border border-exam-line px-2.5 py-1 text-exam-muted hover:text-exam-text"
+          className="ml-auto rounded-[2px] border border-exam-line px-2.5 py-1 text-exam-muted hover:text-exam-text"
         >
           모두 지우기
         </button>

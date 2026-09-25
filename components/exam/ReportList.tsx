@@ -54,7 +54,7 @@ export default function ReportList() {
                 type="button"
                 aria-expanded={on}
                 onClick={() => setOpen(on ? null : key(row))}
-                className={`inline-flex items-center justify-center rounded-[4px] px-4 py-2 text-[13px] font-semibold transition-colors ${
+                className={`inline-flex items-center justify-center rounded-[2px] px-4 py-2 text-[13px] font-semibold transition-colors ${
                   on
                     ? "border border-soft-line bg-white text-soft-ink hover:bg-slate-50"
                     : "bg-soft-primary text-white hover:bg-soft-primary-dark"

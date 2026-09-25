@@ -66,7 +66,7 @@ export default function ExamInfo() {
           { t: "제한 시간", d: `무료시험 ${FREE_LIMIT_MIN}분 · 유료시험 ${limitText || "-"}` },
           { t: "응시 횟수", d: "해마다 4회 (1~4분기)" },
         ].map((s) => (
-          <div key={s.t} className="rounded-[10px] border border-soft-line bg-white px-5 py-4">
+          <div key={s.t} className="rounded-[2px] border border-soft-line bg-white px-5 py-4">
             <dt className="text-[12px] text-soft-muted">{s.t}</dt>
             <dd className="mt-1 text-[17px] font-bold text-soft-ink">{s.d}</dd>
           </div>
@@ -83,7 +83,7 @@ export default function ExamInfo() {
         {tiers.map((t, i) => (
           <li
             key={t.id}
-            className="flex h-full flex-col rounded-[10px] border border-soft-line bg-white p-5"
+            className="flex h-full flex-col rounded-[2px] border border-soft-line bg-white p-5"
           >
             <span className="text-[12px] font-bold tabular-nums text-soft-primary">
               {i + 1}단계
@@ -116,7 +116,7 @@ export default function ExamInfo() {
           <li key={m.href}>
             <Link
               href={m.href}
-              className="flex h-full flex-col rounded-[10px] border border-soft-line bg-white p-5 transition-colors hover:border-soft-primary"
+              className="flex h-full flex-col rounded-[2px] border border-soft-line bg-white p-5 transition-colors hover:border-soft-primary"
             >
               <span className="text-[12px] font-bold tabular-nums text-soft-primary">
                 STEP {i + 1}
@@ -132,7 +132,7 @@ export default function ExamInfo() {
 
       {/* 규정 */}
       <div className="mt-12 grid gap-6 md:grid-cols-2">
-        <section className="rounded-[10px] border border-soft-line bg-white p-6">
+        <section className="rounded-[2px] border border-soft-line bg-white p-6">
           <h2 className="text-[17px] font-bold text-soft-ink">응시 전에 확인해 주세요</h2>
           <ul className="mt-3 space-y-2 text-[14px] leading-relaxed text-soft-muted">
             <li>
@@ -156,7 +156,7 @@ export default function ExamInfo() {
             <li>· 중간에 포기하면 그 시험의 응시 기회가 사라집니다.</li>
           </ul>
         </section>
-        <section className="rounded-[10px] border border-soft-line bg-white p-6">
+        <section className="rounded-[2px] border border-soft-line bg-white p-6">
           <h2 className="text-[17px] font-bold text-soft-ink">응시 환경과 규정</h2>
           <ul className="mt-3 space-y-2 text-[14px] leading-relaxed text-soft-muted">
             <li>

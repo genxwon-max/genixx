@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 export default function ExamPaper({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-[1180px] px-3 py-5 md:px-6 md:py-8">
-      <div className="rounded-[12px] bg-exam-paper px-5 py-8 shadow-[0_1px_3px_rgba(26,34,66,0.06)] ring-1 ring-exam-line/60 md:px-10 md:py-12">
+      <div className="rounded-[2px] bg-exam-paper px-5 py-8 shadow-[0_1px_3px_rgba(26,34,66,0.06)] ring-1 ring-exam-line/60 md:px-10 md:py-12">
         {children}
       </div>
     </div>

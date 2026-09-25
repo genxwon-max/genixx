@@ -18,13 +18,13 @@ export default function SessionBar() {
       <div className="flex items-center gap-2">
         <Link
           href="/login/student"
-          className="rounded-md border border-exam-line px-4 py-2 text-[13px] font-bold text-exam-text transition-colors hover:bg-exam-raised"
+          className="rounded-[2px] border border-exam-line px-4 py-2 text-[13px] font-bold text-exam-text transition-colors hover:bg-exam-raised"
         >
           로그인
         </Link>
         <Link
           href="/signup/type"
-          className="rounded-md bg-soft-primary px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-soft-primary-dark"
+          className="rounded-[2px] bg-soft-primary px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-soft-primary-dark"
         >
           회원가입
         </Link>
@@ -40,7 +40,7 @@ export default function SessionBar() {
       <button
         type="button"
         onClick={signOut}
-        className="rounded-md border border-exam-line px-4 py-2 text-[13px] font-bold text-exam-text transition-colors hover:bg-exam-raised"
+        className="rounded-[2px] border border-exam-line px-4 py-2 text-[13px] font-bold text-exam-text transition-colors hover:bg-exam-raised"
       >
         로그아웃
       </button>

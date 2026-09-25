@@ -64,7 +64,7 @@ export default function AnswerKey() {
                 type="button"
                 aria-expanded={open === key(row)}
                 onClick={() => setChosen(open === key(row) ? null : key(row))}
-                className={`inline-flex items-center justify-center rounded-[4px] px-4 py-2 text-[13px] font-semibold transition-colors ${
+                className={`inline-flex items-center justify-center rounded-[2px] px-4 py-2 text-[13px] font-semibold transition-colors ${
                   open === key(row)
                     ? "border border-soft-line bg-white text-soft-ink hover:bg-slate-50"
                     : "bg-soft-primary text-white hover:bg-soft-primary-dark"
@@ -179,7 +179,7 @@ function Sheet({
               type="button"
               aria-pressed={on}
               onClick={() => setSubject(s.id)}
-              className={`rounded-[4px] border px-5 py-2.5 text-[14px] transition-colors ${
+              className={`rounded-[2px] border px-5 py-2.5 text-[14px] transition-colors ${
                 on
                   ? "border-soft-primary bg-soft-primary font-semibold text-white"
                   : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
@@ -215,7 +215,7 @@ function Sheet({
       <button
         type="button"
         onClick={() => setCoach(true)}
-        className="no-print fixed right-5 bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-soft-primary px-6 py-3.5 text-[15px] font-bold text-white shadow-float transition-colors hover:bg-soft-primary-dark md:right-8 md:bottom-8"
+        className="no-print fixed right-5 bottom-5 z-40 inline-flex items-center gap-2 rounded-[2px] bg-soft-primary px-6 py-3.5 text-[15px] font-bold text-white shadow-float transition-colors hover:bg-soft-primary-dark md:right-8 md:bottom-8"
       >
         <svg aria-hidden viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none">
           <path
@@ -468,7 +468,7 @@ function QuestionReview({ line, subject }: { line: Line; subject: SubjectId }) {
   return (
     <li
       id={anchor(subject, no)}
-      className="scroll-mt-36 rounded-[4px] border border-soft-line bg-white px-5 py-5"
+      className="scroll-mt-36 rounded-[2px] border border-soft-line bg-white px-5 py-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <p className="text-[14px] font-bold text-soft-ink">
@@ -496,7 +496,7 @@ function QuestionReview({ line, subject }: { line: Line; subject: SubjectId }) {
               return (
                 <li
                   key={c}
-                  className={`flex items-start gap-3 rounded-[4px] border px-3.5 py-2.5 text-[14px] leading-relaxed ${
+                  className={`flex items-start gap-3 rounded-[2px] border px-3.5 py-2.5 text-[14px] leading-relaxed ${
                     isAnswer
                       ? "border-emerald-500 bg-emerald-50 text-soft-ink"
                       : isMine
@@ -538,7 +538,7 @@ function QuestionReview({ line, subject }: { line: Line; subject: SubjectId }) {
         </>
       ) : (
         <div className="mt-3 space-y-3">
-          <div className="rounded-[4px] border border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="rounded-[2px] border border-slate-100 bg-slate-50 px-4 py-3">
             <p className="text-[12px] font-bold text-soft-muted">내 답</p>
             <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-soft-ink">
               {answerText(q, mine) || "쓰지 않았습니다."}
@@ -628,7 +628,7 @@ function CoachDialog({
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-5"
     >
-      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-[12px] bg-white p-7 shadow-float">
+      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-[2px] bg-white p-7 shadow-float">
         <h2 id="coach-title" className="text-[19px] font-bold text-soft-ink">
           맞춤 학습
         </h2>
@@ -643,7 +643,7 @@ function CoachDialog({
             {misses
               .filter((g) => g.miss.length > 0)
               .map((g) => (
-                <li key={g.id} className="rounded-[8px] border border-soft-line px-4 py-3">
+                <li key={g.id} className="rounded-[2px] border border-soft-line px-4 py-3">
                   <p className="text-[13px] font-bold text-soft-ink">
                     {g.name}{" "}
                     <span className="font-semibold text-rose-600">{g.miss.length}문항</span>
@@ -654,7 +654,7 @@ function CoachDialog({
                         key={l.q.id}
                         type="button"
                         onClick={() => onGo(g.id, l.no)}
-                        className="min-w-9 rounded-[4px] border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[13px] font-bold tabular-nums text-rose-700 transition-colors hover:bg-rose-100"
+                        className="min-w-9 rounded-[2px] border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[13px] font-bold tabular-nums text-rose-700 transition-colors hover:bg-rose-100"
                       >
                         {l.no}
                       </button>

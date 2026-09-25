@@ -202,7 +202,7 @@ export default function ExamCatalog() {
                   setStatus(e.target.value as StatusFilter);
                   setPage(1);
                 }}
-                className="h-10 min-w-[120px] rounded-[4px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none focus:border-soft-primary"
+                className="h-10 min-w-[120px] rounded-[2px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none focus:border-soft-primary"
               >
                 <option value="all">전체</option>
                 {(Object.keys(availabilityLabel) as Availability[]).map((k) => (
@@ -219,12 +219,12 @@ export default function ExamCatalog() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="평가명으로 찾기 (예: 2026, 3분기, 초4)"
-                className="h-10 w-full rounded-[4px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none placeholder:text-slate-400 focus:border-soft-primary"
+                className="h-10 w-full rounded-[2px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none placeholder:text-slate-400 focus:border-soft-primary"
               />
             </Field>
             <button
               type="submit"
-              className="h-10 rounded-[4px] bg-soft-primary px-5 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark"
+              className="h-10 rounded-[2px] bg-soft-primary px-5 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark"
             >
               검색
             </button>
@@ -237,7 +237,7 @@ export default function ExamCatalog() {
                   setQuery("");
                   setPage(1);
                 }}
-                className="h-10 rounded-[4px] border border-soft-line bg-white px-4 text-[14px] text-soft-ink transition-colors hover:bg-slate-50"
+                className="h-10 rounded-[2px] border border-soft-line bg-white px-4 text-[14px] text-soft-ink transition-colors hover:bg-slate-50"
               >
                 초기화
               </button>
@@ -305,7 +305,7 @@ export default function ExamCatalog() {
             resetWallet(studentId);
             resetStudent(studentId);
           }}
-          className="rounded-[4px] border border-soft-line bg-white px-4 py-2 text-[12px] font-bold text-soft-muted transition-colors hover:bg-slate-50"
+          className="rounded-[2px] border border-soft-line bg-white px-4 py-2 text-[12px] font-bold text-soft-muted transition-colors hover:bg-slate-50"
         >
           시연용 초기화
         </button>
@@ -396,7 +396,7 @@ function GradeCategory({
               type="button"
               aria-pressed={on}
               onClick={() => onPick(id)}
-              className={`rounded-[4px] border px-3.5 py-2 text-[14px] transition-colors ${
+              className={`rounded-[2px] border px-3.5 py-2 text-[14px] transition-colors ${
                 on
                   ? "border-soft-primary bg-soft-primary font-semibold text-white"
                   : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
@@ -502,7 +502,7 @@ function Pager({
   const nums = Array.from({ length: Math.min(5, pages) }, (_, i) => start + i);
 
   const cell =
-    "inline-flex h-9 min-w-9 items-center justify-center rounded-[4px] border px-2.5 text-[13px] tabular-nums transition-colors";
+    "inline-flex h-9 min-w-9 items-center justify-center rounded-[2px] border px-2.5 text-[13px] tabular-nums transition-colors";
   const idle = "border-soft-line bg-white text-soft-ink hover:bg-slate-50";
   const off = "cursor-not-allowed border-soft-line bg-white text-slate-300";
 
@@ -543,7 +543,7 @@ function Pager({
 /* ───────────────────────── 리스트 ───────────────────────── */
 
 const rowBtn =
-  "inline-flex items-center justify-center whitespace-nowrap rounded-[4px] bg-soft-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
+  "inline-flex items-center justify-center whitespace-nowrap rounded-[2px] bg-soft-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
 
 function ListView({ items, total, offset }: { items: Item[]; total: number; offset: number }) {
   const th = "border-b border-soft-line px-4 py-4 font-semibold text-soft-ink";
@@ -596,7 +596,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
                     {assessment.name} {it.name}
                   </span>
                   {it.mine && (
-                    <span className="ml-2 whitespace-nowrap rounded-[4px] bg-soft-primary px-1.5 py-0.5 align-[1px] text-[11px] font-bold text-white">
+                    <span className="ml-2 whitespace-nowrap rounded-[2px] bg-soft-primary px-1.5 py-0.5 align-[1px] text-[11px] font-bold text-white">
                       내 학년
                     </span>
                   )}
@@ -683,7 +683,7 @@ function ExamCard({ round, track, name, mine, action, onApply, onUpgrade }: Item
   const total = round.subjects.reduce((sum, s) => sum + s.minutes, 0);
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-[14px] border border-soft-line bg-white">
+    <article className="flex h-full flex-col overflow-hidden rounded-[2px] border border-soft-line bg-white">
       <div className="relative aspect-[16/9] bg-slate-100">
         <Image
           src={track.image}
@@ -693,7 +693,7 @@ function ExamCard({ round, track, name, mine, action, onApply, onUpgrade }: Item
           className="object-cover"
         />
         {mine && (
-          <span className="absolute right-3 top-3 rounded-[4px] bg-soft-primary px-2 py-1 text-[12px] font-bold text-white">
+          <span className="absolute right-3 top-3 rounded-[2px] bg-soft-primary px-2 py-1 text-[12px] font-bold text-white">
             내 학년
           </span>
         )}

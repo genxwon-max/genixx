@@ -33,7 +33,7 @@ export default function Toast({
     <div
       role="status"
       aria-live="polite"
-      className="animate-fade-up fixed bottom-6 right-6 z-50 max-w-sm rounded-md border border-exam-line bg-exam-text px-5 py-3.5 text-[13px] font-medium leading-relaxed text-white shadow-float"
+      className="animate-fade-up fixed bottom-6 right-6 z-50 max-w-sm rounded-[2px] border border-exam-line bg-exam-text px-5 py-3.5 text-[13px] font-medium leading-relaxed text-white shadow-float"
     >
       {message}
     </div>

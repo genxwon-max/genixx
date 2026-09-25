@@ -116,7 +116,7 @@ export function RegTable({
                   {/* 갈래를 검사명 옆에 둔다 — 무료로 본 아이가 「왜 20문항뿐인가」를
                       물을 자리가 여기다 */}
                   <span
-                    className={`ml-2 whitespace-nowrap rounded-[4px] px-1.5 py-0.5 align-[1px] text-[11px] font-bold ${
+                    className={`ml-2 whitespace-nowrap rounded-[2px] px-1.5 py-0.5 align-[1px] text-[11px] font-bold ${
                       r.tier === "free"
                         ? "bg-slate-100 text-soft-muted"
                         : "bg-soft-primary text-white"

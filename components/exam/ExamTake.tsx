@@ -45,9 +45,9 @@ export default function ExamTake() {
 }
 
 const cellBtn =
-  "inline-flex items-center justify-center rounded-[4px] bg-soft-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
+  "inline-flex items-center justify-center rounded-[2px] bg-soft-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
 const cellBtnGhost =
-  "inline-flex items-center justify-center rounded-[4px] border border-soft-line bg-white px-4 py-2 text-[13px] font-medium text-soft-ink transition-colors hover:bg-slate-50";
+  "inline-flex items-center justify-center rounded-[2px] border border-soft-line bg-white px-4 py-2 text-[13px] font-medium text-soft-ink transition-colors hover:bg-slate-50";
 
 function TakeCell({ row, record }: { row: Registration; record: ExamRecord }) {
   const href = roomHref(row.round, row.track);
