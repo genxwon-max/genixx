@@ -862,7 +862,7 @@ export type GradingCase = {
   confidence: number;
   /** 사람이 봐야 하는 이유 */
   flag: string | null;
-  surveys: { mother: boolean; father: boolean; teacher: boolean };
+  surveys: { guardian: boolean; teacher: boolean };
   reviewer: string | null;
   updatedAt: string;
 };
@@ -877,7 +877,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "수리·논리",
     confidence: 91,
     flag: null,
-    surveys: { mother: true, father: false, teacher: true },
+    surveys: { guardian: true, teacher: true },
     reviewer: null,
     updatedAt: "08-09 09:14",
   },
@@ -890,7 +890,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "언어",
     confidence: 63,
     flag: "판정 컷 경계 (±3점 이내)",
-    surveys: { mother: true, father: true, teacher: false },
+    surveys: { guardian: true, teacher: false },
     reviewer: null,
     updatedAt: "08-09 09:02",
   },
@@ -903,7 +903,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "자연·탐구",
     confidence: 88,
     flag: null,
-    surveys: { mother: false, father: false, teacher: false },
+    surveys: { guardian: false, teacher: false },
     reviewer: "이서연",
     updatedAt: "08-09 08:47",
   },
@@ -916,7 +916,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "언어",
     confidence: 52,
     flag: "지필·설문 결과 불일치",
-    surveys: { mother: true, father: false, teacher: true },
+    surveys: { guardian: true, teacher: true },
     reviewer: "정태호",
     updatedAt: "08-08 18:20",
   },
@@ -929,7 +929,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "수리·논리",
     confidence: 57,
     flag: "서술형 응답 분량 부족",
-    surveys: { mother: true, father: true, teacher: true },
+    surveys: { guardian: true, teacher: true },
     reviewer: "정태호",
     updatedAt: "08-08 17:55",
   },
@@ -942,7 +942,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "자연·탐구",
     confidence: 94,
     flag: null,
-    surveys: { mother: true, father: false, teacher: false },
+    surveys: { guardian: true, teacher: false },
     reviewer: "한나래",
     updatedAt: "08-08 16:31",
   },
@@ -955,7 +955,7 @@ export const gradingQueue: GradingCase[] = [
     suggested: "언어",
     confidence: 90,
     flag: null,
-    surveys: { mother: true, father: true, teacher: true },
+    surveys: { guardian: true, teacher: true },
     reviewer: "한나래",
     updatedAt: "08-08 15:02",
   },

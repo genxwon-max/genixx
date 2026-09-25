@@ -4,7 +4,7 @@ import SurveyForm from "@/components/exam/SurveyForm";
 import { isSurveyKey, surveys } from "@/lib/survey";
 
 export function generateStaticParams() {
-  return [{ role: "student" }, { role: "mother" }, { role: "father" }, { role: "teacher" }];
+  return [{ role: "student" }, { role: "guardian" }, { role: "teacher" }];
 }
 
 export async function generateMetadata({

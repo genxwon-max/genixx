@@ -43,10 +43,9 @@ const CASE_TONE: Record<CaseState, Tone> = {
   published: "muted",
 };
 
-/** 설문 세 종. 자리 순서가 곧 누구의 설문인지이므로 이 배열이 유일한 기준이다 */
+/** 설문 두 종. 자리 순서가 곧 누구의 설문인지이므로 이 배열이 유일한 기준이다 */
 const SURVEYS = [
-  { key: "mother", label: "엄마" },
-  { key: "father", label: "아빠" },
+  { key: "guardian", label: "학부모" },
   { key: "teacher", label: "교사" },
 ] as const;
 
@@ -148,7 +147,7 @@ const COLS: Col<GradingCase>[] = [
     // 세 칸을 만들면 표가 열세 칸이 된다. 자리 순서로 압축하되 색만으로 가르지 않는다 —
     // 채운 원/빈 원으로 모양을 다르게 하고, 낱개마다 title로 누구 설문인지 적는다
     key: "surveys",
-    head: "설문(엄마·아빠·교사)",
+    head: "설문(학부모·교사)",
     width: "8.5rem",
     nowrap: true,
     // 걷힌 것의 이름을 값으로 준다. 개수(숫자)로 두면 검색창의 「3」이 온 표에 걸린다

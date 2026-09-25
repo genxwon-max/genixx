@@ -72,24 +72,12 @@ export const surveys: Record<SurveyKey, SurveyConfig> = {
     openHint: "리포트의 관심 주제 자리에 쓰인 대로 실립니다. 한 줄이어도 괜찮아요.",
     placeholder: "무엇을 / 언제부터 / 어떤 점이 재미있는지 순서로 적어 주세요.",
   },
-  mother: {
-    key: "mother",
+  guardian: {
+    key: "guardian",
     code: "ASM-05",
-    title: "학부모 설문 (어머니)",
-    who: "어머니",
-    desc: "가정에서 관찰한 아이의 모습을 알려 주세요. 정답이 있는 검사가 아니니 평소 모습 그대로 답해 주시면 됩니다.",
-    note: "이 응답은 아이의 재능 해석에만 사용되며, 보호자의 양육 태도를 평가하거나 리포트에 출력하지 않습니다.",
-    items: guardianItems,
-    openLabel: "아이가 특별하다고 느낀 순간이 있다면 적어 주세요",
-    openHint: "리포트의 '발견의 순간' 절에 표현 그대로 인용됩니다. 짧아도 괜찮습니다.",
-    placeholder: "언제 / 무엇을 / 어떤 상황에서 / 얼마나 자주 / 그때 어떻게 반응했는지 순서로 적어 주세요.",
-  },
-  father: {
-    key: "father",
-    code: "ASM-05",
-    title: "학부모 설문 (아버지)",
-    who: "아버지",
-    desc: "가정에서 관찰한 아이의 모습을 알려 주세요. 어머니 응답과 따로 저장되며, 두 응답의 차이도 해석에 참고합니다.",
+    title: "학부모 설문",
+    who: "보호자",
+    desc: "가정에서 관찰한 아이의 모습을 알려 주세요. 정답이 있는 검사가 아니니 평소 모습 그대로 답해 주시면 됩니다. 어머니·아버지 중 한 분이 대표로 답하셔도 되고, 두 분이 함께 보고 답하셔도 됩니다.",
     note: "이 응답은 아이의 재능 해석에만 사용되며, 보호자의 양육 태도를 평가하거나 리포트에 출력하지 않습니다.",
     items: guardianItems,
     openLabel: "아이가 특별하다고 느낀 순간이 있다면 적어 주세요",
@@ -120,5 +108,5 @@ export const surveys: Record<SurveyKey, SurveyConfig> = {
 };
 
 export function isSurveyKey(v: string): v is SurveyKey {
-  return v === "student" || v === "mother" || v === "father" || v === "teacher";
+  return v === "student" || v === "guardian" || v === "teacher";
 }

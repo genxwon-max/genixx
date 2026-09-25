@@ -3,7 +3,7 @@ import SurveyDetail from "@/components/account/SurveyDetail";
 
 export const metadata: Metadata = {
   title: "학생 설문",
-  description: "어머니·아버지·교사 설문을 문자로 보내거나 지금 작성합니다. (ASM-05)",
+  description: "학부모·교사 설문을 문자로 보내거나 지금 작성합니다. 학생 설문은 아이가 직접 합니다. (ASM-05)",
   robots: { index: false, follow: false },
 };
 

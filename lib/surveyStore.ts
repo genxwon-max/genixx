@@ -9,7 +9,7 @@ import { surveys } from "./survey";
 /**
  * 설문 원본 관리 (ADM-14).
  *
- * 지금까지 어머니·아버지·교사 설문은 lib/survey.ts에 박혀 있었다. 문항 하나를 고치려면
+ * 지금까지 학생·학부모·교사 설문은 lib/survey.ts에 박혀 있었다. 문항 하나를 고치려면
  * 개발자가 코드를 고쳐 배포해야 했고, 언제 누가 무엇을 왜 바꿨는지는 커밋 로그에만
  * 남아 운영자는 볼 수 없었다. 설문은 문항과 마찬가지로 **측정 도구**다 — 도구가
  * 바뀌었는데 그 사실이 기록에 없으면 회차 사이의 응답을 비교할 근거가 사라진다.
@@ -31,10 +31,10 @@ import { surveys } from "./survey";
  *
  * ── 학년대 ──
  *
- * 한 갈래(학생·어머니·아버지·교사)가 학년대(초3~4 · 초5~6)마다 한 벌씩 있다. 초3에게
- * 묻는 말과 초6에게 묻는 말이 같을 수 없어서다. 그래서 저장 단위는 갈래가 아니라
- * **갈래+학년대**이고, 그 열쇠가 SurveyDocId(`mother:e34`)다. 학생 명부의 학년 글자로
- * 학년대를 고르는 일은 lib/surveyBands.ts가 한다.
+ * 한 갈래(학생·학부모·교사)가 학년대(초3~4 · 초5~6)마다 한 벌씩 있다. 초3에게 묻는 말과
+ * 초6에게 묻는 말이 같을 수 없어서다. 그래서 저장 단위는 갈래가 아니라 **갈래+학년대**이고,
+ * 그 열쇠가 SurveyDocId(`guardian:e34`)다. 학생 명부의 학년 글자로 학년대를 고르는 일은
+ * lib/surveyBands.ts가 한다.
  *
  * 갈래나 학년대가 줄면 저장분에 없어진 열쇠가 남는다. fill·readLog가 읽을 때 지금 열쇠
  * 목록(surveyDocIds)에 없는 것을 버린다 — 한 번 도는 이사 코드를 두면 언제 열지 알 수
@@ -59,7 +59,7 @@ export type SurveyForm = {
   placeholder: string;
 };
 
-/** 저장 단위 — 갈래와 학년대를 함께 묶은 열쇠 (`mother:e34`) */
+/** 저장 단위 — 갈래와 학년대를 함께 묶은 열쇠 (`guardian:e34`) */
 export type SurveyDocId = `${SurveyKey}:${SurveyBand}`;
 
 export const docIdOf = (key: SurveyKey, band: SurveyBand): SurveyDocId => `${key}:${band}`;

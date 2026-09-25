@@ -103,7 +103,7 @@ export default function ConferencePanel() {
                 const itv = interviews.find((v) => v.id === c.interviewId);
                 const sources = [
                   c.paper.length > 0,
-                  c.survey.mother || c.survey.father || c.survey.teacher,
+                  c.survey.guardian || c.survey.teacher,
                   !!c.observation,
                   itv?.state === "coded",
                 ].filter(Boolean).length;
@@ -341,8 +341,7 @@ function CaseView({
               <p className={a.label}>② 설문</p>
               <ul className="mt-3 space-y-2">
                 {[
-                  { k: "어머니", v: c.survey.mother },
-                  { k: "아버지", v: c.survey.father },
+                  { k: "학부모", v: c.survey.guardian },
                   { k: "지도교사", v: c.survey.teacher },
                 ].map((s) => (
                   <li key={s.k} className="flex items-center justify-between gap-3">
@@ -354,7 +353,7 @@ function CaseView({
                   </li>
                 ))}
               </ul>
-              {!c.survey.mother && !c.survey.father && !c.survey.teacher && (
+              {!c.survey.guardian && !c.survey.teacher && (
                 <p className="mt-3 adm-t-sm font-bold text-rose-700">
                   설문이 한 건도 없습니다. 지필 하나로 확증까지 가지 않는 것이 원칙입니다.
                 </p>

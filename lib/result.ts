@@ -7,7 +7,7 @@
  */
 
 import { answerText, questionsOf, type SubjectId } from "./exam";
-import type { ExamRecord } from "./examStore";
+import { observerKeys, type ExamRecord } from "./examStore";
 
 export type AxisId =
   | "language"
@@ -204,9 +204,7 @@ export function expertNotes(scores: AxisScore[], record: ExamRecord) {
   const ranked = [...measured].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const top = ranked[0];
   const low = ranked[ranked.length - 1];
-  const doneSurveys = (["mother", "father", "teacher"] as const).filter(
-    (k) => record.surveys[k] === "done",
-  ).length;
+  const doneSurveys = observerKeys.filter((k) => record.surveys[k] === "done").length;
 
   const notes: { title: string; body: string }[] = [];
 
@@ -239,9 +237,7 @@ export function expertNotes(scores: AxisScore[], record: ExamRecord) {
 
 /** 리포트 신뢰도 표기 — 참여한 정보원 수에 따라 */
 export function confidenceOf(record: ExamRecord) {
-  const done = (["mother", "father", "teacher"] as const).filter(
-    (k) => record.surveys[k] === "done",
-  ).length;
+  const done = observerKeys.filter((k) => record.surveys[k] === "done").length;
   if (done >= 2) return { label: "높음", desc: "학생 응답 + 관찰 설문 2건 이상으로 교차 검증됨" };
   if (done === 1) return { label: "보통", desc: "학생 응답 + 관찰 설문 1건" };
   return { label: "참고", desc: "학생 응답만 반영됨 — 해석 범위가 제한됩니다" };

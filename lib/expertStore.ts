@@ -318,7 +318,7 @@ export type ConferenceCase = {
   /** 지필 — 채점 워크벤치에서 확정된 값이 올라온다 */
   paper: { axis: string; score: number }[];
   /** 설문 */
-  survey: { mother: boolean; father: boolean; teacher: boolean };
+  survey: { guardian: boolean; teacher: boolean };
   /** 관찰 — 교사 설문의 서술 항목 */
   observation: string | null;
   /** 면담 — 없으면 아직 면담 대상이 아니다 */
@@ -374,7 +374,7 @@ export function basisHash(basis: string) {
  */
 export function basisOf(c: ConferenceCase, tasks: ScoreTask[] = []) {
   const paper = c.paper.map((p) => `${p.axis}=${p.score}`).join(",");
-  const survey = `${c.survey.mother ? "M" : "-"}${c.survey.father ? "F" : "-"}${c.survey.teacher ? "T" : "-"}`;
+  const survey = `${c.survey.guardian ? "P" : "-"}${c.survey.teacher ? "T" : "-"}`;
   const scored = tasks
     .filter((t) => t.seat === c.seat)
     .map((t) => `${t.id}:${levelOf(t)}`)
@@ -1291,11 +1291,11 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 88 },
       { axis: "자연·탐구", score: 71 },
     ],
-    survey: { mother: true, father: false, teacher: true },
+    survey: { guardian: true, teacher: true },
     observation: "수업 중 먼저 규칙을 찾아 말한다는 담임 기록이 있습니다.",
     interviewId: null,
     aiCell: "confirm",
-    aiWhy: "지필 수리·논리 88, 어머니·교사 설문 모두 같은 축을 가리킵니다.",
+    aiWhy: "지필 수리·논리 88, 학부모·교사 설문 모두 같은 축을 가리킵니다.",
     aiConfidence: 0.91,
     margin: 0.82,
     comments: [],
@@ -1311,7 +1311,7 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 58 },
       { axis: "자연·탐구", score: 60 },
     ],
-    survey: { mother: true, father: true, teacher: false },
+    survey: { guardian: true, teacher: false },
     observation: null,
     interviewId: "IV-2603-0418",
     aiCell: "later",
@@ -1340,7 +1340,7 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 72 },
       { axis: "자연·탐구", score: 89 },
     ],
-    survey: { mother: false, father: false, teacher: false },
+    survey: { guardian: false, teacher: false },
     observation: null,
     interviewId: null,
     aiCell: "confirm",
@@ -1369,7 +1369,7 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 63 },
       { axis: "자연·탐구", score: 59 },
     ],
-    survey: { mother: true, father: false, teacher: true },
+    survey: { guardian: true, teacher: true },
     observation: "쉬는 시간에 늘 노래를 부른다는 담임 기록이 있습니다.",
     interviewId: "IV-2603-0423",
     aiCell: "excluded-high",
@@ -1389,7 +1389,7 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 81 },
       { axis: "자연·탐구", score: 68 },
     ],
-    survey: { mother: true, father: true, teacher: true },
+    survey: { guardian: true, teacher: true },
     observation: "수학 시간에 손을 들지 않는다는 담임 기록이 있습니다.",
     interviewId: "IV-2603-0426",
     aiCell: "mismatch",
@@ -1409,7 +1409,7 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 70 },
       { axis: "자연·탐구", score: 66 },
     ],
-    survey: { mother: true, father: false, teacher: false },
+    survey: { guardian: true, teacher: false },
     observation: null,
     interviewId: "IV-2603-0430",
     aiCell: "confirm",
@@ -1435,7 +1435,7 @@ const SEED_CONFERENCE: ConferenceCase[] = [
       { axis: "수리·논리", score: 62 },
       { axis: "자연·탐구", score: 65 },
     ],
-    survey: { mother: true, father: true, teacher: true },
+    survey: { guardian: true, teacher: true },
     observation: "무엇을 좋아하는지 잘 말하지 않는다는 담임 기록이 있습니다.",
     interviewId: "IV-2603-0433",
     aiCell: "excluded-none",

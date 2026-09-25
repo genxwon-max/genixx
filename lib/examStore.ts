@@ -8,18 +8,33 @@ import { getExamConfig } from "./roundStore";
 export type SurveyState = "none" | "done";
 
 /**
- * 설문 주체 — 학생 · 어머니 · 아버지 · 지도교사 넷.
+ * 설문 주체 — 학생 · 학부모 · 지도교사 셋.
  *
  * 학생 설문이 앞에 선다. 진단평가 절차에서 학생 설문은 **무료시험 바로 뒤**, 학부모 설문은
- * 유료시험 뒤에 오므로 차례가 그렇다. 넷을 한 목록으로 두는 까닭은 제출 현황·리포트 근거를
+ * 유료시험 뒤에 오므로 차례가 그렇다. 셋을 한 목록으로 두는 까닭은 제출 현황·리포트 근거를
  * 세는 자리가 한 군데라서다 — 갈래마다 따로 세면 어느 화면 하나는 늘 빠뜨린다.
+ *
+ * ── 학부모는 한 벌이다 ──
+ * 어머니·아버지를 따로 두었다가 하나로 합쳤다. 절차가 「설문조사(학부모)」 한 줄로 적고
+ * 있고, 두 벌로 두면 한 분만 내신 집은 늘 「1/2 제출」로 남아 무엇을 더 해야 하는지 모르게
+ * 된다. 답하는 분이 누구인지는 설문 안에서 받으면 되고, 화면이 두 사람을 갈라 셀 까닭이
+ * 없다.
  */
-export type SurveyKey = "student" | "mother" | "father" | "teacher";
+export type SurveyKey = "student" | "guardian" | "teacher";
 
-export const surveyKeys: SurveyKey[] = ["student", "mother", "father", "teacher"];
+export const surveyKeys: SurveyKey[] = ["student", "guardian", "teacher"];
 
 /** 학생 본인이 답하는 설문 — 문자로 링크를 보낼 대상이 아니다 */
 export const isSelfSurvey = (key: SurveyKey) => key === "student";
+
+/**
+ * 관찰 설문 — 아이를 지켜본 사람이 내는 것(학부모 · 지도교사).
+ *
+ * 리포트의 신뢰도와 「정보원 구성」이 이것을 센다. 학생 설문은 빼고 센다 — 자기 응답과
+ * 남의 관찰이 맞는지를 보는 것이 교차 검증인데, 학생 응답을 관찰 쪽에 함께 세면 혼자
+ * 답한 것을 두 사람이 본 것처럼 세게 된다.
+ */
+export const observerKeys: SurveyKey[] = surveyKeys.filter((k) => !isSelfSurvey(k));
 
 export const surveyMeta: Record<
   SurveyKey,
@@ -31,15 +46,9 @@ export const surveyMeta: Record<
     note: "무료시험을 마친 뒤 학생이 직접",
     required: false,
   },
-  mother: {
-    label: "학부모 설문 (어머니)",
-    who: "어머니",
-    note: "가정에서 관찰한 모습",
-    required: false,
-  },
-  father: {
-    label: "학부모 설문 (아버지)",
-    who: "아버지",
+  guardian: {
+    label: "학부모 설문",
+    who: "보호자",
     note: "가정에서 관찰한 모습",
     required: false,
   },

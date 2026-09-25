@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { ExamRecord } from "./examStore";
+import { observerKeys, type ExamRecord } from "./examStore";
 import { confidenceOf, decideType, scoreAxes } from "./result";
 import { assembleFrom } from "./reportAssetStore";
 import { templateGradeFrom } from "./reportAssets";
@@ -539,9 +539,7 @@ export function ensureReport(
 
   const top = measured[0] ?? null;
   const low = measured.length > 1 ? measured[measured.length - 1] : null;
-  const surveys = (["mother", "father", "teacher"] as const).filter(
-    (k) => record.surveys[k] === "done",
-  ).length;
+  const surveys = observerKeys.filter((k) => record.surveys[k] === "done").length;
 
   /* 과목 점수 — 교차 해석 규칙이 「학력은 낮은데 재능은 높다」를 가리는 데 쓴다.
      측정된 축의 평균을 학력 쪽 값으로 본다(2026 파일럿은 축과 과목이 1:1이다) */

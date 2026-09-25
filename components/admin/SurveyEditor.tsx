@@ -48,10 +48,10 @@ import * as a from "./ui";
 /**
  * 설문 원본 (ADM-14).
  *
- * 한 설문은 **갈래 × 학년대**로 한 벌씩 있다. 학생·어머니·아버지·지도교사 넷에 초3~4 ·
- * 초5~6 둘이니 여덟 벌이다. 초3에게 묻는 말과 초6에게 묻는 말이 같을 수 없어서인데,
- * 여덟 벌을 늘어놓으면 아무도 관리하지 못한다. 그래서 화면은 언제나 **한 벌만** 보여
- * 준다 — 위에서 갈래와 학년대를 고르면 그 한 벌이 아래에 열린다.
+ * 한 설문은 **갈래 × 학년대**로 한 벌씩 있다. 학생·학부모·지도교사 셋에 초3~4 · 초5~6
+ * 둘이니 여섯 벌이다. 초3에게 묻는 말과 초6에게 묻는 말이 같을 수 없어서인데, 여섯 벌을
+ * 늘어놓으면 아무도 관리하지 못한다. 그래서 화면은 언제나 **한 벌만** 보여 준다 —
+ * 위에서 갈래와 학년대를 고르면 그 한 벌이 아래에 열린다.
  *
  * ── 화면을 줄인 규칙 ──
  *
@@ -92,7 +92,7 @@ export default function SurveyEditor() {
   const log = useSurveyLog();
   const records = useExamStore();
 
-  const [key, setKey] = useState<SurveyKey>("mother");
+  const [key, setKey] = useState<SurveyKey>("student");
   const [band, setBand] = useState<SurveyBand>("e34");
   const [view, setView] = useState<ViewId>("items");
   const [ask, setAsk] = useState<

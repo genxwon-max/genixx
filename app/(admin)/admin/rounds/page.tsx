@@ -19,8 +19,8 @@ const bySubject = [
 
 /** 설문 수집 현황 */
 const surveyRows = [
-  { label: "어머니 설문", got: 612, note: "가장 많이 들어옵니다" },
-  { label: "아버지 설문", got: 341, note: "절반 이하 — 안내 문자 재발송 검토" },
+  { label: "학생 설문", got: 731, note: "응시 직후라 가장 많이 들어옵니다" },
+  { label: "학부모 설문", got: 612, note: "한 벌로 합친 뒤 제출이 늘었습니다" },
   { label: "교사 설문", got: 458, note: "기관 소속 학생만 대상" },
   { label: "설문 없이 진행 선택", got: 74, note: "보호자가 직접 선택한 건" },
 ];

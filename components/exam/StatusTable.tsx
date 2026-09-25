@@ -94,7 +94,6 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   const [toast, setToast] = useState<string | null>(null);
 
   const [askFinal, setAskFinal] = useState(false);
-  const [guardianPick, setGuardianPick] = useState(false);
 
   // 세 과목 모두 제출 + 문항별 해석 작성까지 끝나야 최종 제출할 수 있다
   const examDone =
@@ -132,7 +131,8 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
             <b>보호자로 접속하셨습니다.</b> 학생의 응시 답안은 열람할 수 없으며, 아래{" "}
             <b>학부모 설문</b>만 진행할 수 있습니다.
           </p>
-          <button type="button" onClick={() => setGuardianPick(true)} className={btnPrimary}>
+          {/* 어머니·아버지를 고르던 창을 뺐다 — 학부모 설문이 한 벌이라 고를 것이 없다 */}
+          <button type="button" onClick={() => openSurvey("guardian")} className={btnPrimary}>
             학부모 설문 진행
             <ArrowRight className="h-4 w-4" />
           </button>
@@ -261,7 +261,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
 
       {/* 표 2 — 설문 */}
       <section className="mt-9">
-        <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 어머니·아버지는 각각 따로 제출할 수 있고, 한 분만 하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
+        <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 학부모 설문은 한 벌이며 어머니·아버지 중 한 분이 대표로 답하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
           설문 제출 현황
         </SectionTitle>
 
@@ -449,7 +449,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
       {smsFor && (
         <SmsDialog
           label={surveyMeta[smsFor].label}
-          /* 어머니·아버지 설문은 등록 때 받은 보호자 번호에서 출발한다. 교사 번호는 알 수 없다 */
+          /* 학부모 설문은 등록 때 받은 보호자 번호에서 출발한다. 교사 번호는 알 수 없다 */
           initial={
             sends[smsFor]?.phone ?? (smsFor === "teacher" ? "" : (student?.guardianPhone ?? ""))
           }
@@ -466,15 +466,6 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
 
       <Toast message={toast} onClose={() => setToast(null)} />
 
-      {guardianPick && (
-        <GuardianDialog
-          onCancel={() => setGuardianPick(false)}
-          onPick={(key) => {
-            setGuardianPick(false);
-            openSurvey(key);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -490,11 +481,10 @@ function FinalDialog({
   onConfirm: () => void;
   onSurvey: (key: SurveyKey) => void;
 }) {
-  /* 빠진 설문을 갈래로 묶어 한 줄로 말한다 — 「어머니 · 아버지 · 교사가 빠졌습니다」를
-     세 줄로 적으면 읽는 사람은 무엇을 먼저 할지 못 고른다 */
+  /* 빠진 설문을 한 줄로 모아 말한다 — 세 줄로 적으면 읽는 사람은 무엇을 먼저 할지 못 고른다 */
   const names = [
     missing.includes("student") && "학생 설문",
-    missing.some((k) => k === "mother" || k === "father") && "학부모 설문",
+    missing.includes("guardian") && "학부모 설문",
     missing.includes("teacher") && "지도교사 설문",
   ].filter((v): v is string => Boolean(v));
 
@@ -561,49 +551,6 @@ function FinalDialog({
   );
 }
 
-function GuardianDialog({
-  onCancel,
-  onPick,
-}: {
-  onCancel: () => void;
-  onPick: (key: SurveyKey) => void;
-}) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="guardian-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
-    >
-      <div className="w-full max-w-sm rounded-md border border-soft-line bg-white p-7 text-center">
-        <p className={eyebrow}>보호자 확인</p>
-        <h2 id="guardian-title" className="mt-3 text-[19px] font-bold text-soft-ink">
-          어느 보호자이신가요?
-        </h2>
-        <p className="mt-2.5 text-[13px] leading-relaxed text-soft-muted">
-          선택하신 분의 설문 창이 열립니다. 두 분 모두 각각 제출하실 수 있습니다.
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => onPick("mother")} className={btnPrimary}>
-            어머니
-          </button>
-          <button type="button" onClick={() => onPick("father")} className={btnPrimary}>
-            아버지
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="mt-3 text-[13px] text-soft-muted hover:text-soft-ink"
-        >
-          닫기
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** 설문 링크를 보낼 휴대전화 번호를 받는 창 */
 function SmsDialog({
   label,
   initial,

@@ -175,8 +175,7 @@ export default function StudentRegistrar({
   const pendingParent =
     !isDirector && hydrated
       ? mine.filter((s) => {
-          const rec = records[s.id];
-          return rec?.surveys?.mother !== "done" || rec?.surveys?.father !== "done";
+          return records[s.id]?.surveys?.guardian !== "done";
         })
       : [];
   const showPrompt = surveyPrompt && !promptDismissed && pendingParent.length > 0;
@@ -527,7 +526,7 @@ export default function StudentRegistrar({
                 mine.map((s, i) => {
                   const rec = records[s.id];
                   const done = rec ? submittedCount(rec) : 0;
-                  const myKeys: SurveyKey[] = isDirector ? ["teacher"] : ["mother", "father"];
+                  const myKeys: SurveyKey[] = isDirector ? ["teacher"] : ["guardian"];
                   const under = isUnderConsentAge(s);
                   const info = guardianConsentInfo[s.consent];
                   const req = latestRequestFor(s.id);
@@ -788,20 +787,15 @@ export default function StudentRegistrar({
         없습니다.</b>
         {isDirector
           ? " 지도교사 관찰 설문은 위 명부에서 학생별로 바로 입력할 수 있습니다."
-          : " 학부모 설문은 위 목록에서 학생별로 어머니·아버지가 각각 입력합니다."}
+          : " 학부모 설문은 위 목록에서 학생별로 한 벌씩 입력합니다."}
       </p>
 
       {showPrompt && (
         <ParentSurveyPrompt
-          students={pendingParent.map((s) => ({
-            id: s.id,
-            name: s.name,
-            mother: records[s.id]?.surveys?.mother === "done",
-            father: records[s.id]?.surveys?.father === "done",
-          }))}
-          onPick={(key, id) => {
+          students={pendingParent.map((s) => ({ id: s.id, name: s.name }))}
+          onPick={(id) => {
             setPromptDismissed(true);
-            openSurvey(key, id);
+            openSurvey("guardian", id);
           }}
           onClose={() => setPromptDismissed(true)}
         />
@@ -818,8 +812,8 @@ function ParentSurveyPrompt({
   onPick,
   onClose,
 }: {
-  students: { id: string; name: string; mother: boolean; father: boolean }[];
-  onPick: (key: SurveyKey, studentId: string) => void;
+  students: { id: string; name: string }[];
+  onPick: (studentId: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -837,31 +831,18 @@ function ParentSurveyPrompt({
           </h2>
           <p className="mt-2.5 text-[13px] leading-relaxed text-soft-muted">
             평소 어떤 것에 몰입하는지, 어떤 방식으로 문제를 푸는지 등 가정에서 관찰한 모습을
-            여쭙습니다. 어머니·아버지가 <b className="text-soft-ink">각각</b> 제출하실 수 있습니다.
+            여쭙습니다. <b className="text-soft-ink">한 분</b>이 대표로 답하셔도 되고, 두 분이
+            함께 보고 답하셔도 됩니다.
           </p>
         </div>
 
         <ul className="divide-y divide-slate-100">
           {students.map((s) => (
-            <li key={s.id} className="px-6 py-4">
+            <li key={s.id} className="flex items-center justify-between gap-3 px-6 py-4">
               <p className="text-[14px] font-bold text-soft-ink">{s.name}</p>
-              <div className="mt-2.5 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    { key: "mother" as const, label: "어머니", done: s.mother },
-                    { key: "father" as const, label: "아버지", done: s.father },
-                  ] as const
-                ).map((g) => (
-                  <button
-                    key={g.key}
-                    type="button"
-                    onClick={() => onPick(g.key, s.id)}
-                    className={g.done ? btnGhost : btnPrimary}
-                  >
-                    {g.label} {g.done ? "다시 작성" : "설문하기"}
-                  </button>
-                ))}
-              </div>
+              <button type="button" onClick={() => onPick(s.id)} className={btnPrimary}>
+                설문하기
+              </button>
             </li>
           ))}
         </ul>

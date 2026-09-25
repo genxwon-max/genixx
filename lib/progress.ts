@@ -32,7 +32,7 @@ export type StudentProgress = {
   forfeited: number;
   /** 과목별 상태 — 국어·수학·과학 세 칸 */
   subjects: SubjectProgress[];
-  /** 제출된 설문 수 (어머니·아버지·교사) */
+  /** 제출된 설문 수 (학생·학부모·교사) */
   surveys: number;
   phase: Phase;
   /** 다음에 해야 할 일 한 줄 */
