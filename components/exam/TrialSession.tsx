@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCatalogRounds } from "@/lib/catalogRounds";
 import {
@@ -13,7 +14,7 @@ import {
   type Question,
   type SubjectId,
 } from "@/lib/exam";
-import { evalName, trackLabel, type TrackId } from "@/lib/examCatalog";
+import { evalName, trackLabel, trackOf, tracks, type TrackId } from "@/lib/examCatalog";
 import { setSetAnswer } from "@/lib/setStore";
 import { ArrowRight } from "@/components/Icons";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
@@ -39,7 +40,7 @@ import { btnGhost, btnPrimary, eyebrow, panel } from "./ui";
  * 화면도 응시 화면과 같은 틀(자료 | 문항 | 문항 이동판 + 하단 바)이다. 가입한 뒤 처음
  * 응시할 때 낯선 화면을 만나지 않게 하려는 것이다.
  *
- *   시작 화면  교과 하나를 고른다
+ *   시작 화면  학년과 교과 하나를 고른다
  *   응시 화면  문제 1~SET_QUESTIONS 까지 풀고, 그 뒤 번호는 잠겨 있다
  *   끝 화면    회원가입을 권한다 — 가입·로그인은 이 창을 띄운 원래 창에서 연다
  *
@@ -48,11 +49,20 @@ import { btnGhost, btnPrimary, eyebrow, panel } from "./ui";
  * 셋트가 맛보기가 아니라 **무료시험의 앞 4문항**이라서다 — 셋을 다 풀게 하면 무료시험에
  * 물려받을 것이 셋이 되어 「모두 20문항」이라는 셈이 깨진다.
  *
+ * ── 학년도 여기서 고른다 ──
+ * 평가 목록에서 누른 학년으로 열리지만, 시작 화면에서 바꿀 수 있다. 로그인하지 않은 사람은
+ * 명부가 없어 우리가 그 아이의 학년을 모른다 — 목록에서 잘못 눌렀을 때 뒤로 갔다 다시
+ * 들어오게 하면, 아이 학년을 찾으러 온 사람이 예순네 줄을 두 번 훑는다.
+ *
+ * 학년을 바꾸면 주소도 함께 바꾼다(router.replace). 주소와 화면이 갈리면 새로 고쳤을 때
+ * 고른 학년이 사라진다.
+ *
  * ── 답은 남긴다 ──
  * 답을 셋트 저장소(lib/setStore.ts)에 적어 둔다. 가입한 뒤 무료시험이 그 네 문항을
  * 물려받으므로, 아이는 같은 문제를 두 번 풀지 않는다. 시간은 재지 않는다.
  */
 export default function TrialSession({ roundId, trackId }: { roundId: string; trackId: TrackId }) {
+  const router = useRouter();
   const rounds = useCatalogRounds();
   const round = rounds.find((r) => r.id === roundId);
   /* 편성에서 과목을 못 받았으면 검사 기본 과목으로 보여 준다 — 체험은 문항 모양을 보는 자리다 */
@@ -70,7 +80,8 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
     return (
       <TrialStart
         name={name}
-        trackText={trackLabel(trackId)}
+        track={trackId}
+        onTrack={(id) => router.replace(`/exam/session/trial/${roundId}/${id}`)}
         subjectIds={subjectIds}
         onStart={async (id) => {
           /* 실제 응시처럼 전체화면으로 들어간다 — 클릭 안에서 불러야 브라우저가 허용한다 */
@@ -128,19 +139,22 @@ async function closeTrial() {
 
 function TrialStart({
   name,
-  trackText,
+  track,
+  onTrack,
   subjectIds,
   onStart,
 }: {
   name: string;
-  trackText: string;
+  /** 지금 고른 학년 */
+  track: TrackId;
+  onTrack: (id: TrackId) => void;
   subjectIds: SubjectId[];
   onStart: (id: SubjectId) => void;
 }) {
   return (
     <div className="container-x flex min-h-full items-center py-10">
       <div className={`mx-auto w-full max-w-xl p-8 md:p-10 ${panel}`}>
-        <p className={eyebrow}>셋트 문항 · {trackText}</p>
+        <p className={eyebrow}>셋트 문항 · {trackLabel(track)}</p>
         <h1 className="mt-3 text-[24px] font-black tracking-tight text-exam-text">{name}</h1>
         <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
           회원가입 없이 실제 응시 화면에서 <b className="text-exam-text">교과 하나</b>를 골라{" "}
@@ -157,6 +171,34 @@ function TrialStart({
           <li>· 교과를 고르면 실제 응시처럼 전체화면으로 바뀝니다.</li>
           <li>· 셋트에서는 시간을 재지 않고, 채점도 하지 않습니다.</li>
         </ul>
+
+        {/* 학년을 먼저 — 로그인하지 않은 사람은 명부가 없어 우리가 그 아이의 학년을 모른다 */}
+        <p className="mt-7 text-[13px] font-semibold text-exam-text">
+          학년을 고르세요
+          <span className="ml-1.5 font-medium text-exam-muted">
+            (학년마다 문항이 다릅니다)
+          </span>
+        </p>
+        <div role="group" aria-label="학년 선택" className="mt-3 grid grid-cols-4 gap-2">
+          {tracks.map((t) => {
+            const on = t.id === track;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onTrack(t.id)}
+                className={`rounded-[8px] border px-2 py-3 text-[14px] font-semibold transition-colors ${
+                  on
+                    ? "border-soft-primary bg-soft-primary text-white"
+                    : "border-exam-line bg-white text-exam-text hover:border-soft-primary"
+                }`}
+              >
+                {trackOf(t.id).grades}
+              </button>
+            );
+          })}
+        </div>
 
         <p className="mt-7 text-[13px] font-semibold text-exam-text">풀어 볼 교과 하나를 고르세요</p>
         <ul className="mt-3 grid gap-2">

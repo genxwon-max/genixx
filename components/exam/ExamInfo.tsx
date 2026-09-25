@@ -12,7 +12,7 @@ import {
   subjects,
   tiers,
 } from "@/lib/exam";
-import { trackRangeText } from "@/lib/examCatalog";
+import { tracks } from "@/lib/examCatalog";
 import { useExamConfig } from "@/lib/roundStore";
 import { PageTitle } from "./Registrations";
 import { examMenu } from "@/lib/examNav";
@@ -56,7 +56,12 @@ export default function ExamInfo() {
       {/* 한눈에 */}
       <dl className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { t: "대상 학년", d: trackRangeText },
+          {
+            /* 「초3 ~ 초6」이 아니라 넷을 나란히 적는다 — 평가가 학년마다 따로 열리므로
+               범위로 적으면 한 시험을 네 학년이 함께 보는 것으로 읽힌다 */
+            t: "대상 학년",
+            d: tracks.map((t) => t.tag).join(" · "),
+          },
           { t: "과목", d: on.map((s) => s.short).join(" · ") || "-" },
           { t: "제한 시간", d: `무료시험 ${FREE_LIMIT_MIN}분 · 유료시험 ${limitText || "-"}` },
           { t: "응시 횟수", d: "해마다 4회 (1~4분기)" },
