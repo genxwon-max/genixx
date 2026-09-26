@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { CatalogRound } from "@/lib/catalogRounds";
-import { FREE_COUNT, FREE_TOTAL, PAID_COUNT, subjects } from "@/lib/exam";
+import {
+  FREE_COUNT,
+  FREE_TOTAL,
+  PAID_COUNT,
+  PAID_TOTAL,
+  subjects,
+  tierOf,
+} from "@/lib/exam";
 import { dotDate, evalName, trackLabel, type TrackId } from "@/lib/examCatalog";
 import { raiseTier } from "@/lib/examStore";
 import {
@@ -15,7 +22,8 @@ import {
   type UseTier,
   type Wallet,
 } from "@/lib/ticketStore";
-import { btnBox, btnBoxGhost, eyebrow } from "./ui";
+import { CloseIcon } from "@/components/Icons";
+import { btnBox, btnBoxGhost } from "./ui";
 
 /**
  * 「접수하기」 탭의 카드 버튼 — 무엇을 누를 수 있는지는 여기 한 곳에서 정한다.
@@ -94,21 +102,26 @@ export function useApplyFlow(studentId: string) {
   let dialog: ReactNode = null;
   if (applied) {
     dialog = (
-      <ExamDialog title="접수가 완료되었습니다" eyebrowText="접수 완료" onClose={close}>
+      <ExamDialog
+        title="접수 완료"
+        onClose={close}
+        footer={
+          <>
+            <button type="button" onClick={close} className={btnBoxGhost}>
+              닫기
+            </button>
+            <Link href="/exam" data-autofocus className={btnBox}>
+              응시하기로 이동
+            </Link>
+          </>
+        }
+      >
         <Summary round={applied.round} track={applied.track} />
-        <p className="mt-4 text-[14px] leading-relaxed text-soft-muted">
+        <p className="mt-4 text-[14px] leading-relaxed text-soft-ink">
           {applied.tier === "free"
-            ? `응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
-            : "응시하기 탭에서 과목을 하나씩 응시합니다. 응시권 한 매를 썼습니다."}
+            ? `${tierOf("free").label}으로 접수했습니다. 응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
+            : `${tierOf("paid").label}으로 접수했습니다. 응시하기 탭에서 과목을 하나씩 응시합니다.`}
         </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={close} className={btnBoxGhost}>
-            닫기
-          </button>
-          <Link href="/exam" data-autofocus className={btnBox}>
-            응시하기로 이동
-          </Link>
-        </div>
       </ExamDialog>
     );
   } else if (pending) {
@@ -126,41 +139,72 @@ export function useApplyFlow(studentId: string) {
       setApplied({ round, track, tier });
     };
 
+    const paid = tier === "paid";
+    const counts = subjects
+      .map((x) => `${x.short} ${(paid ? PAID_COUNT : FREE_COUNT)[x.id]}`)
+      .join(" · ");
+
     dialog = (
-      <ExamDialog title="이 평가를 접수할까요?" eyebrowText="접수 확인" onClose={close}>
+      <ExamDialog
+        title="접수 확인"
+        onClose={close}
+        footer={
+          <>
+            <button type="button" onClick={close} className={btnBoxGhost}>
+              취소
+            </button>
+            <button type="button" data-autofocus onClick={confirm} className={btnBox}>
+              접수하기
+            </button>
+          </>
+        }
+      >
         <Summary round={pending.round} track={pending.track} />
 
-        <TierNote
-          tier={tier}
-          left={left}
-          counts={subjects
-            .map((x) => `${x.short} ${(tier === "paid" ? PAID_COUNT : FREE_COUNT)[x.id]}`)
-            .join(" · ")}
-          reason={
-            tier === "paid"
-              ? "결제한 응시권이 있어 유료시험으로 접수합니다."
-              : "결제한 응시권이 없어 무료시험으로 접수합니다."
-          }
-        />
+        {/* 접수되는 내용 — 문장으로 늘어놓지 않고 항목으로 세운다. 접수 확인은 읽는 글이
+            아니라 **맞는지 훑는 표**라, 무엇이 어떤 값인지 눈이 왼쪽에서 찾을 수 있어야 한다 */}
+        <dl className="mt-5 border-y border-soft-line">
+          <Row t="응시 갈래">
+            <span className="inline-flex items-center rounded-[2px] bg-soft-primary-soft px-2 py-0.5 text-[13px] font-bold text-soft-primary">
+              {tierOf(tier).label}
+            </span>
+          </Row>
+          <Row t="문항">
+            {counts}
+            <span className="ml-1.5 text-soft-muted">· 모두 {paid ? PAID_TOTAL : FREE_TOTAL}문항</span>
+          </Row>
+          <Row t="응시 방식">
+            {paid ? "과목마다 따로 응시" : "세 과목을 한 번에 이어서 응시"}
+          </Row>
+          <Row t="응시권">
+            {paid ? (
+              <>
+                1매 사용
+                <span className="ml-1.5 text-soft-muted">· 쓰고 나면 {left - 1}매 남음</span>
+              </>
+            ) : (
+              <>
+                쓰지 않음
+                <span className="ml-1.5 text-soft-muted">· 결제 없이 응시합니다</span>
+              </>
+            )}
+          </Row>
+        </dl>
 
-        <ul className="mt-4 space-y-1 text-[13px] leading-relaxed text-soft-muted">
-          <li>
-            · 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다. 학년은 접수한 뒤 바꿀 수
-            없습니다.
-          </li>
-          {tier === "free" && (
+        {/* 왜 이 갈래인지 — 고르는 자리를 없앤 만큼 까닭은 적어 두어야 한다 */}
+        <p className="mt-3.5 text-[13px] leading-relaxed text-soft-ink">
+          {paid
+            ? "결제한 응시권이 있어 유료시험으로 접수합니다. 정밀 리포트와 전문가 해석으로 이어집니다."
+            : "결제한 응시권이 없어 무료시험으로 접수합니다. 요약 리포트를 받습니다."}
+        </p>
+
+        <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-soft-muted">
+          <li>· 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다.</li>
+          <li>· 학년은 접수한 뒤 바꿀 수 없습니다.</li>
+          {!paid && (
             <li>· 응시권은 보호자가 결제해 넘겨줍니다. 결제한 뒤에 접수하면 유료시험이 됩니다.</li>
           )}
         </ul>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={close} className={btnBoxGhost}>
-            취소
-          </button>
-          <button type="button" data-autofocus onClick={confirm} className={btnBox}>
-            접수하기
-          </button>
-        </div>
       </ExamDialog>
     );
   }
@@ -168,56 +212,31 @@ export function useApplyFlow(studentId: string) {
   return { wallet, begin, dialog };
 }
 
-/**
- * 어느 갈래로 접수되는지 — 고르개가 아니라 **적어 두는 칸**이다.
- *
- * 고를 것이 없으니 누를 것도 없다. 대신 왜 이 갈래인지(응시권이 있는지)를 한 줄로 적는다.
- * 그것을 빼면 같은 버튼을 눌렀는데 어떤 날은 20문항이, 어떤 날은 50문항이 열린다.
- */
-function TierNote({
-  tier,
-  left,
-  counts,
-  reason,
-}: {
-  tier: UseTier;
-  /** 남은 응시권 */
-  left: number;
-  /** 「국 4 · 수 8 · 과 8」 */
-  counts: string;
-  /** 왜 이 갈래인가 — 고를 것이 없으니 까닭은 적어 두어야 한다 */
-  reason: string;
-}) {
-  const paid = tier === "paid";
-
+/** 접수 내용 한 줄 — 왼쪽에 무엇, 오른쪽에 값 */
+function Row({ t, children }: { t: string; children: ReactNode }) {
   return (
-    <div className="mt-4 rounded-[2px] border border-soft-line bg-slate-50 px-5 py-4">
-      <p className="flex items-baseline justify-between gap-3">
-        <span className="text-[15px] font-bold text-soft-ink">
-          {paid ? "유료시험" : "무료시험"}
-        </span>
-        <span className="shrink-0 text-[12px] tabular-nums text-soft-muted">
-          {paid ? `응시권 1매 (남은 응시권 ${left}매)` : "응시권 없이 응시"}
-        </span>
-      </p>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
-        {paid
-          ? `${counts}문항을 과목마다 따로 응시합니다. 정밀 리포트와 전문가 해석으로 이어집니다.`
-          : `${counts}문항을 한 번에 이어서 풉니다. 결제 없이 응시하고 요약 리포트를 받습니다.`}
-      </p>
-      <p className="mt-2 text-[12px] leading-relaxed text-soft-ink">{reason}</p>
+    <div className="flex items-baseline gap-4 border-b border-slate-100 py-2.5 last:border-b-0">
+      <dt className="w-[4.5rem] shrink-0 text-[12.5px] font-semibold text-soft-muted">{t}</dt>
+      <dd className="min-w-0 flex-1 text-[13.5px] font-medium text-soft-ink">{children}</dd>
     </div>
   );
 }
 
+/**
+ * 무슨 평가를 접수하는지 — 창의 첫 줄.
+ *
+ * 회색 상자에 넣지 않는다. 아래 표도 회색 상자였을 때는 같은 덩이가 둘 겹쳐 서서, 어느
+ * 쪽이 평가 이름이고 어느 쪽이 접수 내용인지 한 번 더 읽어야 했다. 여기는 제목처럼 서고,
+ * 아래가 표다.
+ */
 function Summary({ round, track }: { round: CatalogRound; track: TrackId }) {
   return (
-    <div className="rounded-[2px] border border-soft-line bg-slate-50 px-5 py-4">
-      <p className="text-[12px] font-semibold text-soft-muted">{trackLabel(track)}</p>
-      <p className="mt-1 text-[16px] font-bold text-soft-ink">
+    <div>
+      <p className="text-[12px] font-semibold text-soft-primary">{trackLabel(track)}</p>
+      <p className="mt-1 text-[18px] font-bold leading-snug text-soft-ink">
         TalentMe {evalName(round.id, track, round.label)}
       </p>
-      <p className="mt-2 text-[13px] text-soft-muted">
+      <p className="mt-1.5 text-[13px] text-soft-muted">
         {round.subjects.map((s) => `${s.name} ${s.minutes}분`).join(" · ")}
       </p>
     </div>
@@ -225,20 +244,38 @@ function Summary({ round, track }: { round: CatalogRound; track: TrackId }) {
 }
 
 /**
- * 응시 존 확인 창 — Esc와 바깥 누르기로 닫히고, 뜰 때 data-autofocus 버튼으로 초점을 옮긴다.
+ * 응시 존 확인 창.
  *
- * 접수 확인 → 접수 완료로 창이 바뀌면(제목이 바뀌면) 초점도 새 창의 버튼으로 다시 옮긴다.
+ * ── 창처럼 생겼어야 한다 ──
+ * 예전에는 흰 상자 안에 작은 라벨 · 제목 · 본문 · 단추가 차례로 얹혀 있을 뿐이었다.
+ * 테두리 하나가 전부라 화면 위에 글 뭉치가 떠 있는 것처럼 보이고, 어디까지가 이 창인지도
+ * 눈으로 끊기지 않는다. 창이면 창의 부분을 갖춘다 —
+ *
+ *   머리띠  제목과 ✕. 같은 색 띠가 「여기부터 이 창」이라고 말한다
+ *   본문    길면 여기만 구른다. 창이 화면 밖으로 자라지 않는다
+ *   발치    단추가 서는 띠. 배경을 한 톤 깔아 본문과 가른다
+ *
+ * 이것은 공지 판(components/site/NoticePopup.tsx)이 쓰는 짜임 그대로다. 한 제품 안에서
+ * 창이 두 가지 모양이면 둘 중 하나는 남의 것처럼 보인다.
+ *
+ * 좁은 화면에서는 아래에 붙여 세운다(items-end). 손이 닿는 곳이 화면 아래쪽이라, 가운데
+ * 띄운 창은 단추까지 손을 올려야 한다.
+ *
+ * 닫는 길은 ✕ · 바깥 누르기 · Esc 셋이다. 뜰 때 data-autofocus로 초점을 옮기고, 접수
+ * 확인 → 접수 완료로 창이 바뀌면(제목이 바뀌면) 초점도 새 창의 단추로 다시 옮긴다.
+ * Tab은 창 안에서 돈다 — 뒤에 깔린 목록으로 초점이 새어 나가면 창이 모달이 아니게 된다.
  */
 function ExamDialog({
   title,
-  eyebrowText,
   onClose,
   children,
+  footer,
 }: {
   title: string;
-  eyebrowText: string;
   onClose: () => void;
   children: ReactNode;
+  /** 발치 띠에 서는 단추들 */
+  footer: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
 
@@ -258,7 +295,7 @@ function ExamDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-soft-ink/45 p-0 sm:items-center sm:p-5"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -268,13 +305,45 @@ function ExamDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="exam-dialog-title"
-        className="w-full max-w-md rounded-[2px] border border-soft-line bg-white px-7 py-6"
+        onKeyDown={(e) => {
+          if (e.key !== "Tab") return;
+          const able = box.current?.querySelectorAll<HTMLElement>(
+            "a[href], button:not([disabled])",
+          );
+          if (!able?.length) return;
+          const first = able[0];
+          const last = able[able.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }}
+        className="w-full max-w-[30rem] overflow-hidden rounded-t-[10px] bg-white shadow-float sm:rounded-[var(--ui-r-card)]"
       >
-        <p className={eyebrow}>{eyebrowText}</p>
-        <h2 id="exam-dialog-title" className="mt-2 text-[19px] font-bold text-soft-ink">
-          {title}
-        </h2>
-        <div className="mt-5">{children}</div>
+        <div className="flex items-center justify-between gap-3 bg-soft-primary py-2.5 pl-6 pr-2.5 text-white">
+          <h2 id="exam-dialog-title" className="text-[15px] font-bold tracking-tight">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="창 닫기"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[2px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="max-h-[calc(100dvh-16rem)] overflow-y-auto px-6 py-6 sm:max-h-[60vh]">
+          {children}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-soft-line bg-slate-50 px-6 py-4">
+          {footer}
+        </div>
       </div>
     </div>
   );
