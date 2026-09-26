@@ -23,7 +23,7 @@ import { btnBox, btnBoxGhost, eyebrow } from "./ui";
 export type ApplyAction =
   /** 이미 접수한 평가 — 응시하기 탭으로 보낸다. tier는 어느 갈래로 접수했는지 */
   | { kind: "done"; label: string; tier: UseTier }
-  /** 접수 창을 연다 — 무료시험인지 유료시험인지는 그 창에서 고른다 */
+  /** 접수 창을 연다 — 갈래는 고르는 것이 아니라 응시권이 있는지가 정한다 */
   | { kind: "apply"; label: string }
   | { kind: "blocked"; label: string }
   /** 로그인하지 않은 사람 — 접수 대신 셋트 창을 연다 */
@@ -57,16 +57,20 @@ export function applyAction(
 }
 
 /**
- * 「접수하기」를 누른 뒤의 흐름 — **갈래를 고르고**, 접수가 끝나면 응시하기 탭으로 갈 길을 연다.
+ * 「접수하기」를 누른 뒤의 흐름 — 접수하고, 끝나면 응시하기 탭으로 갈 길을 연다.
  *
- * 갈래 고르개를 목록에 두지 않고 이 창에 둔 까닭은 둘이 무엇이 다른지 설명할 자리가 필요해
- * 서다. 목록 칸에 「무료」·「유료」 두 버튼을 세우면 아이는 문항 수도 값도 모른 채 누른다.
+ * ── 갈래를 묻지 않는다 ──
+ * 예전에는 이 창에서 「무료시험 / 유료시험」 두 칸을 세워 고르게 했다. 접수하려던 사람이
+ * 문항 수와 응시권 매수를 견주는 자리에 먼저 서게 되고, 골라 놓고도 무엇을 고른 것인지
+ * 응시할 때 다시 기억해 내야 한다. 고를 것이 아니라 **이미 정해져 있는 것**이다 —
  *
- *   무료시험  응시권이 들지 않는다. 20문항.
- *   유료시험  응시권 한 매를 쓴다. 편성 문항 수(수 20 · 과 20 · 국 10)까지 열린다.
+ *   응시권이 없으면   무료시험으로 접수한다. 20문항을 한 번에 이어서 푼다.
+ *   응시권이 있으면   한 매를 써서 유료시험으로 접수한다. 과목마다 따로 응시한다.
  *
- * 무료로 접수해 둔 평가를 유료로 올리는 일도 이 창에서 한다(upgrade). 그때 무료 칸은 이미
- * 접수한 것이라 고를 수 없고, 답과 제출 기록은 그대로 남는다.
+ * 그래서 창은 묻는 대신 **어느 갈래로 접수되는지와 그 까닭을 적어 둔다**. 무료로 접수한
+ * 평가는 나중에 결제해서 올릴 수 있으므로(upgrade), 고르지 않았다고 길이 막히지 않는다.
+ *
+ * 올리는 일도 이 창에서 한다. 응시권 한 매를 쓰고, 답과 제출 기록은 그대로 남는다.
  */
 export function useApplyFlow(studentId: string) {
   const wallet = useWallet(studentId);
@@ -81,11 +85,12 @@ export function useApplyFlow(studentId: string) {
     track: TrackId;
     tier: UseTier;
   } | null>(null);
-  /* 창 안에서 고르는 갈래. 무료로 접수해 둔 평가를 올리러 왔으면 유료만 남는다 */
-  const [pick, setPick] = useState<UseTier>("free");
+
+  /* 응시권이 있어도 무료로 먼저 보겠다는 사람 — 고르개가 아니라 빠져나가는 길이다 */
+  const [waive, setWaive] = useState(false);
 
   const begin = (round: CatalogRound, track: TrackId, upgrade = false) => {
-    setPick(upgrade ? "paid" : "free");
+    setWaive(false);
     setPending({ round, track, upgrade });
   };
   const close = () => {
@@ -102,8 +107,8 @@ export function useApplyFlow(studentId: string) {
         <Summary round={applied.round} track={applied.track} />
         <p className="mt-4 text-[14px] leading-relaxed text-soft-muted">
           {applied.tier === "free"
-            ? `무료시험으로 접수했습니다. 응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
-            : "유료시험으로 접수했습니다. 응시하기 탭에서 과목을 하나씩 응시할 수 있습니다."}
+            ? `응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다. 응시권을 결제하면 과목마다 문항이 더 열립니다.`
+            : "응시하기 탭에서 과목을 하나씩 응시합니다. 응시권 한 매를 썼습니다."}
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={close} className={btnBoxGhost}>
@@ -116,16 +121,22 @@ export function useApplyFlow(studentId: string) {
       </ExamDialog>
     );
   } else if (pending) {
-    /* 응시권이 없으면 유료 칸을 잠근다. 창을 아예 안 열지는 않는다 — 무료시험은 볼 수 있다 */
-    const paidBlocked = left <= 0;
+    /* 갈래는 고르는 것이 아니라 응시권이 있는지가 정한다. 올리러 온 길은 언제나 유료다 */
+    const tier: UseTier = pending.upgrade || (left > 0 && !waive) ? "paid" : "free";
+    /* 응시권을 써서 접수하는 길이 열려 있는가 — 그 길이 있어야 「안 쓰기」도 뜻이 있다 */
+    const canWaive = !pending.upgrade && left > 0;
+    /* 올리러 왔는데 응시권이 없으면 접수 자체를 막는다 — 무료로는 이미 접수해 두었다 */
+    const blocked = pending.upgrade && left <= 0;
     const confirm = () => {
       const { round, track } = pending;
       const ok =
-        pick === "paid" ? spendTicket(studentId, round.id, track) : applyFree(studentId, round.id, track);
+        tier === "paid"
+          ? spendTicket(studentId, round.id, track)
+          : applyFree(studentId, round.id, track);
       setPending(null);
       if (!ok) return;
-      if (pick === "paid") raiseTier(studentId, "paid");
-      setApplied({ round, track, tier: pick });
+      if (tier === "paid") raiseTier(studentId, "paid");
+      setApplied({ round, track, tier });
     };
 
     dialog = (
@@ -136,35 +147,49 @@ export function useApplyFlow(studentId: string) {
       >
         <Summary round={pending.round} track={pending.track} />
 
-        <p className="mt-4 text-[13px] font-bold text-soft-ink">접수할 갈래를 고르세요</p>
-        <ul className="mt-2 grid gap-2">
-          <TierChoice
-            on={pick === "free"}
-            disabled={pending.upgrade}
-            onPick={() => setPick("free")}
-            title="무료시험"
-            cost="응시권 0매"
-            desc={`${subjects.map((x) => `${x.short} ${FREE_COUNT[x.id]}`).join(" · ")}문항을 한 번에 이어서 풉니다. 결제 없이 응시하고 요약 리포트를 받습니다.`}
-            note={pending.upgrade ? "이미 무료시험으로 접수했습니다" : undefined}
-          />
-          <TierChoice
-            on={pick === "paid"}
-            disabled={paidBlocked}
-            onPick={() => setPick("paid")}
-            title="유료시험"
-            cost={`응시권 1매 (남은 응시권 ${left}매)`}
-            desc={`${subjects.map((x) => `${x.short} ${PAID_COUNT[x.id]}`).join(" · ")}문항을 과목마다 따로 응시합니다. 정밀 리포트와 전문가 해석으로 이어집니다.`}
-            note={paidBlocked ? "남은 응시권이 없습니다. 보호자께 요청해 주세요" : undefined}
-          />
-        </ul>
+        <TierNote
+          tier={tier}
+          left={left}
+          blocked={blocked}
+          counts={subjects
+            .map((x) => `${x.short} ${(tier === "paid" ? PAID_COUNT : FREE_COUNT)[x.id]}`)
+            .join(" · ")}
+          reason={
+            blocked
+              ? "남은 응시권이 없습니다. 보호자께 요청해 주세요."
+              : pending.upgrade
+                ? "응시권 한 매를 써서 올립니다. 먼저 쓴 답과 제출 기록은 그대로 남습니다."
+                : tier === "paid"
+                  ? "응시권이 있어 유료시험으로 접수합니다."
+                  : waive
+                    ? "응시권을 남겨 두고 무료시험으로 접수합니다."
+                    : "결제한 응시권이 없어 무료시험으로 접수합니다."
+          }
+        />
+
+        {canWaive && (
+          <button
+            type="button"
+            onClick={() => setWaive(!waive)}
+            className="mt-2.5 text-[12.5px] text-soft-primary underline-offset-2 hover:underline"
+          >
+            {waive
+              ? "응시권을 써서 유료시험으로 접수하기"
+              : "응시권을 쓰지 않고 무료시험으로 먼저 보기"}
+          </button>
+        )}
 
         <ul className="mt-4 space-y-1 text-[13px] leading-relaxed text-soft-muted">
           <li>
             · 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다. 학년은 접수한 뒤 바꿀 수
             없습니다.
           </li>
-          <li>· 접수한 평가는 응시하기 탭에서 과목별로 따로 응시합니다.</li>
-          <li>· 무료시험으로 먼저 보고 나중에 유료시험으로 올릴 수 있습니다. 답은 그대로 남습니다.</li>
+          {tier === "free" && (
+            <li>
+              · 무료시험으로 본 뒤에도 유료시험으로 올릴 수 있습니다. 먼저 쓴 답은 그대로
+              남습니다.
+            </li>
+          )}
         </ul>
 
         <div className="mt-6 flex justify-end gap-2">
@@ -175,11 +200,11 @@ export function useApplyFlow(studentId: string) {
             type="button"
             data-autofocus
             onClick={confirm}
-            aria-disabled={pick === "paid" && paidBlocked}
-            disabled={pick === "paid" && paidBlocked}
+            aria-disabled={blocked}
+            disabled={blocked}
             className={`${btnBox} disabled:cursor-not-allowed disabled:opacity-50`}
           >
-            {pick === "free" ? "무료시험 접수하기" : "유료시험 접수하기"}
+            {pending.upgrade ? "유료시험으로 올리기" : "접수하기"}
           </button>
         </div>
       </ExamDialog>
@@ -189,48 +214,58 @@ export function useApplyFlow(studentId: string) {
   return { wallet, begin, dialog };
 }
 
-/** 갈래 한 칸 — 이름 · 드는 응시권 · 무엇이 열리는지 */
-function TierChoice({
-  on,
-  disabled,
-  onPick,
-  title,
-  cost,
-  desc,
-  note,
+/**
+ * 어느 갈래로 접수되는지 — 고르개가 아니라 **적어 두는 칸**이다.
+ *
+ * 고를 것이 없으니 누를 것도 없다. 대신 왜 이 갈래인지(응시권이 있는지)를 한 줄로 적는다.
+ * 그것을 빼면 같은 버튼을 눌렀는데 어떤 날은 20문항이, 어떤 날은 50문항이 열린다.
+ */
+function TierNote({
+  tier,
+  left,
+  blocked,
+  counts,
+  reason,
 }: {
-  on: boolean;
-  disabled?: boolean;
-  onPick: () => void;
-  title: string;
-  cost: string;
-  desc: string;
-  /** 고를 수 없는 까닭 — 잠긴 칸에만 적는다 */
-  note?: string;
+  tier: UseTier;
+  /** 남은 응시권 */
+  left: number;
+  /** 올리려는데 응시권이 없다 */
+  blocked: boolean;
+  /** 「국 4 · 수 8 · 과 8」 */
+  counts: string;
+  /** 왜 이 갈래인가 — 고를 것이 없으니 까닭은 적어 두어야 한다 */
+  reason: string;
 }) {
+  const paid = tier === "paid";
+
   return (
-    <li>
-      <button
-        type="button"
-        aria-pressed={on}
-        disabled={disabled}
-        onClick={onPick}
-        className={`w-full rounded-[2px] border px-5 py-3.5 text-left transition-colors ${
-          disabled
-            ? "cursor-not-allowed border-soft-line bg-slate-50 text-slate-400"
-            : on
-              ? "border-soft-primary bg-soft-primary-soft"
-              : "border-soft-line bg-white hover:border-soft-primary"
+    <div
+      className={`mt-4 rounded-[2px] border px-5 py-4 ${
+        blocked ? "border-amber-300 bg-amber-50" : "border-soft-line bg-slate-50"
+      }`}
+    >
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="text-[15px] font-bold text-soft-ink">
+          {paid ? "유료시험" : "무료시험"}
+        </span>
+        <span className="shrink-0 text-[12px] tabular-nums text-soft-muted">
+          {paid ? `응시권 1매 (남은 응시권 ${left}매)` : "응시권 없이 응시"}
+        </span>
+      </p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-soft-muted">
+        {paid
+          ? `${counts}문항을 과목마다 따로 응시합니다. 정밀 리포트와 전문가 해석으로 이어집니다.`
+          : `${counts}문항을 한 번에 이어서 풉니다. 결제 없이 응시하고 요약 리포트를 받습니다.`}
+      </p>
+      <p
+        className={`mt-2 text-[12px] leading-relaxed ${
+          blocked ? "text-amber-700" : "text-soft-ink"
         }`}
       >
-        <span className="flex items-baseline justify-between gap-3">
-          <span className={`text-[15px] font-bold ${disabled ? "" : "text-soft-ink"}`}>{title}</span>
-          <span className="shrink-0 text-[12px] tabular-nums">{cost}</span>
-        </span>
-        <span className="mt-1 block text-[13px] leading-relaxed text-soft-muted">{desc}</span>
-        {note && <span className="mt-1 block text-[12px] text-amber-700">{note}</span>}
-      </button>
-    </li>
+        {reason}
+      </p>
+    </div>
   );
 }
 
