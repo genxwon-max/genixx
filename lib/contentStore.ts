@@ -78,8 +78,31 @@ export type Notice = {
    * 띄우려면 노출도 켜져 있어야 한다(내려 둔 공지가 판으로 뜨면 앞뒤가 안 맞는다).
    */
   popup: boolean;
+  /**
+   * 판의 차림 — 띄우는 까닭이 둘이라 틀도 둘이다.
+   *
+   *   notice  점검·중단처럼 **읽어야 하는 말**. 「공지사항」 머리띠에 제목·게시일·본문
+   *   event   모집·행사처럼 **보여 주고 부르는 것**. 머리띠 없이 그림이 판을 꽉 채우고
+   *           아래에 누를 단추가 선다
+   *
+   * 이벤트 안내를 「공지사항」 머리띠에 넣으면 그림은 좁은 틀 안에 갇히고, 정작 눌러야
+   * 할 곳이 본문 속 링크 한 줄로 묻힌다. 반대로 점검 안내를 포스터로 띄우면 무슨 말인지
+   * 읽기 전에 닫힌다.
+   */
+  popupKind: PopupKind;
+  /** 이벤트 판 아래 단추가 갈 곳 — 비우면 단추를 세우지 않는다 */
+  popupLink: string;
+  /** 그 단추에 적을 말 — 비우면 「자세히 보기」 */
+  popupLinkLabel: string;
   body: RichText;
 };
+
+export type PopupKind = "notice" | "event";
+
+export const popupKinds: { id: PopupKind; label: string; hint: string }[] = [
+  { id: "notice", label: "안내", hint: "「공지사항」 머리띠에 제목·게시일·본문. 점검·중단처럼 읽어야 하는 말." },
+  { id: "event", label: "이벤트", hint: "그림이 판을 꽉 채우고 아래에 누를 단추. 모집·행사처럼 보여 주고 부르는 것." },
+];
 
 /* ───────────────────────── 자주 묻는 질문 ───────────────────────── */
 
@@ -158,6 +181,9 @@ const SEED: Content = {
     shown: true,
     pinned: s.pinned,
     popup: !!s.popup,
+    popupKind: "notice",
+    popupLink: "",
+    popupLinkLabel: "",
     body: { mode: "text", body: s.body, images: [] },
   })),
   faqs: FAQ_SEED.map((s, i) => ({
@@ -187,10 +213,14 @@ function read(): Content {
     const saved = raw ? (JSON.parse(raw) as Partial<Content>) : null;
     cacheValue = saved
       ? {
-          /* popup이 없던 저장분은 「안 띄움」으로 읽는다 — 띄우는 것은 사람이 정한다 */
+          /* popup이 없던 저장분은 「안 띄움」으로 읽는다 — 띄우는 것은 사람이 정한다.
+             차림이 없던 저장분은 전부 안내 판이었다 — 이벤트 틀은 나중에 생겼다 */
           notices: (saved.notices ?? SEED.notices).map((v) => ({
             ...v,
             popup: !!v.popup,
+            popupKind: v.popupKind === "event" ? "event" : "notice",
+            popupLink: v.popupLink ?? "",
+            popupLinkLabel: v.popupLinkLabel ?? "",
             body: richOf(v.body),
           })),
           /* home이 없던 저장분은 「홈에는 안 보임」으로 읽는다 — 켜는 것은 사람이 정한다 */
@@ -247,6 +277,9 @@ export function blankNotice(cur: Content, postedOn: string): Notice {
     shown: false,
     pinned: false,
     popup: false,
+    popupKind: "notice",
+    popupLink: "",
+    popupLinkLabel: "",
     body: blankRich(),
   };
 }

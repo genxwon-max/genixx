@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import {
   blankNotice,
   removeNotice,
+  popupKinds,
   saveNotice,
   today,
   useContent,
@@ -76,6 +77,9 @@ function Editor({
     postedOn: notice.postedOn,
     shown: notice.shown,
     popup: notice.popup,
+    popupKind: notice.popupKind,
+    popupLink: notice.popupLink,
+    popupLinkLabel: notice.popupLinkLabel,
     pinned: notice.pinned,
     body: notice.body,
   });
@@ -84,6 +88,9 @@ function Editor({
   /* 아직 저장소에 없는 공지는 늘 저장할 것이 있다 */
   const dirty = fresh || draft.dirty;
   const bad = v.title.trim() === "";
+  /* 못 쓸 주소는 막지 않고 일러만 준다 — 단추가 안 설 뿐 공지는 뜬다 */
+  const link = v.popupLink.trim();
+  const badLink = link !== "" && !link.startsWith("/") && !/^https?:\/\//i.test(link);
 
   const save = () => {
     if (bad) return false;
@@ -201,6 +208,64 @@ function Editor({
                 </p>
               )}
             </FormRow>
+
+            {/* 띄우기로 한 뒤에야 「어떤 틀로」가 물어볼 만한 말이 된다 */}
+            {v.popup && (
+              <FormRow
+                label="판 차림"
+                hint="점검 안내는 읽혀야 하고 행사 안내는 눌려야 합니다. 이벤트 틀은 머리띠를 걷고 그림을 판 끝까지 채운 뒤 아래에 단추를 세웁니다."
+              >
+                <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                  {popupKinds.map((k) => (
+                    <label key={k.id} className="a2-choice">
+                      <input
+                        type="radio"
+                        name="notice-popup-kind"
+                        checked={v.popupKind === k.id}
+                        onChange={() => draft.set("popupKind", k.id)}
+                      />
+                      {k.label}
+                    </label>
+                  ))}
+                </span>
+                <p className="a2-note w-full">
+                  <span>{popupKinds.find((k) => k.id === v.popupKind)?.hint}</span>
+                </p>
+              </FormRow>
+            )}
+
+            {/* 단추는 이벤트 틀에만 선다 — 안내 판에서 눌러야 할 것은 「닫기」 하나다 */}
+            {v.popup && v.popupKind === "event" && (
+              <FormRow
+                label="단추"
+                hint="비워 두면 단추를 세우지 않습니다. 우리 화면은 /로 시작하는 주소(/service/pricing), 바깥은 https://로 적습니다."
+              >
+                <span className="flex w-full flex-wrap items-center gap-2">
+                  <input
+                    className="a2-input a2-input-lg"
+                    style={{ maxWidth: "22rem" }}
+                    value={v.popupLink}
+                    onChange={(e) => draft.set("popupLink", e.target.value)}
+                    placeholder="/service/pricing"
+                  />
+                  <input
+                    className="a2-input a2-input-lg"
+                    style={{ maxWidth: "12rem" }}
+                    value={v.popupLinkLabel}
+                    onChange={(e) => draft.set("popupLinkLabel", e.target.value)}
+                    placeholder="자세히 보기"
+                  />
+                </span>
+                {badLink && (
+                  <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
+                    <span>
+                      쓸 수 없는 주소입니다. /로 시작하는 우리 화면 주소나 https://로 시작하는 바깥 주소만
+                      단추가 됩니다 — 그대로 두면 단추 없이 뜹니다.
+                    </span>
+                  </p>
+                )}
+              </FormRow>
+            )}
 
             <FormRow label="본문">
               <BodyEditor

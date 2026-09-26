@@ -62,10 +62,16 @@ export default function NoticesView() {
         /* 띄우는 것과 올려 두는 것은 다른 일이라 칸을 따로 세운다 */
         key: "popup",
         head: "팝업",
-        width: "4.5rem",
+        width: "5.5rem",
         nowrap: true,
-        value: (r) => (r.popup ? "팝업" : ""),
-        cell: (r) => (r.popup ? <span className="a2-t-sm">띄움</span> : dash),
+        /* 어떤 틀로 뜨는지까지 적는다 — 안내와 이벤트는 사람이 보는 판이 아주 다르다 */
+        value: (r) => (r.popup ? (r.popupKind === "event" ? "이벤트" : "안내") : ""),
+        cell: (r) =>
+          r.popup ? (
+            <span className="a2-t-sm">{r.popupKind === "event" ? "이벤트" : "안내"}</span>
+          ) : (
+            dash
+          ),
       },
       {
         key: "pinned",
