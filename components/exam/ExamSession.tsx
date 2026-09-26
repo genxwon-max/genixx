@@ -664,7 +664,7 @@ function StartGate({
 
   return (
     <div className="container-x flex min-h-full items-start justify-center py-8">
-      <div className="w-full max-w-[820px]">
+      <div className="w-full max-w-[900px]">
         <ExamCover
           badge={`제${period}교시`}
           headline={`${season} GENIXX 진단평가 ${title} 문항지`}
@@ -676,7 +676,7 @@ function StartGate({
               id: "grade",
               cells: [
                 { kind: "label", text: "학년" },
-                { kind: "value", key: "g", text: grade, width: "w-[5rem]" },
+                { kind: "value", key: "g", text: grade, width: "w-[6.5rem]" },
               ],
             },
             {
@@ -688,7 +688,7 @@ function StartGate({
                   key: "name",
                   text: student?.name ?? "-",
                   muted: !student,
-                  width: "w-[5rem]",
+                  width: "w-[6.5rem]",
                 },
                 { kind: "label", text: "ID" },
                 {
@@ -696,7 +696,7 @@ function StartGate({
                   key: "id",
                   text: student ? formatCode(student.code) : "-",
                   muted: !student,
-                  width: "w-[7rem]",
+                  width: "w-[8.5rem]",
                 },
               ],
             },
@@ -714,17 +714,19 @@ function StartGate({
               ],
             },
           ]}
+          action={
+            <button
+              type="button"
+              onClick={onStart}
+              className={`${btnPrimary} px-7 py-3.5 text-[15px]`}
+            >
+              평가 시작
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          }
         />
 
         {/* ── 종이 바깥 ── */}
-        <button
-          type="button"
-          onClick={onStart}
-          className={`mt-6 w-full py-4 text-[16px] ${btnPrimary}`}
-        >
-          전체화면으로 평가 시작
-          <ArrowRight className="h-5 w-5" />
-        </button>
         <p className="mt-2.5 text-center text-[11px] text-exam-muted">
           브라우저가 전체화면을 막는 경우에는 일반 창으로 진행됩니다.
         </p>

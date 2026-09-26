@@ -32,9 +32,9 @@ import {
   QuestionPad,
   ScreenColumn,
   isAnswered,
-  numbersText,
   setRange,
 } from "./ExamSession";
+import { useTrialSubject } from "./ExamStatusBar";
 import { btnGhost, btnPrimary, eyebrow, panel } from "./ui";
 
 /**
@@ -151,11 +151,12 @@ async function closeTrial() {
  * 셋트 시작 화면 — 시험지 표지(components/exam/ExamCover.tsx)를 쓴다.
  *
  * 표에 적히는 것만 여기서 정한다. 학년 넷과 교과 셋은 누를 수 있는 칸이고, 이름과 ID는
- * 가입해야 생기는 값이라 비워 둔다 — 그 칸이 비어 있다는 것 자체가 「가입하면 이 자리가
- * 채워진다」를 말한다.
+ * 가입해야 생기는 값이라 「무료응시」라고만 적어 둔다 — 지금 보는 것이 명부에 올라간
+ * 사람의 시험지가 아니라는 말이다.
  *
  * 고르는 일과 시작하는 일을 가른다. 종이에서 칸을 채우는 일과 첫 장을 넘기는 일이 다르듯,
- * 교과를 누르는 것만으로는 시작되지 않는다.
+ * 교과를 누르는 것만으로는 시작되지 않는다. 시작하는 단추는 응시 화면과 같은 자리에
+ * 둔다 — 종이 안, 「넘기지 마시오」 줄 바로 아래 오른쪽.
  */
 function TrialStart({
   season,
@@ -176,7 +177,7 @@ function TrialStart({
 
   return (
     <div className="container-x flex min-h-full items-start justify-center py-8">
-      <div className="w-full max-w-[820px]">
+      <div className="w-full max-w-[900px]">
         <ExamCover
           badge="제1교시"
           headline={`${season} GENIXX 진단평가 셋트 문항지`}
@@ -202,9 +203,15 @@ function TrialStart({
               id: "who",
               cells: [
                 { kind: "label", text: "이름" },
-                { kind: "value", key: "name", text: "가입 후", muted: true, width: "w-[4rem]" },
+                {
+                  kind: "value",
+                  key: "name",
+                  text: "무료응시",
+                  muted: true,
+                  width: "w-[6.5rem]",
+                },
                 { kind: "label", text: "ID" },
-                { kind: "value", key: "id", text: "가입 후", muted: true, width: "w-[4rem]" },
+                { kind: "value", key: "id", text: "무료응시", muted: true, width: "w-[6.5rem]" },
               ],
             },
             {
@@ -222,22 +229,21 @@ function TrialStart({
               ],
             },
           ]}
+          action={
+            <button
+              type="button"
+              onClick={() => pick && onStart(pick)}
+              aria-disabled={!pick}
+              disabled={!pick}
+              className={`${btnPrimary} px-7 py-3.5 text-[15px] disabled:cursor-not-allowed disabled:opacity-45`}
+            >
+              {pick ? "평가 시작" : "응시 교과를 고르세요"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          }
         />
 
         {/* ── 종이 바깥 ── */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => pick && onStart(pick)}
-            aria-disabled={!pick}
-            disabled={!pick}
-            className={`${btnPrimary} disabled:cursor-not-allowed disabled:opacity-45`}
-          >
-            {pick ? `${subjects.find((x) => x.id === pick)!.short} 셋트 시작` : "응시 교과를 고르세요"}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-
         <ul className="mt-6 space-y-2 text-center text-[13px] leading-relaxed text-exam-muted">
           <li>
             · {trackLabel(track)} · 1셋트 <b className="text-exam-text">{SET_QUESTIONS}문항</b>을
@@ -293,6 +299,8 @@ function TrialRun({
   useExamExitRequest(true, () => setAskExit(true));
 
   const meta = subjects.find((s) => s.id === subject)!;
+  /* 머리는 응시 존 레이아웃이 한 줄로 세운다(ExamStatusBar) — 과목만 건네준다 */
+  useTrialSubject(meta.name);
   const order = examOrderOf(subject);
   /* 셋트가 여는 만큼만 앞에서부터 — 번호는 푸는 차례 그대로다 */
   const free = order.slice(0, tierCount("set", subject, subject));
@@ -309,25 +317,10 @@ function TrialRun({
   const doneCount = free.filter((q) => isAnswered(q, answers[q.id])).length;
 
   return (
+    /* 머리는 응시 존 레이아웃이 한 줄로 세운다(ExamStatusBar) — 여기서 또 그리지 않는다.
+       실제 응시와 셋트가 띠 수부터 다르면, 가입 전에 본 화면과 가입한 뒤 받는 화면이
+       같은 시험으로 읽히지 않는다 */
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
-      {/* 문항 머리 */}
-      <div className="shrink-0 border-b border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          <div className="flex items-baseline gap-3">
-            <p className="text-[14px] font-bold tracking-tight text-exam-text">{meta.name}</p>
-            <span className="rounded-[2px] bg-soft-primary-soft px-2 py-0.5 text-[11px] font-bold text-soft-primary">
-              셋트 문항
-            </span>
-            <span className="hidden text-[12px] text-exam-muted sm:block">
-              1셋트 {free.length}문항 · 무료시험에서 {FREE_TOTAL}문항으로 이어집니다
-            </span>
-          </div>
-          <p className="text-[12px] font-medium tabular-nums text-exam-muted">
-            {screen ? `${numbersText(order, screen)} / ${free.length}` : "셋트 끝"}
-          </p>
-        </div>
-      </div>
-
       {/* 본문 — 좌: 자료(보기) / 가운데: 문제 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
         {question ? (

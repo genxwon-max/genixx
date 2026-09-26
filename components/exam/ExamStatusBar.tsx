@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   FREE_LIMIT_MIN,
   SUBJECT_IDS,
@@ -19,6 +19,41 @@ import { askExamExit, useExamExitAvailable } from "@/lib/fullscreen";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
+}
+
+/* ───────────────────────── 셋트가 고른 교과 ───────────────────────── */
+
+/**
+ * 셋트 창이 머리에 건네는 교과 이름.
+ *
+ * 응시 창은 주소에 과목이 들어 있어(/exam/session/수학) 머리가 혼자 읽는다. 셋트 창은
+ * 주소가 회차와 학년까지라, 교과는 시작 화면에서 고르고 나서야 정해진다. 머리는 레이아웃에,
+ * 셋트는 페이지에 있어 서로 다른 트리다 — 「나가기」 신호와 같은 방법으로 건넨다.
+ */
+let trialSubject: string | null = null;
+const trialWatchers = new Set<() => void>();
+
+/** 셋트 응시 화면이 켜져 있는 동안 머리에 과목을 적는다 */
+export function useTrialSubject(name: string | null) {
+  useEffect(() => {
+    trialSubject = name;
+    trialWatchers.forEach((w) => w());
+    return () => {
+      trialSubject = null;
+      trialWatchers.forEach((w) => w());
+    };
+  }, [name]);
+}
+
+function useTrialSubjectName() {
+  return useSyncExternalStore(
+    (cb) => {
+      trialWatchers.add(cb);
+      return () => trialWatchers.delete(cb);
+    },
+    () => trialSubject,
+    () => null,
+  );
 }
 
 /**
@@ -45,6 +80,7 @@ export default function ExamStatusBar() {
   const config = useExamConfig();
   const [now, setNow] = useState(0);
   const canExit = useExamExitAvailable();
+  const trialName = useTrialSubjectName();
 
   const parts = pathname.startsWith("/exam/session/") ? pathname.split("/") : [];
   const slug = parts[3] ?? null;
@@ -88,7 +124,7 @@ export default function ExamStatusBar() {
 
   if (slug === "trial") {
     return (
-      <HeadRow name={examName} subject={null} hint="시간을 재지 않습니다">
+      <HeadRow name={examName} subject={trialName} hint="시간을 재지 않습니다">
         {canExit ? <ExitLink>셋트 그만하기</ExitLink> : null}
       </HeadRow>
     );

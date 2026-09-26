@@ -17,8 +17,9 @@ import type { ReactNode } from "react";
  * 종이에서 손으로 적는 칸이 화면에서는 곧 고르개다. 칸에 onPick이 있으면 누를 수 있고, 고른
  * 칸은 채워진다. 표를 그려 놓고 그 아래에 따로 고르개를 두면 같은 것을 두 번 묻는 꼴이 된다.
  *
- * 채울 수 없는 칸(가입 전의 이름·ID, 비어 있는 수강학원)은 비워 둔다. 비어 있다는 것 자체가
- * 「여기는 아직 없다」를 말한다.
+ * 채울 수 없는 칸(비어 있는 수강학원)은 비워 둔다. 비어 있다는 것 자체가 「여기는 아직
+ * 없다」를 말한다. 가입 전의 이름·ID처럼 왜 비었는지가 따로 있는 칸에는 그 까닭을 옅은
+ * 글씨로 적는다(muted).
  */
 
 /** 표의 한 칸 */
@@ -47,15 +48,28 @@ export type CoverGroup = {
 };
 
 const labelCell =
-  "flex h-10 items-center justify-center bg-slate-100 px-2.5 text-[13.5px] font-medium text-exam-text";
+  "flex h-12 items-center justify-center bg-slate-100 px-4 text-[14.5px] font-medium text-exam-text md:h-14 md:px-5 md:text-[15.5px]";
 
+/**
+ * 값 칸의 꼴.
+ *
+ * ── 고른 칸을 먹칠하지 않는다 ──
+ * 예전에는 고른 칸을 시험지 글자색(짙은 남색)으로 통째로 채웠다. 표에서 그 칸만 먼저
+ * 읽히고, 종이 위에 검은 딱지를 붙인 꼴이 된다. 옅게 깔고 테두리를 한 겹 더 두른다 —
+ * 종이에서 답을 고를 때 칸에 동그라미를 치는 것과 같은 말이다.
+ *
+ * ── 칸을 크게 둔다 ──
+ * 학년 넷과 교과 셋은 이 표에서 **누르는 자리**다. 글씨만 적어 두는 칸과 같은 크기면
+ * 누를 것이 있다는 것이 보이지 않고, 손가락으로 누르기에도 좁다.
+ */
 function valueClass(on: boolean, pickable: boolean, muted: boolean, width?: string) {
-  const base = `flex h-10 items-center justify-center border-l border-exam-text/70 px-2.5 text-[15px] ${
-    width ?? "min-w-[2.75rem]"
+  const base = `flex h-12 items-center justify-center border-l border-exam-text/70 px-4 text-[16px] md:h-14 md:px-5 md:text-[17px] ${
+    width ?? "min-w-[3.5rem]"
   }`;
-  if (on) return `${base} bg-exam-text font-bold text-white transition-colors`;
+  if (on)
+    return `${base} bg-soft-primary-soft font-bold text-soft-primary shadow-[inset_0_0_0_2px_var(--color-soft-primary)] transition-colors`;
   if (pickable) return `${base} text-exam-text transition-colors hover:bg-exam-raised`;
-  return `${base} ${muted ? "text-[12px] text-exam-muted" : "text-exam-text"}`;
+  return `${base} ${muted ? "text-[13px] text-exam-muted" : "text-exam-text"}`;
 }
 
 export default function ExamCover({
@@ -65,6 +79,7 @@ export default function ExamCover({
   watermark,
   groups,
   notice,
+  action,
 }: {
   /** 왼쪽 위 딱지 — 「제1교시」 */
   badge: string;
@@ -77,6 +92,14 @@ export default function ExamCover({
   groups: CoverGroup[];
   /** 「넘기지 마시오」 상자 아래 괄호 줄 */
   notice: ReactNode;
+  /**
+   * 시작 단추 — 「넘기지 마시오」 상자 **바로 아래 오른쪽**, 종이 안에 선다.
+   *
+   * 종이 바깥에 두면 「이 면을 넘기지 마시오」와 「시작」이 서로 다른 자리에서 말하게
+   * 되어, 넘기라는 말인지 넘기지 말라는 말인지 한 번 더 읽어야 한다. 넘기지 말라는
+   * 줄 끝에 붙여 두면 그것이 곧 **면을 넘기는 손잡이**로 읽힌다.
+   */
+  action?: ReactNode;
 }) {
   return (
     <div className="relative overflow-hidden border border-exam-line bg-white px-7 py-10 shadow-sm md:px-14 md:py-14">
@@ -156,6 +179,8 @@ export default function ExamCover({
             {notice}
           </p>
         </div>
+
+        {action && <div className="mt-5 flex justify-end">{action}</div>}
       </div>
     </div>
   );
