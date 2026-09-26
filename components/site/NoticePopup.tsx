@@ -173,12 +173,18 @@ export default function NoticePopup() {
         }
       >
         {event ? (
-          /* 머리띠를 걷고 ✕만 그림 위에 얹는다 — 포스터가 판의 첫 줄부터 시작해야 한다 */
+          /* 머리띠를 걷고 ✕만 얹는다 — 포스터가 판의 첫 줄부터 시작해야 한다.
+             그림 위에서는 흰 ✕에 그림자를 깔아 밝은 포스터에서도 보이게 하고, 흰 바탕에
+             적은 글 위에서는 회색으로 놓는다 — 바탕이 둘이라 색도 둘이다 */
           <button
             type="button"
             onClick={close}
             aria-label="공지 닫기"
-            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/65"
+            className={
+              poster
+                ? "absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center text-white/90 transition-opacity [filter:drop-shadow(0_1px_4px_rgb(0_0_0/0.55))] hover:text-white"
+                : "absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center text-slate-400 transition-colors hover:text-slate-700"
+            }
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -255,11 +261,12 @@ export default function NoticePopup() {
             </Link>
           ))}
 
+        {/* 닫는 띠는 낮게 — 판의 말은 위에 있고, 이 줄은 나가는 길만 가리킨다 */}
         <div
           className={
             event
-              ? "flex items-center justify-between gap-3 bg-slate-900 py-2 pl-5 pr-2 text-white"
-              : "flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 py-2 pl-5 pr-2"
+              ? "flex items-center justify-between gap-3 bg-slate-900 py-1 pl-5 pr-2 text-white"
+              : "flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 py-1 pl-5 pr-2"
           }
         >
           <label
@@ -282,8 +289,8 @@ export default function NoticePopup() {
             onClick={close}
             className={
               event
-                ? "type-meta rounded px-3 py-2 font-bold text-white transition-colors hover:bg-white/10"
-                : "type-meta rounded px-3 py-2 font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                ? "type-meta rounded px-3 py-1.5 font-bold text-white transition-colors hover:bg-white/10"
+                : "type-meta rounded px-3 py-1.5 font-bold text-slate-700 transition-colors hover:bg-slate-200"
             }
           >
             닫기
