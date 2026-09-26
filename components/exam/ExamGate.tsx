@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
 import ExamCatalog from "./ExamCatalog";
-import ExamPaper from "./ExamPaper";
 
 /**
  * 로그인하지 않았으면 평가 목록을 **셋트 모드**로 대신 보여준다.
@@ -14,17 +13,15 @@ import ExamPaper from "./ExamPaper";
  * 그래서 가입 없이 평가를 고르고 교과 하나로 1셋트를 풀어 보게 하고(/exam/session/trial),
  * 다 풀면 가입을 권한다 — 진단평가 절차의 둘째·셋째 단계가 이것이다.
  *
- * 응시 기록·결과·해설은 계정에 붙으므로 그 화면들은 여전히 로그인한 사람에게만 연다.
+ * ── 응시 화면에는 두르지 않는다 ──
+ * /exam/session 아래 세 주소(trial · free · paid)는 문 없이 주소만으로 열린다. 셋을 가르는
+ * 것이 주소이므로, 어느 갈래를 보고 있는지 알려면 브라우저에 남은 로그인 값이 아니라
+ * 주소만 읽으면 된다. 응시 기록은 그대로 계정에 붙고, 명부에 없는 사람은 demo 학생으로
+ * 돈다. 가입을 권하는 자리는 이 평가 목록과 셋트 끝 화면이다.
  *
- * `padded` — 응시 화면(/exam/session)처럼 페이지가 여백을 두지 않는 자리에서 켠다.
+ * 접수·기록·결과·해설은 계정에 붙어야만 뜻이 있는 화면이라 여전히 이 문을 두른다.
  */
-export default function ExamGate({
-  children,
-  padded = false,
-}: {
-  children: ReactNode;
-  padded?: boolean;
-}) {
+export default function ExamGate({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();
   const session = useSession();
 
@@ -34,11 +31,5 @@ export default function ExamGate({
 
   if (session) return <>{children}</>;
 
-  return padded ? (
-    <ExamPaper>
-      <ExamCatalog />
-    </ExamPaper>
-  ) : (
-    <ExamCatalog />
-  );
+  return <ExamCatalog />;
 }

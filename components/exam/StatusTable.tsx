@@ -114,7 +114,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
     return <StudentOnly role={session.role} />;
   }
 
-  const openExam = (subject: string) => examWindow(`/exam/session/${subject}`);
+  const openExam = (subject: string) => examWindow(`/exam/session/paid/${subject}`);
   /** 무료시험은 과목을 고르지 않는다 — 20문항이 한 창에서 이어진다 */
   const openFree = () => examWindow("/exam/session/free");
   const isFree = record.tier === "free";

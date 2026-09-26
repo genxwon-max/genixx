@@ -112,7 +112,9 @@ npm run lint    # ESLint
 | 경로 | 화면 ID | 설명 |
 | --- | --- | --- |
 | `/exam` | ASM-01 | 응시 현황 — 정부 포털식 표 2개(과목별 평가 / 설문 제출) + 최종 제출 |
-| `/exam/session/[subject]` | ASM-03 | 본검사 — `korean` `math` `science` 각각 별도 응시 (별도 창) |
+| `/exam/session/trial/[round]/[track]` | ASM-02 | 비회원 셋트 — 가입 없이 한 교과 4문항 (별도 창) |
+| `/exam/session/free` | ASM-03 | 회원 무료시험 — 세 과목 20문항을 한 번에 (별도 창) |
+| `/exam/session/paid/[subject]` | ASM-04 | 회원 유료시험 — `korean` `math` `science` 각각 별도 응시 (별도 창) |
 | `/exam/result` | RPT-01 | 결과 리포트 — 8재능 팔각형, 유형, 성장 방향, 전문가 평가, PDF·이미지 저장 |
 | `/exam/roster` | ORG-02 | 학원장 — 학생 등록·접속코드 발급·CSV 일괄 등록 |
 | `/exam/payment` | PAY-03 | 응시권 결제 (학생 직접 신청 경로) |

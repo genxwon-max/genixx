@@ -74,7 +74,7 @@ export function isAnswered(q: Question, value: number | string | undefined) {
 }
 
 /**
- * 응시 한 판이 보는 범위 — **과목 하나**이거나 **무료시험 전체**다.
+ * 응시 한 판이 보는 범위 — **유료시험의 과목 하나**이거나 **무료시험 전체**다.
  *
  * 유료시험은 과목마다 따로 들어간다(과목당 40분이 과목을 갈라 놓는 근거다). 무료시험은
  * 과목을 고르지 않고 20문항을 한 번에 이어서 푼다 — 절차가 그것을 시험 하나로 적고 있다.
@@ -82,8 +82,18 @@ export function isAnswered(q: Question, value: number | string | undefined) {
  * 둘이 화면을 나눠 쓰는 까닭은 아이가 보는 것이 같아서다. 왼쪽 자료 · 가운데 문제 ·
  * 오른쪽 문항 이동판 · 시계 · 제출 · 해석 작성이 모두 그대로다. 다른 것은 **무엇을 한 판으로
  * 세는가**뿐이라, 그 셈만 아래 Sheet로 모으고 화면은 하나로 둔다.
+ *
+ * ── 갈래는 주소가 정한다 ──
+ * 예전에는 같은 과목 주소(/exam/session/수학)에서 저장된 record.tier를 읽어 무료인지
+ * 유료인지를 갈랐다. 같은 주소가 브라우저에 남은 값에 따라 다른 시험을 열면, 화면을
+ * 열어 보려는 사람은 먼저 그 값을 맞춰 놓아야 하고 어느 갈래를 보고 있는지도 주소에
+ * 적혀 있지 않다. 이제 갈래마다 주소가 따로다 —
+ *
+ *   /exam/session/trial/[회차]/[학년]  비회원 셋트
+ *   /exam/session/free                회원 무료시험
+ *   /exam/session/paid/[과목]          회원 유료시험
  */
-export type ExamScope = { kind: "subject"; subject: SubjectId } | { kind: "free" };
+export type ExamScope = { kind: "paid"; subject: SubjectId } | { kind: "free" };
 
 /**
  * 한 판의 상태와 손잡이.
@@ -175,7 +185,8 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
 
   const subject = scope.subject;
   const rec = record.subjects[subject];
-  const list = tierQuestions(record.tier, subject, record.setSubject);
+  /* 갈래는 주소가 정한다 — 이 주소는 유료시험이므로 저장된 record.tier를 보지 않는다 */
+  const list = tierQuestions("paid", subject);
   return {
     title: subjectOf(subject)!.name,
     list,

@@ -9,6 +9,7 @@ import {
   isSubjectId,
   subjectOf,
   subjects,
+  type SubjectId,
 } from "@/lib/exam";
 import { evalName, isTrackId } from "@/lib/examCatalog";
 import { useWallet } from "@/lib/ticketStore";
@@ -26,7 +27,7 @@ function pad(n: number) {
 /**
  * 셋트 창이 머리에 건네는 교과 이름.
  *
- * 응시 창은 주소에 과목이 들어 있어(/exam/session/수학) 머리가 혼자 읽는다. 셋트 창은
+ * 유료시험 창은 주소에 과목이 들어 있어(/exam/session/paid/수학) 머리가 혼자 읽는다. 셋트 창은
  * 주소가 회차와 학년까지라, 교과는 시작 화면에서 고르고 나서야 정해진다. 머리는 레이아웃에,
  * 셋트는 페이지에 있어 서로 다른 트리다 — 「나가기」 신호와 같은 방법으로 건넨다.
  */
@@ -82,9 +83,10 @@ export default function ExamStatusBar() {
   const canExit = useExamExitAvailable();
   const trialName = useTrialSubjectName();
 
+  /* /exam/session/{갈래}/… — 갈래는 trial · free · paid 셋이고 늘 주소 세 번째 칸이다 */
   const parts = pathname.startsWith("/exam/session/") ? pathname.split("/") : [];
   const slug = parts[3] ?? null;
-  const subject = slug && isSubjectId(slug) ? slug : null;
+  const subject = slug === "paid" && isSubjectId(parts[4] ?? "") ? (parts[4] as SubjectId) : null;
   const wallet = useWallet(session?.studentId ?? "demo");
   /**
    * 무료시험(/exam/session/free)은 과목 셋을 한 판으로 본다.
