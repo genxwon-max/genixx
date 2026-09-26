@@ -1,22 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { CatalogRound } from "@/lib/catalogRounds";
-import {
-  FREE_COUNT,
-  FREE_TOTAL,
-  PAID_COUNT,
-  PAID_TOTAL,
-  subjects,
-  tierOf,
-} from "@/lib/exam";
-import { dotDate, evalName, trackLabel, type TrackId } from "@/lib/examCatalog";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, type ReactNode } from "react";
+import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
+import { FREE_COUNT, FREE_TOTAL, PAID_COUNT, PAID_TOTAL, subjects, tierOf } from "@/lib/exam";
+import { dotDate, evalName, isTrackId, trackLabel, type TrackId } from "@/lib/examCatalog";
 import { raiseTier } from "@/lib/examStore";
 import {
   applyFree,
   spendTicket,
   ticketsLeft,
+  tierApplied,
   usedInRound,
   useWallet,
   type UseTier,
@@ -81,27 +76,59 @@ export function applyAction(
  * 한때는 무료로 접수해 둔 평가를 이 창에서 유료로 올릴 수 있었다(「유료시험으로 올릴까요?」).
  * 갈래를 고르게 하지 않기로 한 뒤에는 그 길이 갈래를 두 번 묻는 꼴이 된다 — 접수할 때 한
  * 번, 목록에 돌아와서 또 한 번. 갈래는 접수하는 순간 결제 여부가 정하고, 그것으로 끝이다.
+ *
+ * ── 어느 창이 떠 있는지는 주소가 들고 있다 ──
+ * 창이 뜬 것은 화면 안의 상태가 아니라 **주소의 상태**다. 컴포넌트 안에만 들고 있으면
+ * 그 창을 보려는 사람은 매번 목록을 띄우고 줄을 찾아 눌러야 하고, 띄워 놓은 창을 남에게
+ * 건넬 수도, 새로 고쳐 되돌아올 수도 없다.
+ *
+ *   /exam/apply?apply=2026-3&track=e3      접수 확인
+ *   /exam/apply?applied=2026-3&track=e3    접수 완료
+ *
+ * 응시 화면을 갈래마다 주소로 가른 것과 같은 까닭이다(/exam/session/…).
  */
-export function useApplyFlow(studentId: string) {
-  const wallet = useWallet(studentId);
-  const [pending, setPending] = useState<{ round: CatalogRound; track: TrackId } | null>(null);
-  const [applied, setApplied] = useState<{
-    round: CatalogRound;
-    track: TrackId;
-    tier: UseTier;
-  } | null>(null);
 
-  const begin = (round: CatalogRound, track: TrackId) => setPending({ round, track });
-  const close = () => {
-    setPending(null);
-    setApplied(null);
-  };
+/** 접수 확인 창이 떠 있는 주소 */
+export const applyHref = (pathname: string, round: string, track: TrackId) =>
+  `${pathname}?apply=${encodeURIComponent(round)}&track=${track}`;
+
+/** 접수 완료 창이 떠 있는 주소 */
+const appliedHref = (pathname: string, round: string, track: TrackId) =>
+  `${pathname}?applied=${encodeURIComponent(round)}&track=${track}`;
+
+/**
+ * 접수 확인·완료 창.
+ *
+ * ⚠ useSearchParams는 Suspense 경계 안에서 부른다. 경계 없이 부르면 빌드가 이 화면을
+ *   정적으로 그리지 못한다. 경계는 이 창을 세우는 ExamCatalog가 두른다.
+ */
+export function ApplyDialog({ studentId }: { studentId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const rounds = useCatalogRounds();
+  const wallet = useWallet(studentId);
+
+  /* 창이 닫힌 주소로 돌아간다 — 목록은 그 자리에 그대로 있다 */
+  const close = () => router.replace(pathname);
+
+  const trackRaw = params.get("track") ?? "";
+  const track = isTrackId(trackRaw) ? trackRaw : null;
+  const applyId = params.get("apply");
+  const appliedId = params.get("applied");
+  const round = rounds.find((r) => r.id === (applyId ?? appliedId)) ?? null;
+
+  /* 주소를 직접 쳐서 온 사람이 없는 평가를 가리킬 수 있다 — 그때는 아무것도 띄우지 않는다 */
+  if (!round || !track) return null;
 
   const left = ticketsLeft(wallet);
 
-  let dialog: ReactNode = null;
-  if (applied) {
-    dialog = (
+  if (appliedId) {
+    /* 완료 창에 적는 유형은 **접수 기록**에서 읽는다. 남은 응시권으로 되짚으면, 마지막 한
+       매를 쓴 사람은 새로 고쳤을 때 무료로 접수한 것으로 읽힌다 */
+    const tier = tierApplied(wallet, round.id, track) ?? (left > 0 ? "paid" : "free");
+
+    return (
       <ExamDialog
         title="접수 완료"
         onClose={close}
@@ -116,27 +143,30 @@ export function useApplyFlow(studentId: string) {
           </>
         }
       >
-        <Summary round={applied.round} track={applied.track} />
+        <Summary round={round} track={track} minutes={tier === "paid"} />
         <p className="mt-4 text-[14px] leading-relaxed text-soft-ink">
-          {applied.tier === "free"
+          {tier === "free"
             ? `${tierOf("free").label}으로 접수했습니다. 응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
             : `${tierOf("paid").label}으로 접수했습니다. 응시하기 탭에서 과목을 하나씩 응시합니다.`}
         </p>
       </ExamDialog>
     );
-  } else if (pending) {
+  }
+
+  if (applyId) {
     /* 갈래는 고르는 것이 아니라 결제한 응시권이 있는지가 정한다 */
     const tier: UseTier = left > 0 ? "paid" : "free";
     const confirm = () => {
-      const { round, track } = pending;
       const ok =
         tier === "paid"
           ? spendTicket(studentId, round.id, track)
           : applyFree(studentId, round.id, track);
-      setPending(null);
-      if (!ok) return;
+      if (!ok) {
+        close();
+        return;
+      }
       if (tier === "paid") raiseTier(studentId, "paid");
-      setApplied({ round, track, tier });
+      router.replace(appliedHref(pathname, round.id, track));
     };
 
     const paid = tier === "paid";
@@ -144,7 +174,7 @@ export function useApplyFlow(studentId: string) {
       .map((x) => `${x.short} ${(paid ? PAID_COUNT : FREE_COUNT)[x.id]}`)
       .join(" · ");
 
-    dialog = (
+    return (
       <ExamDialog
         title="접수 확인"
         onClose={close}
@@ -159,12 +189,21 @@ export function useApplyFlow(studentId: string) {
           </>
         }
       >
-        <Summary round={pending.round} track={pending.track} />
+        {/* 과목과 시간은 유료시험 창에만 — 아래 참고 */}
+        <Summary round={round} track={track} minutes={paid} />
 
-        {/* 접수되는 내용 — 문장으로 늘어놓지 않고 항목으로 세운다. 접수 확인은 읽는 글이
-            아니라 **맞는지 훑는 표**라, 무엇이 어떤 값인지 눈이 왼쪽에서 찾을 수 있어야 한다 */}
+        {/**
+         * 접수되는 내용 — 문장으로 늘어놓지 않고 항목으로 세운다. 접수 확인은 읽는 글이
+         * 아니라 **맞는지 훑는 표**라, 무엇이 어떤 값인지 눈이 왼쪽에서 찾을 수 있어야 한다.
+         *
+         * ── 무료시험은 짧게 ──
+         * 적을 것이 같지 않다. 유료시험은 응시권 한 매가 나가고 과목마다 따로 들어가므로,
+         * 무엇이 몇 매나 어떻게 쓰이는지가 누르기 전에 보여야 한다. 무료시험은 나가는 것이
+         * 없고 한 번에 이어서 푸는 시험 하나라, 같은 칸을 다 세우면 확인할 것이 없는 자리에
+         * 확인할 것을 늘어놓는 꼴이 된다. 유형과 문항 수만 둔다.
+         */}
         <dl className="mt-5 border-y border-soft-line">
-          <Row t="응시 갈래">
+          <Row t="응시 유형">
             <span className="inline-flex items-center rounded-[2px] bg-soft-primary-soft px-2 py-0.5 text-[13px] font-bold text-soft-primary">
               {tierOf(tier).label}
             </span>
@@ -173,29 +212,22 @@ export function useApplyFlow(studentId: string) {
             {counts}
             <span className="ml-1.5 text-soft-muted">· 모두 {paid ? PAID_TOTAL : FREE_TOTAL}문항</span>
           </Row>
-          <Row t="응시 방식">
-            {paid ? "과목마다 따로 응시" : "세 과목을 한 번에 이어서 응시"}
-          </Row>
-          <Row t="응시권">
-            {paid ? (
-              <>
+          {paid && (
+            <>
+              <Row t="응시 방식">과목마다 따로 응시</Row>
+              <Row t="응시권">
                 1매 사용
                 <span className="ml-1.5 text-soft-muted">· 쓰고 나면 {left - 1}매 남음</span>
-              </>
-            ) : (
-              <>
-                쓰지 않음
-                <span className="ml-1.5 text-soft-muted">· 결제 없이 응시합니다</span>
-              </>
-            )}
-          </Row>
+              </Row>
+            </>
+          )}
         </dl>
 
-        {/* 왜 이 갈래인지 — 고르는 자리를 없앤 만큼 까닭은 적어 두어야 한다 */}
+        {/* 왜 이 유형인지 — 고르는 자리를 없앤 만큼 까닭은 적어 두어야 한다 */}
         <p className="mt-3.5 text-[13px] leading-relaxed text-soft-ink">
           {paid
             ? "결제한 응시권이 있어 유료시험으로 접수합니다. 정밀 리포트와 전문가 해석으로 이어집니다."
-            : "결제한 응시권이 없어 무료시험으로 접수합니다. 요약 리포트를 받습니다."}
+            : "결제 없이 응시하고 요약 리포트를 받습니다."}
         </p>
 
         <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-soft-muted">
@@ -209,7 +241,7 @@ export function useApplyFlow(studentId: string) {
     );
   }
 
-  return { wallet, begin, dialog };
+  return null;
 }
 
 /** 접수 내용 한 줄 — 왼쪽에 무엇, 오른쪽에 값 */
@@ -228,17 +260,31 @@ function Row({ t, children }: { t: string; children: ReactNode }) {
  * 회색 상자에 넣지 않는다. 아래 표도 회색 상자였을 때는 같은 덩이가 둘 겹쳐 서서, 어느
  * 쪽이 평가 이름이고 어느 쪽이 접수 내용인지 한 번 더 읽어야 했다. 여기는 제목처럼 서고,
  * 아래가 표다.
+ *
+ * `minutes` — 과목마다의 제한 시간(「국어 40분 · 수학 40분 · 과학 40분」)을 적을까.
+ * 과목마다 따로 들어가는 유료시험에서는 그 줄이 곧 「몇 번을, 얼마씩 앉아 있어야 하는가」
+ * 지만, 무료시험은 셋을 한 번에 이어서 푸는 시험 하나라 과목별 40분이 맞는 말이 아니다.
  */
-function Summary({ round, track }: { round: CatalogRound; track: TrackId }) {
+function Summary({
+  round,
+  track,
+  minutes = true,
+}: {
+  round: CatalogRound;
+  track: TrackId;
+  minutes?: boolean;
+}) {
   return (
     <div>
       <p className="text-[12px] font-semibold text-soft-primary">{trackLabel(track)}</p>
       <p className="mt-1 text-[18px] font-bold leading-snug text-soft-ink">
         TalentMe {evalName(round.id, track, round.label)}
       </p>
-      <p className="mt-1.5 text-[13px] text-soft-muted">
-        {round.subjects.map((s) => `${s.name} ${s.minutes}분`).join(" · ")}
-      </p>
+      {minutes && (
+        <p className="mt-1.5 text-[13px] text-soft-muted">
+          {round.subjects.map((s) => `${s.name} ${s.minutes}분`).join(" · ")}
+        </p>
+      )}
     </div>
   );
 }

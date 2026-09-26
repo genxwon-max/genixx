@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Suspense, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
 import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
 import { FREE_TOTAL, SET_QUESTIONS, assessment, questionCount } from "@/lib/exam";
@@ -23,8 +24,8 @@ import { resetStudent } from "@/lib/examStore";
 import { examWindow } from "@/lib/popup";
 import { useClaimSet } from "@/lib/setStore";
 import { findById } from "@/lib/roster";
-import { resetWallet } from "@/lib/ticketStore";
-import { applyAction, useApplyFlow, type ApplyAction } from "./ApplyFlow";
+import { resetWallet, useWallet } from "@/lib/ticketStore";
+import { ApplyDialog, applyAction, applyHref, type ApplyAction } from "./ApplyFlow";
 import { PageTitle } from "./Registrations";
 import StudentOnly from "./StudentOnly";
 import { btnBox, btnBoxDisabled } from "./ui";
@@ -84,7 +85,10 @@ export default function ExamCatalog() {
   /* 로그인 전 — 접수 대신 셋트 창으로 보낸다(ExamGate가 이 모드로 부른다) */
   const guest = !session;
   const rounds = useCatalogRounds();
-  const { wallet, begin, dialog } = useApplyFlow(studentId);
+  const wallet = useWallet(studentId);
+  /* 접수 창은 화면 안의 상태가 아니라 주소의 상태다 — 누르면 주소를 바꾼다(ApplyFlow) */
+  const router = useRouter();
+  const pathname = usePathname();
   const mine = trackFromGrade(findById(studentId)?.grade);
   /* 셋트를 풀고 가입한 학생이 이 탭에 먼저 닿을 수 있다 — 그 평가를 무료로 접수해 둔다 */
   useClaimSet(guest ? null : studentId);
@@ -115,7 +119,7 @@ export default function ExamCatalog() {
               href: `/exam/session/trial/${round.id}/${track.id}`,
             } as const)
           : applyAction(round, track.id, wallet, asGuardian),
-        onApply: () => begin(round, track.id),
+        onApply: () => router.replace(applyHref(pathname, round.id, track.id)),
       })),
     )
     .filter((it) => filter === "all" || it.track.id === filter)
@@ -308,7 +312,11 @@ export default function ExamCatalog() {
         </button>
       </div>
 
-      {dialog}
+      {/* 경계는 여기서 두른다 — 창이 주소를 읽으므로(useSearchParams) 없으면 이 화면이
+          정적으로 그려지지 않는다. 창은 떠 있을 때만 무언가를 그린다 */}
+      <Suspense fallback={null}>
+        <ApplyDialog studentId={studentId} />
+      </Suspense>
     </div>
   );
 }
