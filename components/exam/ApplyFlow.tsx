@@ -67,32 +67,23 @@ export function applyAction(
  *   응시권이 없으면   무료시험으로 접수한다. 20문항을 한 번에 이어서 푼다.
  *   응시권이 있으면   한 매를 써서 유료시험으로 접수한다. 과목마다 따로 응시한다.
  *
- * 그래서 창은 묻는 대신 **어느 갈래로 접수되는지와 그 까닭을 적어 둔다**. 무료로 접수한
- * 평가는 나중에 결제해서 올릴 수 있으므로(upgrade), 고르지 않았다고 길이 막히지 않는다.
+ * 그래서 창은 묻는 대신 **어느 갈래로 접수되는지와 그 까닭을 적어 둔다**.
  *
- * 올리는 일도 이 창에서 한다. 응시권 한 매를 쓰고, 답과 제출 기록은 그대로 남는다.
+ * ── 올리는 길도 두지 않는다 ──
+ * 한때는 무료로 접수해 둔 평가를 이 창에서 유료로 올릴 수 있었다(「유료시험으로 올릴까요?」).
+ * 갈래를 고르게 하지 않기로 한 뒤에는 그 길이 갈래를 두 번 묻는 꼴이 된다 — 접수할 때 한
+ * 번, 목록에 돌아와서 또 한 번. 갈래는 접수하는 순간 결제 여부가 정하고, 그것으로 끝이다.
  */
 export function useApplyFlow(studentId: string) {
   const wallet = useWallet(studentId);
-  const [pending, setPending] = useState<{
-    round: CatalogRound;
-    track: TrackId;
-    /** 무료로 이미 접수한 평가를 올리는 길인가 */
-    upgrade: boolean;
-  } | null>(null);
+  const [pending, setPending] = useState<{ round: CatalogRound; track: TrackId } | null>(null);
   const [applied, setApplied] = useState<{
     round: CatalogRound;
     track: TrackId;
     tier: UseTier;
   } | null>(null);
 
-  /* 응시권이 있어도 무료로 먼저 보겠다는 사람 — 고르개가 아니라 빠져나가는 길이다 */
-  const [waive, setWaive] = useState(false);
-
-  const begin = (round: CatalogRound, track: TrackId, upgrade = false) => {
-    setWaive(false);
-    setPending({ round, track, upgrade });
-  };
+  const begin = (round: CatalogRound, track: TrackId) => setPending({ round, track });
   const close = () => {
     setPending(null);
     setApplied(null);
@@ -107,7 +98,7 @@ export function useApplyFlow(studentId: string) {
         <Summary round={applied.round} track={applied.track} />
         <p className="mt-4 text-[14px] leading-relaxed text-soft-muted">
           {applied.tier === "free"
-            ? `응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다. 응시권을 결제하면 과목마다 문항이 더 열립니다.`
+            ? `응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
             : "응시하기 탭에서 과목을 하나씩 응시합니다. 응시권 한 매를 썼습니다."}
         </p>
         <div className="mt-6 flex justify-end gap-2">
@@ -121,12 +112,8 @@ export function useApplyFlow(studentId: string) {
       </ExamDialog>
     );
   } else if (pending) {
-    /* 갈래는 고르는 것이 아니라 응시권이 있는지가 정한다. 올리러 온 길은 언제나 유료다 */
-    const tier: UseTier = pending.upgrade || (left > 0 && !waive) ? "paid" : "free";
-    /* 응시권을 써서 접수하는 길이 열려 있는가 — 그 길이 있어야 「안 쓰기」도 뜻이 있다 */
-    const canWaive = !pending.upgrade && left > 0;
-    /* 올리러 왔는데 응시권이 없으면 접수 자체를 막는다 — 무료로는 이미 접수해 두었다 */
-    const blocked = pending.upgrade && left <= 0;
+    /* 갈래는 고르는 것이 아니라 결제한 응시권이 있는지가 정한다 */
+    const tier: UseTier = left > 0 ? "paid" : "free";
     const confirm = () => {
       const { round, track } = pending;
       const ok =
@@ -140,44 +127,21 @@ export function useApplyFlow(studentId: string) {
     };
 
     dialog = (
-      <ExamDialog
-        title={pending.upgrade ? "유료시험으로 올릴까요?" : "이 평가를 접수할까요?"}
-        eyebrowText="접수 확인"
-        onClose={close}
-      >
+      <ExamDialog title="이 평가를 접수할까요?" eyebrowText="접수 확인" onClose={close}>
         <Summary round={pending.round} track={pending.track} />
 
         <TierNote
           tier={tier}
           left={left}
-          blocked={blocked}
           counts={subjects
             .map((x) => `${x.short} ${(tier === "paid" ? PAID_COUNT : FREE_COUNT)[x.id]}`)
             .join(" · ")}
           reason={
-            blocked
-              ? "남은 응시권이 없습니다. 보호자께 요청해 주세요."
-              : pending.upgrade
-                ? "응시권 한 매를 써서 올립니다. 먼저 쓴 답과 제출 기록은 그대로 남습니다."
-                : tier === "paid"
-                  ? "응시권이 있어 유료시험으로 접수합니다."
-                  : waive
-                    ? "응시권을 남겨 두고 무료시험으로 접수합니다."
-                    : "결제한 응시권이 없어 무료시험으로 접수합니다."
+            tier === "paid"
+              ? "결제한 응시권이 있어 유료시험으로 접수합니다."
+              : "결제한 응시권이 없어 무료시험으로 접수합니다."
           }
         />
-
-        {canWaive && (
-          <button
-            type="button"
-            onClick={() => setWaive(!waive)}
-            className="mt-2.5 text-[12.5px] text-soft-primary underline-offset-2 hover:underline"
-          >
-            {waive
-              ? "응시권을 써서 유료시험으로 접수하기"
-              : "응시권을 쓰지 않고 무료시험으로 먼저 보기"}
-          </button>
-        )}
 
         <ul className="mt-4 space-y-1 text-[13px] leading-relaxed text-soft-muted">
           <li>
@@ -185,10 +149,7 @@ export function useApplyFlow(studentId: string) {
             없습니다.
           </li>
           {tier === "free" && (
-            <li>
-              · 무료시험으로 본 뒤에도 유료시험으로 올릴 수 있습니다. 먼저 쓴 답은 그대로
-              남습니다.
-            </li>
+            <li>· 응시권은 보호자가 결제해 넘겨줍니다. 결제한 뒤에 접수하면 유료시험이 됩니다.</li>
           )}
         </ul>
 
@@ -196,15 +157,8 @@ export function useApplyFlow(studentId: string) {
           <button type="button" onClick={close} className={btnBoxGhost}>
             취소
           </button>
-          <button
-            type="button"
-            data-autofocus
-            onClick={confirm}
-            aria-disabled={blocked}
-            disabled={blocked}
-            className={`${btnBox} disabled:cursor-not-allowed disabled:opacity-50`}
-          >
-            {pending.upgrade ? "유료시험으로 올리기" : "접수하기"}
+          <button type="button" data-autofocus onClick={confirm} className={btnBox}>
+            접수하기
           </button>
         </div>
       </ExamDialog>
@@ -223,15 +177,12 @@ export function useApplyFlow(studentId: string) {
 function TierNote({
   tier,
   left,
-  blocked,
   counts,
   reason,
 }: {
   tier: UseTier;
   /** 남은 응시권 */
   left: number;
-  /** 올리려는데 응시권이 없다 */
-  blocked: boolean;
   /** 「국 4 · 수 8 · 과 8」 */
   counts: string;
   /** 왜 이 갈래인가 — 고를 것이 없으니 까닭은 적어 두어야 한다 */
@@ -240,11 +191,7 @@ function TierNote({
   const paid = tier === "paid";
 
   return (
-    <div
-      className={`mt-4 rounded-[2px] border px-5 py-4 ${
-        blocked ? "border-amber-300 bg-amber-50" : "border-soft-line bg-slate-50"
-      }`}
-    >
+    <div className="mt-4 rounded-[2px] border border-soft-line bg-slate-50 px-5 py-4">
       <p className="flex items-baseline justify-between gap-3">
         <span className="text-[15px] font-bold text-soft-ink">
           {paid ? "유료시험" : "무료시험"}
@@ -258,13 +205,7 @@ function TierNote({
           ? `${counts}문항을 과목마다 따로 응시합니다. 정밀 리포트와 전문가 해석으로 이어집니다.`
           : `${counts}문항을 한 번에 이어서 풉니다. 결제 없이 응시하고 요약 리포트를 받습니다.`}
       </p>
-      <p
-        className={`mt-2 text-[12px] leading-relaxed ${
-          blocked ? "text-amber-700" : "text-soft-ink"
-        }`}
-      >
-        {reason}
-      </p>
+      <p className="mt-2 text-[12px] leading-relaxed text-soft-ink">{reason}</p>
     </div>
   );
 }

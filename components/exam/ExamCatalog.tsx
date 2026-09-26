@@ -75,8 +75,6 @@ type Item = {
   mine: boolean;
   action: ApplyAction;
   onApply: () => void;
-  /** 무료로 접수해 둔 평가를 유료로 올린다 */
-  onUpgrade: () => void;
 };
 
 export default function ExamCatalog() {
@@ -118,7 +116,6 @@ export default function ExamCatalog() {
             } as const)
           : applyAction(round, track.id, wallet, asGuardian),
         onApply: () => begin(round, track.id),
-        onUpgrade: () => begin(round, track.id, true),
       })),
     )
     .filter((it) => filter === "all" || it.track.id === filter)
@@ -617,7 +614,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
                   {availabilityLabel[it.round.availability]}
                 </td>
                 <td className={`${td} text-center`}>
-                  <ActionCell action={it.action} onApply={it.onApply} onUpgrade={it.onUpgrade} />
+                  <ActionCell action={it.action} onApply={it.onApply} />
                 </td>
               </tr>
             ))
@@ -628,15 +625,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
   );
 }
 
-function ActionCell({
-  action,
-  onApply,
-  onUpgrade,
-}: {
-  action: ApplyAction;
-  onApply: () => void;
-  onUpgrade: () => void;
-}) {
+function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => void }) {
   if (action.kind === "done") {
     return (
       <span className="flex flex-col items-center gap-1">
@@ -646,16 +635,6 @@ function ActionCell({
         <Link href="/exam" className="text-[12px] text-soft-ink underline-offset-2 hover:underline">
           {action.label}
         </Link>
-        {/* 무료로 본 아이가 결제할 자리 — 목록을 떠나지 않고 올린다 */}
-        {action.tier === "free" && (
-          <button
-            type="button"
-            onClick={onUpgrade}
-            className="text-[12px] text-soft-primary underline-offset-2 hover:underline"
-          >
-            유료시험으로 올리기
-          </button>
-        )}
       </span>
     );
   }
@@ -679,7 +658,7 @@ function ActionCell({
 
 /* ───────────────────────── 카드 ───────────────────────── */
 
-function ExamCard({ round, track, name, mine, action, onApply, onUpgrade }: Item) {
+function ExamCard({ round, track, name, mine, action, onApply }: Item) {
   const total = round.subjects.reduce((sum, s) => sum + s.minutes, 0);
 
   return (
@@ -741,15 +720,6 @@ function ExamCard({ round, track, name, mine, action, onApply, onUpgrade }: Item
               <Link href="/exam" className={`${btnBox} w-full`}>
                 {action.label}
               </Link>
-              {action.tier === "free" && (
-                <button
-                  type="button"
-                  onClick={onUpgrade}
-                  className="mt-2 w-full text-[12px] text-soft-primary underline-offset-2 hover:underline"
-                >
-                  유료시험으로 올리기
-                </button>
-              )}
             </>
           ) : action.kind === "try" ? (
             <button
