@@ -1,0 +1,148 @@
+/*
+ * /newhome — 첫 화면을 「읽는 곳」에서 「해 보는 곳」으로 바꾼 시안.
+ *
+ * 기존 첫 화면(app/(site)/page.tsx)은 무엇을 하는 회사인지 문장으로 설명한다. 이 시안은
+ * 들어오자마자 문항 하나가 아래에서 올라오고, 보기를 하나 고르면 정답 여부와 함께
+ * 자료·발문에 밑줄이 그어진다 — 말로 설명하던 것을 한 번 겪게 만드는 쪽이다.
+ * 껍데기(헤더·푸터·팔레트)는 기존 홍보 존 그대로 쓴다. 바뀐 것은 첫 화면의 짜임과
+ * 움직임뿐이라, 색과 글꼴까지 갈아입으면 무엇이 달라졌는지 비교가 안 된다.
+ *
+ * ⚠ 전부 @layer components 안에 둔다 — 레이어 밖 규칙은 Tailwind 유틸리티를 이긴다.
+ *
+ * 움직임은 셋뿐이다.
+ *   ① 올라오기(.nh-rise)   화면에 들어오면 한 번. 되돌리지 않는다.
+ *   ② 밑줄 긋기(.nh-mark)  답을 고른 뒤 왼쪽에서 오른쪽으로 그어진다.
+ *   ③ 밀려 나오기          진단서 판 — Tailwind의 translate 전환으로 컴포넌트가 맡는다.
+ * prefers-reduced-motion이면 셋 다 끄고 결과 상태만 남긴다.
+ */
+@layer components {
+  .nh {
+    /* 밑줄 세 갈래 — 학력(남색) · 창의성(보라) · 재능 축(초록).
+       lib/tryItems.ts의 MarkKind와 짝이다. 색을 바꾸려면 여기만 고친다. */
+    --nh-base: #5164cf;
+    --nh-base-soft: #e2e8fb;
+    --nh-creative: #7c65e8;
+    --nh-creative-soft: #ece9fe;
+    --nh-talent: #10b981;
+    --nh-talent-soft: #d6f3e6;
+
+    --nh-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ── ① 올라오기 ───────────────────────────────────────────
+     문항 판은 24px가 아니라 44px 아래에서 올라온다. 첫 화면에서 한 번만 보는
+     움직임이라 이 정도는 되어야 「올라왔다」로 읽힌다. */
+  .nh-rise {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.66s var(--nh-ease),
+      transform 0.66s var(--nh-ease);
+  }
+  .nh-rise-lg {
+    transform: translateY(44px);
+    transition-duration: 0.8s;
+  }
+  .nh-rise.is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── ② 밑줄 ───────────────────────────────────────────────
+     밑줄은 background-size를 0%에서 100%로 늘려 긋는다. border-bottom으로는
+     왼쪽에서 오른쪽으로 자라는 모양이 나오지 않는다.
+     --d는 컴포넌트가 밑줄마다 다르게 주는 차례 지연이다. */
+  /* 줄과 면 두 켜를 같이 늘린다. 켜 수가 달라지면 전환이 보간되지 않고 툭 튄다 —
+     그래서 꺼져 있을 때도 두 켜를 다 깔아 두고 너비만 0으로 둔다. */
+  .nh-mark {
+    background-image:
+      linear-gradient(to right, var(--nh-line), var(--nh-line)),
+      linear-gradient(to right, var(--nh-tint), var(--nh-tint));
+    background-repeat: no-repeat;
+    background-position:
+      0 100%,
+      0 100%;
+    background-size:
+      0% 0.16em,
+      0% 100%;
+    padding-bottom: 0.1em;
+    transition: background-size 0.5s var(--nh-ease);
+    transition-delay: var(--d, 0ms);
+  }
+  .nh-mark.is-on {
+    background-size:
+      100% 0.16em,
+      100% 100%;
+  }
+  .nh-mark--base {
+    --nh-line: var(--nh-base);
+    --nh-tint: var(--nh-base-soft);
+  }
+  .nh-mark--creative {
+    --nh-line: var(--nh-creative);
+    --nh-tint: var(--nh-creative-soft);
+  }
+  .nh-mark--talent {
+    --nh-line: var(--nh-talent);
+    --nh-tint: var(--nh-talent-soft);
+  }
+
+  /* 밑줄 이름표 — 밑줄이 다 그어진 뒤에 차례로 뜬다.
+     전환(transition)이 아니라 애니메이션인 까닭은, 이 칸이 답을 고른 순간에야 DOM에
+     들어오기 때문이다. 갓 붙은 요소에는 전환이 걸리지 않는다. */
+  @keyframes nh-tag-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .nh-tag {
+    animation: nh-tag-in 0.42s var(--nh-ease) both;
+    animation-delay: var(--d, 0ms);
+  }
+
+  /* 보기 단추 — 고르기 전에는 손이 가도록, 고른 뒤에는 움직이지 않도록 */
+  .nh-choice {
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease,
+      transform 0.16s var(--nh-ease);
+  }
+  .nh-choice:not(:disabled):hover {
+    transform: translateX(3px);
+  }
+
+  /* 진단서 단추가 처음 나타날 때 한 번만 숨을 쉰다 — 어디를 눌러야 하는지 알리는 몫 */
+  @keyframes nh-breathe {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(124 101 232 / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgb(124 101 232 / 0);
+    }
+  }
+  .nh-breathe {
+    animation: nh-breathe 1.8s var(--nh-ease) 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nh-rise,
+  .nh-mark {
+    transition: none;
+  }
+  .nh-tag {
+    animation: none;
+  }
+  .nh-choice:not(:disabled):hover {
+    transform: none;
+  }
+  .nh-breathe {
+    animation: none;
+  }
+}
