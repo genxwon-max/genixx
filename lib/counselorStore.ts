@@ -29,8 +29,9 @@ import { personById, type Person } from "./people";
  * 채워야 목록에 선다 — 이름 없는 줄을 세우면 보호자 화면에 빈 카드가 뜬다.
  *
  * ── 값 ──
- * 기본값은 길이 둘(30분·60분)뿐이고, 사람마다 덮을 수 있다(lib/counselors.ts의 feeFor).
- * 왜 기본이 길이뿐인지는 저쪽 주석에 적어 두었다.
+ * 콘솔이 고치는 것은 **사람마다의 값**이다. 비워 둔 사람은 길이별 기본값을 그대로 받고,
+ * 그 기본값은 코드에 남는다(lib/counselors.ts의 counselFee) — 한 번 정하면 좀처럼 바뀌지
+ * 않는 값이라 고치는 자리를 화면에 세우지 않았다. 저장분에 담긴 fees는 그 바닥값이다.
  *
  * ── 지우기와 내리기 ──
  * 지우면 그 사람에게 잡힌 예약(lib/counselStore.ts)이 이름 없는 줄이 된다. 그래서 목록에
@@ -366,11 +367,6 @@ export function setCounselorShown(id: string, shown: boolean) {
 export function removeCounselor(id: string) {
   const cur = read();
   write({ ...cur, rows: cur.rows.filter((r) => r.id !== id) });
-}
-
-export function setCounselFees(fees: CounselFees) {
-  const cur = read();
-  write({ ...cur, fees });
 }
 
 /** 시연용 — 명단을 씨앗으로 되돌린다 */

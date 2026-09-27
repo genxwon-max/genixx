@@ -223,10 +223,6 @@ export default function ClipsView() {
             showCount={false}
             empty="아직 걸어 둔 영상이 없습니다."
           />
-          <p className="border-t border-(--a2-line) bg-(--a2-raised) px-3 py-2 a2-t-xs text-(--a2-ink-4)">
-            표의 차례가 첫 화면에 서는 차례입니다. 주소를 비워 둔 칸은 링크 대신 「준비 중」으로
-            그려집니다 — 찍기로 한 영상을 미리 걸어 두는 자리입니다.
-          </p>
         </Panel>
       </Body>
     </>

@@ -127,23 +127,16 @@ function Editor({
   const next: CounselorRow = { ...row, ...v };
   const name = v.name.trim() || person?.name || "";
 
-  /* 막는 것과 일러 주는 것을 가른다 — 아래 넷은 비워 두면 보호자 화면에서 고를 수 없는
-     상담사가 되므로 저장을 막는다 */
+  /* 비워 두면 보호자 화면에서 고를 수 없는 상담사가 되는 칸들 — 저장을 막는다.
+     안내는 띄우지 않는다. 이 화면은 채우는 자리이지 읽는 자리가 아니라, 막지 않을 말은
+     아예 적지 않는다 */
   const bad: string[] = [];
-  if (!name) bad.push("이름을 적어 주세요. 참여진에 없는 번호라 여기서 받아야 합니다.");
+  if (!name) bad.push("이름을 적어 주세요.");
   if (v.spans.length === 0) bad.push("면담 길이를 하나 이상 골라 주세요.");
   if (v.modes.length === 0) bad.push("만나는 방식을 하나 이상 골라 주세요.");
   if (v.days.length === 0) bad.push("면담을 받는 요일을 하나 이상 골라 주세요.");
   if (v.from >= v.to) bad.push("근무 마감이 시작보다 앞이거나 같습니다.");
   if (v.off[0] >= v.off[1]) bad.push("비우는 구간의 끝이 시작보다 앞이거나 같습니다.");
-
-  /* 노출을 켠 채로 저장하는데 채우지 않은 칸 — 막지는 않는다. 값은 기본값이 있고
-     한 줄 소개는 없어도 카드가 선다 */
-  const warn: string[] = [];
-  if (v.shown && v.focus.trim() === "")
-    warn.push("한 줄 소개가 비어 있습니다. 카드에서 이 사람과 만나면 무엇을 듣게 되는지가 빈칸으로 섭니다.");
-  if (v.shown && v.topics.length === 0)
-    warn.push("맡는 물음이 없어 고르개에서 아무 조건에도 걸리지 않습니다.");
 
   const save = () => {
     if (bad.length > 0) return false;
@@ -208,25 +201,9 @@ function Editor({
 
       <Body className="flex flex-col gap-3">
         {/* ── ① 사람 ── */}
-        <Panel
-          title="사람"
-          meta={
-            person
-              ? `${row.id} · 빈 칸은 참여진(${person.name})에서 가져옵니다`
-              : `${row.id} · 참여진에 없는 번호입니다`
-          }
-          flush
-        >
+        <Panel title="사람" meta={row.id} flush>
           <div className="a2-form">
-            <FormRow
-              label="이름"
-              req={!person}
-              hint={
-                person
-                  ? "비워 두면 참여진의 이름을 씁니다. 여기 적으면 이 화면에서만 그 이름으로 바뀝니다."
-                  : "참여진에 없는 번호라 이름을 여기서 받습니다."
-              }
-            >
+            <FormRow label="이름" req={!person}>
               <input
                 className="a2-input"
                 style={{ maxWidth: "14rem" }}
@@ -256,7 +233,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="전문 분야" hint="쉼표로 나눕니다. 상세 판에 꼬리표로 섭니다.">
+            <FormRow label="전문 분야">
               <input
                 className="a2-input"
                 style={{ maxWidth: "28rem" }}
@@ -286,7 +263,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="연혁" hint="한 줄에 하나씩 적습니다. 카드에는 앞의 둘과 마지막 하나가 섭니다.">
+            <FormRow label="연혁">
               <textarea
                 className="a2-textarea"
                 rows={4}
@@ -296,7 +273,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="맡는 일" hint="한 줄에 하나씩. 상세 판의 「GENIXX에서 맡는 일」로 섭니다.">
+            <FormRow label="맡는 일">
               <textarea
                 className="a2-textarea"
                 rows={3}
@@ -309,12 +286,9 @@ function Editor({
         </Panel>
 
         {/* ── ② 면담 ── */}
-        <Panel title="면담" meta="무엇을 얼마에 — 카드와 고르개가 이 값을 읽습니다" flush>
+        <Panel title="면담" flush>
           <div className="a2-form">
-            <FormRow
-              label="한 줄 소개"
-              hint="카드 오른쪽에 서는 한 줄입니다. 「이 사람과 만나면 무엇을 듣게 되는가」를 적습니다."
-            >
+            <FormRow label="한 줄 소개">
               <input
                 className="a2-input"
                 style={{ maxWidth: "34rem" }}
@@ -324,11 +298,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow
-              label="맡는 물음"
-              req
-              hint="보호자가 고르개에서 이 갈래로 사람을 찾습니다. 우리끼리 쓰는 분야 이름 대신 물음의 갈래 넷으로 묶어 둔 칸입니다."
-            >
+            <FormRow label="맡는 물음" req>
               {topicList.map((t) => (
                 <label key={t} className="a2-choice">
                   <input
@@ -341,11 +311,7 @@ function Editor({
               ))}
             </FormRow>
 
-            <FormRow
-              label="면담 길이"
-              req
-              hint="30분만 받는 이, 60분만 받는 이, 둘 다 받는 이가 있습니다. 60분은 30분 칸 두 개가 잇달아 비어 있을 때만 예약됩니다."
-            >
+            <FormRow label="면담 길이" req>
               {SPANS.map((s) => (
                 <label key={s} className="a2-choice">
                   <input
@@ -360,12 +326,9 @@ function Editor({
 
             {/* 값은 고른 길이에만 물어본다 — 받지 않는 길이의 값을 받아 두면 그 값이 어디에도
                 안 쓰이는 채로 남고, 뒤에 그 길이를 열었을 때 잊고 있던 값이 튀어나온다 */}
-            <FormRow
-              label="면담 값"
-              hint="비우면 기본 값으로 팝니다. 기본 값은 상담사 관리 목록 위에서 고칩니다."
-            >
+            <FormRow label="면담 값">
               {v.spans.length === 0 ? (
-                <span className="a2-t-sm text-(--a2-ink-4)">면담 길이를 먼저 골라 주세요.</span>
+                <span className="a2-t-sm text-(--a2-ink-4)">—</span>
               ) : (
                 <span className="flex w-full flex-wrap items-center gap-x-4 gap-y-2">
                   {v.spans.map((s) => (
@@ -410,10 +373,7 @@ function Editor({
               ))}
             </FormRow>
 
-            <FormRow
-              label="노출"
-              hint="내려 두면 새 예약은 들어오지 않고, 이미 잡힌 면담은 그대로 이름을 찾습니다."
-            >
+            <FormRow label="노출">
               <label className="a2-choice">
                 <input
                   type="checkbox"
@@ -427,13 +387,9 @@ function Editor({
         </Panel>
 
         {/* ── ③ 근무 ── */}
-        <Panel title="근무" meta="언제 자리를 여는가 — 달력이 이 값으로 칸을 만듭니다" flush>
+        <Panel title="근무" flush>
           <div className="a2-form">
-            <FormRow
-              label="요일"
-              req
-              hint="평일 낮만 열어 두면 맞벌이 가정은 고를 수 있는 칸이 하나도 없습니다. 토요일을 여는 상담사를 몇 사람 둡니다."
-            >
+            <FormRow label="요일" req>
               {WEEK_KO.map((label, d) => (
                 <label key={label} className="a2-choice">
                   <input
@@ -453,7 +409,7 @@ function Editor({
               ))}
             </FormRow>
 
-            <FormRow label="여는 시간" req hint="눈금은 30분입니다. 30분에 안 맞는 시각은 그 앞 칸까지만 자리가 섭니다.">
+            <FormRow label="여는 시간" req>
               <input
                 type="time"
                 step={1800}
@@ -475,10 +431,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow
-              label="비우는 구간"
-              hint="점심·내부 회의처럼 매일 같은 시각에 비우는 자리입니다. 이 구간에 걸치는 칸은 달력에 서지 않습니다."
-            >
+            <FormRow label="비우는 구간">
               <input
                 type="time"
                 step={1800}
@@ -502,16 +455,11 @@ function Editor({
           </div>
         </Panel>
 
-        {(bad.length > 0 || warn.length > 0) && (
+        {bad.length > 0 && (
           <Panel title="짚을 것">
             <ul className="flex flex-col gap-1">
               {bad.map((e) => (
                 <li key={e} className="a2-t-sm" style={{ color: "var(--a2-danger)" }}>
-                  · {e}
-                </li>
-              ))}
-              {warn.map((e) => (
-                <li key={e} className="a2-t-sm" style={{ color: "var(--a2-warn)" }}>
                   · {e}
                 </li>
               ))}

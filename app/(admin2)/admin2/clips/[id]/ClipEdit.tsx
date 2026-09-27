@@ -94,9 +94,6 @@ function Editor({
      주소 하나로 저장을 막으면 미리 걸어 두는 일이 불가능해진다 */
   const badUrl = v.url.trim() !== "" && !looksLikeUrl(v.url);
   const thumb = youtubeId(v.url);
-  /* 노출을 켰는데 주소가 없으면 첫 화면에 「준비 중」 칸이 뜬다 — 뜻이 있는 자리라 막지
-     않고, 그렇게 보인다는 것만 적어 둔다 */
-  const willWait = v.shown && v.url.trim() === "";
 
   const save = () => {
     if (bad) return false;
@@ -148,11 +145,7 @@ function Editor({
       <Body>
         <Panel title="영상" meta={row.id} flush>
           <div className="a2-form a2-form-lg">
-            <FormRow
-              label="갈래"
-              req
-              hint="가로 영상은 16:9 격자에, 숏폼은 9:16 카드로 다른 줄에 섭니다. 차례도 갈래 안에서만 옮깁니다."
-            >
+            <FormRow label="갈래" req>
               {clipKinds.map((k) => (
                 <label key={k} className="a2-choice">
                   <input
@@ -176,7 +169,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="설명" hint="카드 제목 아래 한두 줄입니다. 무엇을 보게 되는지 적습니다.">
+            <FormRow label="설명">
               <textarea
                 className="a2-textarea"
                 rows={3}
@@ -186,7 +179,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="길이" hint="「3:12」처럼 적습니다. 비우면 카드에 시간 표시를 세우지 않습니다.">
+            <FormRow label="길이">
               <input
                 className="a2-input a2-input-lg a2-num"
                 style={{ maxWidth: "7rem" }}
@@ -196,10 +189,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow
-              label="영상 주소"
-              hint="비워 두면 카드가 링크 대신 「준비 중」으로 섭니다. 유튜브·숏폼 주소를 그대로 붙여 넣으면 됩니다."
-            >
+            <FormRow label="영상 주소">
               <input
                 className="a2-input a2-input-lg"
                 style={{ maxWidth: "32rem" }}
@@ -223,10 +213,6 @@ function Editor({
                     alt="영상 표지 미리보기"
                     className="h-[6.75rem] w-48 rounded-[3px] border border-(--a2-line) object-cover"
                   />
-                  <span className="a2-hint">
-                    유튜브 영상 번호 <span className="a2-mono">{thumb}</span> — 표지가 걸려고 한
-                    영상과 다르면 주소를 다시 확인해 주세요.
-                  </span>
                 </span>
               )}
             </FormRow>
@@ -240,14 +226,6 @@ function Editor({
                 />
                 첫 화면에 세웁니다
               </label>
-              {willWait && (
-                <p className="a2-note w-full">
-                  <span>
-                    주소가 비어 있어 「준비 중」 표시로 섭니다. 미리 걸어 두려는 것이면 그대로
-                    두셔도 됩니다.
-                  </span>
-                </p>
-              )}
             </FormRow>
           </div>
         </Panel>

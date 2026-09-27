@@ -2,19 +2,11 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import {
-  counselModes,
-  counselTopics,
-  spanLabel,
-  SPANS,
-  type CounselFees,
-  type Span,
-} from "@/lib/counselors";
+import { counselModes, counselTopics, spanLabel, SPANS, type Span } from "@/lib/counselors";
 import {
   nameOf,
   roleOf,
   setCounselorShown,
-  setCounselFees,
   useCounselFees,
   useCounselorRows,
   type CounselorRow,
@@ -22,8 +14,7 @@ import {
 import { won } from "@/lib/productStore";
 import { WEEK_KO } from "@/lib/calendar";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
-import { SaveBar, useEditDraft } from "@/components/admin2/EditGuard";
-import { Body, FormRow, PageHead, Panel, Status, Switch } from "@/components/admin2/ui";
+import { Body, PageHead, Panel, Status, Switch } from "@/components/admin2/ui";
 
 /**
  * EXP-06-2 상담사 관리 — 결과 해석 면담을 맡는 사람의 목록.
@@ -32,10 +23,10 @@ import { Body, FormRow, PageHead, Panel, Status, Switch } from "@/components/adm
  * 값이 오를 때마다 배포를 해야 했고, 무엇보다 **운영자가 손댈 수 있는 값이 아니었다.**
  * 회차 공지도 상품 값도 이미 콘솔에서 고치는데 면담만 코드에 있는 것은 앞뒤가 안 맞는다.
  *
- * ── 판이 둘인 까닭 ──
- * 위는 **길이별 기본 값**이고 아래는 **사람**이다. 값을 길이로 정하는 것이 이 면담의
- * 규칙이라(lib/counselors.ts의 feeFor 주석) 그 값은 명단 밖에 선다 — 사람 줄 안에 두면
- * 서른 줄에 같은 값을 서른 번 적게 된다.
+ * ── 값은 사람 줄에 있다 ──
+ * 길이별 기본 값을 고치는 판을 목록 위에 세웠다가 걷어 냈다. 이 화면이 답하는 것은
+ * 「누가 면담을 맡는가」 하나이고, 값은 그 사람의 한 칸이다. 비워 둔 사람은 코드의
+ * 기본값을 그대로 받는다(lib/counselors.ts의 counselFee).
  *
  * ── 여기서 지우지 않는다 ──
  * 목록에서 누르는 것은 노출 스위치까지다. 지우는 것은 상세에서만 되고, 거기서도 한 번
@@ -52,13 +43,8 @@ const scheduleText = (r: CounselorRow) =>
 
 export default function CounselorsView() {
   const rows = useCounselorRows();
+  /* 따로 값을 매기지 않은 사람의 줄에 적을 기본값 */
   const fees = useCounselFees();
-
-  /* 기본 값 두 칸. 누르는 즉시 걸지 않고 저장을 거치는 까닭은, 30분을 고치는 동안 60분이
-     아직 옛값이어도 그 사이에 결제가 지나가면 두 값이 다른 회차의 값으로 섞인다 */
-  const draft = useEditDraft({ fee30: fees[30], fee60: fees[60] });
-  const v = draft.value;
-  const badFee = !Number.isFinite(v.fee30) || !Number.isFinite(v.fee60) || v.fee30 < 0 || v.fee60 < 0;
 
   const cols: Col<CounselorRow>[] = useMemo(
     () => [
@@ -218,60 +204,7 @@ export default function CounselorsView() {
           </Link>
         }
       />
-      <Body className="flex flex-col gap-3">
-        {/* ① 길이별 기본 값 — 사람 줄에 적지 않는 값 */}
-        <Panel
-          title="면담 기본 값"
-          meta="사람마다 따로 매기지 않은 면담은 이 값으로 팝니다"
-          flush
-        >
-          <div className="a2-form">
-            {SPANS.map((s) => (
-              <FormRow
-                key={s}
-                label={`${spanLabel(s)} 면담`}
-                req
-                hint={
-                  s === 30
-                    ? "결과지에서 궁금한 대목을 짚어 묻는 자리입니다."
-                    : "아이 이야기를 처음부터 듣고 결과지 전체를 함께 읽는 자리입니다."
-                }
-              >
-                <input
-                  className="a2-input a2-num"
-                  style={{ maxWidth: "11rem" }}
-                  inputMode="numeric"
-                  aria-label={`${spanLabel(s)} 면담 값`}
-                  value={(s === 30 ? v.fee30 : v.fee60).toLocaleString("ko-KR")}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/[^0-9]/g, "");
-                    draft.set(s === 30 ? "fee30" : "fee60", digits ? Number(digits) : 0);
-                  }}
-                />
-                <span className="a2-t-sm text-(--a2-ink-3)">원</span>
-              </FormRow>
-            ))}
-          </div>
-          <div className="px-3 pb-3">
-            <SaveBar
-              dirty={draft.dirty}
-              disabled={badFee}
-              onSave={() => {
-                if (badFee) return;
-                const next: CounselFees = { 30: v.fee30, 60: v.fee60 };
-                setCounselFees(next);
-              }}
-              onCancel={draft.reset}
-              note={
-                draft.dirty
-                  ? "저장하면 따로 값을 매기지 않은 상담사 전부에 걸립니다."
-                  : "값을 따로 매긴 상담사는 이 값을 받지 않습니다."
-              }
-            />
-          </div>
-        </Panel>
-
-        {/* ② 사람 */}
+      <Body>
         <Panel title="상담사" meta={`${rows.length}명 · 노출 ${shown}명`} flush>
           <DataTable
             rows={rows}
