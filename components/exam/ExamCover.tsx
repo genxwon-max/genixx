@@ -47,8 +47,11 @@ export type CoverGroup = {
   hideOnNarrow?: boolean;
 };
 
+/* 좁은 화면에서는 좌우 여백을 줄인다 — 인적사항 한 줄(이름 · ID)이 종이 폭을 넘으면
+   표가 종이 밖으로 비어져 나간다. 줄이는 것은 여백뿐이고, 누르는 칸의 최소 폭
+   (min-w-[3.5rem])과 높이(h-12)는 그대로라 손가락으로 누르기에 좁아지지 않는다 */
 const labelCell =
-  "flex h-12 items-center justify-center bg-slate-100 px-4 text-[14.5px] font-medium text-exam-text md:h-14 md:px-5 md:text-[15.5px]";
+  "flex h-12 items-center justify-center whitespace-nowrap bg-slate-100 px-3 text-[14.5px] font-medium text-exam-text md:h-14 md:px-5 md:text-[15.5px]";
 
 /**
  * 값 칸의 꼴.
@@ -63,7 +66,10 @@ const labelCell =
  * 누를 것이 있다는 것이 보이지 않고, 손가락으로 누르기에도 좁다.
  */
 function valueClass(on: boolean, pickable: boolean, muted: boolean, width?: string) {
-  const base = `flex h-12 items-center justify-center border-l border-exam-text/70 px-4 text-[16px] md:h-14 md:px-5 md:text-[17px] ${
+  /* 줄을 바꾸지 않는다 — 접속코드(RXP6-N9TR)가 붙임표에서 두 줄로 갈려 칸 높이가
+     옆 칸과 어긋났다. 종이의 인적사항 칸은 한 줄로 적는 자리다. 칸이 좁으면 글자를
+     접을 것이 아니라 칸이 넓어져야 하므로, 폭은 아래에서 min-w로 준다 */
+  const base = `flex h-12 items-center justify-center whitespace-nowrap border-l border-exam-text/70 px-3 text-[16px] md:h-14 md:px-5 md:text-[17px] ${
     width ?? "min-w-[3.5rem]"
   }`;
   if (on)

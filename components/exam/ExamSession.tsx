@@ -681,7 +681,7 @@ function StartGate({
               id: "grade",
               cells: [
                 { kind: "label", text: "학년" },
-                { kind: "value", key: "g", text: grade, width: "w-[6.5rem]" },
+                { kind: "value", key: "g", text: grade, width: "sm:min-w-[6.5rem]" },
               ],
             },
             {
@@ -693,7 +693,8 @@ function StartGate({
                   key: "name",
                   text: student?.name ?? "-",
                   muted: !student,
-                  width: "w-[6.5rem]",
+                  /* 이름은 두 자에서 다섯 자까지 온다 — 넉넉히 잡되 넘치면 칸이 넓어진다 */
+                  width: "sm:min-w-[6.5rem]",
                 },
                 { kind: "label", text: "ID" },
                 {
@@ -701,7 +702,7 @@ function StartGate({
                   key: "id",
                   text: student ? formatCode(student.code) : "-",
                   muted: !student,
-                  width: "w-[8.5rem]",
+                  width: "sm:min-w-[8.5rem]",
                 },
               ],
             },
