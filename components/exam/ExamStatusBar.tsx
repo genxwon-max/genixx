@@ -154,12 +154,11 @@ export default function ExamStatusBar() {
   if (!rec || !hydrated) {
     return <HeadRow name={hydrated ? examName : null} subject={subjectText}>{null}</HeadRow>;
   }
+  /* 표지에서는 머리에 평가명과 과목만 둔다. 「아직 시작하지 않았습니다」는 종이 한가운데가
+     이미 「시작하기 전에는 이 면을 넘기지 마시오」로 말하고 있는 것이라, 머리에 한 번 더
+     적으면 같은 말이 한 화면에 둘이 된다 */
   if (!live) {
-    return (
-      <HeadRow name={examName} subject={subjectText} hint="아직 시작하지 않았습니다">
-        {null}
-      </HeadRow>
-    );
+    return <HeadRow name={examName} subject={subjectText}>{null}</HeadRow>;
   }
 
   const started = rec.startedAt ? new Date(rec.startedAt).getTime() : now;

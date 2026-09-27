@@ -122,15 +122,13 @@ export default function ExamCover({
           {headline}
         </p>
 
-        <div className="mt-5 flex items-center gap-4">
-          <h1 className="flex-1 text-center text-[32px] font-bold tracking-[0.22em] text-exam-text md:text-[42px]">
-            {title}
-          </h1>
-          <div className="hidden shrink-0 border border-exam-text/70 sm:flex">
-            <span className={labelCell}>수강학원</span>
-            <span className="h-10 w-[7rem] border-l border-exam-text/70" />
-          </div>
-        </div>
+        {/* 원본 종이에는 검사 이름 오른쪽에 「수강학원」 칸이 있었다. 학원이 아이를 데리고
+            와 단체로 보는 검사라 종이에 그 칸이 필요했던 것인데, 여기는 보호자가 직접
+            접수해 아이가 자기 화면에서 보는 자리다. 채울 사람이 없는 빈 칸을 종이에
+            남겨 두면 「여기에 무엇을 적어야 하나」를 한 번 묻게 된다 */}
+        <h1 className="mt-5 text-center text-[32px] font-bold tracking-[0.22em] text-exam-text md:text-[42px]">
+          {title}
+        </h1>
 
         <div className="mt-7 flex flex-wrap items-start gap-x-3 gap-y-3">
           {groups.map((g) => (

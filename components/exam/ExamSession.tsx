@@ -319,8 +319,6 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
         scope={scope}
         studentId={studentId}
         title={sheet.title}
-        count={list.length}
-        limitMin={limitMin}
         note={
           scope.kind === "free"
             ? subjects.map((x) => x.short + " " + tierQuestions("free", x.id).length).join(" · ") +
@@ -642,16 +640,12 @@ function StartGate({
   scope,
   studentId,
   title,
-  count,
-  limitMin,
   note,
   onStart,
 }: {
   scope: ExamScope;
   studentId: string;
   title: string;
-  count: number;
-  limitMin: number;
   /** 무료시험처럼 과목이 섞인 판에서 무엇을 어떻게 푸는지 한 줄 더 적는다 */
   note?: string | null;
   onStart: () => void;
@@ -737,26 +731,15 @@ function StartGate({
           }
         />
 
-        {/* ── 종이 바깥 ── */}
-        <p className="mt-2.5 text-center text-[11px] text-exam-muted">
-          브라우저가 전체화면을 막는 경우에는 일반 창으로 진행됩니다.
-        </p>
-
+        {/* ── 종이 바깥 ──
+            표지에 적을 것을 줄였다. 문항 수 · 제한 시간 · 자동 제출 · 해석 단계 · 전체화면
+            같은 규칙은 이미 시험 안내(/exam/info)와 응시 규정 띠가 말하고 있고, 시작
+            단추 앞에 여섯 줄을 세우면 아이는 그것을 읽지 않고 넘긴다. 여기 남기는 것은
+            **누르기 전에 알아야 되돌릴 수 없는 것** 둘뿐이다 */}
         <ul className="mt-6 space-y-2 text-center text-[13px] leading-relaxed text-exam-muted">
           {note && <li>· {note}</li>}
-          <li>
-            · 문항 <b className="text-exam-text">{count}개</b> · 제한 시간{" "}
-            <b className="text-exam-text">{limitMin}분</b> (남은 시간은 오른쪽 위에 표시됩니다)
-          </li>
-          <li>
-            {config.autoSubmit
-              ? `· 시간이 다 되면 ${config.graceMin > 0 ? `${config.graceMin}분 뒤에 ` : ""}쓰던 답 그대로 자동으로 제출됩니다.`
-              : "· 시간이 다 되어도 답을 계속 쓸 수 있습니다. 다만 걸린 시간은 기록에 남습니다."}
-          </li>
           <li>· 답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다.</li>
-          <li>· 제출 후에는 문항마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>
           <li>· 중간에 포기하면 이 시험의 응시 기회가 사라집니다.</li>
-          <li>· 보호자는 문제 풀이에 개입할 수 없습니다.</li>
         </ul>
       </div>
     </div>
