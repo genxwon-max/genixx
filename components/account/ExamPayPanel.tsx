@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ageFromBirth, isMinorForContract } from "@/lib/account";
-import { useCatalogRounds } from "@/lib/catalogRounds";
+import { examDiscounted, examFee, useCatalogRounds } from "@/lib/catalogRounds";
 import {
   availabilityLabel,
   dotDate,
@@ -18,7 +18,6 @@ import {
 } from "@/lib/examCatalog";
 import { raiseTier, useHydrated } from "@/lib/examStore";
 import { orderMethods, orderWon, placeOrder, useOrders, type OrderMethod } from "@/lib/orderStore";
-import { paidPrice, useProducts } from "@/lib/productStore";
 import { useRoster, type Student } from "@/lib/roster";
 import { grantTickets, spendTicket, usedInRound, useTickets, walletOf } from "@/lib/ticketStore";
 import { useSession } from "@/lib/authStore";
@@ -97,7 +96,6 @@ export default function ExamPayPanel({
   const session = useSession();
   const roster = useRoster();
   const rounds = useCatalogRounds();
-  const products = useProducts();
   const tickets = useTickets();
   const orders = useOrders();
 
@@ -120,10 +118,6 @@ export default function ExamPayPanel({
   /** 만 19세 미만 학생이 스스로 결제할 때 한 칸 더 받는 법정대리인 동의 */
   const [guardianOk, setGuardianOk] = useState(false);
   const [done, setDone] = useState<string | null>(null);
-
-  /** 응시권 값 — 관리자 차림표의 응시권 상품을 그대로 읽는다 */
-  const ticketProduct = products.find((p) => p.state === "selling" && p.kind === "assessment");
-  const unit = ticketProduct ? paidPrice(ticketProduct) : 0;
 
   /* 고른 아이들. 첫 아이의 학년 칸이 이 결제의 학년이 된다.
      학생 본인 자리에서는 고를 것이 없다 — 자기 하나가 늘 잡혀 있다 */
@@ -175,6 +169,17 @@ export default function ExamPayPanel({
   );
 
   const exam = items.find((v) => v.key === pickedExam) ?? null;
+
+  /**
+   * 한 사람 몫 — **고른 평가의 응시료**다(lib/catalogRounds.ts).
+   *
+   * 예전에는 상품 차림표(PAY-01)의 응시권 상품 값을 읽었다. 그러면 회차가 넷이든 열이든
+   * 값이 하나여서, 분기마다 값을 달리 받으려면 상품을 회차 수만큼 세우고 이름으로 맞춰야
+   * 한다. 값은 회차가 든다 — 관리자가 회차를 만들 때 정가와 할인가를 함께 적는다(ADM-05).
+   *
+   * 고르기 전에는 0이다. 목록의 줄마다 제 값을 적으므로 여기서 어림값을 보일 까닭이 없다.
+   */
+  const unit = exam ? examFee(exam.round) : 0;
 
   const usedOf = (s: Student, roundId: string) =>
     usedInRound(walletOf(tickets, s.id), roundId);
@@ -501,8 +506,17 @@ export default function ExamPayPanel({
                                   </span>
                                 ))}
                           </span>
-                          <span className="shrink-0 text-[14px] font-bold tabular-nums text-soft-ink">
-                            {open ? orderWon(unit) : "—"}
+                          {/* 값은 회차마다 다르다 — 줄마다 제 값을 적는다. 할인 중이면
+                              정가를 위에 얹어 무엇이 깎인 값인지 보인다 */}
+                          <span className="shrink-0 text-right tabular-nums">
+                            {examDiscounted(v.round) && open && (
+                              <span className="block text-[12px] text-slate-400 line-through">
+                                {orderWon(v.round.price)}
+                              </span>
+                            )}
+                            <span className="text-[14px] font-bold text-soft-ink">
+                              {open ? orderWon(examFee(v.round)) : "—"}
+                            </span>
                           </span>
                         </label>
                       </li>

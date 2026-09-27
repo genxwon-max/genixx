@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
-import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
+import {
+  examDiscounted,
+  examFee,
+  examFeeText,
+  useCatalogRounds,
+  type CatalogRound,
+} from "@/lib/catalogRounds";
 import { FREE_COUNT, FREE_TOTAL, PAID_COUNT, PAID_TOTAL, subjects, tierOf } from "@/lib/exam";
 import { dotDate, evalName, isTrackId, trackLabel, type TrackId } from "@/lib/examCatalog";
 import { raiseTier } from "@/lib/examStore";
+import { orderWon } from "@/lib/orderStore";
 import {
   applyFree,
   spendTicket,
@@ -215,6 +222,18 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
           {paid && (
             <>
               <Row t="응시 방식">과목마다 따로 응시</Row>
+              {/* 값은 응시권을 살 때 이미 나갔다. 그래도 적는 까닭은, 이 창이 「무엇을 얼마에
+                  접수하는가」를 마지막으로 훑는 자리이기 때문이다 — 여기서 값을 빼면 보호자가
+                  낸 값과 아이가 접수한 평가를 잇는 줄이 어디에도 없다 */}
+              <Row t="응시료">
+                {examDiscounted(round) && (
+                  <span className="mr-1.5 text-[12.5px] text-slate-400 line-through">
+                    {orderWon(round.price)}
+                  </span>
+                )}
+                {examFeeText(round)}
+                <span className="ml-1.5 text-soft-muted">· 결제한 응시권으로 냅니다</span>
+              </Row>
               <Row t="응시권">
                 1매 사용
                 <span className="ml-1.5 text-soft-muted">· 쓰고 나면 {left - 1}매 남음</span>
@@ -234,7 +253,11 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
           <li>· 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다.</li>
           <li>· 학년은 접수한 뒤 바꿀 수 없습니다.</li>
           {!paid && (
-            <li>· 응시권은 보호자가 결제해 넘겨줍니다. 결제한 뒤에 접수하면 유료시험이 됩니다.</li>
+            <li>
+              · 응시권은 보호자가 결제해 넘겨줍니다
+              {examFee(round) > 0 && ` — 이 평가는 ${examFeeText(round)}입니다`}. 결제한 뒤에
+              접수하면 유료시험이 됩니다.
+            </li>
           )}
         </ul>
       </ExamDialog>

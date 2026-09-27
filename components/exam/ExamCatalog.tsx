@@ -5,7 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
-import { useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
+import {
+  examDiscounted,
+  examFeeText,
+  useCatalogRounds,
+  type CatalogRound,
+} from "@/lib/catalogRounds";
 import { FREE_TOTAL, SET_QUESTIONS, assessment, questionCount } from "@/lib/exam";
 import {
   availabilityLabel,
@@ -24,6 +29,7 @@ import { resetStudent } from "@/lib/examStore";
 import { examWindow } from "@/lib/popup";
 import { useClaimSet } from "@/lib/setStore";
 import { findById } from "@/lib/roster";
+import { orderWon } from "@/lib/orderStore";
 import { resetWallet, useWallet } from "@/lib/ticketStore";
 import { ApplyDialog, applyAction, applyHref, type ApplyAction } from "./ApplyFlow";
 import { PageTitle } from "./Registrations";
@@ -559,11 +565,12 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
       <table className="w-full min-w-[680px] border-collapse bg-white text-[14px]">
         <caption className="sr-only">접수할 수 있는 평가</caption>
         <colgroup>
-          <col className="w-[8%]" />
+          <col className="w-[7%]" />
           <col />
-          <col className="w-[20%]" />
-          <col className="w-[12%]" />
           <col className="w-[18%]" />
+          <col className="w-[11%]" />
+          <col className="w-[11%]" />
+          <col className="w-[17%]" />
         </colgroup>
         <thead>
           <tr className="border-t-2 border-soft-primary bg-slate-50">
@@ -576,6 +583,11 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
             <th scope="col" className={th}>
               접수 기간
             </th>
+            {/* 응시료는 상태 **앞**에 둔다 — 「접수 중인가」를 보고 나서 누르기까지의 사이에
+                드는 물음이 「얼마인가」라, 그 둘이 붙어 있어야 오른쪽 끝의 단추로 이어진다 */}
+            <th scope="col" className={th}>
+              응시료
+            </th>
             <th scope="col" className={th}>
               상태
             </th>
@@ -587,7 +599,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={5} className={`${td} text-center`}>
+              <td colSpan={6} className={`${td} text-center`}>
                 조건에 맞는 평가가 없습니다.
               </td>
             </tr>
@@ -616,6 +628,9 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
                   {dotDate(it.round.opensOn)}
                   <br />~ {dotDate(it.round.closesOn)}
                 </td>
+                <td className={`${td} text-center text-[13px] tabular-nums`}>
+                  <Fee round={it.round} />
+                </td>
                 <td
                   className={`${td} text-center text-[13px] font-semibold ${stateTone[it.round.availability]}`}
                 >
@@ -630,6 +645,26 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * 응시료 — 할인 중이면 정가를 함께 적는다.
+ *
+ * 표와 카드가 같은 조각을 쓴다. 값을 두 곳에서 각자 그리면 한쪽만 할인 표시를 빠뜨리고,
+ * 목록에서 본 값과 카드에서 본 값이 다르면 무엇이 맞는지 물으러 온다.
+ *
+ * 지난 평가에도 값을 적는다. 「접수 마감」 줄의 값이 대시로 비면 그 평가가 얼마짜리였는지
+ * 알 수 없고, 다음 분기에 얼마를 준비해야 하는지도 거기서 가늠한다.
+ */
+function Fee({ round }: { round: CatalogRound }) {
+  return (
+    <>
+      {examDiscounted(round) && (
+        <span className="mr-1 text-[12px] text-slate-400 line-through">{orderWon(round.price)}</span>
+      )}
+      <span className="font-semibold text-soft-ink">{examFeeText(round)}</span>
+    </>
   );
 }
 
@@ -717,6 +752,12 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
         )}
         <p className="mt-1 text-[12px] tabular-nums text-soft-muted">
           접수 기간 {dotDate(round.opensOn)} ~ {dotDate(round.closesOn)}
+        </p>
+        <p className="mt-2 flex items-baseline justify-between border-t border-slate-100 pt-2 text-[13px] tabular-nums">
+          <span className="text-[12px] font-bold text-soft-muted">응시료</span>
+          <span>
+            <Fee round={round} />
+          </span>
         </p>
 
         <div className="mt-auto pt-5">
