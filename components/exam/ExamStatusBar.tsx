@@ -65,6 +65,9 @@ function useTrialSubjectName() {
  * 보는 시험인지 읽는 데 시간이 든다. 하나로 합치고, 거기에는 **무슨 평가의 어느 과목을
  * 얼마나 남기고 보고 있는지**만 둔다.
  *
+ * 이 줄은 응시 화면(/exam/session/…)에서만 선다. 탭 화면에서는 아무것도 그리지 않는다 —
+ * 거기 헤더는 로고와 메뉴가 쓰는 자리다.
+ *
  * 전체화면을 끄는 단추는 두지 않는다 — 나가는 길은 「포기하기」 하나고, ESC도 같은 물음을
  * 연다(lib/fullscreen.ts). 셋트는 시계가 없어 「셋트 그만하기」만 선다.
  *
@@ -124,6 +127,16 @@ export default function ExamStatusBar() {
       ? subjectOf(subject)!.name
       : null;
 
+  /**
+   * 응시 화면 밖에서는 아무것도 그리지 않는다.
+   *
+   * 이 줄은 **시험지 머리**다 — 로고도 메뉴도 감춘 자리에 평가명 · 과목 · 남은 시간만
+   * 세우려고 만들었다. 그런데 주소를 가리지 않아 접수하기 · 응시하기 같은 탭 화면의
+   * 헤더에도 평가명이 따라 붙었다. 거기는 왼쪽에 이미 「GENIXX · TalentMe 재능진단」이
+   * 서 있는 자리라, 같은 이름이 한 줄에 두 번 서고 로그인한 사람 이름 앞을 막았다.
+   */
+  if (!slug) return null;
+
   if (slug === "trial") {
     return (
       <HeadRow name={examName} subject={trialName} hint="시간을 재지 않습니다">
@@ -132,9 +145,14 @@ export default function ExamStatusBar() {
     );
   }
   /* 아직 시작하지 않은 표지에서도 머리는 선다 — 그 줄이 통째로 사라지면 헤더가 텅 빈다.
-     시계만 아직 흐르지 않을 뿐, 무슨 평가의 어느 과목인지는 그때도 읽혀야 한다 */
+     시계만 아직 흐르지 않을 뿐, 무슨 평가의 어느 과목인지는 그때도 읽혀야 한다.
+
+     다만 **읽히기 전에는 이름을 세우지 않는다.** 평가 이름은 접수 기록에서 나오는데
+     그것은 브라우저에 있어 첫 그림에는 없다. 그 순간 examName은 바닥값인 기본 회차
+     이름(「2026학년도 1회차(26A)」)이 되어, 아이가 접수한 평가와 **다른 이름**이 한 번
+     번쩍이고 사라진다. 틀린 이름을 잠깐 보여 주느니 이름 없이 한 박자 기다린다 */
   if (!rec || !hydrated) {
-    return <HeadRow name={examName} subject={subjectText}>{null}</HeadRow>;
+    return <HeadRow name={hydrated ? examName : null} subject={subjectText}>{null}</HeadRow>;
   }
   if (!live) {
     return (
@@ -190,7 +208,8 @@ function HeadRow({
   hint,
   children,
 }: {
-  name: string;
+  /** 평가 이름. 아직 읽지 못했으면 없다 — 그때는 검사 이름만 선다 */
+  name: string | null;
   subject: string | null;
   /** 시계가 없는 판(셋트)에서 그 자리에 적는 말 */
   hint?: string;
@@ -200,7 +219,7 @@ function HeadRow({
     <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
       <p className="flex min-w-0 items-baseline gap-2.5">
         <span className="truncate text-[14px] font-bold tracking-tight text-exam-text">
-          {assessment.name} {name}
+          {name ? `${assessment.name} ${name}` : assessment.name}
         </span>
         {subject && (
           <span className="hidden shrink-0 text-[13px] text-exam-muted sm:inline">{subject}</span>
