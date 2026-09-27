@@ -36,6 +36,7 @@ import { useExamConfig } from "@/lib/roundStore";
 import { isAnswered } from "./ExamSession";
 import SectionTitle from "./SectionTitle";
 import Toast from "./Toast";
+import SmsDialog from "./SmsDialog";
 import StudentOnly from "./StudentOnly";
 import { ArrowRight } from "@/components/Icons";
 import {
@@ -46,7 +47,6 @@ import {
   btnSmMuted,
   eyebrow,
   govTable,
-  input,
   panel,
   td,
   tdStrong,
@@ -694,69 +694,3 @@ function FinalDialog({
   );
 }
 
-function SmsDialog({
-  label,
-  initial,
-  onCancel,
-  onSend,
-}: {
-  label: string;
-  initial: string;
-  onCancel: () => void;
-  onSend: (phone: string) => void;
-}) {
-  const [phone, setPhone] = useState(phoneText(initial));
-  const digits = phone.replace(/\D/g, "");
-  const ok = digits.length >= 10 && digits.length <= 11;
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sms-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-5"
-    >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (ok) onSend(digits);
-        }}
-        className="w-full max-w-md rounded-[2px] bg-white p-7 shadow-float"
-      >
-        <h2 id="sms-title" className="text-[19px] font-bold text-soft-ink">
-          {label} 링크를 문자로 보냅니다
-        </h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
-          받은 분이 링크를 열면 로그인 없이 바로 설문을 작성할 수 있습니다.
-        </p>
-        <label htmlFor="sms-phone" className="mt-5 block text-[13px] font-bold text-soft-ink">
-          휴대전화 번호
-        </label>
-        <input
-          id="sms-phone"
-          type="tel"
-          inputMode="numeric"
-          autoFocus
-          value={phone}
-          onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
-          placeholder="010-1234-5678"
-          className={`mt-2 tabular-nums ${input}`}
-        />
-        {phone && !ok && (
-          <p className="mt-1.5 text-[12px] text-rose-600">휴대전화 번호를 정확히 입력해 주세요.</p>
-        )}
-        <div className="mt-7 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onCancel} className={btnGhost}>
-            취소
-          </button>
-          <button
-            type="submit"
-            disabled={!ok}
-            className={`${btnPrimary} disabled:cursor-not-allowed disabled:opacity-40`}
-          >
-            보내기
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
