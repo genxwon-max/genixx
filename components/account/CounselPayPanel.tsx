@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { counselFee, counselors, SPANS, spanLabel, type Span } from "@/lib/counselors";
+import { SPANS, spanLabel, type Span } from "@/lib/counselors";
+import { countBySpan, feeRange, useCounselFees, useCounselors } from "@/lib/counselorStore";
 import { orderWon } from "@/lib/orderStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
@@ -52,6 +53,10 @@ export default function CounselPayPanel({
   variant?: Variant;
 }) {
   const t = themeOf(variant);
+  /* 값과 사람 수는 관리자 화면(EXP-06-2)에서 고친 것을 그대로 읽는다 — 차림표가 코드에
+     박힌 값을 그리면, 값을 올린 다음에도 이 판만 옛값으로 팔고 있게 된다 */
+  const counselors = useCounselors();
+  const fees = useCounselFees();
 
   return (
     <>
@@ -61,7 +66,10 @@ export default function CounselPayPanel({
 
       <ul className="grid gap-3 sm:grid-cols-2">
         {SPANS.map((span) => {
-          const who = counselors.filter((c) => c.spans.includes(span)).length;
+          const who = countBySpan(counselors, span);
+          /* 값을 사람마다 달리 매겨 두었을 수 있다. 그때는 한 값만 적으면 예약 화면에서
+             다른 값을 보고 「올랐다」고 읽는다 — 폭이 있으면 폭을 적는다 */
+          const { min, max } = feeRange(counselors, span, fees);
           return (
             <li key={span} className={`${card} flex flex-col p-5 sm:p-6`}>
               <p className="flex flex-wrap items-baseline gap-x-2">
@@ -71,7 +79,7 @@ export default function CounselPayPanel({
                 </span>
               </p>
               <p className="mt-2 text-[17px] font-bold tabular-nums text-soft-ink">
-                {orderWon(counselFee[span])}
+                {min === max ? orderWon(min) : `${orderWon(min)}부터`}
               </p>
               <p className="mt-2.5 text-[13.5px] leading-[1.7] text-soft-ink">
                 {blurb[span].lead}

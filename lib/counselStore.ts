@@ -4,7 +4,6 @@ import { useSyncExternalStore } from "react";
 import { addDays, minOf, pad, timeOf, today } from "./calendar";
 import {
   cellsOf,
-  counselors,
   seedBusy,
   STEP,
   worksOn,
@@ -12,6 +11,7 @@ import {
   type CounselMode,
   type Span,
 } from "./counselors";
+import { getCounselors } from "./counselorStore";
 
 /**
  * 보호자가 잡는 결과 해석 면담 예약 (/my/interviews).
@@ -226,7 +226,9 @@ export const MAX_SLOTS = 4;
  */
 export function bookMany(input: BookingInput, starts: string[]): Booking[] | null {
   const rows = read();
-  const c = counselors.find((x) => x.id === input.counselorId);
+  /* 명단은 관리자가 고친다(lib/counselorStore.ts) — 코드에 박힌 씨앗을 뒤지면, 내려 둔
+     상담사에게는 예약이 들어오고 새로 더한 상담사에게는 들어오지 않는다 */
+  const c = getCounselors().find((x) => x.id === input.counselorId);
   if (!c || starts.length === 0 || starts.length > MAX_SLOTS) return null;
 
   const free = new Set(startsOf(rows, c, input.date, input.span));

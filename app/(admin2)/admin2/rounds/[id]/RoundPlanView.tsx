@@ -11,6 +11,7 @@ import {
   gradeFor,
   canonNote,
   checkPeriod,
+  checkPrice,
   closeRound,
   finishRound,
   noteOf,
@@ -20,9 +21,13 @@ import {
   periodText,
   planActions,
   planOf,
+  priceDiscount,
+  priceLine,
+  priceText,
   reopenRound,
   setPeriod,
   setRoundNotes,
+  setRoundPrice,
   setRoundPlan,
   slotsFor,
   slotsOf,
@@ -94,7 +99,7 @@ export default function RoundPlanView({ id }: { id: string }) {
   const by = prefs.staffName || "운영자";
 
   /* ── 이 화면이 고치는 것 전부 ──
-     기간 넷 · 편성 둘 · 공지 둘. 저장된 값에서 초안을 뜨고, 저장하거나 되돌리면 그 값으로
+     기간 넷 · 값 둘 · 편성 둘 · 공지 둘. 저장된 값에서 초안을 뜨고, 저장하거나 되돌리면 그 값으로
      돌아간다. 바깥에서 바뀐 값이 초안을 밀어내지 않는다 — 치고 있는 글자를 남의 저장이
      지우면 안 된다(useEditDraft).
 
@@ -112,6 +117,9 @@ export default function RoundPlanView({ id }: { id: string }) {
     closesAt: savedPeriod.closesAt,
     grade: gradeFor(plan),
     subjects: subjectsFor(plan),
+    /* 값은 두 칸을 그대로 든다 — 없는 회차(코드에 박힌 넷)는 0원·할인 없음으로 읽는다 */
+    price: plan.price ?? 0,
+    salePrice: plan.salePrice ?? null,
     notice: noteOf(plan.notice),
     caution: noteOf(plan.caution),
   });
@@ -124,6 +132,9 @@ export default function RoundPlanView({ id }: { id: string }) {
     closesAt: v.closesAt,
   };
   const periodBad = checkPeriod(nextPeriod);
+  const nextPrice = { price: v.price, salePrice: v.salePrice };
+  const priceBad = checkPrice(nextPrice);
+  const priceMoved = v.price !== (plan.price ?? 0) || v.salePrice !== (plan.salePrice ?? null);
   const periodMoved =
     v.opensOn !== savedPeriod.opensOn ||
     v.opensAt !== savedPeriod.opensAt ||
@@ -140,7 +151,7 @@ export default function RoundPlanView({ id }: { id: string }) {
    * 순간에 고친 것이 통째로 사라진다.
    */
   const save = () => {
-    if (!round || periodBad.length > 0) return false;
+    if (!round || periodBad.length > 0 || priceBad.length > 0) return false;
     if (periodMoved) {
       setPeriod(round.id, nextPeriod, by, "");
       recordAction(
@@ -149,6 +160,12 @@ export default function RoundPlanView({ id }: { id: string }) {
         `${stampOf(v.opensOn, v.opensAt)} – ${stampOf(v.closesOn, v.closesAt)}`,
         by,
       );
+    }
+    /* 값도 달라졌을 때만 내보낸다 — setRoundPrice가 기록에 한 줄을 남기므로, 저장을
+       누를 때마다 「응시료 변경」이 쌓이면 개폐 이력이 그 사이에 묻힌다 */
+    if (priceMoved) {
+      setRoundPrice(round.id, nextPrice, by);
+      recordAction(round.label, planActions.price, priceLine(nextPrice), by);
     }
     /* 편성은 값이 실제로 달라졌을 때만 내보낸다 — 그러지 않으면 저장을 누를 때마다
        「편성을 정했습니다」가 회차 기록에 한 줄씩 쌓인다 */
@@ -393,6 +410,72 @@ export default function RoundPlanView({ id }: { id: string }) {
               </div>
             </Panel>
 
+            {/* ③ 응시료 — 기간 바로 아래. 「언제 여는가」 다음에 오는 물음이 「얼마를
+                받는가」이고, 둘은 이 회차를 파는 조건 한 벌이다.
+
+                할인율은 받지 않고 금액만 받는다 — 율과 금액을 둘 다 들면 반올림에서
+                어긋나고, 결제에 남는 것은 언제나 실제로 받은 금액이다 */}
+            <Panel title="응시료" meta={priceText(plan)} flush>
+              <div className="a2-form">
+                <FormRow label="정가" req hint="0원이면 무료 회차입니다. 파일럿 회차가 그렇습니다.">
+                  <input
+                    className="a2-input a2-num"
+                    style={{ maxWidth: "10rem" }}
+                    inputMode="numeric"
+                    aria-label="응시료 정가"
+                    value={v.price ? v.price.toLocaleString("ko-KR") : ""}
+                    onChange={(e) =>
+                      draft.set("price", Number(e.target.value.replace(/[^0-9]/g, "")) || 0)
+                    }
+                    placeholder="0"
+                  />
+                  <span className="a2-t-sm text-(--a2-ink-3)">원</span>
+                </FormRow>
+
+                <FormRow label="할인가" hint="비우면 정가 그대로 받습니다.">
+                  <input
+                    className="a2-input a2-num"
+                    style={{ maxWidth: "10rem" }}
+                    inputMode="numeric"
+                    aria-label="응시료 할인가"
+                    value={v.salePrice != null ? v.salePrice.toLocaleString("ko-KR") : ""}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, "");
+                      draft.set("salePrice", digits ? Number(digits) : null);
+                    }}
+                    placeholder="비우면 정가"
+                  />
+                  <span className="a2-t-sm text-(--a2-ink-3)">원</span>
+                  {priceDiscount(nextPrice) != null && (
+                    <span className="a2-num a2-t-sm font-bold" style={{ color: "var(--a2-danger)" }}>
+                      −{priceDiscount(nextPrice)}%
+                    </span>
+                  )}
+                  <span className="a2-t-sm font-semibold text-(--a2-ink-2)">
+                    받는 값 {priceText(nextPrice)}
+                  </span>
+                </FormRow>
+
+                {(priceBad.length > 0 || (plan.state !== "draft" && priceMoved)) && (
+                  <FormRow label="짚을 것">
+                    {priceBad.length > 0 && (
+                      <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-danger)" }}>
+                        <span>{priceBad.join(" · ")}</span>
+                      </p>
+                    )}
+                    {plan.state !== "draft" && priceMoved && (
+                      <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
+                        <span>
+                          이미 {roundStates[plan.state].label}인 회차입니다. 값을 고쳐도 지난 결제는
+                          그대로 남습니다 — 앞으로 접수하는 사람에게만 새 값이 걸립니다.
+                        </span>
+                      </p>
+                    )}
+                  </FormRow>
+                )}
+              </div>
+            </Panel>
+
             {/* 공지는 편성 칸 다음에 둔다. 무엇을 낼지 정한 다음에 나오는 물음이
                 「이번엔 무슨 말을 함께 낼까」라서다 */}
             <RoundNotes
@@ -401,7 +484,7 @@ export default function RoundPlanView({ id }: { id: string }) {
               onChange={(next: { notice: RoundNote; caution: RoundNote }) => draft.patch(next)}
             />
 
-            {/* ③ 여는 관문 — 값을 고치는 일이 아니라 되돌리기 어려운 동작이라
+            {/* ④ 여는 관문 — 값을 고치는 일이 아니라 되돌리기 어려운 동작이라
                 저장 줄에 얹지 않고 제 까닭을 받아 제 단추로 나간다 */}
             <Panel title="여는 관문" meta={`막음 ${blocks.length} · 확인 ${warns.length}`} flush>
               <div className="a2-form">

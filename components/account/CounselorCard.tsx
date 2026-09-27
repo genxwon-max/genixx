@@ -9,6 +9,7 @@ import {
   spanLabel,
   type Counselor,
 } from "@/lib/counselors";
+import { useCounselFees } from "@/lib/counselorStore";
 import { peopleDisclaimer } from "@/lib/people";
 import { WEEK_KO } from "@/lib/calendar";
 
@@ -47,6 +48,11 @@ export default function CounselorCard({
   onSelect: () => void;
   onDetail: () => void;
 }) {
+  /* 값은 길이별 기본값에 이 사람의 값이 덮인 것이다(lib/counselors.ts의 feeFor).
+     기본값은 관리자가 고치므로 카드가 저장소에서 읽는다 — 코드에 박힌 표를 그리면
+     관리자가 값을 올린 뒤에도 카드만 옛값을 말한다 */
+  const fees = useCounselFees();
+
   return (
     <label
       className={`flex cursor-pointer gap-4 rounded-[14px] border p-4 transition-all sm:p-5 ${
@@ -102,7 +108,7 @@ export default function CounselorCard({
 
         <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-[12.5px] font-semibold text-soft-ink">
-            {c.spans.map((v) => feeText(v)).join(" · ")}
+            {c.spans.map((v) => feeText(v, fees, c)).join(" · ")}
           </span>
           {/* 상세는 카드 안의 버튼이다. 라벨 안이라 클릭이 선택으로 번지지 않게 막는다 */}
           <button
@@ -125,6 +131,7 @@ export default function CounselorCard({
 /** 상세 — 카드에서 접어 둔 소개·경력·맡은 일을 편다 */
 export function CounselorDetail({ c, onClose }: { c: Counselor; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const fees = useCounselFees();
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -188,7 +195,7 @@ export function CounselorDetail({ c, onClose }: { c: Counselor; onClose: () => v
 
         <Block title="면담 안내">
           <li>
-            길이 · 값 — {c.spans.map((v) => feeText(v)).join(" · ")}
+            길이 · 값 — {c.spans.map((v) => feeText(v, fees, c)).join(" · ")}
             {c.spans.length === 1 && `(${spanLabel(c.spans[0])} 면담만 받습니다)`}
           </li>
           <li>맡는 물음 — {c.topics.map((v) => counselTopics[v]).join(" · ")}</li>

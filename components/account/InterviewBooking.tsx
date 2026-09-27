@@ -30,19 +30,19 @@ import {
 import {
   blankQuery,
   counselModes,
-  counselorOf,
   counselTopics,
-  feeOf,
+  feeFor,
   filterCounselors,
+  findCounselor,
   isFiltered,
   spanLabel,
   topicList,
-  counselors as allCounselors,
   type CounselMode,
   type Counselor,
   type CounselQuery,
   type Span,
 } from "@/lib/counselors";
+import { useAllCounselors, useCounselFees, useCounselors } from "@/lib/counselorStore";
 import { orderMethods, orderWon, placeOrder, useOrders, type OrderMethod } from "@/lib/orderStore";
 import { useHydrated } from "@/lib/examStore";
 import { ageFromBirth, isMinorForContract } from "@/lib/account";
@@ -153,6 +153,11 @@ export default function InterviewBooking({
   const roster = useRoster();
   const bookings = useBookings();
   const orders = useOrders();
+  /* 명단과 값은 관리자 화면(EXP-06-2)이 주인이다. 고를 수 있는 사람은 노출을 켠 사람뿐이고,
+     지난 예약의 이름은 내려 둔 사람에게서도 찾아야 하므로 두 목록을 따로 든다 */
+  const pickable = useCounselors();
+  const everyone = useAllCounselors();
+  const fees = useCounselFees();
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = useMemo(
@@ -192,12 +197,12 @@ export default function InterviewBooking({
   const ym = month || (now ? monthOf(addDays(now, LEAD_DAYS)) : "");
 
   const student = mine.find((s) => s.id === studentId) ?? (mine.length === 1 ? mine[0] : null);
-  const counselor = counselorId ? counselorOf(counselorId) : null;
+  const counselor = counselorId ? findCounselor(pickable, counselorId) : null;
 
-  const found = useMemo(() => filterCounselors(allCounselors, query), [query]);
+  const found = useMemo(() => filterCounselors(pickable, query), [pickable, query]);
   const slots = date && counselor ? slotsOf(bookings, counselor, date, span) : [];
 
-  const unit = feeOf(span);
+  const unit = feeFor(span, fees, counselor);
   const total = unit * starts.length;
   /* 학생 본인이 미성년인가 — 결제 단추 앞에 법정대리인 동의를 한 칸 더 세운다 */
   const needGuardian = !!selfId && isMinorForContract(ageFromBirth(student?.birth ?? ""));
@@ -344,7 +349,7 @@ export default function InterviewBooking({
           </h2>
           <p className="mt-2.5 text-[13.5px] leading-[1.8] text-soft-muted">
             {done.rows[0].studentName} 학생 ·{" "}
-            {counselorOf(done.rows[0].counselorId)?.person.name ?? "담당 전문가"} 전문가 ·{" "}
+            {findCounselor(everyone, done.rows[0].counselorId)?.person.name ?? "담당 전문가"} 전문가 ·{" "}
             {counselModes[done.rows[0].mode]} 면담
             <br />
             {done.rows.map((r) => (
@@ -492,7 +497,7 @@ export default function InterviewBooking({
             </div>
 
             <p className="mb-2.5 mt-3 text-[13px] text-soft-muted">
-              전체 {allCounselors.length}명 중 <b className="text-soft-ink">{found.length}명</b>
+              전체 {pickable.length}명 중 <b className="text-soft-ink">{found.length}명</b>
               {counselor && (
                 <span className="ml-2 font-semibold text-soft-primary">
                   {counselor.person.name} 전문가 선택
@@ -540,7 +545,7 @@ export default function InterviewBooking({
                   <div className="flex items-center gap-1.5">
                     {counselor.spans.map((v) => (
                       <Chip key={v} on={span === v} onClick={() => pickSpan(v)}>
-                        {spanLabel(v)} {orderWon(feeOf(v))}
+                        {spanLabel(v)} {orderWon(feeFor(v, fees, counselor))}
                       </Chip>
                     ))}
                   </div>
@@ -874,7 +879,7 @@ export default function InterviewBooking({
               </thead>
               <tbody>
                 {rows.map((b) => {
-                  const c = counselorOf(b.counselorId);
+                  const c = findCounselor(everyone, b.counselorId);
                   const paid = b.orderId ? orders.find((o) => o.id === b.orderId) : null;
                   return (
                     <tr key={b.id}>
@@ -934,7 +939,7 @@ export default function InterviewBooking({
           body={
             <>
               {canceling.date.replace(/-/g, ".")}({weekdayKo(canceling.date)}) {canceling.start} ·{" "}
-              {counselorOf(canceling.counselorId)?.person.name ?? "담당 전문가"} 면담이 취소되고,
+              {findCounselor(everyone, canceling.counselorId)?.person.name ?? "담당 전문가"} 면담이 취소되고,
               그 시간은 다시 열립니다. 환불은 결제하신 수단으로 3~5영업일 안에 처리됩니다.
             </>
           }

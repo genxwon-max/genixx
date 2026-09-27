@@ -14,9 +14,12 @@ import {
   DEFAULT_OPEN_AT,
   blankNote,
   checkPeriod,
+  checkPrice,
   createRound,
   defaultGrade,
   planSubjects,
+  priceDiscount,
+  priceText,
 } from "@/lib/roundPlanStore";
 import BodyEditor from "@/components/admin2/BodyEditor";
 import PlanPicker from "@/components/admin2/PlanPicker";
@@ -30,8 +33,8 @@ import { Body, FormRow, PageHead } from "@/components/admin2/ui";
  * 해야 했다. 등록은 목록과 다른 일이므로 주소를 갈랐다.
  *
  * ── 칸을 이 차례로 둔 까닭 ──
- * 위에서 아래로 「무엇을 · 언제 · 누구에게 · 무엇으로 · 무슨 말과 함께」다. 앞의 셋은
- * 회차를 부르는 값이고, 넷째(편성 칸)가 이 화면의 본체다. 공지·유의사항을 맨 아래 둔 것은
+ * 위에서 아래로 「무엇을 · 언제 · 누구에게 · 얼마에 · 무엇으로 · 무슨 말과 함께」다. 앞의
+ * 넷은 회차를 부르는 값이고, 다섯째(편성 칸)가 이 화면의 본체다. 공지·유의사항을 맨 아래 둔 것은
  * 비워도 되는 칸이라서다 — 필수 칸 사이에 선택 칸을 끼우면 어디까지 채워야 끝인지 흐려진다.
  *
  * ── 여기서 정하지 않는 것 ──
@@ -54,6 +57,10 @@ export default function NewRoundForm() {
   /* 응시 정원 — **0이면 제한 없음**. 파일럿은 전면 무료라 정원을 두지 않는 것이
      기본값이고, 숫자를 적으면 그만큼만 받는다 */
   const [target, setTarget] = useState(0);
+  /* 응시료 — **0이면 무료**. 파일럿 회차가 전면 무료라 그것이 기본값이고, 값을 받는
+     회차는 정가를 적는다. 할인가는 비워 두면 정가 그대로 판다(lib/roundPlanStore.ts) */
+  const [price, setPrice] = useState(0);
+  const [salePrice, setSalePrice] = useState<number | null>(null);
   const [grade, setGrade] = useState<GradeNo>(defaultGrade);
   const [picked, setPicked] = useState<ItemDraft["subject"][]>([...planSubjects]);
   const [notice, setNotice] = useState(blankNote());
@@ -67,12 +74,28 @@ export default function NewRoundForm() {
        만들 때는 통과한 기간이 편성 화면에서 막히는 날이 온다 */
     bad.push(...checkPeriod({ opensOn, opensAt, closesOn, closesAt }));
     if (picked.length === 0) bad.push("평가 과목을 하나 이상 넣어 주세요. 과목이 없으면 응시할 것이 없습니다.");
+    /* 값은 편성 화면과 **같은 잣대**로 본다(checkPrice) — 여기서만 따로 재면 만들 때는
+       통과한 값이 고치는 화면에서 막히는 날이 온다 */
+    bad.push(...checkPrice({ price, salePrice }));
     if (!Number.isFinite(target) || target < 0 || !Number.isInteger(target))
       bad.push("응시 정원은 0 이상의 정수로 적어 주세요. 0이면 제한이 없습니다.");
     if (bad.length > 0) return setErrors(bad);
 
     const id = createRound(
-      { label, opensOn, opensAt, closesOn, closesAt, target, grade, subjects: picked, notice, caution },
+      {
+        label,
+        opensOn,
+        opensAt,
+        closesOn,
+        closesAt,
+        target,
+        price,
+        salePrice,
+        grade,
+        subjects: picked,
+        notice,
+        caution,
+      },
       prefs.staffName || "운영자",
     );
     /* 만들고 바로 편성으로 보낸다. 목록에 줄만 하나 늘려 두면 「이제 뭘 하지」가 남는데,
@@ -181,6 +204,50 @@ export default function NewRoundForm() {
             <span className="a2-t-sm text-(--a2-ink-3)">
               {target === 0 ? "명 — 제한 없음" : "명까지 받습니다"}
             </span>
+          </div>
+        </div>
+
+        {/* ── 얼마에 ──
+            정원 다음에 둔다. 「누구에게 몇 명까지」를 정한 다음에 오는 물음이 「얼마를
+            받는가」이고, 그 둘이 이 회차를 파는 조건 한 벌이다.
+
+            할인율은 받지 않는다. 율과 금액을 둘 다 들면 반올림에서 어긋나므로 금액만
+            받고 율은 옆에 셈해 보여 준다(상품 등록 화면과 같은 규칙) */}
+        <div className="a2-form-row">
+          <div className="a2-form-label a2-form-req">응시료</div>
+          <div className="a2-form-field">
+            <input
+              className="a2-input a2-num"
+              style={{ maxWidth: "10rem" }}
+              inputMode="numeric"
+              aria-label="응시료 정가"
+              value={price ? price.toLocaleString("ko-KR") : ""}
+              onChange={(e) => setPrice(Number(e.target.value.replace(/[^0-9]/g, "")) || 0)}
+              placeholder="0"
+            />
+            <span className="a2-t-sm text-(--a2-ink-3)">원 — 정가</span>
+            <input
+              className="a2-input a2-num"
+              style={{ maxWidth: "10rem" }}
+              inputMode="numeric"
+              aria-label="응시료 할인가"
+              value={salePrice != null ? salePrice.toLocaleString("ko-KR") : ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/[^0-9]/g, "");
+                setSalePrice(digits ? Number(digits) : null);
+              }}
+              placeholder="비우면 정가"
+            />
+            <span className="a2-t-sm text-(--a2-ink-3)">원 — 할인가</span>
+            {/* 0은 「아직 안 정했다」가 아니라 무료다. 그 말을 값 옆에 그대로 적는다 */}
+            <span className="a2-t-sm font-semibold text-(--a2-ink-2)">
+              {priceText({ price, salePrice })}
+            </span>
+            {priceDiscount({ price, salePrice }) != null && (
+              <span className="a2-num a2-t-sm font-bold" style={{ color: "var(--a2-danger)" }}>
+                −{priceDiscount({ price, salePrice })}%
+              </span>
+            )}
           </div>
         </div>
 

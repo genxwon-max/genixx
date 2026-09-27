@@ -46,21 +46,29 @@ export const STEP = 30;
 export const spanLabel = (s: Span) => (s === 30 ? "30분" : "60분");
 
 /**
- * 면담 값 — 길이로만 정한다.
+ * 면담 값 — **길이로 정하고, 사람이 필요할 때만 덮는다.**
  *
- * 전문가마다 값을 달리 매기지 않는다. 같은 결과지를 놓고 나누는 자리인데 사람마다 값이
- * 다르면 목록이 곧 「비싼 사람 · 싼 사람」으로 읽히고, 보호자는 값으로 전문성을 어림하게
- * 된다. 이 진단이 등급을 매기지 않기로 한 것과 같은 까닭이다.
+ * 기본은 길이뿐이다. 같은 결과지를 놓고 나누는 자리인데 사람마다 값이 다르면 목록이 곧
+ * 「비싼 사람 · 싼 사람」으로 읽히고, 보호자는 값으로 전문성을 어림하게 된다 — 이 진단이
+ * 등급을 매기지 않기로 한 것과 같은 까닭이다. 그래서 관리자 화면(EXP-06-2)의 기본값도
+ * 길이 둘뿐이고, 전문가 칸의 값은 비워 두는 것이 정상이다.
  *
- * ⚠ 관리자 상품 관리(PAY-01)에 면담 상품이 서면 그 값을 읽는다. 지금은 여기가 주인이다.
+ * 그러고도 사람마다 덮을 길을 남긴 까닭은, 값을 달리 매겨야 하는 자리가 실제로 생기기
+ * 때문이다(외부 초빙 전문가, 기관과 따로 맺은 값). 비워 두면 기본값을 그대로 받는다.
+ *
+ * ⚠ 아래 표는 **아직 아무것도 고치지 않았을 때의 값**이다. 주인은 lib/counselorStore.ts다.
  */
-export const counselFee: Record<Span, number> = { 30: 60_000, 60: 100_000 };
+export type CounselFees = Record<Span, number>;
 
-export const feeOf = (span: Span) => counselFee[span];
+export const counselFee: CounselFees = { 30: 60_000, 60: 100_000 };
+
+/** 이 사람이 이 길이로 받는 값 — 따로 매긴 값이 있으면 그것, 없으면 기본값 */
+export const feeFor = (span: Span, fees: CounselFees, c?: Counselor | null) =>
+  c?.fees?.[span] ?? fees[span];
 
 /** 「30분 60,000원」 — 카드와 고르개가 같은 글자를 쓴다 */
-export const feeText = (span: Span) =>
-  `${spanLabel(span)} ${counselFee[span].toLocaleString("ko-KR")}원`;
+export const feeText = (span: Span, fees: CounselFees, c?: Counselor | null) =>
+  `${spanLabel(span)} ${feeFor(span, fees, c).toLocaleString("ko-KR")}원`;
 
 /**
  * 무엇을 물으러 오는가 — 목록을 거르는 조건.
@@ -96,6 +104,13 @@ export type Counselor = {
    * 끝나지 않는다. 둘 다 받는 이도 있다.
    */
   spans: Span[];
+  /**
+   * 이 사람만 따로 매긴 값 — 비워 두면 기본값(CounselFees)을 그대로 받는다.
+   *
+   * 길이마다 갈라 든다. 30분만 달리 매기는 일이 있고, 그때 60분까지 함께 적게 하면
+   * 기본값이 오를 때 이 사람의 60분만 옛값에 남는다.
+   */
+  fees?: Partial<Record<Span, number>>;
   modes: CounselMode[];
   /** 면담을 받는 요일. 0=일 … 6=토 */
   days: number[];
@@ -197,7 +212,11 @@ const SEED: Omit<Counselor, "person">[] = [
 ];
 
 /**
- * 상담사 목록.
+ * 상담사 씨앗 — **아직 아무것도 고치지 않았을 때의 명단.**
+ *
+ * 주인은 lib/counselorStore.ts다. 관리자가 상담사 관리(EXP-06-2)에서 한 줄이라도 고치면
+ * 화면은 저 저장소를 읽고, 이 배열은 저장분이 없을 때의 바닥값으로만 남는다. 여기에
+ * 그대로 두는 까닭은 저장소를 비워도 화면이 빈 목록이 되지 않아야 하기 때문이다.
  *
  * 참여진에 없는 번호는 조용히 뺀다 — 저쪽 명단이 바뀌어 이름이 사라졌을 때 화면이
  * undefined.name에서 멈추는 것보다, 그 사람만 목록에 안 서는 편이 낫다.
@@ -207,7 +226,15 @@ export const counselors: Counselor[] = SEED.flatMap((c) => {
   return person ? [{ ...c, person }] : [];
 });
 
-export const counselorOf = (id: string) => counselors.find((c) => c.id === id) ?? null;
+/**
+ * 목록에서 한 사람을 찾는다 — **목록을 넘겨받는다.**
+ *
+ * 예전에는 위의 씨앗 배열을 곧바로 뒤졌다. 명단을 관리자가 고칠 수 있게 된 뒤로는
+ * (lib/counselorStore.ts) 그 배열이 「아직 아무것도 고치지 않았을 때의 값」이라,
+ * 화면이 보고 있는 목록과 여기서 찾은 사람이 갈린다.
+ */
+export const findCounselor = (list: Counselor[], id: string) =>
+  list.find((c) => c.id === id) ?? null;
 
 /**
  * 카드에 세우는 짧은 연혁 석 줄 — 학위·주요 경력·지금 하는 일.

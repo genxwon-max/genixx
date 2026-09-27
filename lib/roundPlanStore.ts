@@ -11,6 +11,9 @@ import {
   type GradeNo,
 } from "./blueprint";
 import { formGradeOf, formItems, type ExamForm } from "./formStore";
+/* 값 표기는 상품 화면이 쓰는 것을 그대로 가져온다 — 두 벌로 두면 회차 표와 상품 표의
+   자릿점이 갈린다(lib/productStore.ts의 won) */
+import { won } from "./productStore";
 import { detailIsEmpty, type DetailMode } from "./richText";
 import type { ItemDraft } from "./itemStore";
 
@@ -37,7 +40,7 @@ import type { ItemDraft } from "./itemStore";
  *   문항이 조용히 갈라진다.
  */
 
-export type PlanAction = "open" | "close" | "finish" | "reopen" | "period";
+export type PlanAction = "open" | "close" | "finish" | "reopen" | "period" | "price";
 
 export const planActions: Record<PlanAction, string> = {
   open: "회차 열기",
@@ -45,16 +48,17 @@ export const planActions: Record<PlanAction, string> = {
   finish: "회차 종료",
   reopen: "응시 다시 열기",
   period: "응시 기간 변경",
+  price: "응시료 변경",
 };
 
 /**
  * 회차를 열고 닫는 네 동작.
  *
- * 기간 변경을 뺀 갈래다. 앞의 넷은 되돌리기 어려워 「한 번 묻는 대화상자」를 거치지만
- * 기간은 판 위에서 고쳐 저장하는 값이라 물을 것이 없다. 한 union으로 묶어 두었더니
- * 대화상자 문구표가 쓰지도 않을 기간 칸을 요구했다.
+ * 기간·응시료 변경을 뺀 갈래다. 앞의 넷은 되돌리기 어려워 「한 번 묻는 대화상자」를
+ * 거치지만 기간과 값은 판 위에서 고쳐 저장하는 값이라 물을 것이 없다. 한 union으로 묶어
+ * 두었더니 대화상자 문구표가 쓰지도 않을 기간 칸을 요구했다.
  */
-export type PlanGateAction = Exclude<PlanAction, "period">;
+export type PlanGateAction = Exclude<PlanAction, "period" | "price">;
 
 export type PlanLog = { at: string; by: string; action: PlanAction; text: string };
 
@@ -142,6 +146,25 @@ export type RoundPlan = {
   openedBy?: string;
   closedAt?: string;
   closedBy?: string;
+  /**
+   * 이 평가의 응시료 — 정가(price)와 할인가(salePrice).
+   *
+   * 회차마다 다르다. 파일럿은 전면 무료이고(0), 정식 회차는 값을 받으며, 같은 해에도
+   * 학년·과목 수가 달라 값이 갈린다. 그래서 상품 목록(PAY-01)이 아니라 **회차가** 이 값을
+   * 든다 — 저쪽에 응시권 상품을 한 줄 세워 두면 회차가 넷일 때 상품도 넷이 되고, 어느
+   * 상품이 어느 회차의 것인지를 이름으로 맞춰야 한다.
+   *
+   * 「할인율」은 담지 않는다. 율과 금액을 둘 다 들면 반올림에서 어긋나고, 결제에 남는 것은
+   * 언제나 실제로 받은 금액이다 — 율은 화면에서 셈해 보여 준다(lib/productStore.ts의 같은
+   * 규칙).
+   *
+   * ⚠ 없으면 0원(무료)으로 읽는다. 코드에 박힌 회차 넷과 값을 받기 전에 만든 회차가 그렇다 —
+   *   없는 것을 「아직 안 정했다」로 읽어 화면에 빈칸을 세우면, 파일럿 회차가 값을 안 정한
+   *   회차로 보인다.
+   */
+  price?: number;
+  /** 할인가. 없거나 null이면 정가 그대로 받는다 */
+  salePrice?: number | null;
 /**
    * 이번 회차가 보는 학년 — **하나**.
    *
@@ -353,6 +376,70 @@ export function checkPeriod(p: Period): string[] {
   return out;
 }
 
+/* ───────────────────────── 응시료 ─────────────────────────
+   회차가 값을 든다(위 price 주석). 읽는 자리가 여럿이라(회차 표 · 편성 화면 · 접수 화면)
+   셈을 여기 한 곳에 둔다 — 화면마다 제 나름으로 「할인가가 없으면 정가」를 적어 두면,
+   어느 날 한쪽만 고쳐져 같은 회차가 두 값으로 선다. */
+
+/**
+ * 값 두 칸만 받는다 — 저장된 회차든 폼이 든 초안이든 같은 셈을 지나게.
+ *
+ * RoundPlan을 통째로 받으면 폼이 든 값을 물어볼 때마다 가짜 회차 객체를 지어내야 한다.
+ */
+export type RoundPrice = { price?: number; salePrice?: number | null };
+
+/** 정가 — 없으면 0원(무료) */
+export const priceOf = (plan: RoundPrice) => plan.price ?? 0;
+
+/** 실제로 받는 값 — 할인가가 있으면 그것, 없으면 정가 */
+export const paidPriceOf = (plan: RoundPrice) => plan.salePrice ?? priceOf(plan);
+
+/** 할인율(%). 정가와 같거나 정가가 0이면 null */
+export function priceDiscount(plan: RoundPrice) {
+  const price = priceOf(plan);
+  const sale = plan.salePrice;
+  if (sale == null || price <= 0 || sale >= price) return null;
+  return Math.round(((price - sale) / price) * 100);
+}
+
+/**
+ * 사람이 읽는 값 한 줄 — 「무료」 · 「39,000원」 · 「49,000원 → 39,000원」.
+ *
+ * 0원을 「0원」으로 적지 않는다. 파일럿 회차가 무료인 것은 값을 안 정한 것이 아니라 정한
+ * 것이고, 표에 0이 서 있으면 그 둘이 한 글자로 겹친다.
+ */
+export function priceText(plan: RoundPrice) {
+  const price = priceOf(plan);
+  const paid = paidPriceOf(plan);
+  if (paid === 0) return "무료";
+  return paid === price ? won(paid) : `${won(price)} → ${won(paid)}`;
+}
+
+/**
+ * 기록·감사 로그에 적는 한 줄 — 「39,000원(정가 49,000원)」.
+ *
+ * 화살표를 쓰지 않는다. 기록은 「무엇이 무엇으로 바뀌었나」를 화살표로 적는 자리라,
+ * 값 안에 또 화살표가 들어가면 「무료 → 49,000원 → 39,000원」처럼 화살표 둘이 겹쳐
+ * 어디까지가 바뀌기 전 값인지가 사라진다.
+ */
+export function priceLine(plan: RoundPrice) {
+  const paid = paidPriceOf(plan);
+  if (paid === 0) return "무료";
+  return paid === priceOf(plan) ? won(paid) : `${won(paid)}(정가 ${won(priceOf(plan))})`;
+}
+
+/** 값이 말이 되는가 — 저장 전에 본다 */
+export function checkPrice(p: { price: number; salePrice: number | null }): string[] {
+  const out: string[] = [];
+  if (!Number.isFinite(p.price) || p.price < 0 || !Number.isInteger(p.price))
+    out.push("정가를 0원 이상의 정수로 적어 주세요");
+  if (p.salePrice != null && (!Number.isFinite(p.salePrice) || p.salePrice < 0))
+    out.push("할인가를 0원 이상으로 적어 주세요");
+  if (p.salePrice != null && p.salePrice > p.price)
+    out.push("할인가가 정가보다 큽니다 — 할인이 아니라면 정가를 고쳐 주세요");
+  return out;
+}
+
 /* ───────────────────────── 편성판 ───────────────────────── */
 
 export const planSubjects: ItemDraft["subject"][] = ["국어", "수학", "과학"];
@@ -559,6 +646,9 @@ export function createRound(
     target: number;
     grade: GradeNo;
     subjects: ItemDraft["subject"][];
+    /** 응시료 — 적지 않으면 무료(0원) */
+    price?: number;
+    salePrice?: number | null;
     notice?: RoundNote;
     caution?: RoundNote;
   },
@@ -579,6 +669,8 @@ export function createRound(
       band: bandOfGrade(input.grade),
       grade: input.grade,
       subjects: input.subjects,
+      price: input.price ?? 0,
+      salePrice: input.salePrice ?? null,
       notice: input.notice,
       caution: input.caution,
       made: { label: input.label.trim(), target: input.target, createdAt: at, createdBy: by },
@@ -587,7 +679,9 @@ export function createRound(
           at,
           by,
           action: "period",
-          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${gradeText(input.grade)}`,
+          text: `회차를 만들었습니다 — ${input.subjects.join(" · ")} · ${gradeText(
+            input.grade,
+          )} · ${priceLine({ price: input.price, salePrice: input.salePrice })}`,
         },
       ],
     },
@@ -773,6 +867,28 @@ export function setPeriod(id: string, next: Period, by: string, why: string) {
     },
     { by, action: "period", text: why ? `${changed.join(" · ")} — ${why}` : changed.join(" · ") },
   );
+}
+
+/**
+ * 응시료를 고친다 — **무엇을 무엇으로 바꿨는지 기록에 남긴다.**
+ *
+ * 기간 변경과 같은 무게로 남기는 까닭은, 값이 바뀐 회차의 접수 수를 뒤에 견줄 때
+ * 「그때 값을 내렸다」가 남아 있어야 차이를 설명할 수 있기 때문이다.
+ *
+ * 이미 열린 회차의 값을 고치는 것도 막지 않는다. 막아야 할 일이지만 실제로 고쳐야 하는
+ * 날이 있고(값을 잘못 적어 올린 회차), 화면이 그때 무슨 일이 생기는지를 알려 준다.
+ */
+export function setRoundPrice(
+  id: string,
+  next: { price: number; salePrice: number | null },
+  by: string,
+  why = "",
+) {
+  if (checkPrice(next).length > 0) return;
+  const before = planOf(read(), id);
+  if (priceOf(before) === next.price && (before.salePrice ?? null) === next.salePrice) return;
+  const text = `${priceLine(before)} → ${priceLine(next)}`;
+  patch(id, next, { by, action: "price", text: why ? `${text} — ${why}` : text });
 }
 
 /** 마감을 되돌린다 — 마감 시각을 지우되 되돌린 사실은 기록에 남는다 */

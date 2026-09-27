@@ -7,7 +7,7 @@ import { Bar, Status } from "@/components/admin2/ui";
 import { roundStateLabels, roundStates, type Round } from "@/lib/admin";
 import { n, pct, roundTone } from "@/lib/admin2";
 import { useForms } from "@/lib/formStore";
-import { planOf, usePlans, useRounds } from "@/lib/roundPlanStore";
+import { paidPriceOf, planOf, priceDiscount, priceText, usePlans, useRounds } from "@/lib/roundPlanStore";
 
 /**
  * ADM-05 회차 표.
@@ -137,6 +137,34 @@ export default function RoundsTable() {
         num: true,
         value: (r) => r.target,
         cell: (r) => (r.target ? n(r.target) : <span className="a2-t-sm text-(--a2-ink-3)">제한 없음</span>),
+      },
+      {
+        /* 정원 옆에 둔다 — 「누구에게 몇 명까지 · 얼마에」가 이 회차를 파는 조건 한 벌이다.
+           정가와 할인가를 두 칸으로 벌리지 않는다. 회차 표는 칸이 이미 여덟이고, 여기서
+           답해야 하는 것은 「이 회차가 얼마인가」 하나다 — 두 값의 차이는 편성 화면에서
+           본다. 값을 정렬할 수 있게 실제로 받는 값으로 센다 */
+        key: "price",
+        head: "응시료",
+        width: "9rem",
+        nowrap: true,
+        num: true,
+        value: (r) => paidPriceOf(planOf(plans, r.id)),
+        cell: (r) => {
+          const plan = planOf(plans, r.id);
+          const rate = priceDiscount(plan);
+          return paidPriceOf(plan) === 0 ? (
+            <span className="a2-t-sm text-(--a2-ink-3)">무료</span>
+          ) : (
+            <span className="a2-num a2-t-sm">
+              {priceText(plan)}
+              {rate != null && (
+                <b className="ml-1 font-bold" style={{ color: "var(--a2-danger)" }}>
+                  −{rate}%
+                </b>
+              )}
+            </span>
+          );
+        },
       },
       {
         /* 막대 셋은 비율만 보인다. 표에서 묻는 것은 「어느 회차가 덜 걷혔나」이지 건수가
