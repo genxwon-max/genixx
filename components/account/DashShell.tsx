@@ -22,8 +22,12 @@ import { LogoLockup } from "@/components/Logo";
  * 화면이 없는 것(ORG-02-1 학급 구성 · ORG-05 집단 리포트)은 넣지 않았다. 눌러서 아무
  * 데도 가지 않는 메뉴를 세우는 것보다 없는 편이 낫다.
  *
- * 응시(ASM-01)는 여기 없다. 학생이 접속코드로 들어가 자기 화면에서 보는 것이라
- * 회원 레일에 두면 눌러 봐야 「학생 계정에서 확인하세요」만 나온다.
+ * 레일은 셋이다 — 학부모(/my) · 학생(/student) · 기관(/org). 학부모와 학생은 **주소로**
+ * 가른다(menuFor). 한 주소에서 역할만 보고 갈랐을 때는 같은 화면이 두 사람 것이 되어,
+ * 학생 쪽을 고치면 보호자 쪽이 함께 흔들렸다.
+ *
+ * 실제 응시(ASM-01)는 여기 없다. 학생 레일은 응시 존(/exam)으로 건너가는 길만 두고,
+ * 문항을 푸는 자리는 시험지 껍데기(app/(exam)/layout.tsx)가 따로 두른다.
  *
  * 반응형은 정의서 12장을 따른다 — 학부모는 모바일 우선이라 좁은 화면에서 레일이
  * 하단 탭으로 내려간다.
@@ -65,6 +69,14 @@ const ic = {
   talk: (
     <path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7.5L8 20v-3.5H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5ZM7 9.5h10M7 12.5h6" />
   ),
+  /** 시험지 — 학생의 「내 평가」 */
+  paper: (
+    <path d="M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1ZM9 8h6M9 11.5h6M9 15h3.5" />
+  ),
+  /** 사람 하나 — 학생 자기 정보 */
+  me: (
+    <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM5.5 20c0-3.1 2.9-5.2 6.5-5.2s6.5 2.1 6.5 5.2" />
+  ),
   settings: (
     <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a1.94 1.94 0 1 1-2.75 2.75l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47v.17a1.94 1.94 0 1 1-3.88 0v-.09a1.6 1.6 0 0 0-1.05-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a1.94 1.94 0 1 1-2.75-2.75l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.47-.97H3.5a1.94 1.94 0 1 1 0-3.88h.09A1.6 1.6 0 0 0 5.06 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a1.94 1.94 0 1 1 2.75-2.75l.06.06a1.6 1.6 0 0 0 1.77.32H9.4a1.6 1.6 0 0 0 .97-1.47V3.5a1.94 1.94 0 1 1 3.88 0v.09a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a1.94 1.94 0 1 1 2.75 2.75l-.06.06a1.6 1.6 0 0 0-.32 1.77V9.4a1.6 1.6 0 0 0 1.47.97h.17a1.94 1.94 0 1 1 0 3.88h-.09a1.6 1.6 0 0 0-1.47.97Z" />
   ),
@@ -101,6 +113,24 @@ const parentMenu: Item[] = [
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
 
+/**
+ * 학생(S) — 주소로 갈라 둔 학생 대시보드(/student).
+ *
+ * 학부모 메뉴를 그대로 물려주지 않는다. 아이에게 필요한 것은 **내가 볼 시험과 내 결과**
+ * 하나뿐이고, 학생 등록·결제·면담처럼 보호자가 하는 일은 눌러 봐야 「보호자 계정에서
+ * 확인하세요」만 나온다. 그래서 학생 등록은 이 레일에 아예 없다.
+ *
+ * 실제 응시는 응시 존(/exam)에서 한다. 여기서는 「평가 페이지로 가기」로 그 자리로
+ * 건너가고, 돌아오면 같은 레일이 그대로 있다.
+ */
+const studentMenu: Item[] = [
+  { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
+  { href: "/student/exams", label: "내 평가", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/results", label: "응시 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
+  { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
+  { href: "/student/account", label: "내 정보", sid: "ACC-04", icon: <Icon>{ic.me}</Icon> },
+];
+
 /** 기관담당자·교사(I·T) — 정의서 10장 + P0로 이미 있는 응시 존 화면 */
 const orgMenu: Item[] = [
   { href: "/org", label: "홈", sid: "ORG-01", icon: <Icon>{ic.home}</Icon> },
@@ -120,7 +150,24 @@ const pendingMenu: Item[] = [
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
 
-function menuFor(role: Role | undefined, approved: boolean) {
+/** 학생 대시보드인가 — 주소가 정한다 */
+export function isStudentZone(pathname: string) {
+  return pathname === "/student" || pathname.startsWith("/student/");
+}
+
+/**
+ * 어느 레일을 세울지 고른다.
+ *
+ * 학생과 학부모는 **주소로 가른다**(/student · /my). 역할만 보고 갈랐을 때는 한 화면이
+ * 두 사람 것이 되어, 어느 쪽 화면을 손보는지 코드에서도 눌러 보는 자리에서도 흐렸다.
+ * 주소가 다르면 링크 하나로 「네 자리」를 보여 줄 수 있고, 학생 화면을 세우는 동안
+ * 보호자 화면을 건드리지 않는다.
+ *
+ * 기관(/org)은 아직 역할로 남긴다 — 명부(/my/students)처럼 주소를 학부모와 나눠 쓰는
+ * 화면이 있어서, 주소만 보면 기관 회원이 학부모 레일을 보게 된다.
+ */
+function menuFor(role: Role | undefined, approved: boolean, pathname: string) {
+  if (isStudentZone(pathname)) return studentMenu;
   if (!approved) return pendingMenu;
   return role === "director" || role === "teacher" ? orgMenu : parentMenu;
 }
@@ -142,7 +189,16 @@ function activeHref(menu: Item[], pathname: string) {
 }
 
 /* ── 상단 사용자 메뉴 ── */
-function UserMenu({ name, role }: { name: string; role: Role | undefined }) {
+function UserMenu({
+  name,
+  role,
+  myHref,
+}: {
+  name: string;
+  role: Role | undefined;
+  /** 「마이페이지」가 가는 곳 — 학생 자리에서는 학생 정보 화면이다 */
+  myHref: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -180,11 +236,11 @@ function UserMenu({ name, role }: { name: string; role: Role | undefined }) {
           <p className="border-b border-slate-100 px-4 py-3">
             <span className="block text-[14px] font-bold text-soft-ink">{name}</span>
             <span className="mt-0.5 block text-[12.5px] text-soft-muted">
-              {role ? roleLabel[role] : "학부모"}
+              {role ? roleLabel[role] : "회원"}
             </span>
           </p>
           <Link
-            href="/mypage"
+            href={myHref}
             role="menuitem"
             onClick={() => setOpen(false)}
             className="block px-4 py-3 text-[14px] text-soft-ink transition-colors hover:bg-slate-50"
@@ -239,11 +295,15 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
 
   // 승인 전에는 레일을 줄인다. 세션이 아직 없는 동안(하이드레이션 전)은 정상으로 본다.
   const approved = session?.approved !== false;
-  const menu = menuFor(session?.role, approved);
+  const isStudent = isStudentZone(pathname);
+  const menu = menuFor(session?.role, approved, pathname);
   const current = activeHref(menu, pathname);
-  const name = session?.name ?? "회원";
-  const isOrg = session?.role === "director" || session?.role === "teacher";
+  const isOrg = !isStudent && (session?.role === "director" || session?.role === "teacher");
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
+  /* 학생 자리에서는 이름도 명부에서 읽는다 — 접속코드로 들어온 세션의 name과 명부가
+     어긋났을 때(개명·오타 수정) 화면에 뜨는 것은 명부 쪽이어야 한다 */
+  const self = session?.studentId ? roster.find((s) => s.id === session.studentId) : undefined;
+  const name = (isStudent ? (self?.name ?? session?.name) : session?.name) ?? (isStudent ? "학생" : "회원");
 
   return (
     <div className="flex min-h-full bg-[#f4f6fb] text-soft-ink">
@@ -287,8 +347,20 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
             </span>
 
             <div className="ml-auto flex items-center gap-3">
-              <Chip k="등록 학생" v={`${hydrated ? mine.length : 0}명`} />
-              <UserMenu name={name} role={session?.role} />
+              {/* 학생 자리에는 「등록 학생」이 없다 — 아이가 아이를 등록하지 않는다.
+                  그 자리에 학교·학년을 적어, 내 화면이 맞는지 한 눈에 확인하게 한다 */}
+              {isStudent ? (
+                (self?.grade || self?.school) && (
+                  <Chip k="학년" v={hydrated ? (self?.grade ?? self?.school ?? "—") : "—"} />
+                )
+              ) : (
+                <Chip k="등록 학생" v={`${hydrated ? mine.length : 0}명`} />
+              )}
+              <UserMenu
+                name={name}
+                role={isStudent ? "student" : session?.role}
+                myHref={isStudent ? "/student/account" : "/mypage"}
+              />
             </div>
           </div>
         </header>

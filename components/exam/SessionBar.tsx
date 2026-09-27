@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "@/lib/authStore";
+import { roleHome, signOut, useSession } from "@/lib/authStore";
 
 export default function SessionBar() {
   const pathname = usePathname();
@@ -37,6 +37,14 @@ export default function SessionBar() {
       <span className="hidden text-[13px] text-exam-muted sm:block">
         <b className="text-exam-text">{session.name}</b> 님
       </span>
+      {/* 자기 자리로 돌아가는 길. 학생은 대시보드(/student)에서 이 존으로 건너오므로
+          돌아갈 문이 없으면 로그아웃밖에 남지 않는다 */}
+      <Link
+        href={roleHome[session.role]}
+        className="rounded-[2px] border border-exam-line px-4 py-2 text-[13px] font-bold text-exam-text transition-colors hover:bg-exam-raised"
+      >
+        내 대시보드
+      </Link>
       <button
         type="button"
         onClick={signOut}

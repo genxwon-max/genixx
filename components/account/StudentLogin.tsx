@@ -44,7 +44,9 @@ export default function StudentLogin() {
   };
 
   /**
-   * 코드와 생년월일이 맞으면 응시 화면으로 보낸다.
+   * 코드와 생년월일이 맞으면 학생 대시보드(/student)로 보낸다. 응시 존이 아니라 자기
+   * 자리다 — 들어온 아이가 먼저 확인하는 것은 문항이 아니라 「내가 지금 무엇을 해야
+   * 하는가」이고, 평가 판으로 건너가는 단추가 그 화면의 가장 큰 단추다.
    *
    * 보호자 동의는 여기서 다시 확인하지 않는다. 동의는 **접속코드를 만들 때** 받으므로,
    * 코드가 있다는 것이 곧 동의가 끝났다는 뜻이다.
@@ -70,7 +72,7 @@ export default function StudentLogin() {
       studentId: found.id,
       asGuardian: false,
     });
-    router.push("/exam");
+    router.push("/student");
   };
 
   /**

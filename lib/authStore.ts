@@ -97,7 +97,8 @@ export const roleLabel: Record<Role, string> = {
 export const roleHome: Record<Role, string> = {
   director: "/org",
   parent: "/my",
-  student: "/exam",
+  // 학생도 자기 대시보드로 내린다. 응시 존(/exam)은 문항을 푸는 자리라 착지점이 아니다.
+  student: "/student",
   // 교사도 기관 대시보드로 보낸다. 관찰 설문은 팝업 전용 화면이라 착지점이 될 수 없다.
   teacher: "/org",
   expert: "/expert",
