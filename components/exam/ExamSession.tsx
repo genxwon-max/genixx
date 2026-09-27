@@ -974,7 +974,12 @@ function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
   const done = Boolean(pick) || text.trim().length >= 5;
 
   return (
-    <section className="border-t border-exam-line bg-exam-panel px-6 py-6 lg:px-10">
+    /* 시험지 글꼴로 적는다.
+       고를 까닭도 「내가 쓴 글」도 문항·보기와 같은 자리에 선 글이다. 여기만 고딕으로 두면
+       시험지 한 장 안에서 아래쪽만 화면 말투로 바뀌어, 해석이 시험에 딸린 설문처럼 읽힌다.
+       상태 딱지(작성함)만 고딕으로 남긴다 — 그것은 글이 아니라 화면이 하는 말이다
+       (서술형 자수 표시와 같은 규칙). */
+    <section className="font-myeongjo border-t border-exam-line bg-exam-panel px-6 py-6 lg:px-10">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[14px] font-bold text-exam-text">
           {blank
@@ -984,7 +989,9 @@ function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
               : "왜 그렇게 썼는지 알려 주세요"}
         </p>
         <span
-          className={`text-[11.5px] font-bold ${done ? "text-emerald-700" : "text-exam-muted"}`}
+          className={`font-sans text-[11.5px] font-bold ${
+            done ? "text-emerald-700" : "text-exam-muted"
+          }`}
         >
           {done ? "작성함" : "선택 · 비워 두어도 됩니다"}
         </span>
