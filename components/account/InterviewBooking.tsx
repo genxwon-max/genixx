@@ -45,6 +45,7 @@ import {
 } from "@/lib/counselors";
 import { orderMethods, orderWon, placeOrder, useOrders, type OrderMethod } from "@/lib/orderStore";
 import { useHydrated } from "@/lib/examStore";
+import { ageFromBirth, isMinorForContract } from "@/lib/account";
 import { useRoster } from "@/lib/roster";
 import { useSession } from "@/lib/authStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
@@ -83,6 +84,12 @@ import { card, listTd, listTh } from "./ui";
  *
  * ⚠ 여기서 잡는 것은 **보호자가 신청하는 해석 면담**이다. 판정이 경계선에 선 사례를
  *   전문가가 불러 확인하는 면담(EXP-06)은 우리가 대상을 고르는 일이라 이 화면에 없다.
+ * ── 학생이 자기 면담을 잡을 때 ──
+ * 만 14세 이상 학생은 이 화면을 자기 자리(/student/interviews)에서 연다. 그때는 selfId가
+ * 넘어오고 면담할 아이가 자기 하나뿐이라 ① 학생 칸이 서지 않으며, 내역도 자기 것만
+ * 남는다 — 한 브라우저에 형제의 예약이 함께 남아 있을 수 있다. 만 19세 미만이면 결제 앞에
+ * 법정대리인 동의를 한 칸 더 받는다(민법 제5조 · lib/account.ts).
+ *
  * ⚠ 시연 화면이라 실제 결제창은 열리지 않고 카드번호 같은 결제 정보도 받지 않는다.
  */
 
@@ -129,9 +136,15 @@ export default function InterviewBooking({
    * 고르개의 길이 조건으로 놓는다 — 그 길이를 받지 않는 전문가는 목록에 서지 않는다.
    */
   initialSpan,
+  /**
+   * 학생 본인이 자기 면담을 잡는 자리에서 넘어오는 학생 ID(/student/interviews).
+   * 있으면 명부 대신 이 학생 하나만 세우고, 내역도 이 학생 것만 센다.
+   */
+  selfId,
   variant = 2,
 }: {
   initialSpan?: Span;
+  selfId?: string;
   variant?: Variant;
 }) {
   const t = themeOf(variant);
@@ -143,8 +156,11 @@ export default function InterviewBooking({
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = useMemo(
-    () => roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent")),
-    [roster, isOrg],
+    () =>
+      selfId
+        ? roster.filter((s) => s.id === selfId)
+        : roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent")),
+    [roster, isOrg, selfId],
   );
 
   const [studentId, setStudentId] = useState("");
@@ -162,6 +178,8 @@ export default function InterviewBooking({
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<OrderMethod>("card");
   const [agree, setAgree] = useState(false);
+  /** 만 19세 미만 학생이 스스로 결제할 때 한 칸 더 받는 법정대리인 동의 */
+  const [guardianOk, setGuardianOk] = useState(false);
   const [detail, setDetail] = useState<Counselor | null>(null);
   const [done, setDone] = useState<{ rows: Booking[]; orderId: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -181,7 +199,16 @@ export default function InterviewBooking({
 
   const unit = feeOf(span);
   const total = unit * starts.length;
-  const ready = !!student && !!counselor && !!date && starts.length > 0 && !!mode && agree;
+  /* 학생 본인이 미성년인가 — 결제 단추 앞에 법정대리인 동의를 한 칸 더 세운다 */
+  const needGuardian = !!selfId && isMinorForContract(ageFromBirth(student?.birth ?? ""));
+  const ready =
+    !!student &&
+    !!counselor &&
+    !!date &&
+    starts.length > 0 &&
+    !!mode &&
+    agree &&
+    (!needGuardian || guardianOk);
 
   /* 고르개를 건드리면 접힌 목록을 처음으로 되돌린다 — 조건을 좁혔는데 「더 보기」가
      눌린 채로 남아 있으면 몇 명이 걸렸는지가 눈에 안 들어온다 */
@@ -273,9 +300,12 @@ export default function InterviewBooking({
     setMode("");
     setNote("");
     setAgree(false);
+    setGuardianOk(false);
   }
 
-  const live = bookings.filter((b) => b.state === "booked");
+  /* 학생 본인 자리에서는 내 예약만 — 한 브라우저에 형제의 예약이 함께 남는다 */
+  const rows = selfId ? bookings.filter((b) => b.studentId === selfId) : bookings;
+  const live = rows.filter((b) => b.state === "booked");
   const paidOrder = done ? (orders.find((o) => o.id === done.orderId) ?? null) : null;
 
   return (
@@ -286,10 +316,21 @@ export default function InterviewBooking({
           면담
         </h1>
         <p className={`mt-2 text-[13px] leading-[1.7] ${t.muted}`}>
-          결과지를 함께 읽는 자리입니다. 전문가를 고르시면 그분의 달력과 시간표가 열리고, 시간을
-          고르신 뒤 결제하시면 예약이 확정됩니다. 30분 · 60분 자리를 한 번에 여러 개 잡으실 수
-          있습니다. 전문가가 결과지를 미리 읽고 들어오므로 신청일로부터 {LEAD_DAYS}일 뒤부터{" "}
-          {WINDOW_DAYS}일 안에서 잡으실 수 있습니다.
+          {selfId ? (
+            <>
+              내 결과지를 전문가와 함께 읽는 자리입니다. 전문가를 고르면 그분의 달력과 시간표가
+              열리고, 시간을 고른 뒤 결제하면 예약이 확정됩니다. 전문가가 결과지를 미리 읽고
+              들어오므로 신청일로부터 {LEAD_DAYS}일 뒤부터 {WINDOW_DAYS}일 안에서 잡을 수
+              있습니다.
+            </>
+          ) : (
+            <>
+              결과지를 함께 읽는 자리입니다. 전문가를 고르시면 그분의 달력과 시간표가 열리고,
+              시간을 고르신 뒤 결제하시면 예약이 확정됩니다. 30분 · 60분 자리를 한 번에 여러 개
+              잡으실 수 있습니다. 전문가가 결과지를 미리 읽고 들어오므로 신청일로부터{" "}
+              {LEAD_DAYS}일 뒤부터 {WINDOW_DAYS}일 안에서 잡으실 수 있습니다.
+            </>
+          )}
         </p>
       </header>
 
@@ -321,19 +362,26 @@ export default function InterviewBooking({
             <button type="button" onClick={reset} className={t.btnAction}>
               다른 면담 신청하기
             </button>
-            <Link href="/my" className={t.btnOutline}>
+            <Link href={selfId ? "/student" : "/my"} className={t.btnOutline}>
               홈으로
             </Link>
           </div>
         </section>
       ) : mine.length === 0 ? (
         <section className={`${card} px-5 py-14 text-center`}>
-          <p className="text-[15px] font-bold text-soft-ink">아직 등록된 학생이 없습니다</p>
-          <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
-            면담은 학생 한 명의 결과지를 놓고 나누는 자리입니다. 학생을 먼저 등록해 주세요.
+          <p className="text-[15px] font-bold text-soft-ink">
+            {selfId ? "명부에서 내 이름을 찾지 못했습니다" : "아직 등록된 학생이 없습니다"}
           </p>
-          <Link href="/my/children/new" className={`${t.btnAction} mt-5`}>
-            등록하러 가기
+          <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
+            {selfId
+              ? "면담은 한 사람의 결과지를 놓고 나누는 자리입니다. 접속코드로 다시 들어와 주세요."
+              : "면담은 학생 한 명의 결과지를 놓고 나누는 자리입니다. 학생을 먼저 등록해 주세요."}
+          </p>
+          <Link
+            href={selfId ? "/login/student" : "/my/children/new"}
+            className={`${t.btnAction} mt-5`}
+          >
+            {selfId ? "학생 코드로 접속" : "등록하러 가기"}
           </Link>
         </section>
       ) : (
@@ -757,13 +805,35 @@ export default function InterviewBooking({
                         </span>
                       </label>
 
+                      {/* 만 19세 미만이 스스로 결제할 때 — 동의의 기준선(14세)과 계약의
+                          기준선(19세)은 다른 선이다 */}
+                      {needGuardian && (
+                        <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-[12px] bg-soft-primary-soft p-3.5">
+                          <input
+                            type="checkbox"
+                            checked={guardianOk}
+                            onChange={(e) => setGuardianOk(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-[#365eef]"
+                          />
+                          <span className="text-[12.5px] leading-[1.7] text-soft-ink">
+                            <b>(필수)</b> 나는 만 19세 미만이고, 이 면담과 결제를{" "}
+                            <b>보호자에게 알리고 동의를 받았습니다</b>. 면담 확정 안내도 보호자
+                            연락처로 함께 갑니다.
+                          </span>
+                        </label>
+                      )}
+
                       <button
                         type="button"
                         onClick={submit}
                         disabled={!ready}
                         className={`${t.btnPrimary} mt-4`}
                       >
-                        {student ? `${orderWon(total)} 결제하고 신청하기` : "면담할 학생을 골라 주세요"}
+                        {!student
+                          ? "면담할 학생을 골라 주세요"
+                          : needGuardian && !guardianOk
+                            ? "보호자 동의를 확인해 주세요"
+                            : `${orderWon(total)} 결제하고 신청하기`}
                       </button>
                       <p className="mt-2.5 text-[11.5px] leading-[1.7] text-soft-muted">
                         면담 하루 전까지 취소하시면 전액 환불됩니다. 면담 내용은 결과 해석에만
@@ -783,7 +853,7 @@ export default function InterviewBooking({
         <SectionTitle note="이 화면에서 신청한 면담이 쌓입니다.">면담 내역</SectionTitle>
         {/* 줄이 없으면 표를 세우지 않는다 — 가로로 긴 표 한가운데 적은 글은 좁은 화면에서
             화면 밖에 놓여, 빈 상자만 보인다 */}
-        {!hydrated || bookings.length === 0 ? (
+        {!hydrated || rows.length === 0 ? (
           <p className={`${card} px-5 py-12 text-center text-[13px] text-soft-muted`}>
             {hydrated ? "아직 신청한 면담이 없습니다." : "확인 중입니다…"}
           </p>
@@ -803,7 +873,7 @@ export default function InterviewBooking({
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((b) => {
+                {rows.map((b) => {
                   const c = counselorOf(b.counselorId);
                   const paid = b.orderId ? orders.find((o) => o.id === b.orderId) : null;
                   return (
@@ -845,7 +915,10 @@ export default function InterviewBooking({
           <p className="mt-3 text-[12.5px] leading-[1.7] text-soft-muted">
             잡아 둔 면담 {live.length}건. 확정 안내는 신청하신 연락처로 보내 드리며, 전문가
             사정으로 시간이 바뀌면 먼저 연락드립니다. 결제 내역은{" "}
-            <Link href="/my/payments" className="font-semibold text-soft-primary hover:underline">
+            <Link
+              href={selfId ? "/student/payments" : "/my/payments"}
+              className="font-semibold text-soft-primary hover:underline"
+            >
               결제
             </Link>{" "}
             화면에서도 보실 수 있습니다.

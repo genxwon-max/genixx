@@ -18,6 +18,9 @@ import { card } from "./ui";
  * 그래서 이 판은 **차림표**다 — 무엇을 얼마에 파는지 보이고, 고르면 예약 화면으로 길이를
  * 들고 넘어간다(/my/interviews?span=60). 결제는 시각을 고른 뒤 그 화면에서 끝난다.
  * 지난 면담 결제는 이 화면 아래 내역에 함께 쌓인다.
+ *
+ * 넘어가는 자리는 존마다 다르다 — 보호자는 /my/interviews, 만 14세 이상 학생은 자기
+ * 자리의 /student/interviews다(zone). 판은 같은 차림표라 하나만 둔다.
  */
 
 /** 길이마다 무엇이 다른가 — 값만 다른 것이 아니라 나누는 이야기가 다르다 */
@@ -40,7 +43,14 @@ const blurb: Record<Span, { lead: string; items: string[] }> = {
   },
 };
 
-export default function CounselPayPanel({ variant = 2 }: { variant?: Variant }) {
+export default function CounselPayPanel({
+  /** 예약 화면이 있는 존 — 보호자는 /my, 학생 본인은 /student */
+  zone = "/my",
+  variant = 2,
+}: {
+  zone?: "/my" | "/student";
+  variant?: Variant;
+}) {
   const t = themeOf(variant);
 
   return (
@@ -74,7 +84,10 @@ export default function CounselPayPanel({ variant = 2 }: { variant?: Variant }) 
               <p className="mt-3 text-[12.5px] text-soft-muted">
                 이 길이를 받는 전문가 <b className="text-soft-ink">{who}명</b>
               </p>
-              <Link href={`/my/interviews?span=${span}`} className={`${t.btnAction} mt-4 w-full`}>
+              <Link
+                href={`${zone}/interviews?span=${span}`}
+                className={`${t.btnAction} mt-4 w-full`}
+              >
                 전문가 고르고 예약하기
               </Link>
             </li>

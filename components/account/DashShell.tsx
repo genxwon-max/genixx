@@ -8,6 +8,7 @@ import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
 import { ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
+import { useSelf } from "@/components/student/self";
 
 /**
  * 로그인 후 회원 존의 껍데기 — 좌측 아이콘 레일 + 상단 상태바.
@@ -131,6 +132,31 @@ const studentMenu: Item[] = [
   { href: "/student/account", label: "내 정보", sid: "ACC-04", icon: <Icon>{ic.me}</Icon> },
 ];
 
+/**
+ * 학생(S) 가운데 **만 14세 이상** — 위 레일에 결제와 면담이 더 선다.
+ *
+ * 나이로 레일을 가르는 까닭은 법이 그 자리에서 갈리기 때문이다. 만 14세부터는 개인정보
+ * 수집·이용에 본인이 동의할 수 있어(개인정보보호법 제22조의2) 학생에게 자기 계정과 자기
+ * 연락처가 있고, 응시권을 사고 면담 시각을 잡는 일도 본인이 한다. 미만인 아이의 돈과
+ * 약속은 실제로 보호자가 다루므로, 그 레일에 결제를 세우면 눌러 봐야 「보호자 계정에서」
+ * 만 나온다 — 그래서 세우지 않는다.
+ *
+ * 결제가 본인 몫이 되었다고 계약까지 혼자 되는 것은 아니다. 만 19세 미만은 여전히
+ * 미성년이라 결제 화면에서 법정대리인 동의를 한 칸 더 받는다(lib/account.ts의
+ * MAJORITY_AGE · 결제 화면의 selfId 갈래).
+ *
+ * 차례는 보호자 레일과 같게 둔다 — 결제 · 설문 · 면담. 하려는 일의 차례가 곧 메뉴 차례다.
+ */
+const studentTeenMenu: Item[] = [
+  { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
+  { href: "/student/exams", label: "평가 보기", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/results", label: "응시 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
+  { href: "/student/payments", label: "결제", sid: "PAY-03", icon: <Icon>{ic.pay}</Icon> },
+  { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
+  { href: "/student/interviews", label: "면담", sid: "ASM-06", icon: <Icon>{ic.talk}</Icon> },
+  { href: "/student/account", label: "내 정보", sid: "ACC-04", icon: <Icon>{ic.me}</Icon> },
+];
+
 /** 기관담당자·교사(I·T) — 정의서 10장 + P0로 이미 있는 응시 존 화면 */
 const orgMenu: Item[] = [
   { href: "/org", label: "홈", sid: "ORG-01", icon: <Icon>{ic.home}</Icon> },
@@ -166,8 +192,8 @@ export function isStudentZone(pathname: string) {
  * 기관(/org)은 아직 역할로 남긴다 — 명부(/my/students)처럼 주소를 학부모와 나눠 쓰는
  * 화면이 있어서, 주소만 보면 기관 회원이 학부모 레일을 보게 된다.
  */
-function menuFor(role: Role | undefined, approved: boolean, pathname: string) {
-  if (isStudentZone(pathname)) return studentMenu;
+function menuFor(role: Role | undefined, approved: boolean, pathname: string, teen: boolean) {
+  if (isStudentZone(pathname)) return teen ? studentTeenMenu : studentMenu;
   if (!approved) return pendingMenu;
   return role === "director" || role === "teacher" ? orgMenu : parentMenu;
 }
@@ -296,7 +322,11 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
   // 승인 전에는 레일을 줄인다. 세션이 아직 없는 동안(하이드레이션 전)은 정상으로 본다.
   const approved = session?.approved !== false;
   const isStudent = isStudentZone(pathname);
-  const menu = menuFor(session?.role, approved, pathname);
+  /* 학생 레일의 나이 갈래는 **화면이 보고 있는 아이**로 센다(useSelf). 아래의 self는
+     세션의 studentId만 보므로, 보호자가 아이 화면을 확인하러 들어왔을 때 비어 있다 —
+     그 자리에서 레일과 본문이 서로 다른 아이를 말하지 않게 한 곳에서 읽는다. */
+  const asStudent = useSelf();
+  const menu = menuFor(session?.role, approved, pathname, asStudent.teen);
   const current = activeHref(menu, pathname);
   const isOrg = !isStudent && (session?.role === "director" || session?.role === "teacher");
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ageFromBirth, isMinorForContract } from "@/lib/account";
 import { useCatalogRounds } from "@/lib/catalogRounds";
 import {
   availabilityLabel,
@@ -55,6 +56,13 @@ import { card } from "./ui";
  * 평가는 초3~6 학년마다 따로 열린다(lib/examCatalog.ts). 칸이 넷이든 아홉이든 이 화면에
  * 서는 줄 수는 같다 — 아이의 학년이 평가 하나를 가리키기 때문이다.
  *
+ * ── 학생이 자기 몫을 살 때 ──
+ * 만 14세 이상 학생은 이 판을 자기 자리(/student/payments)에서 연다. 그때는 selfId가
+ * 넘어오고 고를 아이가 자기 하나뿐이라 ① 학생 칸이 서지 않는다 — 자기 이름 앞에 체크
+ * 상자를 놓는 것은 고르는 일이 아니다. 대신 만 19세 미만이면 **법정대리인 동의**를 한 칸
+ * 더 받는다. 개인정보 동의는 만 14세부터 본인이 하지만 재산상 의무가 붙는 계약은 만 19세
+ * 미만일 때 취소될 수 있다(민법 제5조 · lib/account.ts).
+ *
  * ⚠ 시연 화면이다. 실제 결제창은 열리지 않고 카드번호 같은 결제 정보도 받지 않는다.
  */
 
@@ -73,9 +81,15 @@ const trackOfStudent = (s: Student) => trackFromGrade(s.grade);
 
 export default function ExamPayPanel({
   initial = [],
+  /**
+   * 학생 본인이 자기 몫을 결제하는 자리에서 넘어오는 학생 ID(/student/payments).
+   * 있으면 명부 대신 이 학생 하나만 세우고, 끝난 뒤 돌아가는 길도 학생 자리로 둔다.
+   */
+  selfId,
   variant = 2,
 }: {
   initial?: string[];
+  selfId?: string;
   variant?: Variant;
 }) {
   const t = themeOf(variant);
@@ -89,8 +103,11 @@ export default function ExamPayPanel({
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = useMemo(
-    () => roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent")),
-    [roster, isOrg],
+    () =>
+      selfId
+        ? roster.filter((s) => s.id === selfId)
+        : roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent")),
+    [roster, isOrg, selfId],
   );
 
   const [picked, setPicked] = useState<Set<string>>(new Set(initial));
@@ -100,14 +117,20 @@ export default function ExamPayPanel({
   const [pickedExam, setPickedExam] = useState("");
   const [method, setMethod] = useState<OrderMethod>("card");
   const [agree, setAgree] = useState(false);
+  /** 만 19세 미만 학생이 스스로 결제할 때 한 칸 더 받는 법정대리인 동의 */
+  const [guardianOk, setGuardianOk] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
   /** 응시권 값 — 관리자 차림표의 응시권 상품을 그대로 읽는다 */
   const ticketProduct = products.find((p) => p.state === "selling" && p.kind === "assessment");
   const unit = ticketProduct ? paidPrice(ticketProduct) : 0;
 
-  /* 고른 아이들. 첫 아이의 학년 칸이 이 결제의 학년이 된다 */
-  const chosen = mine.filter((s) => picked.has(s.id));
+  /* 고른 아이들. 첫 아이의 학년 칸이 이 결제의 학년이 된다.
+     학생 본인 자리에서는 고를 것이 없다 — 자기 하나가 늘 잡혀 있다 */
+  const chosen = selfId ? mine : mine.filter((s) => picked.has(s.id));
+
+  /* 학생 본인이 미성년인가 — 결제 단추 앞에 법정대리인 동의를 한 칸 더 세운다 */
+  const needGuardian = !!selfId && isMinorForContract(ageFromBirth(mine[0]?.birth ?? ""));
   const track: TrackId | null = chosen.length > 0 ? trackOfStudent(chosen[0]) : null;
 
   /** 이 아이를 함께 고를 수 있는가 — 고를 수 있으면 null */
@@ -168,7 +191,11 @@ export default function ExamPayPanel({
   const payable = chosen.filter((s) => !applyBlock(s));
   const total = unit * payable.length;
   const canPay =
-    !!exam && exam.round.availability === "open" && payable.length > 0 && agree;
+    !!exam &&
+    exam.round.availability === "open" &&
+    payable.length > 0 &&
+    agree &&
+    (!needGuardian || guardianOk);
 
   const toggle = (id: string) => {
     setPicked((prev) => {
@@ -220,12 +247,13 @@ export default function ExamPayPanel({
           {paidOrder.students.map((s) => s.name).join(" · ")} · 총 {paidOrder.students.length}명
         </p>
         <p className="mt-3 text-[12.5px] leading-[1.7] text-soft-muted">
-          이제 학생이 접속코드로 로그인해 「응시하기」에서 과목별로 응시합니다. 코드를 아직
-          넘기지 않으셨다면 학생 목록에서 문자로 보내실 수 있습니다.
+          {selfId
+            ? "이제 「평가 보기」에서 과목을 열면 바로 응시할 수 있습니다. 결제 내역은 이 화면 아래에 쌓입니다."
+            : "이제 학생이 접속코드로 로그인해 「응시하기」에서 과목별로 응시합니다. 코드를 아직 넘기지 않으셨다면 학생 목록에서 문자로 보내실 수 있습니다."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-          <Link href="/my/children" className={t.btnAction}>
-            학생 목록으로
+          <Link href={selfId ? "/student/exams" : "/my/children"} className={t.btnAction}>
+            {selfId ? "평가 보러 가기" : "학생 목록으로"}
           </Link>
           <button
             type="button"
@@ -233,6 +261,7 @@ export default function ExamPayPanel({
               setDone(null);
               setPickedExam("");
               setAgree(false);
+              setGuardianOk(false);
             }}
             className={t.btnOutline}
           >
@@ -246,8 +275,9 @@ export default function ExamPayPanel({
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div>
-        {/* ① 학생 — 학년이 정해지면 볼 수 있는 평가가 정해진다 */}
-        <section>
+        {/* ① 학생 — 학년이 정해지면 볼 수 있는 평가가 정해진다.
+            학생 본인 자리에서는 고를 아이가 자기 하나뿐이라 이 칸이 서지 않는다 */}
+        <section className={selfId ? "hidden" : undefined}>
           <SectionTitle note="아이의 학년에 맞는 평가만 아래에 섭니다.">
             평가를 볼 학생
           </SectionTitle>
@@ -314,20 +344,28 @@ export default function ExamPayPanel({
         </section>
 
         {/* ② 평가 — 그 학년 것만, 해와 분기로 */}
-        <section className="mt-8">
+        <section className={selfId ? undefined : "mt-8"}>
           <SectionTitle
             note={
               track
                 ? `${trackLabel(track)} 평가입니다. 학년마다 따로 열리고, 분기에 한 번입니다.`
-                : "학생을 고르면 그 학년의 평가가 섭니다."
+                : selfId
+                  ? "내 학년에 열린 평가만 섭니다."
+                  : "학생을 고르면 그 학년의 평가가 섭니다."
             }
           >
             평가 고르기
           </SectionTitle>
 
           {!track ? (
-            <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
-              먼저 위에서 학생을 골라 주세요.
+            <p className={`${card} px-5 py-10 text-center text-[13px] leading-[1.8] text-soft-muted`}>
+              {!selfId
+                ? "먼저 위에서 학생을 골라 주세요."
+                : !hydrated
+                  ? "확인 중입니다…"
+                  : mine.length === 0
+                    ? "명부에서 내 이름을 찾지 못해 평가를 세울 수 없습니다. 접속코드로 다시 들어와 주세요."
+                    : "내 학년에 열린 평가가 아직 없습니다. 학년이 비어 있거나 틀렸으면 나를 등록한 보호자·선생님께 말해 주세요."}
             </p>
           ) : (
             <>
@@ -522,7 +560,10 @@ export default function ExamPayPanel({
               v={exam ? `${exam.season.year}년 ${quarterLabel(exam.season.quarter)}` : "—"}
             />
             <Line k="학년" v={track ? trackLabel(track) : "—"} />
-            <Line k="학생" v={payable.length > 0 ? payable.map((s) => s.name).join(" · ") : "—"} />
+            <Line
+              k={selfId ? "응시자" : "학생"}
+              v={payable.length > 0 ? payable.map((s) => s.name).join(" · ") : "—"}
+            />
             <Line k="한 사람 몫" v={orderWon(unit)} />
             <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
               <dt className="font-semibold text-soft-ink">최종 결제금액</dt>
@@ -549,16 +590,41 @@ export default function ExamPayPanel({
               </span>
             </label>
 
+            {/* 만 19세 미만이 스스로 결제할 때 — 동의의 기준선(14세)과 계약의 기준선(19세)이
+                다르다. 이 칸이 있어야 나중에 「미성년이라 취소한다」는 말에 답할 수 있다 */}
+            {needGuardian && (
+              <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-[12px] bg-soft-primary-soft p-3.5">
+                <input
+                  type="checkbox"
+                  checked={guardianOk}
+                  onChange={(e) => setGuardianOk(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[#365eef]"
+                />
+                <span className="text-[12.5px] leading-[1.7] text-soft-ink">
+                  <b>(필수)</b> 나는 만 19세 미만이고, 이 결제를 <b>보호자에게 알리고 동의를
+                  받았습니다</b>. 동의 없이 한 결제는 보호자가 취소할 수 있습니다.
+                </span>
+              </label>
+            )}
+
             <button type="button" onClick={pay} disabled={!canPay} className={`${t.btnPrimary} mt-4`}>
               {chosen.length === 0
-                ? "학생을 골라 주세요"
+                ? selfId
+                  ? "명부에서 내 이름을 찾지 못했습니다"
+                  : "학생을 골라 주세요"
                 : !exam
                   ? "평가를 골라 주세요"
                   : payable.length === 0
-                    ? "접수할 수 있는 학생이 없습니다"
-                    : total === 0
-                      ? `${payable.length}명 무료로 접수하기`
-                      : `${orderWon(total)} 결제하기`}
+                    ? selfId
+                      ? "이미 접수한 평가입니다"
+                      : "접수할 수 있는 학생이 없습니다"
+                    : needGuardian && !guardianOk
+                      ? "보호자 동의를 확인해 주세요"
+                      : total === 0
+                        ? selfId
+                          ? "무료로 접수하기"
+                          : `${payable.length}명 무료로 접수하기`
+                        : `${orderWon(total)} 결제하기`}
             </button>
             <p className="mt-2.5 text-[11.5px] leading-[1.7] text-soft-muted">
               결제와 동시에 접수됩니다. 응시를 시작하기 전에는 전액 환불되며, 시작한 뒤에는 환불이

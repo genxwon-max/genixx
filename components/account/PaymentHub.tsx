@@ -27,6 +27,11 @@ import { card, listTd, listTh } from "./ui";
  * 시각이 정해져야 값이 뜻을 갖는다 — 자리를 잡지 않은 권을 먼저 팔면 쓸 수 없는 권이
  * 남는다. 그래서 면담 판은 차림표만 펴고 예약 화면으로 넘긴다.
  *
+ * ── 학생이 자기 몫을 살 때 ──
+ * 만 14세 이상 학생은 이 판을 자기 자리(/student/payments)에서 연다. 그때 selfId가
+ * 넘어오고, 세우는 학생과 쌓는 내역이 **자기 것 하나로** 좁혀진다. 한 브라우저에 형제의
+ * 주문이 함께 남아 있을 때 남의 결제가 내 장부에 서지 않게 하려고 걸러 둔다.
+ *
  * ⚠ 시연 화면이다. 실제 결제창은 열리지 않고 기록은 브라우저에만 남는다(lib/orderStore.ts).
  */
 
@@ -43,9 +48,12 @@ const isCounsel = (o: Order) => o.productId.startsWith("CS-");
 export default function PaymentHub({
   /** 학생 목록에서 체크해 넘어온 아이 — /my/payments?students=S-1,S-2 */
   initial = [],
+  /** 학생 본인이 자기 몫을 결제하는 자리에서 넘어오는 학생 ID(/student/payments) */
+  selfId,
   variant = 2,
 }: {
   initial?: string[];
+  selfId?: string;
   variant?: Variant;
 }) {
   const t = themeOf(variant);
@@ -55,7 +63,12 @@ export default function PaymentHub({
 
   /* 내역은 한 장부이되, 보고 있는 갈래만 세운다 — 면담을 보러 온 사람에게 응시권 줄까지
      같이 세우면 무엇을 확인하러 왔는지가 흐려진다 */
-  const rows = orders.filter((o) => (tab === "counsel" ? isCounsel(o) : !isCounsel(o)));
+  const rows = orders.filter(
+    (o) =>
+      (tab === "counsel" ? isCounsel(o) : !isCounsel(o)) &&
+      /* 학생 본인 자리에서는 내 이름이 든 주문만 — 한 브라우저에 형제의 주문이 함께 남는다 */
+      (!selfId || o.students.some((s) => s.id === selfId)),
+  );
 
   return (
     <>
@@ -65,7 +78,9 @@ export default function PaymentHub({
           결제
         </h1>
         <p className={`mt-2 text-[13px] leading-[1.7] ${t.muted}`}>
-          응시권과 면담을 이 자리에서 결제합니다. 결제하신 내역은 갈래마다 아래에 쌓입니다.
+          {selfId
+            ? "응시권과 면담을 이 자리에서 결제합니다. 결제한 내역은 갈래마다 아래에 쌓입니다."
+            : "응시권과 면담을 이 자리에서 결제합니다. 결제하신 내역은 갈래마다 아래에 쌓입니다."}
         </p>
       </header>
 
@@ -98,9 +113,9 @@ export default function PaymentHub({
       </div>
 
       {tab === "exam" ? (
-        <ExamPayPanel initial={initial} variant={variant} />
+        <ExamPayPanel initial={initial} selfId={selfId} variant={variant} />
       ) : (
-        <CounselPayPanel variant={variant} />
+        <CounselPayPanel zone={selfId ? "/student" : "/my"} variant={variant} />
       )}
 
       {/* 결제 내역 — 보고 있는 갈래만 */}
@@ -165,7 +180,10 @@ export default function PaymentHub({
         {tab === "counsel" && rows.length > 0 && (
           <p className="mt-3 text-[12.5px] leading-[1.7] text-soft-muted">
             잡아 둔 면담 일정과 취소는{" "}
-            <Link href="/my/interviews" className="font-semibold text-soft-primary hover:underline">
+            <Link
+              href={selfId ? "/student/interviews" : "/my/interviews"}
+              className="font-semibold text-soft-primary hover:underline"
+            >
               면담
             </Link>{" "}
             화면에서 보실 수 있습니다.

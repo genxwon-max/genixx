@@ -17,6 +17,12 @@ import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
  *   내 진행      과목 셋 · 설문 · 단계. 어디까지 왔는지
  *   바로가기     결과 · 정답과 해설처럼 다 풀고 나서 가는 자리
  *
+ * ── 만 14세로 한 번 더 갈린다 ──
+ * 만 14세 이상이면 바로가기에 **결제와 면담 신청**이 더 선다. 개인정보 동의를 본인이 할 수
+ * 있는 나이부터는 응시권을 사고 면담 시각을 잡는 일도 본인 몫이다(components/student/self.tsx의
+ * teen · DashShell의 studentTeenMenu). 미만인 아이 화면에는 그 자리를 세우지 않고, 어디에
+ * 있는지만 아래 한 줄로 적는다.
+ *
  * 실제 응시는 응시 존(/exam)에서 한다. 여기서 문항을 열지 않는 까닭은 시험지 껍데기가
  * 따로 있어서다 — 남은 시간과 과목만 남기고 메뉴를 감추는 그 틀이 대시보드 레일과 함께
  * 설 수 없다. 그래서 이 화면은 그 자리로 **건너가는 단추**를 가장 크게 둔다.
@@ -149,6 +155,13 @@ export default function StudentHome() {
           {[
             { href: "/student/exams", t: "평가 보기", d: "국어·수학·과학을 바로 응시" },
             { href: "/student/results", t: "응시 결과", d: "8재능 팔각형과 전문가 평가" },
+            /* 결제·면담은 만 14세 이상에게만 선다 — 레일과 같은 갈래다(DashShell) */
+            ...(self.teen
+              ? [
+                  { href: "/student/payments", t: "결제", d: "응시권과 면담 결제·내역" },
+                  { href: "/student/interviews", t: "면담 신청", d: "결과지를 전문가와 함께 읽기" },
+                ]
+              : []),
             { href: "/exam/answers", t: "정답과 해설", d: "제출을 마친 평가의 정오표" },
             { href: "/exam/info", t: "시험 안내", d: "과목·문항 수·시간" },
           ].map((l) => (
@@ -163,6 +176,15 @@ export default function StudentHome() {
           ))}
         </div>
       </section>
+
+      {/* 결제·면담이 레일에 없는 아이에게 그 까닭을 한 줄로 적는다 — 없는 것을 찾다가
+          문의로 오는 일이 여기서 끊긴다 */}
+      {self.hydrated && self.student && !self.teen && (
+        <p className="mt-6 text-[13px] leading-[1.8] text-soft-muted">
+          응시권 결제와 면담 신청은 보호자 화면에 있습니다. 만 14세 미만은 돈이 드는 일을 직접
+          하지 않도록 법이 정해 두었기 때문입니다. 볼 평가가 아직 없으면 보호자에게 말해 주세요.
+        </p>
+      )}
 
       {/* 최종 제출까지 간 아이에게는 결과가 다음 자리다 */}
       {record.finalized && (
