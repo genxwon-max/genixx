@@ -56,7 +56,7 @@ import { useWallet } from "@/lib/ticketStore";
 import ExamCover from "./ExamCover";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
-import { btnDanger, btnDisabled, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
+import { btnDanger, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -225,6 +225,16 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   const [index, setIndex] = useState(0);
   const [askForfeit, setAskForfeit] = useState(false);
   const [askSubmit, setAskSubmit] = useState(false);
+  /**
+   * 제출한 뒤 해석을 어떻게 할 것인가 — 방금 제출한 사람에게만 묻는다.
+   *
+   *   ask    답안을 막 냈다. 지금 쓸지 나중에 할지 묻는 중
+   *   doing  지금 쓰기로 했다
+   *   later  나중에 하기로 했다
+   *   null   이 창에서 제출한 적이 없다 — 평가 판의 「해석 작성」으로 다시 들어온 사람이다.
+   *          그 사람은 이미 「쓰겠다」를 누르고 온 것이라 또 묻지 않고 바로 연다
+   */
+  const [reflect, setReflect] = useState<"ask" | "doing" | "later" | null>(null);
   const [elapsed, setElapsed] = useState(0);
   /** 안내 화면을 지나 실제 응시를 시작했는지 */
   const [entered, setEntered] = useState(false);
@@ -284,9 +294,41 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
     );
   }
 
-  // 제출 후 → 문항별 해석 작성 → 완료
+  /**
+   * 제출 후 — 해석은 **선택**이다.
+   *
+   * 예전에는 제출하면 해석 화면으로 곧장 떨어지고, 모든 문항을 채워야만 나갈 수 있었다.
+   * 시험을 막 끝낸 아이에게 열 문항을 되짚게 하면서 나갈 문을 잠가 두면, 남는 것은 생각이
+   * 아니라 빨리 지나가려고 아무거나 고른 기록이다. 그래서 묻고, 아니라고 하면 한 번만 더
+   * 권하고 보낸다. 쓰지 않은 해석은 사라지지 않는다 — 평가 판의 「해석 작성」이 그대로
+   * 남아 언제든 이어서 쓸 수 있다.
+   */
   if (sheet.status === "submitted") {
-    return sheet.reflectionAt ? <Submitted title={sheet.title} /> : <ReflectionStep sheet={sheet} />;
+    if (sheet.reflectionAt) return <Submitted title={sheet.title} />;
+    if (reflect === "later") return <Submitted title={sheet.title} pending onReflect={() => setReflect("doing")} />;
+    if (reflect === "ask") {
+      return (
+        <>
+          <Submitted title={sheet.title} pending onReflect={() => setReflect("doing")} />
+          <ReflectAskDialog
+            onDo={() => setReflect("doing")}
+            onLater={async () => {
+              await leaveFullscreen();
+              setReflect("later");
+            }}
+          />
+        </>
+      );
+    }
+    return (
+      <ReflectionStep
+        sheet={sheet}
+        onLater={async () => {
+          await leaveFullscreen();
+          setReflect("later");
+        }}
+      />
+    );
   }
   if (sheet.status === "forfeited") return <Forfeited sheet={sheet} />;
 
@@ -461,6 +503,7 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
           onConfirm={() => {
             sheet.submit();
             setAskSubmit(false);
+            setReflect("ask");
           }}
         />
       )}
@@ -766,266 +809,237 @@ function StartGate({
  * 정답은 알려 주지 않는다. 맞았는지 틀렸는지를 먼저 알려 주면 아이는 자기 생각을 적는
  * 대신 오답 노트를 쓴다. 여기서 받고 싶은 것은 채점 결과가 아니라 그때의 생각이다.
  */
-function ReflectionStep({ sheet }: { sheet: Sheet }) {
+function ReflectionStep({ sheet, onLater }: { sheet: Sheet; onLater: () => void }) {
   /* 응시 때와 같은 차례·같은 번호로 되짚는다 — 판이 열지 않은 문항은 풀지 않았으므로 없다 */
   const list = sheet.list;
-  const [index, setIndex] = useState(0);
-  const [warn, setWarn] = useState(false);
 
-  const question = list[index];
   /* 고르기만 해도, 쓰기만 해도, 둘 다 해도 된다. 쓰기가 어려운 것과 할 말이 없는
      것은 다른데, 글만 받으면 둘이 똑같이 빈칸으로 남는다. */
   const written = (q: Question) =>
     Boolean(sheet.reflectionPicks[q.id]) || (sheet.reflections[q.id] ?? "").trim().length >= 5;
   const writtenCount = list.filter(written).length;
-  const complete = writtenCount === list.length;
-  const isLast = index === list.length - 1;
 
-  const value = sheet.answers[question.id];
-  const picked = question.type === "choice" && typeof value === "number" ? value : null;
-  const essayText = question.type === "essay" ? answerText(question, value) : "";
-  const blank = question.type === "choice" ? picked === null : essayText.length === 0;
-  const text = sheet.reflections[question.id] ?? "";
-  /* 물음이 셋으로 갈린다 — 못 낸 답 / 고른 답 / 쓴 답 */
-  const kind = blank ? "blank" : question.type === "choice" ? "choice" : "essay";
-  const reasons = reflectionReasons[kind];
-  const pick = sheet.reflectionPicks[question.id];
+  /**
+   * 자료가 같은 문항끼리 묶는다.
+   *
+   * 한 판에 다 펴 놓으면 자료를 문항마다 되풀이하게 되는데, 세트 문항은 넷이 자료 하나를
+   * 나눠 읽으므로 같은 지문이 네 번 선다. 묶음 머리에 한 번만 두고 접어 둔다 — 다시 읽고
+   * 싶을 때만 펴면 된다. 응시 때와 달리 여기서 자료를 다시 읽는 일은 드물다. 물음이
+   * 「무엇이 답이냐」가 아니라 「그때 무슨 생각을 했느냐」라서다.
+   */
+  const groups: { key: string; brief: Brief; range: string | null; items: Question[] }[] = [];
+  list.forEach((q) => {
+    const last = groups[groups.length - 1];
+    if (last && last.key === q.setId) last.items.push(q);
+    else groups.push({ key: q.setId, brief: q.brief, range: setRange(list, q), items: [q] });
+  });
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
+      {/* 머리 — 어디까지 썼는지 */}
       <div className="shrink-0 border-b border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          <div className="flex items-baseline gap-3">
-            <p className="text-[14px] font-bold tracking-tight text-exam-text">{sheet.title}</p>
-            <span className="text-[12px] text-exam-muted">제출 완료 · 해석 작성</span>
+        <div className="mx-auto flex h-14 w-full max-w-[60rem] items-center justify-between gap-4 px-6 lg:px-10">
+          <div className="flex min-w-0 items-baseline gap-3">
+            <p className="truncate text-[14px] font-bold tracking-tight text-exam-text">
+              {sheet.title}
+            </p>
+            <span className="hidden shrink-0 text-[12px] text-exam-muted sm:inline">
+              제출 완료 · 해석 작성
+            </span>
           </div>
-          <p className="text-[12px] font-medium tabular-nums text-exam-muted">
-            문항 {index + 1} / {list.length}
+          <p className="shrink-0 text-[12px] font-bold tabular-nums text-exam-muted">
+            작성 {writtenCount} / {list.length}
           </p>
         </div>
       </div>
 
-      <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
-        {/* 왼쪽 — 응시 때 보던 자료를 그대로 둔다 */}
-        <BriefPanel brief={question.brief} range={setRange(list, question)} />
-
-        {/* 가운데 — 문항과 내가 낸 답, 그 아래 새로 열리는 칸 하나 */}
-        <section className="order-3 px-6 py-7 lg:order-2 lg:overflow-y-auto lg:px-10 lg:py-9">
-          <div className="flex items-center justify-between gap-3 border-b border-exam-line pb-3">
-            <p className="font-myeongjo text-[15px] text-exam-text">
-              <span className="font-bold tabular-nums">{index + 1}.</span>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[60rem] px-6 py-8 lg:px-10">
+          <header className="border-b border-exam-line pb-5">
+            <h1 className="text-[20px] font-black tracking-tight text-exam-text md:text-[22px]">
+              왜 그렇게 답했는지 알려 주세요
+            </h1>
+            <p className="mt-2.5 text-[13.5px] leading-[1.8] text-exam-muted">
+              맞고 틀리고를 보는 칸이 아닙니다. 점수에 반영되지 않습니다. 가까운 것을 하나
+              고르거나 직접 써 주시면 됩니다 — 둘 다 하셔도, 어떤 문항은 건너뛰셔도 됩니다.
+              여기 적힌 것이 같은 점수를 받은 두 아이를 가르는 자리입니다.
             </p>
-            <p className="text-[12px] font-medium text-exam-muted">제출완료 · 수정 불가</p>
+          </header>
+
+          <div className="mt-7 space-y-4">
+            {groups.map((g) => (
+              <section key={g.key} className="space-y-4">
+                {/* 자료는 묶음마다 한 번, 접은 채로 */}
+                <details className="border border-exam-line bg-exam-panel">
+                  <summary className="cursor-pointer select-none px-5 py-3 text-[13px] font-semibold text-exam-muted transition-colors hover:text-exam-text">
+                    {g.range && <span className="mr-1.5 tabular-nums">[{g.range}]</span>}
+                    자료 다시 보기
+                  </summary>
+                  <div className="font-myeongjo border-t border-exam-line px-5 py-5">
+                    <p className="text-[14px] leading-[1.7] text-exam-text">
+                      {g.brief.lead ?? "다음을 읽고 물음에 답하시오."}
+                    </p>
+                    <div className="mt-3 border border-exam-text/70 px-5 py-5">
+                      <BriefBody brief={g.brief} />
+                    </div>
+                  </div>
+                </details>
+
+                {g.items.map((q) => (
+                  <ReflectionCard key={q.id} sheet={sheet} q={q} no={list.indexOf(q) + 1} />
+                ))}
+              </section>
+            ))}
           </div>
 
-          <h1 className="font-myeongjo mt-4 whitespace-pre-line text-[16px] font-semibold leading-[1.8] text-exam-text">
-            <WithBlanks text={question.stem} />
-          </h1>
-
-          {/* 낸 답 — 응시 때와 같은 모양으로 두되 잠근다. 상자 없이 고른 번호만 검게 남는다 */}
-          {question.type === "choice" ? (
-            <ul className="-mx-3 mt-6">
-              {question.choices?.map((c, i) => {
-                const on = picked === i;
-                return (
-                  <li
-                    key={c}
-                    className={`flex items-start gap-3.5 px-3 py-3 ${on ? "" : "opacity-60"}`}
-                  >
-                    <span
-                      aria-hidden
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums ${
-                        on
-                          ? "border-exam-text bg-exam-text text-white"
-                          : "border-exam-line text-exam-muted"
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                    <span
-                      className={`text-[15px] leading-[1.7] ${
-                        on ? "font-semibold text-exam-text" : "text-exam-muted"
-                      }`}
-                    >
-                      {c}
-                    </span>
-                    {on && (
-                      <span className="ml-auto shrink-0 self-center text-[12px] font-semibold text-exam-text">
-                        내가 고른 답
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="mt-7">
-              <p className="text-[12px] font-semibold text-exam-muted">내가 쓴 답</p>
-              <p className="mt-2 min-h-[6rem] whitespace-pre-line rounded-[2px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text">
-                {essayText || <span className="text-exam-muted">답을 작성하지 않았습니다.</span>}
-              </p>
-            </div>
-          )}
-
-          {blank && question.type === "choice" && (
-            <p className="mt-3 text-[13px] font-semibold text-exam-text">
-              이 문항은 답을 고르지 않으셨습니다.
-            </p>
-          )}
-
-          {/* 새로 열리는 칸 — 고르기가 먼저, 쓰기가 그다음 */}
-          <div className="mt-8 border-t border-exam-line pt-6">
-            <p className="text-[15px] font-bold text-exam-text">
-              {blank
-                ? "왜 풀지 못했는지 알려 주세요"
-                : picked !== null
-                  ? `${picked + 1}번을 고른 까닭을 알려 주세요`
-                  : "왜 그렇게 썼는지 알려 주세요"}
-            </p>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-exam-muted">
-              가까운 것을 하나 고르거나, 아래에 직접 써도 됩니다. 둘 다 해도 좋습니다.
-            </p>
-
-            {/* 답 고르기와 같은 모양 — 상자 없이 고른 번호만 칠한다 */}
-            <ul className="mt-3 -mx-3">
-              {reasons.map((r, n) => {
-                const on = pick === r.id;
-                return (
-                  <li key={r.id}>
-                    <label className="group relative flex cursor-pointer items-center gap-3.5 rounded-[2px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text">
-                      <input
-                        type="radio"
-                        name={`reason-${question.id}`}
-                        checked={on}
-                        /* 같은 것을 다시 누르면 지워진다 — 잘못 골랐을 때
-                           되돌릴 길이 없으면 아이는 거기서 멈춘다 */
-                        onClick={() =>
-                          sheet.pick(question, on ? null : r.id)
-                        }
-                        onChange={() => {}}
-                        className="sr-only"
-                      />
-                      <span
-                        aria-hidden
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
-                          on
-                            ? "border-exam-text bg-exam-text text-white"
-                            : "border-exam-line text-exam-muted group-hover:border-exam-muted"
-                        }`}
-                      >
-                        {n + 1}
-                      </span>
-                      <span
-                        className={`text-[15px] leading-[1.7] ${
-                          on ? "font-semibold text-exam-text" : "text-exam-text/90"
-                        }`}
-                      >
-                        {r.text}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <label
-              htmlFor={`ref-${question.id}`}
-              className="mt-6 block text-[13px] font-bold text-exam-text"
-            >
-              더 하고 싶은 말이 있으면 써 주세요{" "}
-              <span className="font-medium text-exam-muted">(안 써도 괜찮아요)</span>
-            </label>
-            <textarea
-              id={`ref-${question.id}`}
-              rows={4}
-              value={text}
-              onChange={(e) => {
-                setWarn(false);
-                sheet.reflect(question, e.target.value);
-              }}
-              placeholder={
-                blank
-                  ? "예) 표에서 무엇을 빼야 하는지 몰라서 못 풀었습니다."
-                  : "예) 지문에 '씨앗이 자랐는지 보려고'라는 말이 있어서 2번을 골랐습니다."
-              }
-              className="mt-3 w-full rounded-[2px] border border-exam-line px-4 py-3.5 text-[15px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
-            />
-            <p className="mt-2 flex items-center justify-between gap-3 text-[12px] tabular-nums text-exam-muted">
-              <span>맞고 틀리고를 보는 칸이 아닙니다. 점수에 반영되지 않습니다.</span>
-              <span>
-                {written(question)
-                  ? "다 되었습니다"
-                  : `${text.trim().length}자 · 고르거나 5자 이상`}
-              </span>
+          <div className="mt-10 border-t border-exam-line pt-6 text-center">
+            <p className="text-[13px] leading-[1.8] text-exam-muted">
+              적은 것은 그때그때 저장됩니다. 지금 마치지 않고 나가도 평가 판의 「해석 작성」에서
+              이어서 쓸 수 있습니다.
             </p>
           </div>
-        </section>
-
-        <QuestionPad
-          list={list}
-          grouped={sheet.grouped}
-          isHere={(q) => q.id === question.id}
-          isCurrent={(q) => q.id === question.id}
-          isDone={written}
-          onPick={(q) => setIndex(list.indexOf(q))}
-          doneLabel="해석을 남긴 문항"
-          doneVerb="작성함"
-        />
+        </div>
       </div>
 
-      {/* 하단 바 */}
+      {/* 하단 바 — 마치는 길과 미루는 길 */}
       <div className="shrink-0 border-t border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
+        <div className="mx-auto flex h-[72px] w-full max-w-[60rem] items-center justify-between gap-4 px-6 lg:px-10">
           <p className="hidden text-[12px] leading-tight text-exam-muted sm:block">
-            {warn
-              ? "아직 답하지 않은 문항이 있습니다. 번호판에서 줄이 없는 번호를 확인하세요."
-              : "고르거나 쓰는 대로 저장됩니다. 모든 문항에 답하면 끝납니다."}
+            {writtenCount === list.length
+              ? "모든 문항에 해석을 남겼습니다."
+              : `${list.length - writtenCount}문항이 비어 있습니다. 비워 두어도 마칠 수 있습니다.`}
           </p>
-
           <div className="flex items-center gap-2">
-            <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
-              작성 {writtenCount}/{list.length}
-            </span>
+            <button type="button" onClick={onLater} className={btnGhost}>
+              나중에 이어서
+            </button>
             <button
               type="button"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              disabled={index === 0}
-              className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={async () => {
+                await leaveFullscreen();
+                sheet.finish();
+              }}
+              className={btnPrimary}
             >
-              이전
+              해석 제출하고 마치기
+              <ArrowRight className="h-4 w-4" />
             </button>
-
-            {isLast ? (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!complete) {
-                    setWarn(true);
-                    return;
-                  }
-                  await leaveFullscreen();
-                  sheet.finish();
-                }}
-                aria-disabled={!complete}
-                className={complete ? btnPrimary : btnDisabled}
-              >
-                해석 제출하고 마치기
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIndex((i) => Math.min(list.length - 1, i + 1))}
-                className={btnPrimary}
-              >
-                다음
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 문항 하나의 해석 칸.
+ *
+ * 예전에는 한 화면에 문항 하나였다. 「이전 · 다음」으로 열 번을 넘겨야 끝났고, 아이는
+ * 자기가 어디까지 왔는지 번호판을 봐야 알았다. 여기서는 문항이 한 판에 죽 선다 —
+ * 내려가며 훑다가 할 말이 있는 것만 적으면 된다.
+ *
+ * 그렇게 하려고 줄인 것이 셋이다. 까닭은 세로로 쌓은 라디오 목록 대신 **알약**으로 눕히고,
+ * 자료는 묶음 머리에 접어 두고, 낸 답은 한 줄로 적는다 — 보기 다섯을 다시 펴 놓으면
+ * 문항 하나가 한 화면을 차지한다.
+ */
+function ReflectionCard({ sheet, q, no }: { sheet: Sheet; q: Question; no: number }) {
+  const value = sheet.answers[q.id];
+  const picked = q.type === "choice" && typeof value === "number" ? value : null;
+  const essayText = q.type === "essay" ? answerText(q, value) : "";
+  const blank = q.type === "choice" ? picked === null : essayText.length === 0;
+  const text = sheet.reflections[q.id] ?? "";
+  /* 물음이 셋으로 갈린다 — 못 낸 답 / 고른 답 / 쓴 답 */
+  const kind = blank ? "blank" : q.type === "choice" ? "choice" : "essay";
+  const reasons = reflectionReasons[kind];
+  const pick = sheet.reflectionPicks[q.id];
+  const done = Boolean(pick) || text.trim().length >= 5;
+
+  return (
+    <article
+      className={`border bg-white px-5 py-5 transition-colors md:px-6 ${
+        done ? "border-exam-text/40" : "border-exam-line"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <p className="font-myeongjo min-w-0 flex-1 whitespace-pre-line text-[15px] leading-[1.8] text-exam-text">
+          <span className="mr-1 font-bold tabular-nums">{no}.</span>
+          <WithBlanks text={q.stem} />
+        </p>
+        <span
+          className={`shrink-0 text-[11.5px] font-bold ${
+            done ? "text-emerald-700" : "text-exam-muted"
+          }`}
+        >
+          {done ? "작성함" : "미작성"}
+        </span>
+      </div>
+
+      {/* 낸 답 — 한 줄로. 보기 다섯을 다시 펴 놓지 않는다 */}
+      <p className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-l-2 border-exam-line pl-3 text-[13.5px] leading-[1.7]">
+        <span className="shrink-0 font-semibold text-exam-muted">내 답</span>
+        {blank ? (
+          <span className="text-exam-muted">
+            {q.type === "choice" ? "고르지 않았습니다" : "쓰지 않았습니다"}
+          </span>
+        ) : q.type === "choice" ? (
+          <span className="text-exam-text">
+            <b className="tabular-nums">{picked! + 1}번</b>{" "}
+            <span className="text-exam-text/80">{q.choices?.[picked!]}</span>
+          </span>
+        ) : (
+          <span className="whitespace-pre-line text-exam-text">{essayText}</span>
+        )}
+      </p>
+
+      <fieldset className="mt-4">
+        <legend className="text-[13px] font-bold text-exam-text">
+          {blank
+            ? "왜 풀지 못했나요?"
+            : picked !== null
+              ? `${picked + 1}번을 고른 까닭은?`
+              : "왜 그렇게 썼나요?"}
+        </legend>
+
+        {/* 알약으로 눕힌다 — 세로로 쌓으면 문항 하나가 한 화면을 먹는다.
+            같은 것을 다시 누르면 지워진다. 되돌릴 길이 없으면 아이는 거기서 멈춘다 */}
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {reasons.map((r) => {
+            const on = pick === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => sheet.pick(q, on ? null : r.id)}
+                className={`rounded-full border px-3.5 py-2 text-left text-[13px] leading-[1.5] transition-colors ${
+                  on
+                    ? "border-exam-text bg-exam-text font-semibold text-white"
+                    : "border-exam-line bg-white text-exam-text/90 hover:border-exam-muted hover:bg-exam-raised"
+                }`}
+              >
+                {r.text}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <label htmlFor={`ref-${q.id}`} className="sr-only">
+        {no}번 문항에 더 하고 싶은 말
+      </label>
+      <textarea
+        id={`ref-${q.id}`}
+        rows={2}
+        value={text}
+        onChange={(e) => sheet.reflect(q, e.target.value)}
+        placeholder={
+          blank
+            ? "더 하고 싶은 말 (예: 표에서 무엇을 빼야 하는지 몰랐어요)"
+            : "더 하고 싶은 말 (안 써도 괜찮아요)"
+        }
+        className="mt-3 w-full rounded-[2px] border border-exam-line px-3.5 py-2.5 text-[14px] leading-[1.8] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
+      />
+    </article>
   );
 }
 
@@ -1077,6 +1091,83 @@ function SubmitDialog({
             제출하기
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 해석을 지금 쓸지 묻는 창 — 답안을 낸 바로 다음 자리.
+ *
+ * 두 걸음이다. 먼저 묻고, 「나중에」를 누르면 **한 번만** 더 권한다. 두 번 묻는 까닭은
+ * 해석이 이 진단의 절반이라서다 — 같은 점수를 받은 두 아이를 가르는 것이 문항을 푼
+ * 결과가 아니라 그때 무슨 생각을 했느냐이고, 그 기록이 없으면 리포트는 점수표가 된다.
+ * 그러나 세 번 묻지는 않는다. 아이가 지금 못 쓰겠다고 하면 그럴 까닭이 있고, 자리는
+ * 없어지지 않는다.
+ *
+ * 색면을 깔지 않는다. 시험을 막 끝낸 아이가 보는 화면이라 노란 상자가 서면 「잘못했다」로
+ * 읽힌다. 해석을 미루는 것은 잘못이 아니다.
+ */
+function ReflectAskDialog({ onDo, onLater }: { onDo: () => void; onLater: () => void }) {
+  const [pressed, setPressed] = useState(false);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reflect-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-exam-text/40 p-5"
+    >
+      <div className="w-full max-w-md rounded-[2px] border border-exam-line bg-exam-panel p-7">
+        <p className={eyebrow}>{pressed ? "한 번만 더 여쭙습니다" : "제출 완료"}</p>
+
+        {pressed ? (
+          <>
+            <h2 id="reflect-title" className="mt-3 text-[20px] font-black leading-[1.45] text-exam-text">
+              해석을 남기지 않으면 진단이 얕아집니다
+            </h2>
+            <div className="mt-4 space-y-3 border-t border-exam-line pt-4 text-[13px] leading-[1.85] text-exam-muted">
+              <p>
+                같은 점수를 받은 두 아이를 가르는 것은 <b className="text-exam-text">그때 무슨
+                생각을 했는가</b>입니다. 자료에서 찾아 고른 아이와 남은 것을 고른 아이는 점수가
+                같아도 읽는 방법이 다릅니다. 해석이 비면 전문가가 그 차이를 볼 근거가 없어,
+                리포트가 점수표에 가까워집니다.
+              </p>
+              <p>
+                정확한 진단을 위해 지금 진행해 주시길 권합니다. 지금 어렵다면 평가 판의{" "}
+                <b className="text-exam-text">「해석 작성」</b>에서 나중에 이어서 쓰셔도 됩니다 —
+                기다렸다가 함께 읽습니다.
+              </p>
+            </div>
+            <div className="mt-7 grid grid-cols-2 gap-2">
+              <button type="button" onClick={onLater} className={btnGhost}>
+                나중에 하기
+              </button>
+              <button type="button" onClick={onDo} className={btnPrimary}>
+                지금 하기
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 id="reflect-title" className="mt-3 text-[20px] font-black leading-[1.45] text-exam-text">
+              답안을 냈습니다. 이어서 해석을 쓸까요?
+            </h2>
+            <p className="mt-4 border-t border-exam-line pt-4 text-[13px] leading-[1.85] text-exam-muted">
+              문항마다 <b className="text-exam-text">왜 그렇게 답했는지</b> 한 줄씩 남기는
+              자리입니다. 맞고 틀리고를 보는 것이 아니고 점수에도 반영되지 않습니다. 가까운
+              것을 고르기만 해도 되고, 5분이면 끝납니다.
+            </p>
+            <div className="mt-7 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setPressed(true)} className={btnGhost}>
+                안 하기
+              </button>
+              <button type="button" onClick={onDo} className={btnPrimary}>
+                지금 하기
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1158,7 +1249,22 @@ function useCloseExam() {
   };
 }
 
-function Submitted({ title }: { title: string }) {
+/**
+ * 응시를 마친 자리.
+ *
+ * 해석을 남긴 사람과 미룬 사람에게 다른 말을 한다. 미룬 사람에게 「모두 저장되었습니다」라고
+ * 하면 할 일이 끝난 것으로 읽혀, 평가 판에 남아 있는 「해석 작성」이 왜 켜져 있는지 알 수 없다.
+ */
+function Submitted({
+  title,
+  pending = false,
+  onReflect,
+}: {
+  title: string;
+  /** 해석을 아직 남기지 않았다 */
+  pending?: boolean;
+  onReflect?: () => void;
+}) {
   const close = useCloseExam();
   return (
     <Result>
@@ -1166,11 +1272,25 @@ function Submitted({ title }: { title: string }) {
         <CheckIcon className="h-7 w-7" />
       </span>
       <h1 className="mt-6 text-[24px] font-black text-exam-text">{title} 응시가 끝났습니다</h1>
-      <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
-        답안과 해석이 모두 저장되었습니다. 이 창을 닫으면 진단 현황 화면에서 제출 상태가 갱신됩니다.
-      </p>
-      <div className="mt-8 flex justify-center">
-        <button type="button" onClick={close} className={btnPrimary}>
+      {pending ? (
+        <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
+          답안이 저장되었습니다. <b className="text-exam-text">해석은 아직 비어 있습니다</b> —
+          평가 판의 「해석 작성」에서 언제든 이어서 쓸 수 있고, 적을수록 진단이 정확해집니다.
+        </p>
+      ) : (
+        <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
+          답안과 해석이 모두 저장되었습니다. 이 창을 닫으면 진단 현황 화면에서 제출 상태가
+          갱신됩니다.
+        </p>
+      )}
+      <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
+        {pending && onReflect && (
+          <button type="button" onClick={onReflect} className={btnPrimary}>
+            지금 해석 쓰기
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        )}
+        <button type="button" onClick={close} className={pending && onReflect ? btnGhost : btnPrimary}>
           창 닫기
         </button>
       </div>
@@ -1269,8 +1389,8 @@ export function setRange(order: Question[], q: Question) {
   return nums.length > 1 ? `${nums[0]}~${nums[nums.length - 1]}` : null;
 }
 
-/** 자료 상자 안 — 왼쪽 자료와 묶음 머리 자료가 같이 쓴다 */
-function BriefBody({ brief }: { brief: Brief }) {
+/** 자료 상자 안 — 왼쪽 자료 · 묶음 머리 자료 · 해석 화면의 접은 자료가 같이 쓴다 */
+export function BriefBody({ brief }: { brief: Brief }) {
   return <BlockList blocks={brief.blocks} />;
 }
 

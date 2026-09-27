@@ -62,7 +62,8 @@ function fmt(iso: string | null | undefined) {
 
 const stateText: Record<string, { label: string; className: string }> = {
   submitted: { label: "제출완료", className: "font-bold text-emerald-700" },
-  reflecting: { label: "해석 작성중", className: "font-bold text-amber-700" },
+  /* 답안은 냈고 해석만 비어 있다. 해석은 선택이라 「작성중」이 아니라 「비어 있음」이다 */
+  reflecting: { label: "해석 미작성", className: "font-bold text-amber-700" },
   "in-progress": { label: "진행중", className: "font-bold text-amber-700" },
   ready: { label: "미시작", className: "text-soft-muted" },
   forfeited: { label: "응시포기", className: "font-bold text-rose-600" },
@@ -117,9 +118,18 @@ export default function StatusTable({
 
   const [askFinal, setAskFinal] = useState(false);
 
-  // 세 과목 모두 제출 + 문항별 해석 작성까지 끝나야 최종 제출할 수 있다
-  const examDone =
-    allSubmitted(record) && subjects.every((s) => record.subjects[s.id].reflectionAt !== null);
+  /**
+   * 최종 제출은 **답안이 다 나왔으면** 열린다.
+   *
+   * 예전에는 문항별 해석까지 끝나야 열렸다. 해석을 선택으로 돌린 뒤로는 그 규칙이 곧
+   * 「해석을 미루면 결과를 영영 못 받는다」가 된다 — 선택이라고 해 놓고 문을 잠그는 셈이다.
+   * 막지는 않고, 아래 안내와 최종 제출 창에서 빠진 것을 말한다.
+   */
+  const examDone = allSubmitted(record);
+  /** 냈지만 해석을 아직 남기지 않은 과목 */
+  const noReflection = subjects.filter(
+    (x) => record.subjects[x.id].status === "submitted" && !record.subjects[x.id].reflectionAt,
+  );
   const missing = missingSurveys(record);
   const asGuardian = session?.asGuardian === true;
 
@@ -436,13 +446,17 @@ export default function StatusTable({
             {record.finalized
               ? "최종 제출이 완료되었습니다."
               : examDone
-                ? "답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작됩니다."
+                ? noReflection.length > 0
+                  ? `답안이 모두 제출되었습니다. 해석을 남기지 않은 과목이 ${noReflection.length}개 있습니다.`
+                  : "답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작됩니다."
                 : isFree
-                  ? `무료시험 ${freeOrder().length}문항을 제출하고 문항별 해석까지 작성해야 최종 제출할 수 있습니다.`
-                  : "세 과목을 모두 제출하고 문항별 해석까지 작성해야 최종 제출할 수 있습니다."}
+                  ? `무료시험 ${freeOrder().length}문항을 제출해야 최종 제출할 수 있습니다.`
+                  : "세 과목을 모두 제출해야 최종 제출할 수 있습니다."}
           </p>
           <p className="mt-1 text-[12px] text-soft-muted">
-            최종 제출 후에는 답안을 수정할 수 없습니다.
+            {!record.finalized && examDone && noReflection.length > 0
+              ? "해석은 선택이지만, 적힌 만큼 진단이 정확해집니다. 위 표의 「해석 작성」에서 이어서 쓸 수 있습니다."
+              : "최종 제출 후에는 답안을 수정할 수 없습니다."}
           </p>
         </div>
 
