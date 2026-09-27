@@ -44,19 +44,49 @@ import { surveys } from "./survey";
 export type SurveyItem = {
   /** 판이 바뀌어도 같은 문항임을 알아보게 하는 값. 문항 글을 고쳐도 유지된다. */
   id: string;
+  /** 설문지의 문항 번호 (S01 · P14). 의뢰인과 같은 번호로 이야기하기 위한 것 */
+  no: string;
+  /** 설문지의 구역 이름. 응답자 화면이 이 이름으로 문항을 묶는다 */
+  section: string;
+  /** 무엇을 재는 칸인가 — 역량(C01 논리적 사고)이거나 참고 칸(부모 관여) */
+  group: string;
   text: string;
 };
 
-/** 응답자에게 나가는 설문 한 벌 */
+/** 해당되는 것을 모두 고르는 묶음 */
+export type SurveyChoice = {
+  id: string;
+  no: string;
+  section: string;
+  label: string;
+  options: string[];
+};
+
+/** 서술형 질문 한 줄 */
+export type SurveyOpen = {
+  id: string;
+  no: string;
+  section: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+};
+
+/**
+ * 응답자에게 나가는 설문 한 벌.
+ *
+ * 묻는 방식이 셋이라 칸도 셋이다 — 5점 척도(items) · 모두 고르기(choices) · 서술(opens).
+ * 점수가 되는 것은 items뿐이고, 나머지 둘은 해석과 면담에 쓰는 참고 자료다. 그래서
+ * 응답자 화면도 척도만 필수로 두고 나머지는 비워 두어도 제출할 수 있게 한다.
+ */
 export type SurveyForm = {
   title: string;
   who: string;
   desc: string;
   note: string;
   items: SurveyItem[];
-  openLabel: string;
-  openHint: string;
-  placeholder: string;
+  choices: SurveyChoice[];
+  opens: SurveyOpen[];
 };
 
 /** 저장 단위 — 갈래와 학년대를 함께 묶은 열쇠 (`guardian:e34`) */
@@ -107,8 +137,14 @@ export const actionLabel: Record<SurveyAction, string> = {
   discard: "초안 버림",
 };
 
-/** 한 설문에 둘 수 있는 문항 수. 넘으면 응답자가 끝까지 못 간다. */
-export const MAX_ITEMS = 30;
+/**
+ * 한 설문에 둘 수 있는 척도 문항 수.
+ *
+ * 한동안 30이었다. 학부모 설문지 v1.0이 정확히 30문항(P01~P30)이라, 그대로 두면
+ * 운영자가 오타 난 문항을 지웠다가 되살릴 자리조차 없다. 설문지 한 벌이 다 들어가고도
+ * 손댈 여유가 남게 40으로 둔다.
+ */
+export const MAX_ITEMS = 40;
 /** 올릴 수 있는 파일 크기 — 글만 담기므로 넉넉하다 */
 export const MAX_UPLOAD_BYTES = 200 * 1024;
 
@@ -121,18 +157,23 @@ const SEED_AT = "2026-03-02 09:40";
 
 function seedForm(key: SurveyKey, band: SurveyBand): SurveyForm {
   const c = surveys[key];
-  /* 두 학년대가 같은 문항으로 시작한다. 무엇이 어떻게 달라야 하는지는 교육 쪽에서
-     정할 일이라 여기서 지어내지 않는다. 관리자가 학년대를 골라 고치면 그때부터
-     갈라지고, 「다른 학년대에도 이 문항 쓰기」로 도로 맞출 수도 있다. */
+  /* 두 학년대가 같은 문항으로 시작한다. 설문지 v1.0이 초1~고3을 한 벌로 묻기 때문이다.
+     학년대별로 말을 고르는 일은 다음 판이 오면 따라가고, 그 전에 급하면 관리자가
+     학년대를 골라 고친다 — 「다른 학년대에도 이 문항 쓰기」로 도로 맞출 수도 있다. */
+  const at = (no: string) => `${key}-${band}-${no}`;
   return {
     title: c.title,
     who: c.who,
     desc: c.desc,
     note: c.note,
-    items: c.items.map((text, n) => ({ id: `${key}-${band}-${n + 1}`, text })),
-    openLabel: c.openLabel,
-    openHint: c.openHint,
-    placeholder: c.placeholder,
+    items: c.items.map((i) => ({ ...i, id: at(i.no) })),
+    choices: c.choices.map((ch) => ({ ...ch, id: at(ch.no) })),
+    opens: c.opens.map((o) => ({
+      ...o,
+      id: at(o.no),
+      hint: o.hint ?? "",
+      placeholder: o.placeholder ?? "",
+    })),
   };
 }
 
@@ -178,8 +219,20 @@ const SEED_LOG: SurveyLogEntry[] = surveyDocIds.map((id) => ({
   snapshot: seedForm(...split(id)),
 }));
 
-const KEY = "genixx.surveys";
-const LOG_KEY = "genixx.surveys.log";
+/**
+ * 저장 열쇠에 씨앗 판 번호를 붙인다.
+ *
+ * 저장된 판은 씨앗을 이긴다 — 운영자가 고친 것을 코드 배포가 덮어쓰면 안 되기 때문이다.
+ * 그런데 설문지 자체가 v1.0으로 통째로 갈리면 이야기가 다르다. 옛 여덟 문항이 담긴
+ * 브라우저는 새 설문지를 영영 못 보게 되고, 화면은 「고쳤는데 안 바뀐다」가 된다.
+ *
+ * 그래서 설문지가 갈릴 때만 이 숫자를 올린다. 옛 열쇠는 건드리지 않고 두므로,
+ * 지난 판이 무엇이었는지는 브라우저 저장소에 그대로 남는다.
+ */
+const SEED_REV = 2;
+
+const KEY = `genixx.surveys.r${SEED_REV}`;
+const LOG_KEY = `genixx.surveys.log.r${SEED_REV}`;
 const EVENT = "genixx:surveys-change";
 
 /* ───────────────────────── 읽기 ───────────────────────── */
@@ -189,6 +242,15 @@ let cacheValue: SurveyDocs = SEED;
 
 /** 저장된 판에 없는 칸을 씨앗으로 메운다 — 항목이 늘어난 뒤에도 화면이 터지지 않게 */
 function fill(raw: Partial<SurveyDocs> | undefined): SurveyDocs {
+  /* 묻는 방식 셋은 「없음」과 「빈 목록」이 다르다. 저장된 판에 choices 칸이 아예
+     없으면 그것은 옛 판이라 씨앗을 깔고, 빈 배열이면 운영자가 지운 것이라 그대로 둔다. */
+  const merge = (seed: SurveyForm, got: Partial<SurveyForm> | undefined): SurveyForm => ({
+    ...seed,
+    ...got,
+    items: got?.items ?? seed.items,
+    choices: got?.choices ?? seed.choices,
+    opens: got?.opens ?? seed.opens,
+  });
   return Object.fromEntries(
     surveyDocIds.map((id) => {
       const seed = seedDoc(...split(id));
@@ -199,8 +261,8 @@ function fill(raw: Partial<SurveyDocs> | undefined): SurveyDocs {
         {
           ...seed,
           ...got,
-          live: { ...seed.live, ...got.live },
-          draft: { ...seed.draft, ...got.draft },
+          live: merge(seed.live, got.live),
+          draft: merge(seed.draft, got.draft),
         },
       ];
     }),
@@ -300,16 +362,39 @@ export function patchDraft(id: SurveyDocId, patch: Partial<SurveyForm>, by: stri
   });
 }
 
-export function patchDraftItem(id: SurveyDocId, itemId: string, text: string, by: string) {
+export function patchDraftItem(
+  id: SurveyDocId,
+  itemId: string,
+  patch: Partial<Omit<SurveyItem, "id">>,
+  by: string,
+) {
   const doc = read()[id];
-  patchDraft(id, { items: doc.draft.items.map((i) => (i.id === itemId ? { ...i, text } : i)) }, by);
+  patchDraft(
+    id,
+    { items: doc.draft.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)) },
+    by,
+  );
 }
 
+/**
+ * 새 문항은 바로 앞 문항의 구역을 물려받는다.
+ *
+ * 구역이 비면 응답자 화면에서 그 문항만 이름 없는 묶음으로 떨어져 나간다. 대개는
+ * 「이 구역에 하나 더」라서, 앞줄을 따라가는 편이 맞고 다르면 그 자리에서 고치면 된다.
+ */
 export function addDraftItem(id: SurveyDocId, by: string) {
   const doc = read()[id];
-  if (doc.draft.items.length >= MAX_ITEMS) return;
-  const item: SurveyItem = { id: `${id}-${Date.now().toString(36)}`, text: "" };
-  patchDraft(id, { items: [...doc.draft.items, item] }, by);
+  const items = doc.draft.items;
+  if (items.length >= MAX_ITEMS) return;
+  const last = items[items.length - 1];
+  const item: SurveyItem = {
+    id: `${id}-${Date.now().toString(36)}`,
+    no: "",
+    section: last?.section ?? "",
+    group: "",
+    text: "",
+  };
+  patchDraft(id, { items: [...items, item] }, by);
 }
 
 export function removeDraftItem(id: SurveyDocId, itemId: string, by: string) {
@@ -327,16 +412,113 @@ export function moveDraftItem(id: SurveyDocId, itemId: string, dir: 1 | -1, by: 
   patchDraft(id, { items }, by);
 }
 
+/* ── 고르기·서술 칸 ──
+   문항과 손질법이 같아 한 벌로 묶는다. 셋을 따로 쓰면 「문항만 옮길 수 있고
+   서술은 못 옮기는」 식으로 조용히 갈라진다. */
+
+type ListKey = "choices" | "opens";
+
+const listPatch = (
+  id: SurveyDocId,
+  list: ListKey,
+  next: SurveyChoice[] | SurveyOpen[],
+  by: string,
+) => patchDraft(id, { [list]: next } as Partial<SurveyForm>, by);
+
+export function patchDraftChoice(
+  id: SurveyDocId,
+  choiceId: string,
+  patch: Partial<Omit<SurveyChoice, "id">>,
+  by: string,
+) {
+  const d = read()[id].draft;
+  listPatch(id, "choices", d.choices.map((c) => (c.id === choiceId ? { ...c, ...patch } : c)), by);
+}
+
+export function patchDraftOpen(
+  id: SurveyDocId,
+  openId: string,
+  patch: Partial<Omit<SurveyOpen, "id">>,
+  by: string,
+) {
+  const d = read()[id].draft;
+  listPatch(id, "opens", d.opens.map((o) => (o.id === openId ? { ...o, ...patch } : o)), by);
+}
+
+export function addDraftChoice(id: SurveyDocId, by: string) {
+  const d = read()[id].draft;
+  const last = d.choices[d.choices.length - 1];
+  listPatch(
+    id,
+    "choices",
+    [
+      ...d.choices,
+      {
+        id: `${id}-ch-${Date.now().toString(36)}`,
+        no: "",
+        section: last?.section ?? "",
+        label: "",
+        options: [""],
+      },
+    ],
+    by,
+  );
+}
+
+export function addDraftOpen(id: SurveyDocId, by: string) {
+  const d = read()[id].draft;
+  const last = d.opens[d.opens.length - 1];
+  listPatch(
+    id,
+    "opens",
+    [
+      ...d.opens,
+      {
+        id: `${id}-op-${Date.now().toString(36)}`,
+        no: "",
+        section: last?.section ?? "",
+        label: "",
+        hint: "",
+        placeholder: "",
+      },
+    ],
+    by,
+  );
+}
+
+export function removeDraftChoice(id: SurveyDocId, choiceId: string, by: string) {
+  const d = read()[id].draft;
+  listPatch(id, "choices", d.choices.filter((c) => c.id !== choiceId), by);
+}
+
+export function removeDraftOpen(id: SurveyDocId, openId: string, by: string) {
+  const d = read()[id].draft;
+  listPatch(id, "opens", d.opens.filter((o) => o.id !== openId), by);
+}
+
+/** 고르기·서술 차례 옮기기. 끝에서 더 밀면 아무 일도 일어나지 않는다. */
+export function moveDraftEntry(id: SurveyDocId, list: ListKey, entryId: string, dir: 1 | -1, by: string) {
+  const arr: (SurveyChoice | SurveyOpen)[] = [...read()[id].draft[list]];
+  const at = arr.findIndex((v) => v.id === entryId);
+  const to = at + dir;
+  if (at < 0 || to < 0 || to >= arr.length) return;
+  [arr[at], arr[to]] = [arr[to], arr[at]];
+  listPatch(id, list, arr as SurveyChoice[] | SurveyOpen[], by);
+}
+
 /**
- * 지금 학년대의 초안 문항을 나머지 세 학년대에 그대로 복사한다.
+ * 지금 학년대의 초안 문항을 나머지 학년대에 그대로 복사한다.
  *
- * 네 벌을 따로 두면 「초3~4만 고치고 나머지를 잊는」 일이 반드시 생긴다. 문항이
+ * 벌을 따로 두면 「초3~4만 고치고 나머지를 잊는」 일이 반드시 생긴다. 문항이
  * 학년대별로 갈릴 이유가 없을 때는 한 번에 맞출 길이 있어야 한다.
  * 초안에만 넣는다 — 나가는 판은 학년대마다 따로 발행한다.
+ *
+ * 척도 문항만 옮기지 않는다. 고르기와 서술도 응답자에게는 같은 설문의 일부라,
+ * 척도만 맞춰 두면 학년대에 따라 묻는 것이 달라진 줄도 모르게 된다.
  */
 export function copyItemsToOtherBands(id: SurveyDocId, by: string) {
   const [key] = split(id);
-  const from = read()[id].draft.items;
+  const from = read()[id].draft;
   const docs = read();
   const next = { ...docs };
   let count = 0;
@@ -347,9 +529,11 @@ export function copyItemsToOtherBands(id: SurveyDocId, by: string) {
       ...docs[to],
       draft: {
         ...docs[to].draft,
-        /* 문항 id는 학년대마다 새로 딴다. 같은 id가 두 벌에 있으면 「어느 판의
-           몇 번 문항인가」를 기록에서 가릴 수 없다. */
-        items: from.map((i, n) => ({ id: `${to}-c${n + 1}`, text: i.text })),
+        /* id는 학년대마다 새로 딴다. 같은 id가 두 벌에 있으면 「어느 판의 몇 번
+           문항인가」를 기록에서 가릴 수 없다. */
+        items: from.items.map((i, n) => ({ ...i, id: `${to}-c${n + 1}` })),
+        choices: from.choices.map((c, n) => ({ ...c, id: `${to}-cc${n + 1}` })),
+        opens: from.opens.map((o, n) => ({ ...o, id: `${to}-co${n + 1}` })),
       },
       draftAt: now(),
       draftBy: by,
@@ -375,8 +559,14 @@ export function uploadDraftItems(
   by: string,
 ) {
   const doc = read()[id];
+  const last = doc.draft.items[doc.draft.items.length - 1];
   const made: SurveyItem[] = texts.map((text, n) => ({
     id: `${id}-${Date.now().toString(36)}-${n}`,
+    no: "",
+    /* 붙이는 것이면 앞 문항의 구역을 따라간다. 통째로 바꾸는 것이면 따라갈 앞줄이
+       없으므로 비워 두고, 운영자가 문항 화면에서 구역을 적는다. */
+    section: mode === "append" ? (last?.section ?? "") : "",
+    group: "",
     text,
   }));
   const items = (mode === "append" ? [...doc.draft.items, ...made] : made).slice(0, MAX_ITEMS);
@@ -467,14 +657,11 @@ export function revertTo(id: SurveyDocId, entryId: string, by: string, reason: s
 
 /* ───────────────────────── 견주기 ───────────────────────── */
 
-const FIELDS: [keyof Omit<SurveyForm, "items">, string][] = [
+const FIELDS: [keyof Omit<SurveyForm, "items" | "choices" | "opens">, string][] = [
   ["title", "제목"],
   ["who", "응답자"],
   ["desc", "안내문"],
   ["note", "고지 문구"],
-  ["openLabel", "자유서술 이름표"],
-  ["openHint", "자유서술 도움말"],
-  ["placeholder", "자유서술 예시글"],
 ];
 
 const cut = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n)}…` : s || "(빈칸)");
@@ -492,30 +679,65 @@ export function diffForms(before: SurveyForm, after: SurveyForm): string[] {
     if (before[k] !== after[k]) lines.push(`${label} — 「${cut(before[k])}」 → 「${cut(after[k])}」`);
   }
 
-  const beforeIds = before.items.map((i) => i.id);
-  const afterIds = after.items.map((i) => i.id);
-
-  for (const i of after.items.filter((i) => !beforeIds.includes(i.id))) {
-    lines.push(`문항 추가 — 「${cut(i.text)}」`);
-  }
-  for (const i of before.items.filter((i) => !afterIds.includes(i.id))) {
-    lines.push(`문항 삭제 — 「${cut(i.text)}」`);
-  }
-  before.items.forEach((b, n) => {
-    const a = after.items.find((x) => x.id === b.id);
-    if (a && a.text !== b.text) {
-      lines.push(`${n + 1}번 문항 — 「${cut(b.text)}」 → 「${cut(a.text)}」`);
+  /** id로 짝지어 견준다. 차례가 아니라 열쇠로 봐야 순서만 바꾼 것을 「다 바뀌었다」로 읽지 않는다. */
+  const rows = <T extends { id: string }>(
+    kind: string,
+    bs: T[],
+    as: T[],
+    say: (v: T) => string,
+    /** 같은 것끼리 무엇이 달라졌는지 — 빈 목록이면 그대로다 */
+    what: (b: T, a: T) => string[],
+  ) => {
+    const bIds = bs.map((v) => v.id);
+    const aIds = as.map((v) => v.id);
+    for (const v of as.filter((v) => !bIds.includes(v.id))) {
+      lines.push(`${kind} 추가 — 「${cut(say(v))}」`);
     }
+    for (const v of bs.filter((v) => !aIds.includes(v.id))) {
+      lines.push(`${kind} 삭제 — 「${cut(say(v))}」`);
+    }
+    bs.forEach((b, n) => {
+      const a = as.find((x) => x.id === b.id);
+      if (!a) return;
+      for (const line of what(b, a)) lines.push(`${n + 1}번 ${kind} — ${line}`);
+    });
+
+    /* 지우고 더한 것을 뺀 나머지의 앞뒤가 다르면 순서가 바뀐 것이다 */
+    const keptBefore = bIds.filter((id) => aIds.includes(id)).join("|");
+    const keptAfter = aIds.filter((id) => bIds.includes(id)).join("|");
+    if (keptBefore !== keptAfter) lines.push(`${kind} 순서가 바뀌었습니다`);
+
+    if (bs.length !== as.length) lines.push(`${kind} 수 ${bs.length} → ${as.length}`);
+  };
+
+  rows("문항", before.items, after.items, (i) => i.text, (b, a) => {
+    const out: string[] = [];
+    if (b.text !== a.text) out.push(`「${cut(b.text)}」 → 「${cut(a.text)}」`);
+    if (b.no !== a.no) out.push(`번호 ${b.no || "(빈칸)"} → ${a.no || "(빈칸)"}`);
+    if (b.section !== a.section) out.push(`구역 「${cut(b.section, 12)}」 → 「${cut(a.section, 12)}」`);
+    /* 역량이 갈리면 점수가 붙는 칸이 갈린다 — 글자 하나 바뀐 것과 같은 무게로 적지 않는다 */
+    if (b.group !== a.group) out.push(`재는 칸 「${cut(b.group, 14)}」 → 「${cut(a.group, 14)}」`);
+    return out;
   });
 
-  /* 지우고 더한 것을 뺀 나머지의 앞뒤가 다르면 순서가 바뀐 것이다 */
-  const keptBefore = beforeIds.filter((id) => afterIds.includes(id)).join("|");
-  const keptAfter = afterIds.filter((id) => beforeIds.includes(id)).join("|");
-  if (keptBefore !== keptAfter) lines.push("문항 순서가 바뀌었습니다");
+  rows("고르기", before.choices, after.choices, (c) => c.label, (b, a) => {
+    const out: string[] = [];
+    if (b.label !== a.label) out.push(`「${cut(b.label)}」 → 「${cut(a.label)}」`);
+    if (b.options.join("|") !== a.options.join("|")) {
+      out.push(`보기 ${b.options.length}개 → ${a.options.length}개 (${cut(a.options.join(", "), 30)})`);
+    }
+    return out;
+  });
 
-  if (before.items.length !== after.items.length) {
-    lines.push(`문항 수 ${before.items.length} → ${after.items.length}`);
-  }
+  rows("서술", before.opens, after.opens, (o) => o.label, (b, a) => {
+    const out: string[] = [];
+    if (b.label !== a.label) out.push(`「${cut(b.label)}」 → 「${cut(a.label)}」`);
+    if (b.hint !== a.hint) out.push(`도움말 「${cut(b.hint)}」 → 「${cut(a.hint)}」`);
+    if (b.placeholder !== a.placeholder) {
+      out.push(`예시글 「${cut(b.placeholder)}」 → 「${cut(a.placeholder)}」`);
+    }
+    return out;
+  });
 
   return lines;
 }
@@ -533,16 +755,32 @@ export function draftChanges(doc: SurveyDoc): string[] {
  */
 export function publishWarnings(doc: SurveyDoc, answered: number): string[] {
   const w: string[] = [];
-  const blank = doc.draft.items.filter((i) => !i.text.trim()).length;
+  const d = doc.draft;
+
+  const blank = d.items.filter((i) => !i.text.trim()).length;
   if (blank > 0) w.push(`빈 문항이 ${blank}건 있습니다. 그대로 나가면 응답자에게 빈 줄로 보입니다.`);
-  if (doc.draft.items.length === 0) w.push("문항이 하나도 없습니다.");
-  if (doc.draft.items.length !== doc.live.items.length && answered > 0) {
+  if (d.items.length === 0) w.push("문항이 하나도 없습니다.");
+  if (d.items.length !== doc.live.items.length && answered > 0) {
     w.push(
       `이미 이 설문에 ${answered}건이 들어와 있습니다. 문항 수가 달라지면 두 판의 응답을 나란히 비교할 수 없습니다.`,
     );
   }
-  const dup = doc.draft.items.map((i) => i.text.trim()).filter(Boolean);
+  const dup = d.items.map((i) => i.text.trim()).filter(Boolean);
   if (dup.length !== new Set(dup).size) w.push("같은 문항이 둘 이상 있습니다.");
+
+  /* 재는 칸이 비면 그 문항의 답은 어느 역량에도 붙지 못하고 버려진다. 설문지가 정한
+     셈법이 「역량마다 연결된 2문항의 평균」이라, 이것만은 발행 전에 반드시 보여야 한다. */
+  const noGroup = d.items.filter((i) => i.text.trim() && !i.group.trim()).length;
+  if (noGroup > 0) {
+    w.push(`재는 칸(역량)이 비어 있는 문항이 ${noGroup}건 있습니다. 그 답은 역량 점수에 들어가지 않습니다.`);
+  }
+
+  const emptyChoice = d.choices.filter((c) => c.options.filter((o) => o.trim()).length === 0).length;
+  if (emptyChoice > 0) w.push(`보기가 하나도 없는 고르기 묶음이 ${emptyChoice}건 있습니다.`);
+
+  const blankOpen = d.opens.filter((o) => !o.label.trim()).length;
+  if (blankOpen > 0) w.push(`질문이 비어 있는 서술 칸이 ${blankOpen}건 있습니다.`);
+
   return w;
 }
 

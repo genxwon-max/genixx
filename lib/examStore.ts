@@ -137,12 +137,29 @@ export const reflectionReasons: Record<"blank" | "choice" | "essay", ReflectionR
 export const reflectionReasonText = (kind: "blank" | "choice" | "essay", id?: string) =>
   (id && reflectionReasons[kind].find((r) => r.id === id)?.text) || "";
 
-/** 설문에 적어 낸 답 — 문항 열쇠(SurveyItem.id)로 담는다 */
+/**
+ * 설문에 적어 낸 답 — 모두 **열쇠**(SurveyItem.id 등)로 담는다.
+ *
+ * 차례로 담지 않는 까닭은 문항이 바뀌기 때문이다. 관리자가 문항 하나를 지우거나 차례를
+ * 바꿔도 남은 답이 엉뚱한 문항에 붙지 않아야 한다.
+ *
+ * 묻는 방식이 셋이라 칸도 셋이다. 점수가 되는 것은 items뿐이고, 나머지 둘은 해석과
+ * 면담에 쓰는 참고 자료다 — 설문지가 「점수화보다 근거와 상담 포인트」라고 적어 둔 칸이다.
+ */
 export type SurveyAnswer = {
-  /** 문항 id → 고른 칸(0~4) */
+  /** 척도 문항 id → 고른 칸(0~4) */
   items: Record<string, number>;
-  /** 마지막 자유 서술 */
-  text: string;
+  /** 고르기 묶음 id → 고른 보기 글 목록 */
+  choices?: Record<string, string[]>;
+  /** 서술 질문 id → 적어 낸 글 */
+  texts?: Record<string, string>;
+  /**
+   * 옛 판의 자유 서술 한 칸.
+   *
+   * 설문지 v1.0부터 서술은 여러 칸(texts)이 되었다. 이 칸은 그 전에 답한 기록을
+   * 읽기 위해서만 남는다 — 새 응답은 여기에 적지 않는다.
+   */
+  text?: string;
 };
 
 export type ExamRecord = {
