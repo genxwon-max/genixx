@@ -17,13 +17,12 @@ import {
 import {
   quarterLabel,
   seasonOf,
-  trackLabel,
   trackOf,
   tracks,
   type TrackId,
 } from "@/lib/examCatalog";
 import { setSetAnswer } from "@/lib/setStore";
-import { ArrowRight } from "@/components/Icons";
+import { ArrowRight, CloseIcon } from "@/components/Icons";
 import ExamCover from "./ExamCover";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import {
@@ -181,6 +180,20 @@ function TrialStart({
   return (
     <div className="container-x flex min-h-full items-start justify-center py-8">
       <div className="w-full max-w-[900px]">
+        {/* 창을 닫는 길은 종이 오른쪽 위에 ✕ 하나로 둔다. 종이 아래에 글 링크로 두었을
+            때는 「회원가입하고 무료시험 응시」와 나란히 서서, 나가는 길과 더 가는 길이
+            같은 무게로 읽혔다. 닫는 일은 어느 화면에서나 오른쪽 위에 있다 */}
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={closeTrial}
+            className="inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1.5 text-[13px] text-exam-muted transition-colors hover:bg-exam-raised hover:text-exam-text"
+          >
+            <CloseIcon className="h-4 w-4" />
+            창 닫기
+          </button>
+        </div>
+
         <ExamCover
           badge="제1교시"
           headline={`${season} GENIXX 진단평가 셋트 문항지`}
@@ -232,37 +245,6 @@ function TrialStart({
           }
         />
 
-        {/* ── 종이 바깥 ── */}
-        <ul className="mt-6 space-y-2 text-center text-[13px] leading-relaxed text-exam-muted">
-          <li>
-            · {trackLabel(track)} · 1셋트 <b className="text-exam-text">{SET_QUESTIONS}문항</b>을
-            회원가입 없이 풀어 볼 수 있습니다. 학년마다 문항이 다릅니다.
-          </li>
-          <li>
-            · 셋트를 풀고 회원가입하면 <b className="text-exam-text">무료시험 {FREE_TOTAL}문항</b>
-            으로 이어집니다. 여기서 푼 {SET_QUESTIONS}문항은 그대로 이어지니 다시 풀지 않아도
-            됩니다.
-          </li>
-          <li>· 교과는 하나만 고릅니다. 나머지 과목은 무료시험에서 함께 풀게 됩니다.</li>
-          <li>· 셋트에서는 시간을 재지 않고, 채점도 하지 않습니다.</li>
-        </ul>
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={closeTrial}
-            className="text-[13px] text-exam-muted hover:underline"
-          >
-            창 닫기
-          </button>
-          <button
-            type="button"
-            onClick={() => openInMain("/signup")}
-            className="text-[13px] font-semibold text-soft-primary hover:underline"
-          >
-            회원가입하고 무료시험 응시
-          </button>
-        </div>
       </div>
     </div>
   );

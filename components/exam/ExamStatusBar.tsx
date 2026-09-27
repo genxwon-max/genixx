@@ -137,9 +137,11 @@ export default function ExamStatusBar() {
    */
   if (!slug) return null;
 
+  /* 셋트에도 시계가 없다는 말은 머리에 적지 않는다. 시계가 서야 할 자리가 비어 있는
+     것으로 이미 읽히고, 머리에 문장을 하나 더 두면 평가명·과목이 뒤로 밀린다 */
   if (slug === "trial") {
     return (
-      <HeadRow name={examName} subject={trialName} hint="시간을 재지 않습니다">
+      <HeadRow name={examName} subject={trialName}>
         {canExit ? <ExitLink>셋트 그만하기</ExitLink> : null}
       </HeadRow>
     );
@@ -204,14 +206,11 @@ export default function ExamStatusBar() {
 function HeadRow({
   name,
   subject,
-  hint,
   children,
 }: {
   /** 평가 이름. 아직 읽지 못했으면 없다 — 그때는 검사 이름만 선다 */
   name: string | null;
   subject: string | null;
-  /** 시계가 없는 판(셋트)에서 그 자리에 적는 말 */
-  hint?: string;
   children: ReactNode;
 }) {
   return (
@@ -222,9 +221,6 @@ function HeadRow({
         </span>
         {subject && (
           <span className="hidden shrink-0 text-[13px] text-exam-muted sm:inline">{subject}</span>
-        )}
-        {hint && (
-          <span className="hidden shrink-0 text-[13px] text-exam-muted sm:inline">{hint}</span>
         )}
       </p>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
