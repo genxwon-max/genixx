@@ -22,7 +22,8 @@ import {
   type TrackId,
 } from "@/lib/examCatalog";
 import { setSetAnswer } from "@/lib/setStore";
-import { ArrowRight, CloseIcon } from "@/components/Icons";
+import { closeExamWindow } from "@/lib/popup";
+import { ArrowRight } from "@/components/Icons";
 import ExamCover from "./ExamCover";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import {
@@ -134,16 +135,6 @@ async function openInMain(href: string) {
   window.location.href = href;
 }
 
-/** 창을 닫는다 — 원래 창이 없으면 평가 목록으로 보낸다 */
-async function closeTrial() {
-  await leaveFullscreen();
-  if (window.opener) {
-    window.close();
-    return;
-  }
-  window.location.href = "/exam/apply";
-}
-
 /* ───────────────────────── 시작 화면(표지) ───────────────────────── */
 
 /**
@@ -180,20 +171,8 @@ function TrialStart({
   return (
     <div className="container-x flex min-h-full items-start justify-center py-8">
       <div className="w-full max-w-[900px]">
-        {/* 창을 닫는 길은 종이 오른쪽 위에 ✕ 하나로 둔다. 종이 아래에 글 링크로 두었을
-            때는 「회원가입하고 무료시험 응시」와 나란히 서서, 나가는 길과 더 가는 길이
-            같은 무게로 읽혔다. 닫는 일은 어느 화면에서나 오른쪽 위에 있다 */}
-        <div className="mb-3 flex justify-end">
-          <button
-            type="button"
-            onClick={closeTrial}
-            className="inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1.5 text-[13px] text-exam-muted transition-colors hover:bg-exam-raised hover:text-exam-text"
-          >
-            <CloseIcon className="h-4 w-4" />
-            창 닫기
-          </button>
-        </div>
-
+        {/* 창을 닫는 길은 머리 오른쪽 끝에 있다(ExamStatusBar) — 종이 위에 두면 시험지
+            한 장 안에 종이 밖의 단추가 얹힌다 */}
         <ExamCover
           badge="제1교시"
           headline={`${season} GENIXX 진단평가 셋트 문항지`}
@@ -427,7 +406,7 @@ function Wall({ subjectName }: { subjectName: string }) {
         </div>
         <button
           type="button"
-          onClick={closeTrial}
+          onClick={() => closeExamWindow()}
           className="mt-6 text-[12px] text-exam-muted hover:underline"
         >
           창 닫기

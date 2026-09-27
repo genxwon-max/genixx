@@ -17,6 +17,8 @@ import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { askExamExit, useExamExitAvailable } from "@/lib/fullscreen";
+import { closeExamWindow } from "@/lib/popup";
+import { CloseIcon } from "@/components/Icons";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -142,7 +144,9 @@ export default function ExamStatusBar() {
   if (slug === "trial") {
     return (
       <HeadRow name={examName} subject={trialName}>
-        {canExit ? <ExitLink>셋트 그만하기</ExitLink> : null}
+        {/* 시작하기 전(표지)에는 나갈 길이 「창 닫기」다. 시작한 뒤에는 전체화면이라
+            브라우저의 닫기 단추가 보이지 않으므로 「셋트 그만하기」가 그 자리를 잇는다 */}
+        {canExit ? <ExitLink>셋트 그만하기</ExitLink> : <CloseWindow />}
       </HeadRow>
     );
   }
@@ -225,6 +229,26 @@ function HeadRow({
       </p>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>
+  );
+}
+
+/**
+ * 창 닫기 — 머리 오른쪽 끝.
+ *
+ * 응시 창은 대시보드에서 띄운 별도 창이라, 시험지 한 장만 놓고 보면 돌아갈 길이 보이지
+ * 않는다. 닫는 일은 어느 화면에서나 오른쪽 위에 있으므로 그 자리에 둔다 — 종이 위에
+ * 얹으면 시험지 안에 종이 밖의 단추가 서게 된다.
+ */
+function CloseWindow() {
+  return (
+    <button
+      type="button"
+      onClick={() => closeExamWindow()}
+      className="inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1.5 text-[13px] text-exam-muted transition-colors hover:bg-exam-raised hover:text-exam-text"
+    >
+      <CloseIcon className="h-4 w-4" />
+      창 닫기
+    </button>
   );
 }
 
