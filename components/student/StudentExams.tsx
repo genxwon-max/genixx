@@ -72,8 +72,13 @@ export default function StudentExams() {
         </>
       ) : (
         <>
-          {/* 평가 판을 그대로 품는다 — 머리 · 과목 표 · 설문 표 · 최종 제출이 한 벌이다 */}
-          <StatusTable studentId={self.id} heading={heading} resultHref="/student/results" />
+          {/* 평가 판을 그대로 품는다 — 머리 · 과목 표 · 설문 표 · 최종 제출이 한 벌이다.
+              흰 면 위에 올린다. 판이 표 다섯 덩이라 대시보드 바탕(#f4f6fb)에 그대로 얹으면
+              어디까지가 한 벌인지 가장자리가 보이지 않는다 — 다른 화면의 카드와 같은 면을
+              깔아 「이것이 시험지 자리」라고 한 번에 묶어 준다 */}
+          <div className={`${cardBox} px-5 py-6 sm:px-7 sm:py-7`}>
+            <StatusTable studentId={self.id} heading={heading} resultHref="/student/results" />
+          </div>
 
           {/* 접수한 평가가 여럿이면 어느 것을 보고 있는지 밝힌다. 응시 기록은 학생마다
               한 벌이라 판을 갈아 끼울 수 없고, 그렇다고 말없이 하나만 세우면 나머지가
