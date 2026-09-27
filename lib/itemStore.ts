@@ -76,7 +76,8 @@ export type ItemType = "choice" | "ox" | "short" | "descriptive" | "essay" | "im
 
 /* 무엇을 쓰는 유형인지는 위 주석에 적어 두었다. 목록에는 이름만 세운다 — 여섯 개를
    나란히 놓으면 이름이 곧 뜻이고, 줄마다 풀어 쓴 말은 고르는 데 보태는 것이 없었다.
-   scoring은 옛 콘솔(components/admin/ItemCard.tsx)의 고르개가 아직 적는다. */
+   scoring은 옛 콘솔의 고르개가 적던 칸이다 — 그 콘솔은 걷었고(2026-09-27), 옛 문항에 남은
+   값은 그대로 둔다. */
 export const itemTypes: {
   id: ItemType;
   label: string;
@@ -376,8 +377,8 @@ export type ItemDraft = {
    * 문항들 — 단일이면 하나, 세트면 둘 이상.
    *
    * 아래 납작한 칸(stem · choices · answer · explain …)은 **questions[0]의 거울**이다.
-   * 지우지 않고 두는 까닭은 옛 콘솔(components/admin/ItemCard.tsx)과 목록 열두 곳이
-   * 아직 그 칸을 직접 읽고 쓰기 때문이다. 두 벌을 손으로 맞추면 반드시 어긋나므로
+   * 지우지 않고 두는 까닭은 목록·검수·편성 화면 열두 곳이 아직 그 칸을 직접 읽고 쓰기
+   * 때문이다(옛 콘솔도 그랬다 — 2026-09-27에 걷었다). 두 벌을 손으로 맞추면 반드시 어긋나므로
    * 저장으로 나가는 길목 하나(patchItem)에서만 맞춘다 — syncQuestions 주석 참고.
    */
   questions: Question[];
@@ -1984,8 +1985,8 @@ let cacheValue: ItemDraft[] = SEED;
 /* ── 납작한 칸 ↔ questions 맞추기 ──────────────────────────────────────────
  *
  * 문항 하나가 문항 여럿을 담게 되면서 발문·보기·정답·해설이 questions로 옮겨 갔다.
- * 그런데 옛 콘솔(components/admin/ItemCard.tsx)과 목록·검수·편성 화면 열두 곳이
- * 아직 item.stem · item.type을 직접 읽는다. 그 화면들을 한꺼번에 갈아엎지 않고
+ * 그런데 목록·검수·편성 화면 열두 곳이 아직 item.stem · item.type을 직접 읽는다
+ * (옛 콘솔도 그랬다 — 2026-09-27에 걷었다). 그 화면들을 한꺼번에 갈아엎지 않고
  * 살려 두려면 두 벌이 있어야 하고, 두 벌이 있으면 반드시 어긋난다.
  *
  * 그래서 어긋날 자리를 하나로 모은다 — **저장으로 나가는 길목(patchItem)에서만**
@@ -2493,8 +2494,8 @@ function syncGrade(item: ItemDraft, patch: Partial<ItemDraft>): ItemDraft {
  * 메모 · 앵커 · 사용 중지 · 공개 · 정답률). 제출하거나 반려되는 것만으로 서명이 풀리면 반려된
  * 문항을 고치기도 전에 확인이 사라져, 무엇이 바뀌어 다시 확인하는지 알 수 없다.
  *
- * 표시용 태그(tagA · tagB)도 넣는다. 옛 콘솔은 무엇을 고치든 태그를 함께 실어 보내서
- * (components/admin/ItemCard.tsx set), 빼 두면 출제자 유의 한 글자에도 서명이 풀린다. 태그는
+ * 표시용 태그(tagA · tagB)도 넣는다. 걷어 낸 옛 콘솔이 무엇을 고치든 태그를 함께 실어 보냈고,
+ * 빼 두면 출제자 유의 한 글자에도 서명이 풀렸다. 그 뒤로도 빼지 않는다 — 태그는
  * 내용에서 다시 만드는 값이라, 내용을 고친 patch는 제 칸으로 서명을 푼다.
  */
 const UNSIGNED_KEYS = new Set<string>([
@@ -2601,9 +2602,9 @@ export type GenerateSpec = {
   /** 소재·주의사항 지시문 */
   brief: string;
 
-  /* ── 새 콘솔(app/(admin2)/admin2/authoring/Generator.tsx)만 채우는 칸 ──
-     생성 판이 문항 상세와 같은 분류 줄을 받게 되면서 붙었다. 옛 콘솔(components/admin/
-     ItemGenerator.tsx)은 이 칸들을 모르므로 전부 비워 둘 수 있게 둔다 — 비었으면 예전처럼
+  /* ── 콘솔(app/(admin2)/admin2/authoring/Generator.tsx)만 채우는 칸 ──
+     생성 판이 문항 상세와 같은 분류 줄을 받게 되면서 붙었다. 그 전에 만든 생성 판과 걷어 낸
+     옛 콘솔이 남긴 것은 이 칸들을 모르므로 전부 비워 둘 수 있게 둔다 — 비었으면 예전처럼
      본에서 꺼낸 값과 단계의 고정 매핑을 쓴다. */
   /**
    * 고른 교과 단원의 학년-학기(「3-1」). 새 콘솔은 교과 단원을 목록에서 골라야 과목이 정해져서
@@ -2876,7 +2877,7 @@ export const typeForLevel: Record<Level, ItemType> = {
 };
 
 /**
- * 인지단계를 바꾼다 — 옛 콘솔(components/admin/ItemCard.tsx)이 부른다.
+ * 인지단계를 바꾼다 — 걷어 낸 옛 콘솔이 부르던 길이다.
  *
  * 문항 쪽 level·points는 이제 문항들에서 만드는 요약이라, 거기에 값을 밀어 넣으면
  * 다음 저장에서 그대로 다시 계산되어 사라진다. 그래서 **첫 문항**를 고친다.
@@ -3557,8 +3558,8 @@ export function missingSubmit(i: ItemDraft) {
  *
  * 불인정 예는 묻지 않는다(2026-09-21 협의로 출제 화면에서 걷었다). 옛 문항에 적힌 것은 남는다.
  *
- * missingContent와 가른 것은 옛 콘솔(components/admin/ItemCard.tsx) 때문이다. 그 화면에는
- * 이 칸들이 없어서, 한 함수에 넣으면 옛 콘솔에서 쓴 문항은 영영 제출하지 못한다.
+ * missingContent와 가른 것은 걷어 낸 옛 콘솔 때문이다. 그 화면에는 이 칸들이 없어서,
+ * 한 함수에 넣으면 거기서 쓴 문항은 영영 제출하지 못한다 — 그 문항들은 아직 남아 있다.
  */
 export function missingCard(i: ItemDraft) {
   const out: string[] = [];

@@ -39,7 +39,7 @@ npm run lint    # ESLint
 ### 계정·동의 존 (ACC)
 
 사이트맵 12장 **URL 규칙**을 그대로 따릅니다 — 공개 `/` · 회원 `/my` · 응시 `/exam` ·
-결과 `/report` · 전문가 `/expert` · 기관 `/org` · 관리 `/admin`.
+결과 `/report` · 전문가 `/expert` · 기관 `/org` · 관리 `/admin2`.
 사이트맵이 각 단계를 별도 화면 ID로 정의하므로 위저드 한 장이 아니라 **실제 라우트로 분리**했습니다.
 
 | 경로 | 화면 ID | 설명 |
@@ -123,44 +123,33 @@ npm run lint    # ESLint
 
 ### 관리자 존 (ADM) — 내부 운영 콘솔
 
-`/admin/*`. 왼쪽 메뉴 + 흰 작업면의 별도 레이아웃이며, 검색엔진에 노출되지 않습니다(`robots: noindex`).
+`/admin2/*`. 왼쪽 메뉴 + 작업면의 별도 레이아웃이며, 검색엔진에 노출되지 않습니다(`robots: noindex`).
+슈퍼 관리자 한 사람이 쓰는 콘솔이라 메뉴를 **9그룹 한 단**으로만 폅니다(`lib/admin2.ts`).
 
-| 경로 | 화면 ID | 설명 |
-| --- | --- | --- |
-| `/admin` | ADM-01 | 대시보드 — 지표가 아니라 **오늘 처리할 큐**부터 보여 줍니다 |
-| `/admin/grading` | ADM-06 | **채점·판정 큐** — AI 1차 제안값 검토 → 전문가 확정 (이 존의 중심) |
-| `/admin/rounds` | ADM-04 | 회차 진행률 · 과목별 응시/포기 · 설문 수집률 |
-| `/admin/items` | ADM-05 | 문항 은행 — 작성 → 교차 검수 → 승인 → 출제 후 점검 |
-| `/admin/approvals` | ADM-02-2 | 교사·기관 가입 승인 (ACC-01-4의 반대편) |
-| `/admin/members` | ADM-02-1 | 회원 — 연락처는 가려서 표시 |
-| `/admin/students` | ADM-03 | 학생 명부·접속코드 — 이름/생년월일 **기본 가림** |
-| `/admin/orgs` | ADM-07 | 기관 계약·응시권 배정 |
-| `/admin/inquiries` | ADM-10 | 1:1 문의 · 기관 도입 문의 (24시간 목표) |
-| `/admin/audit` | ADM-11 | 개인정보 열람 감사 로그 |
-| `/admin/staff` | ADM-12 | 운영자 계정 + **역할별 권한 표** |
-| `/admin/content` `/admin/billing` | ADM-09 · ADM-08 | 담을 내용만 정의된 자리 |
+| 그룹 | 경로 | 화면 ID | 설명 |
+| --- | --- | --- | --- |
+| 운영 | `/admin2` · `/admin2/queue` | ADM-01 · EXP-07 | 대시보드 — 지표가 아니라 **오늘 처리할 큐**부터 / 판정 큐 |
+| 회원 | `/admin2/members` `/students` `/orgs` `/approvals` | ADM-02 계열 · ORG-02 | 회원 · 학생 명부(이름·생년월일 **기본 가림**) · 기관 · 가입 승인 |
+| 회원 | `/admin2/privacy` · `/privacy/purge` | ADM-10 · ADM-10-1 | 개인정보 열람 관리 · 파기 스케줄러 |
+| 문항관리 | `/admin2/authoring` `/review` `/items` | EXP-02 · EXP-03 · ADM-04 | 출제 → 교차 검수 → 문항 은행 |
+| 평가 관리 | `/admin2/rounds` · `/forms` | ADM-05 · ADM-04-3 | 평가 회차 · 평가별 문항 편성 |
+| 채점 관리 | `/admin2/grading` · `/grading/members` | EXP-04 계열 | **채점·판정** — AI 1차 제안값 검토 → 전문가 확정 (이 존의 중심) |
+| 면담 관리 | `/admin2/interviews` `/interviews/calendar` `/counselors` | EXP-06 계열 | 면담 신청 · 일정 · 상담사 |
+| 리포트 관리 | `/admin2/reports/approval` `/templates` `/rules` | EXP-08 · ADM-08 계열 | 리포트 승인 · 해석 템플릿 · 조립 규칙 |
+| 콘텐츠 | `/admin2/notices` `/faq` `/clips` `/inquiries` | ADM-15 계열 · ADM-10 | 공지 · FAQ · 홍보 영상 · 1:1 문의 |
+| 결제 관리 | `/admin2/products` · `/payments` | PAY-01 · PAY-02 | 상품 · 결제 내역 |
+| 시스템 | `/admin2/staff` `/audit` `/settings` `/ai` | ADM-03 · ADM-11 · ADM-13 계열 | 운영자·권한 · 감사 로그 · 시스템 설정 · AI 프롬프트 |
 
 **설계 기준 세 가지**
 
 1. **판정 큐가 중심** — HITL(PUB-02-2)이 제품의 약속이므로, CRUD가 아니라 확정 대기 큐가 첫 화면 다음에 옵니다.
-   검토 의견을 10자 이상 적어야 판정을 확정할 수 있고, 컷 경계 사례는 회의로 넘기도록 안내합니다.
-2. **개인정보는 사유 없이 열리지 않음** — 목록에서 이름·생년월일을 가려 두고, `가림 해제` 시
-   사유 선택 + 10자 이상 설명을 받은 뒤에야 그 행만 엽니다. 연 기록은 즉시 감사 로그에 쌓입니다
-   ([components/admin/ReasonDialog.tsx](components/admin/ReasonDialog.tsx)).
-3. **역할로 권한을 쪼갬** — 출제위원은 학생 개인정보를 못 보고, 고객지원은 판정을 확정할 수 없습니다.
-   권한 없는 화면은 메뉴에서 감추지 않고 **이유를 적어 보여 줍니다**(문의가 줄어듭니다).
-   상단 바의 역할 선택으로 권한별 화면 차이를 바로 확인할 수 있습니다.
+2. **개인정보는 사유 없이 열리지 않음** — 목록에서 이름·생년월일을 가려 두고, 가림 해제 시
+   사유와 설명을 받은 뒤에야 그 행만 엽니다. 연 기록은 즉시 감사 로그에 쌓입니다.
+3. **역할로 권한을 쪼갬** — 출제자와 검수자를 갈라 이해충돌을 막습니다(`lib/admin.ts`의 RBAC).
 
-**50~60대 운영자 기준으로 잡은 규칙** ([components/admin/ui.ts](components/admin/ui.ts))
-
-- 표 셀까지 **16px**이 기본. 12~13px은 쓰지 않고, 배지·라벨도 14px 아래로 내리지 않습니다.
-- 상단 바에 **글자 크기(보통·크게·아주 크게)** 를 상시로 둡니다. `--adm-zoom` 하나만 바꾸면
-  콘솔 전체가 같은 비율로 커지고(16 → 20.8px), 선택은 브라우저에 기억됩니다.
-- 버튼 최소 높이 44px, 표 안 버튼도 36px. **아이콘만 있는 버튼을 만들지 않습니다.**
-- hover에서만 나타나는 동작이 없습니다. 메뉴는 접히지 않고 항상 글자로 보입니다.
-- 현재 위치는 색 하나가 아니라 **왼쪽 막대 + 배경 + 굵은 글씨** 를 겹쳐서 알립니다.
-- 상태는 색만으로 구분하지 않고 **항상 글자 라벨**을 함께 붙입니다(확신도 63점 → "낮음 · 사람이 꼭 확인").
-- 되돌리기 어려운 동작(승인·반려·확정)은 무슨 일이 일어나는지 문장으로 적고 한 번 더 묻습니다.
+> 한동안 `/admin`(네 역할이 함께 쓰는 옛 콘솔)과 `/admin2`가 같이 있었습니다. 지금은 `/admin2` 하나만
+> 남습니다. 옛 콘솔에만 있던 화면(설문 원본 ADM-14 · 문항 회전 · 심리측정 등)은 아직 옮겨지지 않았고,
+> 필요해지면 `/admin2` 아래에 새로 세웁니다 — 지운 화면은 git 이력에 그대로 있습니다.
 
 ## 동작하는 기능
 
@@ -202,13 +191,14 @@ npm run lint    # ESLint
 app/(site)/   공개 존 (Header/Footer 포함, 밝은 톤)
 app/(exam)/   응시 존 (별도 레이아웃, 어두운 톤)
 app/(account)/ 계정·동의 존 — /signup · /login · /my
-app/(admin)/  관리자 존 (왼쪽 메뉴 콘솔, noindex)
+app/(admin2)/ 관리자 존 (왼쪽 메뉴 콘솔, noindex)
 components/exam/     응시·설문 화면 + ui.ts(공통 스타일)
 components/account/  가입·로그인 화면
 components/site/     허브·하위 페이지·브랜드·참여진 렌더러
-components/admin/    관리자 콘솔 + ui.ts(큰 글자·큰 버튼 규칙)
+components/admin2/   관리자 콘솔 공통 부품 (표·다이얼로그·셸)
 lib/nav.ts           헤더·푸터 메뉴 정의 (화면 ID 포함)
-lib/admin.ts         관리자 메뉴·권한(RBAC)·예시 데이터
+lib/admin.ts         권한(RBAC)·회차·예시 데이터
+lib/admin2.ts        관리자 콘솔 메뉴 정의 (화면 ID 포함)
 lib/adminStore.ts    운영자 역할 전환 · 글자 크기 · 열람 기록
 lib/brand.ts         GENIXX 여섯 글자 의미
 lib/people.ts        참여진 프로필 (⚠ 예시 데이터)
