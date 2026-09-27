@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { roomHref } from "@/lib/examCatalog";
 import { useExamRecord } from "@/lib/examStore";
 import { progressOf, phaseTone, subjectTone, type StudentProgress } from "@/lib/progress";
 import { useRegistrations } from "@/components/exam/Registrations";
@@ -31,7 +30,7 @@ import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
  * 들어가야 하는 줄 알게 된다 — 갈 곳은 바로 옆의 단추다.
  */
 function todoLine(p: StudentProgress) {
-  if (p.phase === "미응시") return "아직 시작하지 않았습니다. 평가 페이지에서 첫 과목을 열면 시작됩니다.";
+  if (p.phase === "미응시") return "아직 시작하지 않았습니다. 「평가 보기」에서 첫 과목을 열면 시작됩니다.";
   if (p.phase === "응시중") return `${p.total - p.submitted}과목이 남았습니다.`;
   if (p.phase === "제출완료")
     return p.surveys === 0
@@ -46,9 +45,10 @@ export default function StudentHome() {
   const rows = useRegistrations(self.id);
   const latest = rows[0];
 
-  /* 접수한 평가가 있으면 그 평가 판으로, 없으면 응시 존 첫 화면으로 보낸다 */
-  const goHref = latest ? roomHref(latest.round, latest.track) : "/exam";
-  const goLabel = latest ? "평가 페이지로 가기" : "응시 존으로 가기";
+  /* 접수한 평가가 있으면 대시보드 안의 평가 판으로, 없으면 접수하러 보낸다.
+     응시 존으로 건너뛰지 않는다 — 과목은 「평가 보기」에서 바로 열린다 */
+  const goHref = latest ? "/student/exams" : "/exam/apply";
+  const goLabel = latest ? "평가 보기" : "접수하러 가기";
 
   const progress = self.student ? progressOf(self.student) : null;
   const tone = progress ? phaseTone[progress.phase] : null;
@@ -84,7 +84,7 @@ export default function StudentHome() {
                   ? "아직 접수한 평가가 없습니다"
                   : progress
                     ? todoLine(progress)
-                    : "평가 페이지에서 이어서 응시하세요."}
+                    : "평가 보기에서 이어서 응시하세요."}
             </p>
             {self.hydrated && latest && (
               <p className="mt-2 text-[13px] text-soft-muted">{latest.title}</p>
@@ -147,7 +147,7 @@ export default function StudentHome() {
         <h2 className="mb-3 text-[17px] font-bold tracking-tight text-soft-ink">바로가기</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {[
-            { href: "/student/exams", t: "내 평가", d: "접수한 평가와 응시 상태" },
+            { href: "/student/exams", t: "평가 보기", d: "국어·수학·과학을 바로 응시" },
             { href: "/student/results", t: "응시 결과", d: "8재능 팔각형과 전문가 평가" },
             { href: "/exam/answers", t: "정답과 해설", d: "제출을 마친 평가의 정오표" },
             { href: "/exam/info", t: "시험 안내", d: "과목·문항 수·시간" },

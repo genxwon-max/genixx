@@ -120,12 +120,12 @@ const parentMenu: Item[] = [
  * 하나뿐이고, 학생 등록·결제·면담처럼 보호자가 하는 일은 눌러 봐야 「보호자 계정에서
  * 확인하세요」만 나온다. 그래서 학생 등록은 이 레일에 아예 없다.
  *
- * 실제 응시는 응시 존(/exam)에서 한다. 여기서는 「평가 페이지로 가기」로 그 자리로
- * 건너가고, 돌아오면 같은 레일이 그대로 있다.
+ * 응시도 이 레일 안에서 한다 — 「평가 보기」가 과목 셋을 바로 펴고, 누르면 응시 창이
+ * 뜬다. 접수(/exam/apply)와 정답·해설만 아직 응시 존에 남아 있다.
  */
 const studentMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
-  { href: "/student/exams", label: "내 평가", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/exams", label: "평가 보기", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
   { href: "/student/results", label: "응시 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
   { href: "/student/account", label: "내 정보", sid: "ACC-04", icon: <Icon>{ic.me}</Icon> },

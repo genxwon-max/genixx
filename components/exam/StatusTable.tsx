@@ -83,15 +83,29 @@ export type StatusHeading = {
   period: string;
 };
 
-export default function StatusTable({ heading }: { heading?: StatusHeading }) {
+export default function StatusTable({
+  heading,
+  studentId: forced,
+  resultHref = "/exam/report",
+}: {
+  heading?: StatusHeading;
+  /**
+   * 볼 학생을 밖에서 정해 줄 때. 학생 대시보드(/student/exams)가 이 판을 그대로 품어
+   * 쓰는데, 거기서는 누구의 것인지를 그 화면이 이미 정해 두었다(components/student/self.tsx).
+   * 넘어오면 「학생 세션이 아니면 돌려보내기」도 하지 않는다 — 부른 쪽이 이미 정했으므로.
+   */
+  studentId?: string;
+  /** 「결과 확인」과 최종 제출 뒤에 가는 곳. 대시보드에서는 /student/results다 */
+  resultHref?: string;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
   const config = useExamConfig();
-  const studentId = session?.studentId ?? "demo";
+  const studentId = forced ?? session?.studentId ?? "demo";
   const record = useExamRecord(studentId);
   /* 셋트를 풀고 가입한 학생이 이 화면에 바로 닿을 수 있다 — 그 답을 물려받아 둔다 */
-  useClaimSet(session?.role === "student" ? studentId : null);
+  useClaimSet(forced || session?.role === "student" ? studentId : null);
   const roster = useRoster();
   const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
   /** 문자를 보낼 설문 — 번호 받는 창이 열려 있다 */
@@ -109,8 +123,8 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
   const missing = missingSurveys(record);
   const asGuardian = session?.asGuardian === true;
 
-  // 학생 세션이 아니면 응시 현황을 볼 대상이 없다
-  if (hydrated && session && session.role !== "student") {
+  // 학생 세션이 아니면 응시 현황을 볼 대상이 없다 (밖에서 정해 준 경우는 제외)
+  if (!forced && hydrated && session && session.role !== "student") {
     return <StudentOnly role={session.role} />;
   }
 
@@ -441,7 +455,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
             시연용 초기화
           </button>
           {record.finalized ? (
-            <Link href="/exam/report" className={btnPrimary}>
+            <Link href={resultHref} className={btnPrimary}>
               결과 확인
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -483,7 +497,7 @@ export default function StatusTable({ heading }: { heading?: StatusHeading }) {
               record,
             );
             setAskFinal(false);
-            router.push("/exam/report");
+            router.push(resultHref);
           }}
         />
       )}
