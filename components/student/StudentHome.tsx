@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { roomHref } from "@/lib/examCatalog";
 import { useExamRecord } from "@/lib/examStore";
-import { progressOf, phaseTone, subjectTone } from "@/lib/progress";
+import { progressOf, phaseTone, subjectTone, type StudentProgress } from "@/lib/progress";
 import { useRegistrations } from "@/components/exam/Registrations";
 import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
 
@@ -22,6 +22,24 @@ import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
  * 따로 있어서다 — 남은 시간과 과목만 남기고 메뉴를 감추는 그 틀이 대시보드 레일과 함께
  * 설 수 없다. 그래서 이 화면은 그 자리로 **건너가는 단추**를 가장 크게 둔다.
  */
+/**
+ * 「지금 할 일」 한 줄 — 아이에게 하는 말.
+ *
+ * 보호자 화면이 쓰는 문장(progressOf의 nextAction)을 그대로 가져오지 않는다. 저쪽은
+ * 「접속코드로 응시 화면에 들어가면 시작됩니다」처럼 **코드를 아이에게 넘길 사람**에게
+ * 하는 말이다. 이미 로그인해 단추 앞에 앉은 아이가 그 문장을 읽으면 자기가 어디로 또
+ * 들어가야 하는 줄 알게 된다 — 갈 곳은 바로 옆의 단추다.
+ */
+function todoLine(p: StudentProgress) {
+  if (p.phase === "미응시") return "아직 시작하지 않았습니다. 평가 페이지에서 첫 과목을 열면 시작됩니다.";
+  if (p.phase === "응시중") return `${p.total - p.submitted}과목이 남았습니다.`;
+  if (p.phase === "제출완료")
+    return p.surveys === 0
+      ? "과목을 모두 냈습니다. 설문을 채우거나 그대로 최종 제출할 수 있습니다."
+      : "과목을 모두 냈습니다. 최종 제출하면 결과 분석이 시작됩니다.";
+  return "결과 리포트를 볼 수 있습니다.";
+}
+
 export default function StudentHome() {
   const self = useSelf();
   const record = useExamRecord(self.id);
@@ -64,7 +82,9 @@ export default function StudentHome() {
                 ? "확인 중입니다…"
                 : !latest
                   ? "아직 접수한 평가가 없습니다"
-                  : (progress?.nextAction ?? "평가 페이지에서 이어서 응시하세요.")}
+                  : progress
+                    ? todoLine(progress)
+                    : "평가 페이지에서 이어서 응시하세요."}
             </p>
             {self.hydrated && latest && (
               <p className="mt-2 text-[13px] text-soft-muted">{latest.title}</p>
