@@ -1,0 +1,55 @@
+구분,화면명,URL,설명
+운영,대시보드,https://genixx-theta.vercel.app/admin2,ADM-01. 지표가 아니라 「오늘 처리할 큐」부터 보여 준다. 기둥(왼쪽 메뉴)의 배지와 「내 앞에 쌓인 것」이 같은 값을 쓴다.
+운영,판정 큐,https://genixx-theta.vercel.app/admin2/queue,EXP-07. AI 1차 제안값을 사람이 확정하는 자리 — 이 콘솔의 중심. 아직 확정되지 않은 건(AI·검토·협진)이 배지로 선다.
+회원,회원,https://genixx-theta.vercel.app/admin2/members,ADM-02. 회원 명부. 연락처는 가려서 표시한다.
+회원,회원 상세,https://genixx-theta.vercel.app/admin2/members/[id],회원 한 사람의 가입 정보·동의·자녀·결제 이력.
+회원,학생·접속코드,https://genixx-theta.vercel.app/admin2/students,"ADM-02-1. 학생 명부와 접속코드. 이름·생년월일은 기본 가림이고, 사유를 적어야 그 줄만 열린다."
+회원,학생 상세,https://genixx-theta.vercel.app/admin2/students/[id],학생 한 명의 등록 정보·접속코드·응시 이력.
+회원,기관,https://genixx-theta.vercel.app/admin2/orgs,ORG-02. 기관 계약과 응시권 배정.
+회원,기관 상세,https://genixx-theta.vercel.app/admin2/orgs/[id],기관 하나의 계약·구성원·배정 현황.
+회원,가입 승인,https://genixx-theta.vercel.app/admin2/approvals,ADM-02-2. 교사·기관담당자 가입 신청을 받는 자리(/my/pending의 반대편). 처리한 신청은 브라우저 저장소에만 남아 배지를 화면에서 센다.
+회원,가입 신청 상세,https://genixx-theta.vercel.app/admin2/approvals/[id],신청 한 건을 펴서 승인·반려한다. 예: /admin2/approvals/AP-2608-031
+회원,개인정보 관리,https://genixx-theta.vercel.app/admin2/privacy,ADM-10. 「이 회원이 무엇에 동의했나」를 보는 자리. 회원을 보다가 드는 물음이라 명부 옆에 둔다.
+회원,개인정보 상세,https://genixx-theta.vercel.app/admin2/privacy/[id],한 사람의 동의 이력과 열람 기록.
+회원,파기 스케줄러,https://genixx-theta.vercel.app/admin2/privacy/purge,ADM-10-1. 파기 대상과 일정. 명부에서 일부러 떼어 둔다 — 매일 훑는 화면 안에 되돌릴 수 없는 단추를 두지 않기 위해서다.
+문항관리,문항 출제,https://genixx-theta.vercel.app/admin2/authoring,EXP-02. 「무엇부터 여나」만 답하는 목록 — 작성 중과 반려됨이 선다. 실제로 채우는 일은 문항 상세에서 한다.
+문항관리,문항 검수,https://genixx-theta.vercel.app/admin2/review,EXP-03. 검수 대기 목록. 기둥에 세운 까닭은 「지금 검수할 게 몇 개인가」를 은행에 들어가 거르개를 걸어야 알 수 있었기 때문이다.
+문항관리,문항 은행,https://genixx-theta.vercel.app/admin2/items,ADM-04. 승인되어 쌓인 문항. 상태·과목·학년으로 거른다.
+문항관리,문항 상세,https://genixx-theta.vercel.app/admin2/items/[id],고치는 자리는 여기 하나다 — 출제·검수 화면은 무엇부터 열지만 답한다. 예: /admin2/items/IT-2601
+평가 관리,평가 회차,https://genixx-theta.vercel.app/admin2/rounds,ADM-05. 언제 여는가 · 어떤 학년과 과목을 보는가. 회차 진행률과 응시·포기 현황.
+평가 관리,회차 생성,https://genixx-theta.vercel.app/admin2/rounds/new,새 회차를 연다. 학년과 과목은 회차마다 정하는 값이라 여기서 고른다(PlanPicker).
+평가 관리,회차 편성,https://genixx-theta.vercel.app/admin2/rounds/[id],ADM-05-4. 회차 하나의 기간·정원·값과 회차 공지·유의사항. 예: /admin2/rounds/2026-3
+평가 관리,평가별 문항관리,https://genixx-theta.vercel.app/admin2/forms,ADM-04-3. 회차마다 과목별 검사지가 어디까지 짜였는가.
+평가 관리,회차 문항 편성,https://genixx-theta.vercel.app/admin2/forms/[round],그 회차의 검사지에 문항을 담는 자리. 과목별 재고가 고르는 자리 바로 옆에 선다. 예: /admin2/forms/2026-3
+채점 관리,평가 채점,https://genixx-theta.vercel.app/admin2/grading,EXP-04. 「지금 봐야 하는 응답이 무엇인가」 — 단위가 「응답」이라 확신도가 낮은 것부터 훑는다. AI 채점 검토와 루브릭 채점이 한 화면이다.
+채점 관리,채점대,https://genixx-theta.vercel.app/admin2/grading/[id],응답 하나를 펴서 배점과 근거를 적는 자리. 예: /admin2/grading/SC-…
+채점 관리,회원 채점,https://genixx-theta.vercel.app/admin2/grading/members,EXP-04-1. 「이 아이에게 무엇을 돌려주는가」 — 단위가 「사람」이라 답안지를 통째로 펴 놓고 배점을 손보고 해설을 붙인다. 자료는 평가 채점과 한 벌이다.
+채점 관리,답안지,https://genixx-theta.vercel.app/admin2/grading/members/[key],학생 한 명의 답안지 전체. 여기서 고친 배점이 평가 채점 목록에 그대로 선다.
+면담 관리,면담 신청,https://genixx-theta.vercel.app/admin2/interviews,EXP-06. 「누구부터 잡나」 — 단위가 케이스라 상태와 대기 일수로 세운다. 대기 건수가 배지로 선다.
+면담 관리,면담 상세,https://genixx-theta.vercel.app/admin2/interviews/[id],면담 한 건의 신청 내용·일정·기록. 판정의 근거 문자열이 이 번호를 itv=…로 가리킨다. 예: /admin2/interviews/IV-2603-0423
+면담 관리,면담 일정,https://genixx-theta.vercel.app/admin2/interviews/calendar,EXP-06-1. 「어느 날이 비었나」 — 단위가 날짜라 달력으로 편다.
+면담 관리,상담사 관리,https://genixx-theta.vercel.app/admin2/counselors,"EXP-06-2. 면담을 맡는 사람. 근무 요일과 맡는 물음, 「이 사람의 30분」 값을 한 화면에서 정한다 — 그래서 상품 목록이 아니라 여기에 있다."
+면담 관리,상담사 상세,https://genixx-theta.vercel.app/admin2/counselors/[id],상담사 한 사람의 일정·단가·배정 현황.
+리포트 관리,리포트 승인,https://genixx-theta.vercel.app/admin2/reports/approval,EXP-08. 확정된 판정을 리포트로 내보내는 자리. 이 그룹에서 매일 여는 것은 이 화면이다.
+리포트 관리,리포트 상세,https://genixx-theta.vercel.app/admin2/reports/approval/[id],리포트 한 장을 펴서 문구를 확인하고 발행한다. 문구가 이상하면 곧바로 해석 템플릿으로 간다.
+리포트 관리,해석 템플릿,https://genixx-theta.vercel.app/admin2/reports/templates,ADM-08-1. 아이에게 나가는 「글」을 쓴다. 단위가 문장이고 학년대마다 다르다. 활동 제안도 이 안의 한 자리(slot: activity)로 들어가 있다.
+리포트 관리,해석 템플릿 상세,https://genixx-theta.vercel.app/admin2/reports/templates/[id],템플릿 한 벌의 문장을 고친다.
+리포트 관리,조립 규칙,https://genixx-theta.vercel.app/admin2/reports/rules,ADM-08-4. 그 글을 「언제 부를지」를 정한다. 단위가 조건이고 학년과 무관하다. 잘못 건드리면 리포트가 통째로 달라지는 값이라 템플릿과 화면을 갈라 두었다.
+콘텐츠,공지,https://genixx-theta.vercel.app/admin2/notices,ADM-15. 사이트 공지 — 회차 모집·점검 안내. (회차마다 붙는 공지·유의사항은 회차 편성에서 고친다.)
+콘텐츠,공지 상세,https://genixx-theta.vercel.app/admin2/notices/[id],공지 한 건을 쓰고 고친다.
+콘텐츠,자주 묻는 질문,https://genixx-theta.vercel.app/admin2/faq,ADM-15-1. 고객지원(/support/faq)과 홈이 읽는 목록. 여태 화면 파일에 박혀 있어 운영자가 손댈 수 없던 글을 여기로 들였다.
+콘텐츠,자주 묻는 질문 상세,https://genixx-theta.vercel.app/admin2/faq/[id],문답 한 건을 쓰고 고친다.
+콘텐츠,홍보 영상,https://genixx-theta.vercel.app/admin2/clips,"ADM-15-2. 첫 화면에 걸리는 영상. 적는 것이 글이 아니라 유튜브 주소일 뿐, 고치러 오는 사람은 공지·FAQ와 같은 사람이다."
+콘텐츠,홍보 영상 상세,https://genixx-theta.vercel.app/admin2/clips/[id],영상 한 건의 주소와 문구.
+콘텐츠,문의,https://genixx-theta.vercel.app/admin2/inquiries,ADM-10. 1:1 문의와 기관 도입 문의. 답하지 않은 건이 배지로 선다. 자주 묻는 질문 바로 아래에 둔 까닭은 답을 쓰다가 「아예 올려 두자」로 이어지기 때문이다.
+콘텐츠,문의 상세,https://genixx-theta.vercel.app/admin2/inquiries/[id],문의 한 건에 답한다. 예: /admin2/inquiries/IQ-26080912
+결제 관리,상품 관리,https://genixx-theta.vercel.app/admin2/products,PAY-01. 무엇을 얼마에 파는가 — 등록하고 고치는 자리. 여기서 정한 값을 접수·결제 화면이 그대로 읽는다.
+결제 관리,상품 등록,https://genixx-theta.vercel.app/admin2/products/new,새 상품을 등록한다.
+결제 관리,상품 수정,https://genixx-theta.vercel.app/admin2/products/[id],상품 하나의 값과 조건을 고친다.
+결제 관리,결제 내역,https://genixx-theta.vercel.app/admin2/payments,PAY-02. 그래서 얼마가 들어왔는가 — 「읽기만 한다」. 승인·취소·환불은 결제대행사에서 일어나고 여기로는 결과만 넘어온다.
+시스템,운영자·권한,https://genixx-theta.vercel.app/admin2/staff,ADM-03. 운영자 계정과 역할별 권한 표.
+시스템,운영자 상세,https://genixx-theta.vercel.app/admin2/staff/[id],운영자 한 사람의 역할과 권한.
+시스템,감사 로그,https://genixx-theta.vercel.app/admin2/audit,ADM-11. 개인정보 열람 기록. 가림을 연 건은 전건이 여기로 쌓인다.
+시스템,시스템 설정,https://genixx-theta.vercel.app/admin2/settings,ADM-13. 지금 걸려 있는 값을 읽는 자리.
+시스템,AI 프롬프트,https://genixx-theta.vercel.app/admin2/ai,ADM-13-1. 시스템 설정 가운데 운영자가 실제로 손댈 수 있는 한 갈래. 프롬프트 하나가 출제·채점·판정에 걸쳐 있어 어느 업무 그룹에도 넣지 않았다.
+시스템,AI 프롬프트 상세,https://genixx-theta.vercel.app/admin2/ai/[id],프롬프트 한 벌을 고치고 판을 남긴다.
