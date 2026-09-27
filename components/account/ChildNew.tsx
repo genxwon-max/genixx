@@ -12,6 +12,7 @@ import {
 } from "@/lib/account";
 import { clearChildDraft } from "@/lib/childStore";
 import { useHydrated } from "@/lib/examStore";
+import AddressField, { emptyAddress, sidoOf, type AddressValue } from "./AddressField";
 import { addStudents, formatCode, type ChildProfile } from "@/lib/roster";
 import { useSession } from "@/lib/authStore";
 import { ArrowRight } from "@/components/Icons";
@@ -56,15 +57,6 @@ const schoolLevels = [
   { id: "고등", label: "고등학교", grades: [1, 2, 3] },
 ];
 const genders = ["남자", "여자"];
-const regions = [
-  "서울",
-  "경기·인천",
-  "강원",
-  "충청·대전·세종",
-  "전라·광주",
-  "경상·대구·부산·울산",
-  "제주",
-];
 const interestAreas = [
   "읽기·글쓰기",
   "수학·논리",
@@ -149,11 +141,12 @@ export default function ChildNew() {
     /** 학년 숫자만 — 학교급과 붙여서 「초등 4학년」으로 저장한다 */
     grade: "",
     gender: "",
-    region: "",
     observation: "",
     school: "",
     learningNote: "",
   });
+  /* 주소는 칸이 넷(우편번호 · 주소 · 상세 · 시·도)이라 한 덩이로 든다 */
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [interests, setInterests] = useState<string[]>([]);
   const [learning, setLearning] = useState<string[]>([]);
   const [agreed, setAgreed] = useState<string[]>([]);
@@ -217,7 +210,11 @@ export default function ChildNew() {
     const list = (v: string[]) => (v.length ? v : undefined);
     const profile: ChildProfile = {
       gender: form.gender || undefined,
-      region: form.region || undefined,
+      region: sidoOf(address) || undefined,
+      district: address.sigungu || undefined,
+      zonecode: address.zonecode || undefined,
+      address: address.address || undefined,
+      addressDetail: text(address.detail),
       interests: list(interests),
       observation: text(form.observation),
       learning: list(learning),
@@ -416,37 +413,27 @@ export default function ChildNew() {
         </div>
 
         <div className="mt-5 grid gap-6">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <p id="c-gender" className={fieldLabel}>
-                성별
-              </p>
-              <Chips
-                labelledBy="c-gender"
-                options={genders}
-                picked={form.gender ? [form.gender] : []}
-                onToggle={(v) => set("gender", form.gender === v ? "" : v)}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="c-region" className={fieldLabel}>
-                거주 지역
-              </label>
-              <select
-                id="c-region"
-                value={form.region}
-                onChange={(e) => set("region", e.target.value)}
-                className={`mt-2 ${input}`}
-              >
-                <option value="">고르지 않음</option>
-                {regions.map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-[12px] text-soft-muted">시·도까지만 받습니다.</p>
-            </div>
+          <div>
+            <p id="c-gender" className={fieldLabel}>
+              성별
+            </p>
+            <Chips
+              labelledBy="c-gender"
+              options={genders}
+              picked={form.gender ? [form.gender] : []}
+              onToggle={(v) => set("gender", form.gender === v ? "" : v)}
+            />
           </div>
+
+          {/* 주소는 칸이 셋이라 한 줄을 통째로 쓴다 — 성별 옆에 끼우면 우편번호와
+              상세주소가 반 칸에 눌려 들어간다 */}
+          <AddressField
+            id="c-address"
+            label="거주지 주소"
+            hint="주소 찾기를 누르면 창이 열립니다. 적지 않으셔도 등록됩니다."
+            value={address}
+            onChange={setAddress}
+          />
 
           <div>
             <p id="c-interest" className={fieldLabel}>

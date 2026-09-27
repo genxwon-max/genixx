@@ -102,7 +102,14 @@ export default function ChildDetail({ id }: { id: string }) {
 
   const extras = [
     { k: "성별", v: p?.gender },
-    { k: "거주 지역", v: p?.region },
+    /* 주소를 적은 집은 주소로 보여 준다. 시·도 칸(region)은 지역별로 셀 때 쓰는 값이라
+       주소와 나란히 세우면 같은 것을 두 번 읽는다. 예전 저장분에는 주소 없이 권역만
+       있으므로 그때는 그 값을 「거주 지역」으로 세운다 */
+    {
+      k: "거주지 주소",
+      v: p?.address ? [p.zonecode && `(${p.zonecode})`, p.address, p.addressDetail].filter(Boolean).join(" ") : undefined,
+    },
+    { k: "거주 지역", v: p?.address ? undefined : p?.region },
     { k: "관심 분야", v: listed(p?.interests) },
     { k: "학교 유형", v: p?.schoolType },
     { k: "가정에서 쓰는 언어", v: p?.language },

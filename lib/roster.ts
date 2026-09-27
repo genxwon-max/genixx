@@ -85,8 +85,25 @@ export type Student = {
  */
 export type ChildProfile = {
   gender?: string;
-  /** 시·도까지만 */
+  /**
+   * 시·도 — 「서울」 「경기」. 주소를 고르면 거기서 딴다.
+   *
+   * 주소 전체를 두고도 따로 들고 있는 까닭은, 지역별로 세거나 묶어 보는 자리가 이 한
+   * 칸만 읽으면 되게 하기 위해서다. 주소 문자열을 매번 앞에서 잘라 쓰면 자르는 규칙이
+   * 화면마다 조금씩 달라진다.
+   *
+   * 예전 저장분에는 골라 넣은 권역(「충청·대전·세종」 같은 묶음)이 들어 있다. 그대로 둔다 —
+   * 보호자가 그때 고른 값이고, 지금 꼴로 고쳐 쓸 근거가 없다.
+   */
   region?: string;
+  /** 시·군·구 — 「강남구」 */
+  district?: string;
+  /** 우편번호 5자리 */
+  zonecode?: string;
+  /** 도로명(또는 지번) 주소 */
+  address?: string;
+  /** 동·호수 — 보호자가 직접 적는 나머지 */
+  addressDetail?: string;
   interests?: string[];
   /** 보호자가 관찰한 자녀 특성 — 진단 결과를 해석할 때만 쓴다 */
   observation?: string;
