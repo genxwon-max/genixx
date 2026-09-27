@@ -146,7 +146,7 @@ export default function ExamStatusBar() {
       <HeadRow name={examName} subject={trialName}>
         {/* 시작하기 전(표지)에는 나갈 길이 「창 닫기」다. 시작한 뒤에는 전체화면이라
             브라우저의 닫기 단추가 보이지 않으므로 「셋트 그만하기」가 그 자리를 잇는다 */}
-        {canExit ? <ExitLink>셋트 그만하기</ExitLink> : <CloseWindow />}
+        {canExit ? <ExitLink>셋트 그만하기</ExitLink> : <CloseWindow fallback="/exam/apply" />}
       </HeadRow>
     );
   }
@@ -158,13 +158,24 @@ export default function ExamStatusBar() {
      이름(「2026학년도 1회차(26A)」)이 되어, 아이가 접수한 평가와 **다른 이름**이 한 번
      번쩍이고 사라진다. 틀린 이름을 잠깐 보여 주느니 이름 없이 한 박자 기다린다 */
   if (!rec || !hydrated) {
-    return <HeadRow name={hydrated ? examName : null} subject={subjectText}>{null}</HeadRow>;
+    return (
+      <HeadRow name={hydrated ? examName : null} subject={subjectText}>
+        <CloseWindow fallback="/exam" />
+      </HeadRow>
+    );
   }
   /* 표지에서는 머리에 평가명과 과목만 둔다. 「아직 시작하지 않았습니다」는 종이 한가운데가
      이미 「시작하기 전에는 이 면을 넘기지 마시오」로 말하고 있는 것이라, 머리에 한 번 더
      적으면 같은 말이 한 화면에 둘이 된다 */
   if (!live) {
-    return <HeadRow name={examName} subject={subjectText}>{null}</HeadRow>;
+    /* 나갈 길은 **표지에서만** 둔다. 제출한 뒤의 해석 작성 화면도 여기로 오는데(시계가
+       멎었으므로), 거기에 「창 닫기」를 세우면 방금 쓰던 해석을 두고 나가는 손잡이가
+       문항 옆에 서게 된다. 아직 한 번도 시작하지 않았을 때만 세운다 */
+    return (
+      <HeadRow name={examName} subject={subjectText}>
+        {rec.startedAt ? null : <CloseWindow fallback="/exam" />}
+      </HeadRow>
+    );
   }
 
   const started = rec.startedAt ? new Date(rec.startedAt).getTime() : now;
@@ -238,12 +249,16 @@ function HeadRow({
  * 응시 창은 대시보드에서 띄운 별도 창이라, 시험지 한 장만 놓고 보면 돌아갈 길이 보이지
  * 않는다. 닫는 일은 어느 화면에서나 오른쪽 위에 있으므로 그 자리에 둔다 — 종이 위에
  * 얹으면 시험지 안에 종이 밖의 단추가 서게 된다.
+ *
+ * 팝업이 막혀 같은 탭에서 열린 사람에게는 창을 닫을 수가 없어 주소로 돌려보낸다. 그
+ * 돌아갈 자리가 갈래마다 다르다 — 셋트는 아직 회원이 아닌 사람이 온 자리라 평가 목록이고,
+ * 무료·유료시험은 접수한 사람이 온 자리라 응시하기다.
  */
-function CloseWindow() {
+function CloseWindow({ fallback }: { fallback?: string }) {
   return (
     <button
       type="button"
-      onClick={() => closeExamWindow()}
+      onClick={() => closeExamWindow(fallback)}
       className="inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1.5 text-[13px] text-exam-muted transition-colors hover:bg-exam-raised hover:text-exam-text"
     >
       <CloseIcon className="h-4 w-4" />
