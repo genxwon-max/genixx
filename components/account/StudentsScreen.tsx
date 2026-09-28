@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import StudentRegistrar from "@/components/exam/StudentRegistrar";
 import { useSession } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
-import { CONSENT_AGE } from "@/lib/account";
-import { btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
 
 /**
  * 학생 명부·등록 — 대시보드 안에서 연다.
@@ -19,17 +16,28 @@ import { btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
  *                       「임시등록」으로 올라가고, 법정대리인에게 동의 요청을 보낼 수는
  *                       있어도 **대신 동의할 수는 없다.** 동의 버튼은 법정대리인의
  *                       화면에만 있다.
- *  · 학부모·법정대리인 : 자기 아이를 등록한다. 이 계정은 동의권자이므로 여기서 바로
- *                       동의할 수 있다. 만 14세 미만 아동의 개인정보는 법정대리인이
- *                       동의해야 처리할 수 있어서(개인정보보호법 제22조의2) 올리기 전에
- *                       한 번 확인하고 들어간다. 한 명씩 등록할 때는 아이마다 생년월일로
- *                       갈래를 확인하지만, 여러 명을 한 번에 올릴 때는 그 갈래를 화면에서
- *                       밟을 수 없기 때문이다.
+ *  · 학부모·법정대리인 : 자기 아이를 등록한다. 이 계정은 동의권자이므로 등록한 뒤
+ *                       아이마다 동의할 수 있다.
+ *
+ * ── 들어가기 전 동의 확인을 두지 않는다 ──
+ *
+ * 한동안 학부모에게 이 화면 앞에 관문을 하나 세웠다. 「나는 법정대리인이며 위 내용에
+ * 동의합니다」에 체크해야 등록 도구가 열렸다. 걷어 냈다.
+ *
+ * 가입할 때 이미 받은 것을 한 번 더 물었기 때문이다. 학부모 계정은 휴대폰 본인인증으로
+ * 법정대리인임을 확인하고 개인정보 수집·이용에 동의해야 만들어진다(lib/account.ts
+ * purposeConsents). 같은 것을 아이를 올릴 때마다 다시 확인하면, 두 번째부터는 읽지 않고
+ * 체크하는 칸이 된다 — 동의를 받는 화면이 그렇게 되면 안 받느니만 못하다.
+ *
+ * 걷어 내도 동의 기록은 달라지지 않는다. 그 관문은 무엇도 기록하지 않았다. 만 14세 미만
+ * 아이는 이 화면을 지나든 말든 「임시등록」(consent "temp")으로 올라가고, 동의는 언제나
+ * **아이마다** 받는다 — 한 명씩 등록(ChildNew)에서는 생년월일 뒤의 동의 칸이, 여럿을
+ * 올렸을 때는 명부 표의 동의 칸이 그 자리다. 동의권자와 동의 시점을 아이 단위로 남기는
+ * 것은 개인정보보호법 제22조의2가 요구하는 바이기도 하다.
  */
 export default function StudentsScreen({ tab = "one" }: { tab?: "one" | "bulk" }) {
   const hydrated = useHydrated();
   const session = useSession();
-  const [agreed, setAgreed] = useState(false);
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
 
@@ -41,89 +49,16 @@ export default function StudentsScreen({ tab = "one" }: { tab?: "one" | "bulk" }
     return <StudentRegistrar mode="director" initialTab={tab} />;
   }
 
-  if (agreed) {
-    return (
-      <>
-        {/* 등록 도구가 자기 제목을 이미 달고 있어서 여기서는 돌아가는 길만 둔다 */}
-        <Link
-          href="/my"
-          className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-soft-muted hover:text-soft-ink"
-        >
-          ← 홈으로
-        </Link>
-        <StudentRegistrar mode="parent" initialTab={tab} surveyPrompt={false} />
-      </>
-    );
-  }
-
   return (
     <>
-      <header className="mb-5">
-        <Link
-          href="/my"
-          className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-soft-muted hover:text-soft-ink"
-        >
-          ← 홈으로
-        </Link>
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-soft-ink sm:text-[30px]">
-          학생 등록
-        </h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-soft-muted">
-          여러 명을 한 번에 올리기 전에 법정대리인 동의를 한 번 확인합니다. 이 계정은 법정대리인
-          계정이라 여기서 바로 동의하실 수 있습니다.
-        </p>
-      </header>
-
-      <LegalNote title="법정대리인 동의" basis="개인정보보호법 제22조의2">
-        <p>
-          만 {CONSENT_AGE}세 미만 아동의 개인정보는 법정대리인이 동의해야 처리할 수 있습니다.
-          한 명씩 등록하실 때는 생년월일을 받아 이 갈래를 확인하지만, 여러 명을 한 번에 올릴
-          때는 여기서 한 번에 확인합니다.
-        </p>
-        <p>
-          만 {CONSENT_AGE}세 이상 자녀는 본인이 동의하는 것이 원칙입니다. 그 나이대의 아이는
-          자기 이름으로 가입해 본인 동의로 진행하는 쪽을 권해 드립니다.
-        </p>
-        <p>동의는 언제든 철회할 수 있고, 철회하시면 파기 절차가 자동으로 시작됩니다.</p>
-      </LegalNote>
-
-      <div className={`${card} ${cardPad} mt-4`}>
-        <p className="text-[15px] font-bold text-soft-ink">올리실 학생에 대해 확인해 주세요</p>
-        <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-[14px] leading-[1.7] text-soft-muted">
-          <li>
-            이름과 생년월일은 반드시 받고, 학교·학년은 아시는 만큼만 받습니다. 주민등록번호는 받지
-            않습니다.
-          </li>
-          <li>
-            생년월일은 만 {CONSENT_AGE}세 갈래를 가르는 값입니다. 만 {CONSENT_AGE}세 이상으로
-            확인되면 법정대리인 동의를 받지 않습니다.
-          </li>
-          <li>수집한 정보는 학력·재능 진단과 결과 리포트 작성에만 씁니다.</li>
-          <li>보관 기간은 수집일로부터 5년이며, 철회 시 지체 없이 파기합니다.</li>
-        </ul>
-
-        <label className="mt-5 flex cursor-pointer items-start gap-2.5">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 h-[18px] w-[18px] shrink-0"
-          />
-          <span className="text-[14px] leading-[1.6] text-soft-ink">
-            나는 등록하는 학생의 <b>법정대리인</b>(친권자 또는 미성년후견인)이며, 위 내용에
-            동의합니다.
-          </span>
-        </label>
-
-        <div className="mt-5 flex flex-wrap gap-2.5">
-          <button type="button" disabled className={`${btnPrimary} disabled:opacity-45`}>
-            체크하시면 다음으로 넘어갑니다
-          </button>
-          <Link href="/my/children/new" className={btnGhost}>
-            한 명씩 등록할게요
-          </Link>
-        </div>
-      </div>
+      {/* 등록 도구가 자기 제목을 이미 달고 있어서 여기서는 돌아가는 길만 둔다 */}
+      <Link
+        href="/my"
+        className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-soft-muted hover:text-soft-ink"
+      >
+        ← 홈으로
+      </Link>
+      <StudentRegistrar mode="parent" initialTab={tab} surveyPrompt={false} />
     </>
   );
 }
