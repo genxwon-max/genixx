@@ -116,8 +116,13 @@ export type ChildProfile = {
   learningNote?: string;
 };
 
-/** 생년월일만 보고 처음 놓일 상태를 고른다. 만 14세 이상은 동의 대기가 없다. */
+/**
+ * 생년월일만 보고 처음 놓일 상태를 고른다. 만 14세 이상은 동의 대기가 없다.
+ * 학부모가 올린 아이도 동의 대기가 없다 — 법정대리인 동의는 학부모 회원가입 때
+ * 본인인증과 함께 이미 받았다. 대기는 기관이 올린 만 14세 미만 아이에게만 선다.
+ */
 export function initialConsent(birth: string, owner: Owner): GuardianConsentStatus {
+  if (owner === "parent") return "granted";
   const age = ageFromBirth(birth);
   if (age !== null && age >= CONSENT_AGE) return owner === "self" ? "self" : "granted";
   return "temp";
@@ -367,47 +372,217 @@ export function findById(id: string) {
 
 /* ───────────────────────── 일괄 입력 파싱 ───────────────────────── */
 
+/**
+ * 일괄 등록 열.
+ *
+ * 한 명씩 등록(ChildNew)과 같은 항목을 같은 필수·선택 구분으로 받는다 — 필수는 이름 ·
+ * 생년월일 · 학교급 · 학년 · 휴대전화(있는 경우), 나머지는 선택이다. 예전에는 이름·생년월일
+ * 둘만 받고 나머지를 학교·학년·반 정도로 두어, 여럿을 올린 아이는 프로필이 비어 있었다.
+ *
+ * 기관은 반과 법정대리인 연락처·성명을 더 받는다(만 14세 미만 동의 요청에 쓴다).
+ *
+ * 머리글 행이 있으면 머리글 이름으로 열을 찾으므로 열 순서가 달라도 된다. 없으면 이 순서대로
+ * 읽는다. 엑셀에서 복사하면 탭으로 갈리는데, 그때는 탭으로만 자른다 — 관찰 특성 같은 글에
+ * 쉼표가 들어 있어도 칸이 밀리지 않게.
+ */
+export type BulkKey =
+  | "name"
+  | "birth"
+  | "level"
+  | "grade"
+  | "phone"
+  | "gender"
+  | "region"
+  | "school"
+  | "interests"
+  | "learning"
+  | "observation"
+  | "klass"
+  | "guardianPhone"
+  | "guardianName";
+
+export type BulkColumn = {
+  key: BulkKey;
+  label: string;
+  required: boolean;
+  /** 적는 법 — 「8자리」「초등·중등·고등」 */
+  hint?: string;
+  example: string;
+  /** 머리글로 알아볼 다른 이름 */
+  aliases?: string[];
+  /** 기관만 받는 열 */
+  orgOnly?: boolean;
+};
+
+export const bulkColumns: BulkColumn[] = [
+  { key: "name", label: "이름", required: true, example: "김하늘", aliases: ["성명", "name"] },
+  { key: "birth", label: "생년월일", required: true, hint: "8자리", example: "20160312", aliases: ["생일"] },
+  { key: "level", label: "학교급", required: true, hint: "초등·중등·고등", example: "초등" },
+  { key: "grade", label: "학년", required: true, hint: "숫자", example: "4" },
+  {
+    key: "phone",
+    label: "휴대전화",
+    required: true,
+    hint: "있는 경우",
+    example: "01012345678",
+    aliases: ["아이 휴대전화", "학생 휴대전화", "연락처"],
+  },
+  { key: "gender", label: "성별", required: false, hint: "남자·여자", example: "여자" },
+  { key: "region", label: "거주지", required: false, hint: "시·도", example: "서울", aliases: ["주소", "거주지 주소"] },
+  { key: "school", label: "학교명", required: false, example: "목동초등학교", aliases: ["학교"] },
+  {
+    key: "interests",
+    label: "관심 분야",
+    required: false,
+    hint: "/로 구분",
+    example: "수학·논리/과학·자연 탐구",
+  },
+  { key: "learning", label: "학습 경험", required: false, hint: "/로 구분", example: "영재교육원·영재학급" },
+  {
+    key: "observation",
+    label: "관찰 특성",
+    required: false,
+    example: "궁금한 게 생기면 답을 찾을 때까지 물어봐요",
+    aliases: ["보호자 관찰 특성", "관찰"],
+  },
+  { key: "klass", label: "반", required: false, example: "A반", orgOnly: true },
+  {
+    key: "guardianPhone",
+    label: "법정대리인 연락처",
+    required: false,
+    example: "01098765432",
+    orgOnly: true,
+    aliases: ["보호자 연락처"],
+  },
+  { key: "guardianName", label: "법정대리인 성명", required: false, example: "김보호", orgOnly: true, aliases: ["보호자 성명"] },
+];
+
+export const bulkColumnsFor = (org: boolean) => bulkColumns.filter((c) => org || !c.orgOnly);
+
+/** 예시 표 — 머리글 한 줄 + 예시 두 줄. 탭으로 잇는다(엑셀에 그대로 붙는다) */
+export function bulkSample(org: boolean) {
+  const cols = bulkColumnsFor(org);
+  const second: Partial<Record<BulkKey, string>> = {
+    name: "박서준",
+    birth: "20170925",
+    level: "초등",
+    grade: "3",
+    phone: "",
+    gender: "",
+    region: "",
+    school: "",
+    interests: "",
+    learning: "",
+    observation: "",
+    klass: "B반",
+    guardianPhone: "01011112222",
+    guardianName: "박보호",
+  };
+  return [
+    cols.map((c) => c.label).join("\t"),
+    cols.map((c) => c.example).join("\t"),
+    cols.map((c) => second[c.key] ?? "").join("\t"),
+  ].join("\n");
+}
+
 export type ParseResult = {
   rows: NewStudent[];
   errors: { line: number; text: string; reason: string }[];
 };
 
+const MAX_GRADE: Record<string, number> = { 초등: 6, 중등: 3, 고등: 3 };
+
+/** 「초등학교」「중학교」「고」 같은 적기를 초등·중등·고등으로 */
+function levelOf(v: string) {
+  if (/초/.test(v)) return "초등";
+  if (/중/.test(v)) return "중등";
+  if (/고/.test(v)) return "고등";
+  return "";
+}
+
+const multi = (v: string) =>
+  v
+    .split("/")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
 /**
- * CSV·TSV·엑셀 복사 붙여넣기를 모두 받는다.
- * 열 순서: 이름, 생년월일(8자리), 학교(선택), 학년(선택), 반(선택),
- *          법정대리인 연락처(선택), 법정대리인 성명(선택)
- *
- * 만 14세 미만 학생은 법정대리인 연락처가 있어야 동의 요청을 보낼 수 있다. 비어 있어도
- * 등록은 되지만 「임시등록」에 머문다.
- *
- * 반드시 있어야 하는 것은 이름과 생년월일뿐이다. 학원이 명부를 뽑을 때 학교·학년이
- * 비어 있는 줄이 섞이는 일이 흔한데, 그 줄 때문에 전체를 못 올리게 하지 않는다.
+ * CSV·TSV·엑셀 복사 붙여넣기를 모두 받는다. 열은 bulkColumns를 따른다.
  */
-export function parseRoster(text: string): ParseResult {
+export function parseRoster(text: string, org = false): ParseResult {
   const rows: NewStudent[] = [];
   const errors: ParseResult["errors"] = [];
+  const cols = bulkColumnsFor(org);
 
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
 
-  lines.forEach((line, i) => {
-    const cells = line.split(/\t|,|;/).map((c) => c.trim());
-    // 머리글 행은 건너뛴다
-    if (i === 0 && /이름|성명|name/i.test(cells[0] ?? "")) return;
+  const split = (line: string) =>
+    (line.includes("\t") ? line.split("\t") : line.split(/,|;/)).map((c) => c.trim());
 
-    const [name, birthRaw, school, grade, klass, phone, guardianName] = cells;
-    if (!name) {
-      errors.push({ line: i + 1, text: line, reason: "이름이 비어 있습니다." });
-      return;
-    }
-    const birth = (birthRaw ?? "").replace(/\D/g, "");
-    if (birth.length !== 8) {
-      errors.push({ line: i + 1, text: line, reason: "생년월일은 8자리(YYYYMMDD)여야 합니다." });
-      return;
-    }
-    rows.push({ name, birth, school, grade, klass, guardianPhone: phone, guardianName });
+  /* 머리글이 있으면 머리글 이름으로 열을 찾는다 */
+  let index: Partial<Record<BulkKey, number>> = Object.fromEntries(cols.map((c, i) => [c.key, i]));
+  const head = lines[0] ? split(lines[0]) : [];
+  const isHead = head.some((h) => /^(이름|성명|name)$/i.test(h));
+  if (isHead) {
+    index = {};
+    head.forEach((h, i) => {
+      const col = cols.find((c) => c.label === h || c.aliases?.includes(h));
+      if (col && index[col.key] === undefined) index[col.key] = i;
+    });
+  }
+
+  lines.forEach((line, i) => {
+    if (i === 0 && isHead) return;
+    const cells = split(line);
+    const get = (k: BulkKey) => {
+      const at = index[k];
+      return at === undefined ? "" : (cells[at] ?? "").trim();
+    };
+    const fail = (reason: string) => errors.push({ line: i + 1, text: line, reason });
+
+    const name = get("name");
+    if (!name) return fail("이름이 비어 있습니다.");
+    const birth = get("birth").replace(/\D/g, "");
+    if (birth.length !== 8) return fail("생년월일은 8자리(YYYYMMDD)여야 합니다.");
+
+    /* 학년 칸에 「초등 4학년」처럼 통째로 적어 둔 명부도 받는다 */
+    const gradeRaw = get("grade");
+    const level = levelOf(get("level")) || levelOf(gradeRaw);
+    const gradeNum = Number(gradeRaw.replace(/\D/g, ""));
+    if (!level) return fail("학교급(초등·중등·고등)을 적어 주세요.");
+    if (!gradeNum || gradeNum > MAX_GRADE[level])
+      return fail("학년을 숫자로 정확히 적어 주세요.");
+
+    const phone = get("phone").replace(/\D/g, "");
+    if (phone && (phone.length < 10 || phone.length > 11))
+      return fail("휴대전화 번호를 확인해 주세요. 없으면 비워 두세요.");
+
+    const opt = (v: string) => v || undefined;
+    const list = (v: string) => (multi(v).length ? multi(v) : undefined);
+    const gender = get("gender");
+    const profile: ChildProfile = {
+      gender: /남/.test(gender) ? "남자" : /여/.test(gender) ? "여자" : undefined,
+      region: opt(get("region")),
+      interests: list(get("interests")),
+      learning: list(get("learning")),
+      observation: opt(get("observation")),
+    };
+    const hasProfile = Object.values(profile).some((v) => v !== undefined);
+
+    rows.push({
+      name,
+      birth,
+      grade: `${level} ${gradeNum}학년`,
+      phone: opt(phone),
+      school: opt(get("school")),
+      klass: opt(get("klass")),
+      guardianPhone: opt(get("guardianPhone").replace(/\D/g, "")),
+      guardianName: opt(get("guardianName")),
+      profile: hasProfile ? profile : undefined,
+    });
   });
 
   return { rows, errors };

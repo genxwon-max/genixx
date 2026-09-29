@@ -18,6 +18,13 @@ import { useItems } from "@/lib/itemStore";
 import { scoreDone, useExpert } from "@/lib/expertStore";
 import { useInterviewDesk } from "@/lib/interviewStore";
 import { usePendingApprovals } from "@/lib/approvalStore";
+import {
+  canOpen,
+  roleFor,
+  setScreenPreview,
+  useScreenAccess,
+  visibleScreens,
+} from "@/lib/screenAccessStore";
 import ConsoleGate from "./ConsoleGate";
 import Palette from "./Palette";
 
@@ -48,8 +55,12 @@ import Palette from "./Palette";
  *     묻게 만든다. 대신 **그룹 단위로** 접는다 — 지금 있는 그룹만 펴 둔다.
  *  2) Ctrl/⌘+K로 화면을 옮긴다. 마우스로 기둥까지 가는 왕복이 사라진다.
  *
- * 로그인하지 않았거나 슈퍼 관리자가 아니면 아무것도 그리지 않는다 — 이 콘솔은
- * 운영자 계정·권한과 감사 로그에 닿으므로 메뉴 구조조차 미리 보여 줄 이유가 없다.
+ * 로그인하지 않았거나, 슈퍼 관리자도 아니고 화면 권한(ADM-03-2)도 받지 않았으면 아무것도
+ * 그리지 않는다 — 이 콘솔은 운영자 계정·권한과 감사 로그에 닿으므로 메뉴 구조조차 미리
+ * 보여 줄 이유가 없다.
+ *
+ * 화면 권한을 받은 운영자는 고른 화면만 기둥에 서고, 고르지 않은 화면은 주소로 들어와도
+ * 막힌다. 슈퍼 관리자가 「이 권한으로 보기」를 누르면 같은 모습을 미리 본다(맨 위 띠).
  */
 export default function Shell({ children }: { children: React.ReactNode }) {
   const prefs = useAdminPrefs();
@@ -76,6 +87,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     interviews: desk.filter((r) => r.state === "applied" || r.state === "queued").length,
   };
   const pathname = usePathname();
+  const access = useScreenAccess();
+  const isSuper = prefs.role === "super";
+  const screens = visibleScreens(access, { loginId: prefs.loginId, super: isSuper });
+  const previewRole = isSuper && access.preview ? access.roles.find((r) => r.id === access.preview) : null;
+  const nav = screens
+    ? admin2Nav
+        .map((g) => ({ ...g, items: g.items.filter((it) => screens.includes(it.href)) }))
+        .filter((g) => g.items.length > 0)
+    : admin2Nav;
   const [open, setOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   /* 펼쳐 둔 그룹. 처음에는 지금 있는 그룹 하나만 편다 — 넷을 다 펴 두면 접는 뜻이 없다.
@@ -122,9 +142,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   // 저장된 로그인 상태는 브라우저에만 있어서, 하이드레이션 전에는 판단하지 않는다
   if (!hydrated) return <div className="min-h-screen bg-(--a2-bg)" />;
-  if (!prefs.loginId || prefs.role !== "super") {
+  if (!prefs.loginId || (!isSuper && !roleFor(access, prefs.loginId))) {
     return <ConsoleGate role={prefs.loginId ? prefs.role : null} name={prefs.staffName} />;
   }
+  /* 미리보기 중에도 화면 권한 화면은 연다 — 거기서 미리보기를 끝내고 묶음을 고친다 */
+  const allowed = canOpen(screens, pathname) || (!!previewRole && pathname.startsWith("/admin2/staff/roles"));
 
   return (
     <div className="a2-shell" style={{ ["--a2-zoom" as string]: prefs.a2Zoom }}>
@@ -154,7 +176,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             onClick={() => setOpen(false)}
             className="flex-1 overflow-y-auto px-2 py-2"
           >
-            {admin2Nav.map((g, gi) => {
+            {nav.map((g, gi) => {
               const shown = groups.includes(g.label);
               /* 접힌 그룹의 건수는 머리로 올려 더한다. 올리지 않으면 「가입 승인 5」가 접는
                  순간 사라져, 기둥의 배지가 오늘 할 일을 알려 주던 일을 못 하게 된다.
@@ -289,7 +311,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="truncate a2-t-sm font-bold text-white">{prefs.staffName}</span>
                 <span className="hidden truncate a2-t-xs text-(--a2-side-ink-2) md:inline">
-                  {roleOf(prefs.role).short} · <span className="a2-mono">{prefs.loginId}</span>
+                  {isSuper ? roleOf(prefs.role).short : (roleFor(access, prefs.loginId)?.name ?? roleOf(prefs.role).short)} ·{" "}
+                  <span className="a2-mono">{prefs.loginId}</span>
                 </span>
               </div>
               <button type="button" onClick={adminSignOut} className="a2-btn a2-btn-sm a2-btn-dark">
@@ -301,11 +324,44 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           {/* 회색 바탕은 판 둘레 16px만 남는다. 판을 자를 때 overflow-clip을 쓴다 —
               hidden은 스크롤 컨테이너를 만들어 표 머리 행의 sticky를 죽인다(TableBox 주석) */}
           <main className="min-w-0 flex-1 p-4">
-            <div className="a2-panel overflow-clip">{children}</div>
+            {previewRole && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-(--a2-radius) border border-(--a2-accent) bg-(--a2-accent-soft) px-3 py-2">
+                <span className="a2-t-sm text-(--a2-ink)">
+                  <b>「{previewRole.name}」</b> 권한으로 보는 중입니다 — 이 권한을 받은 운영자에게는
+                  왼쪽 메뉴의 화면만 보입니다.
+                </span>
+                <button
+                  type="button"
+                  className="a2-btn a2-btn-sm ml-auto"
+                  onClick={() => setScreenPreview(null)}
+                >
+                  미리보기 끝내기
+                </button>
+              </div>
+            )}
+            <div className="a2-panel overflow-clip">
+              {allowed ? (
+                children
+              ) : (
+                <div className="px-4 py-16 text-center">
+                  <p className="a2-h">이 화면을 열 권한이 없습니다</p>
+                  <p className="mt-2 a2-t-sm text-(--a2-ink-3)">
+                    {previewRole
+                      ? `「${previewRole.name}」 권한에는 이 화면이 들어 있지 않습니다.`
+                      : "필요하면 슈퍼 관리자에게 화면 권한을 요청하세요."}
+                  </p>
+                  {nav[0]?.items[0] && (
+                    <Link href={nav[0].items[0].href} className="a2-btn mt-4">
+                      「{nav[0].items[0].label}」 열기
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
           </main>
         </div>
 
-        {palette && <Palette onClose={() => setPalette(false)} />}
+        {palette && <Palette screens={screens} onClose={() => setPalette(false)} />}
       </div>
     </div>
   );

@@ -753,16 +753,18 @@ function StartGate({
               id: "subject",
               cells: [
                 /* 무료시험은 과목을 고르는 시험이 아니라 셋을 한 판으로 보는 시험이다.
-                   칸 셋이 모두 켜진 옆에 「응시 과목」이라 적으면 세 과목을 따로 접수한
-                   것처럼 읽힌다 — 그 줄이 말해야 하는 것은 **지금 무료로 보고 있다**는 것 */
+                   그 줄이 말해야 하는 것은 **지금 무료로 보고 있다**는 것 하나라, 과목 칸
+                   (국어·수학·과학)을 세우지 않고 「무료 응시」 한 칸만 둔다 */
                 { kind: "label", text: scope.kind === "free" ? "무료 응시" : "응시 과목" },
                 /* 고르는 칸이 아니다 — 무엇을 보는지 적어 둘 뿐이라 onPick을 두지 않는다 */
-                ...subjects.map((x) => ({
-                  kind: "value" as const,
-                  key: x.id,
-                  text: x.short,
-                  on: scope.kind === "free" || scope.subject === x.id,
-                })),
+                ...(scope.kind === "free"
+                  ? []
+                  : subjects.map((x) => ({
+                      kind: "value" as const,
+                      key: x.id,
+                      text: x.short,
+                      on: scope.subject === x.id,
+                    }))),
               ],
             },
           ]}

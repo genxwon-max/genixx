@@ -18,6 +18,13 @@ import {
 } from "@/lib/examCatalog";
 import { raiseTier, useHydrated } from "@/lib/examStore";
 import { orderMethods, orderWon, placeOrder, useOrders, type OrderMethod } from "@/lib/orderStore";
+import {
+  paidPrice,
+  productKindLabel,
+  productKinds,
+  useProducts,
+  type ProductKind,
+} from "@/lib/productStore";
 import { useRoster, type Student } from "@/lib/roster";
 import { grantTickets, spendTicket, usedInRound, useTickets, walletOf } from "@/lib/ticketStore";
 import { useSession } from "@/lib/authStore";
@@ -108,7 +115,15 @@ export default function ExamPayPanel({
     [roster, isOrg, selfId],
   );
 
+  const products = useProducts();
   const [picked, setPicked] = useState<Set<string>>(new Set(initial));
+  /**
+   * 상품 카테고리 — 관리자 상품 목록(PAY-01)의 종류를 그대로 쓴다.
+   * 응시권은 회차(평가)에서 값을 읽고, 나머지는 판매중인 상품을 그대로 세운다.
+   * 판매중인 상품이 하나도 없는 종류는 칸을 세우지 않는다.
+   */
+  const [cat, setCat] = useState<ProductKind>("assessment");
+  const [pickedProduct, setPickedProduct] = useState("");
   const [year, setYear] = useState("");
   const [quarter, setQuarter] = useState<number | 0>(0);
   const [past, setPast] = useState(false);
@@ -123,12 +138,21 @@ export default function ExamPayPanel({
      학생 본인 자리에서는 고를 것이 없다 — 자기 하나가 늘 잡혀 있다 */
   const chosen = selfId ? mine : mine.filter((s) => picked.has(s.id));
 
+  const selling = products.filter((p) => p.state === "selling" && p.kind !== "assessment");
+  const cats = productKinds.filter(
+    (k) => k === "assessment" || selling.some((p) => p.kind === k),
+  );
+  const isExam = cat === "assessment";
+  const catItems = selling.filter((p) => p.kind === cat);
+  const product = !isExam ? (catItems.find((p) => p.id === pickedProduct) ?? null) : null;
+
   /* 학생 본인이 미성년인가 — 결제 단추 앞에 법정대리인 동의를 한 칸 더 세운다 */
   const needGuardian = !!selfId && isMinorForContract(ageFromBirth(mine[0]?.birth ?? ""));
   const track: TrackId | null = chosen.length > 0 ? trackOfStudent(chosen[0]) : null;
 
   /** 이 아이를 함께 고를 수 있는가 — 고를 수 있으면 null */
   function studentBlock(s: Student): string | null {
+    if (!isExam) return null;
     const mineTrack = trackOfStudent(s);
     if (!mineTrack) {
       return s.grade ? `${s.grade}은 아직 평가가 열리지 않았습니다` : "학년이 비어 있습니다";
@@ -179,14 +203,14 @@ export default function ExamPayPanel({
    *
    * 고르기 전에는 0이다. 목록의 줄마다 제 값을 적으므로 여기서 어림값을 보일 까닭이 없다.
    */
-  const unit = exam ? examFee(exam.round) : 0;
+  const unit = isExam ? (exam ? examFee(exam.round) : 0) : product ? paidPrice(product) : 0;
 
   const usedOf = (s: Student, roundId: string) =>
     usedInRound(walletOf(tickets, s.id), roundId);
 
   /** 고른 평가에 이 아이를 넣을 수 없는 까닭 — 넣을 수 있으면 null */
   function applyBlock(s: Student): string | null {
-    if (!exam || !track) return null;
+    if (!isExam || !exam || !track) return null;
     const used = usedOf(s, exam.round.id);
     if (used?.track === track) return "이미 접수한 평가입니다";
     if (used) return `이 분기에 ${trackLabel(used.track)}로 접수했습니다`;
@@ -196,8 +220,7 @@ export default function ExamPayPanel({
   const payable = chosen.filter((s) => !applyBlock(s));
   const total = unit * payable.length;
   const canPay =
-    !!exam &&
-    exam.round.availability === "open" &&
+    (isExam ? !!exam && exam.round.availability === "open" : !!product) &&
     payable.length > 0 &&
     agree &&
     (!needGuardian || guardianOk);
@@ -215,6 +238,19 @@ export default function ExamPayPanel({
   };
 
   function pay() {
+    if (!isExam) {
+      if (!product || payable.length === 0) return;
+      const order = placeOrder({
+        productId: product.id,
+        productName: product.name,
+        grantsTicket: false,
+        students: payable.map((s) => ({ id: s.id, name: s.name })),
+        unit,
+        method,
+      });
+      setDone(order.id);
+      return;
+    }
     if (!exam || !track || payable.length === 0) return;
     const order = placeOrder({
       productId: `EX-${exam.round.id}-${track}`,
@@ -243,7 +279,7 @@ export default function ExamPayPanel({
           <CheckIcon className="h-7 w-7" />
         </span>
         <h2 className="mt-5 text-[20px] font-bold text-soft-ink">
-          결제가 끝나고 접수까지 되었습니다
+          {paidOrder.grantsTicket ? "결제가 끝나고 접수까지 되었습니다" : "결제가 끝났습니다"}
         </h2>
         <p className="mt-2.5 text-[13.5px] leading-[1.8] text-soft-muted">
           주문번호 <b className="tabular-nums text-soft-ink">{paidOrder.id}</b> ·{" "}
@@ -251,11 +287,13 @@ export default function ExamPayPanel({
           <br />
           {paidOrder.students.map((s) => s.name).join(" · ")} · 총 {paidOrder.students.length}명
         </p>
-        <p className="mt-3 text-[12.5px] leading-[1.7] text-soft-muted">
-          {selfId
-            ? "이제 「평가 보기」에서 과목을 열면 바로 응시할 수 있습니다. 결제 내역은 이 화면 아래에 쌓입니다."
-            : "이제 학생이 접속코드로 로그인해 「응시하기」에서 과목별로 응시합니다. 코드를 아직 넘기지 않으셨다면 학생 목록에서 문자로 보내실 수 있습니다."}
-        </p>
+        {paidOrder.grantsTicket && (
+          <p className="mt-3 text-[12.5px] leading-[1.7] text-soft-muted">
+            {selfId
+              ? "이제 「평가 보기」에서 과목을 열면 바로 응시할 수 있습니다. 결제 내역은 이 화면 아래에 쌓입니다."
+              : "이제 학생이 접속코드로 로그인해 「응시하기」에서 과목별로 응시합니다. 코드를 아직 넘기지 않으셨다면 학생 목록에서 문자로 보내실 수 있습니다."}
+          </p>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
           <Link href={selfId ? "/student/exams" : "/my/children"} className={t.btnAction}>
             {selfId ? "평가 보러 가기" : "학생 목록으로"}
@@ -265,12 +303,13 @@ export default function ExamPayPanel({
             onClick={() => {
               setDone(null);
               setPickedExam("");
+              setPickedProduct("");
               setAgree(false);
               setGuardianOk(false);
             }}
             className={t.btnOutline}
           >
-            다른 평가 결제하기
+            다른 상품 결제하기
           </button>
         </div>
       </section>
@@ -283,9 +322,7 @@ export default function ExamPayPanel({
         {/* ① 학생 — 학년이 정해지면 볼 수 있는 평가가 정해진다.
             학생 본인 자리에서는 고를 아이가 자기 하나뿐이라 이 칸이 서지 않는다 */}
         <section className={selfId ? "hidden" : undefined}>
-          <SectionTitle note="아이의 학년에 맞는 평가만 아래에 섭니다.">
-            평가를 볼 학생
-          </SectionTitle>
+          <SectionTitle>학생</SectionTitle>
 
           {!hydrated ? (
             <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
@@ -295,7 +332,7 @@ export default function ExamPayPanel({
             <div className={`${card} px-5 py-10 text-center`}>
               <p className="text-[15px] font-bold text-soft-ink">아직 등록된 학생이 없습니다</p>
               <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
-                응시권은 학생 앞으로 발급됩니다. 학생을 먼저 등록해 주세요.
+                상품은 학생 앞으로 결제됩니다. 학생을 먼저 등록해 주세요.
               </p>
               <Link href="/my/children/new" className={`${t.btnAction} mt-5`}>
                 등록하러 가기
@@ -337,7 +374,7 @@ export default function ExamPayPanel({
                           )}
                         </span>
                         <span className="mt-1 block text-[12.5px] leading-[1.7] text-soft-muted">
-                          {block ?? (mineTrack ? `${trackLabel(mineTrack)} 평가 대상` : "")}
+                          {block ?? (isExam && mineTrack ? `${trackLabel(mineTrack)} 평가 대상` : "")}
                         </span>
                       </span>
                     </label>
@@ -348,24 +385,92 @@ export default function ExamPayPanel({
           )}
         </section>
 
-        {/* ② 평가 — 그 학년 것만, 해와 분기로 */}
+        {/* ② 상품 — 카테고리(관리자 상품 종류)로 나눈다. 응시권은 그 학년 평가만, 해와 분기로 */}
         <section className={selfId ? undefined : "mt-8"}>
-          <SectionTitle
-            note={
-              track
-                ? `${trackLabel(track)} 평가입니다. 학년마다 따로 열리고, 분기에 한 번입니다.`
-                : selfId
-                  ? "내 학년에 열린 평가만 섭니다."
-                  : "학생을 고르면 그 학년의 평가가 섭니다."
-            }
-          >
-            평가 고르기
-          </SectionTitle>
+          <SectionTitle>상품 고르기</SectionTitle>
 
-          {!track ? (
+          {cats.length > 1 && (
+            <div role="tablist" aria-label="상품 카테고리" className="mb-3 flex flex-wrap gap-1.5">
+              {cats.map((k) => {
+                const on = cat === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => {
+                      setCat(k);
+                      setPickedExam("");
+                      setPickedProduct("");
+                      setAgree(false);
+                    }}
+                    className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                      on
+                        ? "border-soft-primary bg-soft-primary text-white"
+                        : "border-soft-line bg-white text-soft-muted hover:border-soft-primary"
+                    }`}
+                  >
+                    {productKindLabel[k]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {!isExam ? (
+            catItems.length === 0 ? (
+              <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
+                지금 판매 중인 상품이 없습니다.
+              </p>
+            ) : (
+              <ul className={`${card} divide-y divide-slate-100`}>
+                {catItems.map((p) => {
+                  const on = pickedProduct === p.id;
+                  const price = paidPrice(p);
+                  return (
+                    <li key={p.id}>
+                      <label
+                        className={`flex cursor-pointer items-start gap-3.5 p-4 transition-colors sm:p-5 ${
+                          on ? "bg-soft-primary-soft" : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="product"
+                          checked={on}
+                          onChange={() => {
+                            setPickedProduct(p.id);
+                            setAgree(false);
+                          }}
+                          className="mt-1 h-4 w-4 accent-[#365eef]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-bold text-soft-ink">{p.name}</span>
+                          {p.summary && (
+                            <span className="mt-1 block text-[12.5px] leading-[1.7] text-soft-muted">
+                              {p.summary}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-right tabular-nums">
+                          {price !== p.price && (
+                            <span className="block text-[12px] text-slate-400 line-through">
+                              {orderWon(p.price)}
+                            </span>
+                          )}
+                          <span className="text-[14px] font-bold text-soft-ink">{orderWon(price)}</span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          ) : !track ? (
             <p className={`${card} px-5 py-10 text-center text-[13px] leading-[1.8] text-soft-muted`}>
               {!selfId
-                ? "먼저 위에서 학생을 골라 주세요."
+                ? "학생을 고르면 그 학년의 평가가 섭니다."
                 : !hydrated
                   ? "확인 중입니다…"
                   : mine.length === 0
@@ -555,10 +660,6 @@ export default function ExamPayPanel({
               );
             })}
           </div>
-          <p className="mt-2.5 text-[12.5px] leading-[1.7] text-soft-muted">
-            시연용 화면이라 실제 결제창은 열리지 않으며, 카드번호 등 결제 정보는 이 화면이 받지
-            않습니다.
-          </p>
         </section>
       </div>
 
@@ -570,10 +671,16 @@ export default function ExamPayPanel({
           </p>
           <dl className="space-y-2.5 px-5 py-4 text-[13.5px]">
             <Line
-              k="평가"
-              v={exam ? `${exam.season.year}년 ${quarterLabel(exam.season.quarter)}` : "—"}
+              k="상품"
+              v={
+                isExam
+                  ? exam
+                    ? `${exam.season.year}년 ${quarterLabel(exam.season.quarter)} 평가`
+                    : "—"
+                  : (product?.name ?? "—")
+              }
             />
-            <Line k="학년" v={track ? trackLabel(track) : "—"} />
+            {isExam && <Line k="학년" v={track ? trackLabel(track) : "—"} />}
             <Line
               k={selfId ? "응시자" : "학생"}
               v={payable.length > 0 ? payable.map((s) => s.name).join(" · ") : "—"}
@@ -626,8 +733,8 @@ export default function ExamPayPanel({
                 ? selfId
                   ? "명부에서 내 이름을 찾지 못했습니다"
                   : "학생을 골라 주세요"
-                : !exam
-                  ? "평가를 골라 주세요"
+                : !(isExam ? exam : product)
+                  ? "상품을 골라 주세요"
                   : payable.length === 0
                     ? selfId
                       ? "이미 접수한 평가입니다"
@@ -640,10 +747,11 @@ export default function ExamPayPanel({
                           : `${payable.length}명 무료로 접수하기`
                         : `${orderWon(total)} 결제하기`}
             </button>
-            <p className="mt-2.5 text-[11.5px] leading-[1.7] text-soft-muted">
-              결제와 동시에 접수됩니다. 응시를 시작하기 전에는 전액 환불되며, 시작한 뒤에는 환불이
-              제한됩니다.
-            </p>
+            {isExam && (
+              <p className="mt-2.5 text-[11.5px] leading-[1.7] text-soft-muted">
+                결제와 동시에 접수됩니다. 응시 시작 전에는 전액 환불됩니다.
+              </p>
+            )}
           </div>
         </div>
       </aside>

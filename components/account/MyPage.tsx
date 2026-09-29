@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useSession } from "@/lib/authStore";
+import { signOut, useSession } from "@/lib/authStore";
 import { formatCode, reissueCode, useRoster } from "@/lib/roster";
 import { useHydrated } from "@/lib/examStore";
 import { phaseTone, progressOf } from "@/lib/progress";
@@ -16,7 +17,6 @@ import {
   type ConsentStageId,
 } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
-import { eyebrow } from "@/components/exam/ui";
 
 /**
  * ACC-05 마이페이지 — 학부모 · 기관 공용 계정 허브.
@@ -51,6 +51,7 @@ export type SectionId =
   | "billing"
   | "notify"
   | "inquiry"
+  | "withdraw"
   | "leave";
 
 type Item = { id: SectionId; label: string; desc: string; path: string };
@@ -75,6 +76,12 @@ const menus: Record<Audience, Group[]> = {
       items: [
         { id: "children", label: "학생 관리", desc: "프로필·접속코드", path: "/mypage/children" },
         { id: "consent", label: "동의 관리", desc: "항목별 동의와 철회", path: "/mypage/consent" },
+        {
+          id: "withdraw",
+          label: "자료 파기 요청",
+          desc: "동의 철회와 아이 자료 파기",
+          path: "/mypage/withdraw",
+        },
       ],
     },
     {
@@ -218,12 +225,12 @@ function Toggle({
 }
 
 /** 섹션 머리 */
-function Head({ variant, title, lead }: { variant: Variant; title: string; lead: string }) {
+function Head({ variant, title, lead }: { variant: Variant; title: string; lead?: string }) {
   const t = themeOf(variant);
   return (
-    <div className="mb-5">
-      <h2 className="text-[21px] font-bold tracking-tight">{title}</h2>
-      <p className={`mt-2 text-[14px] leading-[1.7] ${t.muted}`}>{lead}</p>
+    <div className="mb-4">
+      <h2 className="text-[20px] font-bold tracking-tight">{title}</h2>
+      {lead && <p className={`mt-1.5 text-[14px] leading-[1.7] ${t.muted}`}>{lead}</p>}
     </div>
   );
 }
@@ -245,14 +252,12 @@ function Row({
   const t = themeOf(variant);
   const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
   return (
-    <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b py-4 last:border-b-0 ${rule}`}
-    >
-      <span className={`w-28 shrink-0 text-[13.5px] font-semibold ${t.muted}`}>{label}</span>
+    <div className={`flex items-center gap-4 border-b py-4 last:border-b-0 ${rule}`}>
+      <span className={`w-24 shrink-0 text-[14px] ${t.muted} sm:w-32`}>{label}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold">{value}</span>
+        <span className="block break-all text-[15.5px] font-semibold">{value}</span>
         {note && (
-          <span className={`mt-1 block text-[12.5px] leading-[1.6] ${t.muted}`}>{note}</span>
+          <span className={`mt-1 block text-[13px] leading-[1.6] ${t.muted}`}>{note}</span>
         )}
       </span>
       {action}
@@ -262,7 +267,15 @@ function Row({
 
 /* ───────────────────────── 섹션들 ───────────────────────── */
 
-function ProfileSection({ variant, audience }: { variant: Variant; audience: Audience }) {
+function ProfileSection({
+  variant,
+  audience,
+  onLeave,
+}: {
+  variant: Variant;
+  audience: Audience;
+  onLeave: () => void;
+}) {
   const t = themeOf(variant);
   const session = useSession();
   const [linked, setLinked] = useState<string[]>(["카카오"]);
@@ -276,25 +289,15 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
 
   return (
     <>
-      <Head
-        variant={variant}
-        title="회원정보"
-        lead="본인확인으로 받아 온 항목은 바꿀 수 없습니다. 바꾸시려면 휴대폰 본인확인을 다시 하셔야 합니다."
-      />
+      <Head variant={variant} title="회원정보" />
 
       <section className={`${t.card} px-5 py-1 sm:px-6`}>
-        <Row
-          variant={variant}
-          label="이름"
-          value={session?.name ?? "김보호"}
-          note="휴대폰 본인확인(NICE아이디)으로 확인된 이름입니다. 화면에서 고칠 수 없습니다."
-        />
-        <Row variant={variant} label="생년월일" value="1990-01-12" note="본인확인 결과값" />
+        <Row variant={variant} label="이름" value={session?.name ?? "김보호"} />
+        <Row variant={variant} label="생년월일" value="1990-01-12" />
         <Row
           variant={variant}
           label="휴대폰"
           value="010-1234-5678"
-          note="응시 안내와 리포트 발행 알림이 이 번호로 갑니다."
           action={
             <button type="button" className={t.btnQuiet}>
               번호 바꾸기
@@ -305,7 +308,6 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
           variant={variant}
           label="이메일"
           value={session?.email ?? "genix.kim@example.com"}
-          note="연락용입니다. 로그인에는 쓰지 않습니다."
           action={
             <button type="button" className={t.btnQuiet}>
               변경
@@ -316,11 +318,7 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
           variant={variant}
           label="로그인 아이디"
           value={loginId ?? "—"}
-          note={
-            hasPassword
-              ? "아이디는 바꿀 수 없습니다."
-              : "간편 로그인만 쓰고 계십니다. 아이디·비밀번호를 추가하면 두 가지 모두로 들어오실 수 있습니다."
-          }
+          note={hasPassword ? undefined : "간편 로그인만 쓰고 계십니다."}
           action={
             hasPassword ? (
               <button type="button" className={t.btnQuiet}>
@@ -338,18 +336,17 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
             variant={variant}
             label="소속"
             value={session?.org ?? "제닉스 영재교육원"}
-            note="기관 정보에서 바꿉니다."
           />
         )}
       </section>
+      <p className={`mt-2 px-1 text-[13px] ${t.muted}`}>
+        이름·생년월일은 본인확인 결과라 바꿀 수 없습니다.
+      </p>
 
       {/* 연결된 계정 — 케이스 C·D(계정 연동)의 결과가 여기에 쌓인다 */}
       <section className={`${t.card} mt-4 overflow-hidden`}>
         <div className={`border-b px-5 py-4 sm:px-6 ${rule}`}>
           <h3 className="text-[16px] font-bold">연결된 간편 로그인</h3>
-          <p className={`mt-1 text-[13px] leading-[1.6] ${t.muted}`}>
-            본인확인 결과가 같으면 여러 소셜 계정을 하나의 회원으로 묶습니다.
-          </p>
         </div>
         <ul className={`divide-y ${variant === 1 ? "divide-acc-hairline" : "divide-slate-100"}`}>
           {socialProviders.map((p) => {
@@ -390,6 +387,18 @@ function ProfileSection({ variant, audience }: { variant: Variant; audience: Aud
           })}
         </ul>
       </section>
+
+      {/* 탈퇴는 내 정보의 맨 끝에 둔다 — 메뉴에 나란히 세우면 다른 설정과 같은 무게로 읽힌다 */}
+      <div className={`mt-10 flex items-center justify-between gap-3 border-t pt-5 ${rule}`}>
+        <span className={`text-[13.5px] ${t.muted}`}>더 이상 이용하지 않으시나요?</span>
+        <button
+          type="button"
+          onClick={onLeave}
+          className={`text-[13.5px] font-semibold ${t.muted} underline underline-offset-2 hover:text-rose-600`}
+        >
+          {audience === "org" ? "기관 탈퇴하기" : "회원 탈퇴하기"}
+        </button>
+      </div>
     </>
   );
 }
@@ -478,7 +487,7 @@ function ChildrenSection({ variant }: { variant: Variant }) {
   );
 }
 
-function ConsentSection({ variant }: { variant: Variant }) {
+function ConsentSection({ variant, onWithdraw }: { variant: Variant; onWithdraw: () => void }) {
   const t = themeOf(variant);
   const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
   const [off, setOff] = useState<ConsentStageId[]>([]);
@@ -551,6 +560,9 @@ function ConsentSection({ variant }: { variant: Variant }) {
         <Link href="/my/children/consent-stages" className={t.btnQuiet}>
           동의 이력 보기
         </Link>
+        <button type="button" onClick={onWithdraw} className={t.btnQuiet}>
+          자료 파기 요청
+        </button>
         <a
           href="/legal/privacy"
           target="_blank"
@@ -797,16 +809,15 @@ function NotifySection({ variant }: { variant: Variant }) {
     "report|이메일",
     "retest|카카오 알림톡",
   ]);
-  const toggle = (k: string) =>
+  const [saved, setSaved] = useState(false);
+  const toggle = (k: string) => {
+    setSaved(false);
     setOn((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+  };
 
   return (
     <>
-      <Head
-        variant={variant}
-        title="알림 설정"
-        lead="응시 안내와 리포트 발행은 놓치면 회차를 통째로 넘기게 되어 최소 한 곳은 켜 두셔야 합니다."
-      />
+      <Head variant={variant} title="알림 설정" lead="어떤 소식을 어디로 받을지 고르실 수 있습니다." />
 
       <section className={`${t.card} overflow-hidden`}>
         <ul className={`divide-y ${variant === 1 ? "divide-acc-hairline" : "divide-slate-100"}`}>
@@ -866,30 +877,267 @@ function NotifySection({ variant }: { variant: Variant }) {
         </ul>
         <div className={`border-t px-5 py-4 sm:px-6 ${rule}`}>
           <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-            「이벤트·소식」은 마케팅 수신에 동의하셔야 보냅니다. 동의 여부는 「동의 관리」에서
-            바꾸실 수 있습니다.
+            「이벤트·소식」은 마케팅 수신에 동의하셔야 보냅니다.
           </p>
         </div>
       </section>
+
+      <div className="mt-4 flex items-center justify-end gap-3">
+        {saved && (
+          <span role="status" className="text-[13px] font-semibold text-emerald-700">
+            저장했습니다
+          </span>
+        )}
+        <button type="button" onClick={() => setSaved(true)} className={t.btnAction}>
+          저장하기
+        </button>
+      </div>
     </>
   );
 }
 
-function LeaveSection({ variant, audience }: { variant: Variant; audience: Audience }) {
+/**
+ * 자료 파기 요청 (옛 /my/children/withdraw, ACC-03-4).
+ * 따로 떨어진 화면이던 것을 내 정보 안으로 들였다 — 무엇을 지울지 고르고, 한 번 더 묻고,
+ * 접수한다. 접수와 동시에 열람이 막히고 파기 결과는 등록한 연락처로 알린다.
+ */
+function WithdrawSection({ variant }: { variant: Variant }) {
   const t = themeOf(variant);
-  const [agreed, setAgreed] = useState(false);
+  const hydrated = useHydrated();
+  const children = useRoster().filter((s) => s.owner === "parent");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [scope, setScope] = useState<"optional" | "all">("all");
+  const [asking, setAsking] = useState(false);
+  const [done, setDone] = useState(false);
+  const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
+
+  if (done) {
+    return (
+      <>
+        <Head variant={variant} title="자료 파기 요청" />
+        <section className={`${t.card} p-6 text-center sm:p-8`}>
+          <p className="text-[18px] font-bold">요청을 접수했습니다</p>
+          <p className={`mt-2 text-[14px] leading-[1.7] ${t.muted}`}>
+            지금부터 전문가·교사의 열람이 막힙니다. 파기가 끝나면 등록하신 연락처로 결과를
+            알려 드립니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setDone(false);
+              setPicked([]);
+            }}
+            className={`${t.btnQuiet} mt-5`}
+          >
+            확인
+          </button>
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
       <Head
         variant={variant}
-        title={audience === "org" ? "기관 탈퇴" : "회원 탈퇴"}
-        lead={
-          audience === "org"
-            ? "탈퇴하면 소속 교사 계정이 함께 비활성화되고 학생 명부는 파기 절차로 넘어갑니다."
-            : "탈퇴하면 학생 프로필과 응답 데이터가 파기 절차로 넘어갑니다."
-        }
+        title="자료 파기 요청"
+        lead="동의를 거두고 아이 자료를 지웁니다. 이유를 적지 않으셔도 됩니다."
       />
+
+      <section className={`${t.card} overflow-hidden`}>
+        <div className={`border-b px-5 py-4 sm:px-6 ${rule}`}>
+          <h3 className="text-[15px] font-bold">1. 누구의 자료인가요?</h3>
+        </div>
+        {!hydrated ? (
+          <p className={`px-5 py-6 text-[14px] sm:px-6 ${t.muted}`}>확인 중입니다…</p>
+        ) : children.length === 0 ? (
+          <p className={`px-5 py-6 text-[14px] sm:px-6 ${t.muted}`}>등록된 학생이 없습니다.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2 px-5 py-4 sm:px-6">
+            {children.map((s) => {
+              const on = picked.includes(s.id);
+              return (
+                <li key={s.id}>
+                  <label
+                    className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-[14px] font-semibold ${
+                      on
+                        ? "border-soft-primary bg-soft-primary-soft text-soft-primary"
+                        : "border-soft-line bg-white"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() =>
+                        setPicked((prev) =>
+                          on ? prev.filter((x) => x !== s.id) : [...prev, s.id],
+                        )
+                      }
+                      className="h-4 w-4 accent-[#365eef]"
+                    />
+                    {s.name}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <div className={`border-t px-5 py-4 sm:px-6 ${rule}`}>
+          <h3 className="text-[15px] font-bold">2. 무엇을 지울까요?</h3>
+          <div className="mt-3 flex flex-col gap-2">
+            {(
+              [
+                ["optional", "선택 동의만 철회", "연구·마케팅 동의를 거두고 그 목적의 자료만 지웁니다."],
+                ["all", "모든 자료 파기", "답안·설문·녹취·리포트를 모두 지웁니다. 되살릴 수 없습니다."],
+              ] as const
+            ).map(([id, label, desc]) => (
+              <label
+                key={id}
+                className={`flex cursor-pointer items-start gap-3 rounded-[12px] border p-4 ${
+                  scope === id ? "border-soft-primary bg-soft-primary-soft" : "border-soft-line"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="withdraw-scope"
+                  checked={scope === id}
+                  onChange={() => setScope(id)}
+                  className="mt-1 h-4 w-4 accent-[#365eef]"
+                />
+                <span>
+                  <span className="block text-[14.5px] font-bold">{label}</span>
+                  <span className={`mt-0.5 block text-[13px] ${t.muted}`}>{desc}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          disabled={picked.length === 0}
+          onClick={() => setAsking(true)}
+          className={`${t.btnAction} disabled:cursor-not-allowed disabled:opacity-45`}
+        >
+          파기 요청하기
+        </button>
+      </div>
+
+      {asking && (
+        <Confirm
+          variant={variant}
+          title="자료 파기를 요청할까요?"
+          body={
+            scope === "all"
+              ? "선택한 아이의 모든 자료가 지워지고 되살릴 수 없습니다."
+              : "선택 동의가 철회되고 그 목적의 자료가 지워집니다."
+          }
+          onNo={() => setAsking(false)}
+          onYes={() => {
+            setAsking(false);
+            setDone(true);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/** 예 / 아니오 확인 창 */
+function Confirm({
+  variant,
+  title,
+  body,
+  onYes,
+  onNo,
+  danger,
+}: {
+  variant: Variant;
+  title: string;
+  body: string;
+  onYes: () => void;
+  onNo: () => void;
+  danger?: boolean;
+}) {
+  const t = themeOf(variant);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onNo}
+    >
+      <div
+        className="w-full max-w-sm rounded-[16px] bg-white p-6 text-center shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p id="confirm-title" className="text-[17px] font-bold text-soft-ink">
+          {title}
+        </p>
+        <p className={`mt-2 text-[14px] leading-[1.7] ${t.muted}`}>{body}</p>
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onNo} className={`${t.btnQuiet} w-full`}>
+            아니오
+          </button>
+          <button
+            type="button"
+            onClick={onYes}
+            className={`inline-flex h-[3rem] w-full items-center justify-center rounded-full text-[15px] font-semibold text-white ${
+              danger ? "bg-rose-600 hover:bg-rose-700" : "bg-soft-primary hover:bg-soft-primary-dark"
+            }`}
+          >
+            예
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 회원 탈퇴 (옛 /my/account/leave, ACC-04-2).
+ * 내 정보 맨 끝 「탈퇴하기」 → 이 화면(정말 탈퇴하시겠어요?) → 「탈퇴하기」 → 예/아니오 → 탈퇴.
+ */
+function LeaveSection({
+  variant,
+  audience,
+  onCancel,
+}: {
+  variant: Variant;
+  audience: Audience;
+  onCancel: () => void;
+}) {
+  const t = themeOf(variant);
+  const router = useRouter();
+  const [asking, setAsking] = useState(false);
+  const [done, setDone] = useState(false);
+  const what = audience === "org" ? "기관 탈퇴" : "회원 탈퇴";
+
+  if (done) {
+    return (
+      <section className={`${t.card} p-6 text-center sm:p-8`}>
+        <p className="text-[18px] font-bold">탈퇴가 완료되었습니다</p>
+        <p className={`mt-2 text-[14px] leading-[1.7] ${t.muted}`}>
+          그동안 이용해 주셔서 감사합니다. 파기 결과는 등록하신 연락처로 알려 드립니다.
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className={`${t.btnAction} mt-5`}
+        >
+          홈으로
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <Head variant={variant} title="정말 탈퇴하시겠어요?" />
 
       <section className={`${t.card} p-5 sm:p-6`}>
         <h3 className="text-[16px] font-bold">탈퇴하면 이렇게 됩니다</h3>
@@ -905,30 +1153,36 @@ function LeaveSection({ variant, audience }: { variant: Variant; audience: Audie
           <li>같은 본인확인 정보로 다시 가입하실 수 있으나, 이전 데이터는 되살아나지 않습니다.</li>
         </ul>
 
-        <label className="mt-5 flex cursor-pointer items-start gap-2.5">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-current"
-          />
-          <span className="text-[14px] leading-[1.6]">
-            위 내용을 확인했고, 데이터가 파기되는 것에 동의합니다.
-          </span>
-        </label>
-
-        <div className="mt-5 flex flex-wrap gap-2.5">
-          <Link
-            href="/my/account/leave"
-            className={`${t.btnQuiet} ${agreed ? "" : "pointer-events-none opacity-45"}`}
-          >
-            탈퇴 절차 계속하기
-          </Link>
-          <a href="/support/inquiry" target="_blank" rel="noopener noreferrer" className={t.btnQuiet}>
-            먼저 문의하기
-          </a>
-        </div>
       </section>
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2.5">
+        <button type="button" onClick={onCancel} className={t.btnQuiet}>
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => setAsking(true)}
+          className="inline-flex h-[3rem] items-center justify-center rounded-full bg-rose-600 px-6 text-[15px] font-semibold text-white transition-colors hover:bg-rose-700"
+        >
+          탈퇴하기
+        </button>
+      </div>
+
+      {asking && (
+        <Confirm
+          variant={variant}
+          danger
+          title={`${what}하시겠습니까?`}
+          body="탈퇴하면 되돌릴 수 없습니다."
+          onNo={() => setAsking(false)}
+          onYes={() => {
+            setAsking(false);
+            setDone(true);
+            /* 예를 누른 순간 로그아웃한다 — 완료 화면에서 다른 곳으로 나가도 계정이 살아 있지 않게 */
+            signOut();
+          }}
+        />
+      )}
     </>
   );
 }
@@ -965,24 +1219,15 @@ export default function MyPage({
   const active: SectionId =
     section === "leave" ? "leave" : (flat.find((i) => i.id === section)?.id ?? flat[0].id);
 
-  const rule = variant === 1 ? "border-acc-divider" : "border-slate-100";
   const initial = (session?.name ?? "회원").slice(0, 1);
 
   return (
     <>
-      <header className="border-b border-soft-line pb-5">
-        <p className={eyebrow}>내 계정</p>
-        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
-          마이페이지
-        </h1>
-        <p className={`mt-2 text-[13px] ${t.muted}`}>
-          회원정보·동의·수신 설정과 결제 내역을 여기서 관리합니다.
-        </p>
-      </header>
+      <h1 className="text-[24px] font-bold tracking-tight text-soft-ink">마이페이지</h1>
 
       {/* 프로필 카드 — 홈런·콴다 모두 마이페이지 맨 위에 이 한 장을 둔다 */}
       <section
-        className={`${t.card} mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6`}
+        className={`${t.card} mt-4 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6`}
       >
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <span
@@ -1018,10 +1263,6 @@ export default function MyPage({
                   ? `${session.provider} 간편 로그인`
                   : `아이디 ${session?.loginId ?? "genix_kim"}`}
               </span>
-              <span aria-hidden className="hidden sm:inline">
-                ·
-              </span>
-              <span className="whitespace-nowrap">휴대폰 본인확인 완료</span>
             </p>
           </div>
         </div>
@@ -1034,20 +1275,22 @@ export default function MyPage({
         </Link>
       </section>
 
-      <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-7">
-        {/* 좌측 메뉴 — 좁은 화면에서는 가로로 눕힌다 */}
-        <nav aria-label="마이페이지 메뉴" className="lg:w-[15rem] lg:shrink-0">
+      <div className="mt-6 flex flex-col gap-5 lg:flex-row lg:gap-8">
+        {/* 좌측 메뉴 — 좁은 화면에서는 가로로 눕힌다. 항목 밑 설명 줄은 걷었다 —
+            메뉴 한 칸에 두 줄씩 서니 무엇을 눌러야 할지보다 글이 먼저 읽혔다 */}
+        <nav aria-label="마이페이지 메뉴" className="lg:w-[12.5rem] lg:shrink-0">
           <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-5 lg:overflow-visible lg:pb-0">
             {groups.map((g) => (
               <li key={g.title} className="contents lg:block">
                 <p
-                  className={`hidden px-1 pb-2 text-[12px] font-bold uppercase tracking-[0.12em] lg:block ${t.muted}`}
+                  className={`hidden px-4 pb-1.5 text-[12.5px] font-semibold lg:block ${t.muted}`}
                 >
                   {g.title}
                 </p>
                 <ul className="contents lg:flex lg:flex-col lg:gap-1">
                   {g.items.map((i) => {
-                    const on = i.id === active;
+                    /* 탈퇴는 회원정보 맨 끝에서 들어가는 칸이라 그동안 회원정보를 켜 둔다 */
+                    const on = i.id === (active === "leave" ? "profile" : active);
                     return (
                       <li key={i.id} className="shrink-0">
                         <button
@@ -1055,7 +1298,7 @@ export default function MyPage({
                           onClick={() => setSection(i.id)}
                           aria-current={on ? "page" : undefined}
                           /* 좁은 화면에서는 가로 탭이라 밑줄, 넓은 화면에서는 세로 목록이라 왼쪽 막대 */
-                          className={`w-full whitespace-nowrap px-4 py-3 text-left text-[14.5px] font-semibold transition-colors lg:whitespace-normal ${
+                          className={`w-full whitespace-nowrap px-4 py-2.5 text-left text-[15px] font-semibold transition-colors lg:whitespace-normal ${
                             variant === 1
                               ? on
                                 ? "border-b-[3px] border-acc-primary bg-acc-primary-soft text-acc-primary lg:border-b-0 lg:border-l-[3px]"
@@ -1066,13 +1309,6 @@ export default function MyPage({
                           }`}
                         >
                           {i.label}
-                          <span
-                            className={`mt-0.5 hidden text-[12px] font-normal lg:block ${
-                              on ? "opacity-80" : t.muted
-                            }`}
-                          >
-                            {i.desc}
-                          </span>
                         </button>
                       </li>
                     );
@@ -1080,31 +1316,29 @@ export default function MyPage({
                 </ul>
               </li>
             ))}
-            <li className="shrink-0 lg:block lg:pt-2">
-              <button
-                type="button"
-                onClick={() => setSection("leave")}
-                aria-current={active === "leave" ? "page" : undefined}
-                className={`w-full whitespace-nowrap px-4 py-3 text-left text-[13.5px] transition-colors lg:border-t lg:pt-4 ${rule} ${
-                  active === "leave" ? "font-bold underline" : `${t.muted} hover:underline`
-                }`}
-              >
-                {audience === "org" ? "기관 탈퇴" : "회원 탈퇴"}
-              </button>
-            </li>
           </ul>
         </nav>
 
         {/* 우측 본문 */}
         <div className="min-w-0 flex-1">
           {active === "leave" ? (
-            <LeaveSection variant={variant} audience={audience} />
+            <LeaveSection
+              variant={variant}
+              audience={audience}
+              onCancel={() => setSection("profile")}
+            />
           ) : active === "profile" ? (
-            <ProfileSection variant={variant} audience={audience} />
+            <ProfileSection
+              variant={variant}
+              audience={audience}
+              onLeave={() => setSection("leave")}
+            />
           ) : active === "children" ? (
             <ChildrenSection variant={variant} />
           ) : active === "consent" ? (
-            <ConsentSection variant={variant} />
+            <ConsentSection variant={variant} onWithdraw={() => setSection("withdraw")} />
+          ) : active === "withdraw" ? (
+            <WithdrawSection variant={variant} />
           ) : active === "org" ? (
             <OrgSection variant={variant} />
           ) : active === "members" ? (

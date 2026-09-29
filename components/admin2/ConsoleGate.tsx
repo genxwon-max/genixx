@@ -5,6 +5,7 @@ import Link from "next/link";
 import { roleOf, type StaffRoleId } from "@/lib/admin";
 import { adminSignIn, adminSignOut } from "@/lib/adminStore";
 import { findStaff } from "@/lib/staffStore";
+import { roleFor, useScreenAccess } from "@/lib/screenAccessStore";
 
 /**
  * 콘솔 문 — 로그인과 「슈퍼 관리자 아님」 안내를 한 화면에서 맡는다.
@@ -20,6 +21,8 @@ export default function ConsoleGate({ role, name }: { role: StaffRoleId | null; 
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /* 슈퍼 관리자가 아니어도 화면 권한(ADM-03-2)을 받았으면 들인다 — 받은 화면만 보인다 */
+  const access = useScreenAccess();
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +30,10 @@ export default function ConsoleGate({ role, name }: { role: StaffRoleId | null; 
     if (!account) return setError("아이디를 찾을 수 없습니다.");
     if (!account.active) return setError("정지된 계정입니다.");
     if (password.length < 8) return setError("비밀번호는 8자 이상입니다.");
-    if (account.role !== "super")
-      return setError(`이 콘솔은 슈퍼 관리자 전용입니다. ${roleOf(account.role).label} 계정은 기존 콘솔을 쓰십시오.`);
+    if (account.role !== "super" && !roleFor(access, account.loginId))
+      return setError(
+        `이 계정에는 콘솔 화면 권한이 없습니다. ${roleOf(account.role).label} 계정은 슈퍼 관리자에게 화면 권한을 요청하거나 기존 콘솔을 쓰십시오.`,
+      );
 
     adminSignIn({
       loginId: account.loginId,
@@ -49,10 +54,10 @@ export default function ConsoleGate({ role, name }: { role: StaffRoleId | null; 
         {role && role !== "super" ? (
           /* 들어와 있지만 권한이 다른 경우 — 다시 로그인시키지 않고 갈 곳을 알려 준다 */
           <div className="mt-3 a2-panel p-4">
-            <h1 className="a2-h">슈퍼 관리자 전용 콘솔입니다.</h1>
+            <h1 className="a2-h">콘솔 화면 권한이 없습니다.</h1>
             <p className="mt-2 a2-t-sm text-(--a2-ink-3)">
-              {name} 님은 {roleOf(role).label} 계정으로 들어와 계십니다. 이 콘솔에는 운영자 계정·감사 로그가 있어
-              슈퍼 관리자만 들어옵니다.
+              {name} 님은 {roleOf(role).label} 계정으로 들어와 계십니다. 이 콘솔은 슈퍼 관리자와, 슈퍼
+              관리자에게 화면 권한을 받은 운영자만 들어옵니다.
             </p>
             <div className="mt-3 flex gap-1.5">
               <Link href="/admin" className="a2-btn a2-btn-primary">

@@ -18,7 +18,14 @@ import { admin2Nav } from "@/lib/admin2";
  * 자리로 돌려준다. ↑↓로 고른 줄은 상자 밖으로 나가면 따라 굴린다 — 바닥에 「↑↓ 고르기」라
  * 적어 두고 정작 고른 줄이 안 보이면 안내가 거짓말이 된다.
  */
-export default function Palette({ onClose }: { onClose: () => void }) {
+export default function Palette({
+  onClose,
+  /** 화면 권한으로 좁혀진 화면들 — null이면 전부(lib/screenAccessStore.ts) */
+  screens = null,
+}: {
+  onClose: () => void;
+  screens?: string[] | null;
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
@@ -27,8 +34,11 @@ export default function Palette({ onClose }: { onClose: () => void }) {
   const rowsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   const flat = useMemo(
-    () => admin2Nav.flatMap((g) => g.items.map((it) => ({ ...it, group: g.label }))),
-    [],
+    () =>
+      admin2Nav
+        .flatMap((g) => g.items.map((it) => ({ ...it, group: g.label })))
+        .filter((it) => !screens || screens.includes(it.href)),
+    [screens],
   );
   const hits = useMemo(() => {
     const key = q.trim().toLowerCase();

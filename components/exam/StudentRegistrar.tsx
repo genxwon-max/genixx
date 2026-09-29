@@ -6,6 +6,8 @@ import {
   clearRoster,
   formatCode,
   isUnderConsentAge,
+  bulkColumnsFor,
+  bulkSample,
   parseRoster,
   removeStudent,
   reissueCode,
@@ -67,10 +69,6 @@ const emptyForm: NewStudent = {
   guardianName: "",
 };
 
-const SAMPLE = `이름,생년월일,학교,학년,반,법정대리인 연락처,법정대리인 성명
-김하늘,20160312,목동초등학교,초등 4학년,A반,01012345678,김보호
-박서준,20160925,목동초등학교,초등 4학년,A반,01098761234,박보호
-이지우,20170104,신정초등학교,초등 3학년,B반,,`;
 
 export default function StudentRegistrar({
   mode,
@@ -154,7 +152,7 @@ export default function StudentRegistrar({
 
   const runPreview = (text: string) => {
     setBulkText(text);
-    setPreview(text.trim() ? parseRoster(text) : null);
+    setPreview(text.trim() ? parseRoster(text, isDirector) : null);
   };
 
   const commitBulk = () => {
@@ -163,6 +161,24 @@ export default function StudentRegistrar({
     setBulkText("");
     setPreview(null);
     setFlash(`${created.length}명 등록 완료 · 접속코드가 각각 발급되었습니다.`);
+  };
+
+  const columns = bulkColumnsFor(isDirector);
+  const sample = bulkSample(isDirector);
+
+  /** 머리글과 예시 한 줄이 든 양식 — 엑셀로 열어 채우면 된다 */
+  const downloadTemplate = () => {
+    const csv = sample
+      .split("\n")
+      .slice(0, 2)
+      .map((line) => line.split("\t").join(","))
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "학생_일괄등록_양식.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const onFile = async (file: File) => {
@@ -413,27 +429,84 @@ export default function StudentRegistrar({
                     e.target.value = "";
                   }}
                 />
-                <button type="button" onClick={() => runPreview(SAMPLE)} className={btnGhost}>
+                <button type="button" onClick={downloadTemplate} className={btnGhost}>
+                  입력 양식 내려받기
+                </button>
+                <button type="button" onClick={() => runPreview(sample)} className={btnGhost}>
                   예시 데이터 넣어보기
                 </button>
               </div>
 
+              {/* 어떤 열을 어떻게 적는지 — 필수·선택을 한 표에서 예시와 함께 */}
+              <div className="mt-5 overflow-x-auto rounded-[12px] border border-soft-line">
+                <table className="w-full min-w-[44rem] border-collapse text-[12.5px]">
+                  <caption className="sr-only">일괄 등록 열 안내</caption>
+                  <tbody>
+                    <tr className="bg-slate-50">
+                      <th className="w-16 border-b border-soft-line px-3 py-2 text-left font-semibold text-soft-muted">
+                        항목
+                      </th>
+                      {columns.map((c) => (
+                        <th
+                          key={c.key}
+                          className="whitespace-nowrap border-b border-l border-soft-line px-3 py-2 text-left font-bold text-soft-ink"
+                        >
+                          {c.label}
+                          {c.required && <span className="ml-0.5 text-rose-600">*</span>}
+                        </th>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th className="border-b border-soft-line px-3 py-2 text-left font-semibold text-soft-muted">
+                        구분
+                      </th>
+                      {columns.map((c) => (
+                        <td key={c.key} className="border-b border-l border-soft-line px-3 py-2">
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                              c.required
+                                ? "bg-rose-50 text-rose-600"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {c.required ? "필수" : "선택"}
+                          </span>
+                          {c.hint && (
+                            <span className="ml-1 whitespace-nowrap text-soft-muted">{c.hint}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-soft-muted">예시</th>
+                      {columns.map((c) => (
+                        <td
+                          key={c.key}
+                          className="whitespace-nowrap border-l border-soft-line px-3 py-2 text-soft-ink"
+                        >
+                          {c.example}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-[12px] leading-[1.7] text-soft-muted">
+                첫 줄에 머리글을 두면 열 순서가 달라도 알아서 찾습니다. 관심 분야·학습 경험은 여러
+                개면 「/」로 나눠 적어 주세요.
+                {isDirector &&
+                  ` 만 ${CONSENT_AGE}세 미만 학생은 법정대리인 연락처가 있어야 동의 요청을 보낼 수 있습니다.`}
+              </p>
+
               <label htmlFor="bulk" className={`mt-5 block ${fieldLabel}`}>
                 엑셀에서 복사한 내용을 그대로 붙여넣어도 됩니다
               </label>
-              <p className="mt-1.5 text-[12px] text-soft-muted">
-                열 순서: 이름, 생년월일(8자리), 학교, 학년, 반, 법정대리인 연락처, 법정대리인
-                성명 · 쉼표 / 탭 / 세미콜론 모두 인식하며 머리글 행은 자동으로 건너뜁니다. 반드시
-                있어야 하는 것은 이름과 생년월일뿐이라 나머지 칸은 비워 두셔도 됩니다. 다만 만{" "}
-                {CONSENT_AGE}세 미만 학생은 법정대리인 연락처가 있어야 동의 요청을 보낼 수 있어,
-                비어 있으면 「임시등록」에 머뭅니다.
-              </p>
               <textarea
                 id="bulk"
                 rows={6}
                 value={bulkText}
                 onChange={(e) => runPreview(e.target.value)}
-                placeholder={SAMPLE}
+                placeholder={sample}
                 className={`mt-2.5 font-mono text-[13px] leading-relaxed ${input}`}
               />
 

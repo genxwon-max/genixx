@@ -514,15 +514,12 @@ export default function SignupFlow() {
                     만 {CONSENT_AGE}세 미만 학생은 혼자 회원가입을 완료할 수 없습니다
                   </p>
                   <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-                    가입이 막힌 것이 아닙니다. 법정대리인의 동의가 완료되면 서비스를 이용할 수
-                    있습니다. 아래 세 가지 중 하나를 고르시면 됩니다.
+                    보호자가 학부모로 가입해 자녀를 등록해 주세요. 기관에서 응시코드를 받았다면
+                    바로 응시할 수 있습니다.
                   </p>
                   <div className="mt-1 flex w-full flex-col gap-2">
-                    <Link href="/signup/guardian" className={t.btnPrimary}>
-                      법정대리인에게 동의 요청 보내기
-                    </Link>
-                    <Link href="/signup/type?stage=method&type=parent" className={t.btnNeutral}>
-                      법정대리인 계정으로 자녀 등록하기
+                    <Link href="/signup/type?stage=method&type=parent" className={t.btnPrimary}>
+                      보호자 계정으로 자녀 등록하기
                     </Link>
                     <Link href="/login/student" className={t.btnNeutral}>
                       기관에서 받은 응시코드 입력하기

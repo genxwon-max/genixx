@@ -98,11 +98,31 @@ export default function PrivacyView() {
         cell: (v) => <span className="a2-mono text-(--a2-ink)">{v.id}</span>,
       },
       {
+        /* 회원 유형 — 학부모와 학생은 받는 동의가 다르다(학생만 법정대리인 동의가 붙는다).
+           이름 옆 작은 글씨로 두었더니 정렬·필터로 가를 수 없었다. 제 칸으로 세운다 */
+        key: "kind",
+        head: "회원 유형",
+        width: "6rem",
+        nowrap: true,
+        value: (v) => v.kind,
+        cell: (v) => (
+          <span
+            className="a2-t-xs inline-flex rounded-full px-2 py-0.5 font-semibold"
+            style={{
+              background: v.kind === "학생" ? "var(--a2-accent-soft)" : "var(--a2-hover)",
+              color: v.kind === "학생" ? "var(--a2-accent)" : "var(--a2-ink-2)",
+            }}
+          >
+            {v.kind}
+          </span>
+        ),
+      },
+      {
         key: "name",
         head: "이름",
         width: "7rem",
         nowrap: true,
-        value: (v) => `${v.name} ${v.kind}`,
+        value: (v) => v.name,
         cell: (v) => (
           <span className="inline-flex items-center gap-1.5">
             <Link
@@ -111,7 +131,6 @@ export default function PrivacyView() {
             >
               {v.name}
             </Link>
-            <span className="a2-t-xs text-(--a2-ink-4)">{v.kind}</span>
             {v.minor && <span className="a2-t-xs text-(--a2-ink-4)">만 14세 미만</span>}
           </span>
         ),
@@ -190,7 +209,7 @@ export default function PrivacyView() {
     () => [
       {
         id: "kind",
-        label: "유형",
+        label: "회원 유형",
         options: [
           { value: "학부모", label: "학부모" },
           { value: "학생", label: "학생" },

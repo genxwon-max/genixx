@@ -24,6 +24,7 @@ import {
   useUnsavedGuard,
 } from "@/components/admin2/EditGuard";
 import { Body, DescList, FormRow, PageHead, Panel, Status } from "@/components/admin2/ui";
+import { assignScreenRole, roleFor, useScreenAccess } from "@/lib/screenAccessStore";
 
 /**
  * ADM-03-1 운영자 상세 — 한 사람의 역할과 권한을 고치는 자리.
@@ -219,6 +220,8 @@ function Desk({ row, back }: { row: StaffRow; back: React.ReactNode }) {
           </div>
         </Panel>
 
+        <ScreenAccessPanel row={row} by={by} />
+
         {/* 걸러진 까닭은 저장 줄이 적는다. 칸이 없어진 화면에서 붉은 줄 하나를 따로
             세우면 그것이 다시 곁들이는 말이 되고, 무엇보다 저장을 누른 자리에서
             멀어진다 */}
@@ -236,5 +239,61 @@ function Desk({ row, back }: { row: StaffRow; back: React.ReactNode }) {
 
       <LeaveDialog guard={guard} />
     </>
+  );
+}
+
+/**
+ * 콘솔 화면 권한(ADM-03-2) — 이 사람이 콘솔에서 들어갈 수 있는 화면 묶음.
+ *
+ * 역할·권한과 달리 저장 줄을 기다리지 않고 고르는 즉시 건다. 묶음은 이름 하나라 고치다 말
+ * 상태가 없고, 무엇을 줬는지는 감사 로그에 남는다.
+ */
+function ScreenAccessPanel({ row, by }: { row: StaffRow; by: string }) {
+  const access = useScreenAccess();
+  const current = roleFor(access, row.loginId);
+  const isSuper = row.role === "super";
+
+  return (
+    <Panel
+      title="콘솔 화면 권한"
+      actions={
+        <Link href="/admin2/staff/roles" className="a2-btn a2-btn-sm">
+          화면 권한 관리
+        </Link>
+      }
+      flush
+    >
+      <div className="a2-form">
+        <FormRow
+          label="화면 묶음"
+          hint={
+            isSuper
+              ? "슈퍼 관리자는 언제나 모든 화면을 봅니다."
+              : current
+                ? `고른 화면 ${current.screens.length}개만 콘솔 메뉴에 보입니다.`
+                : "묶음이 없으면 이 콘솔에 들어오지 못합니다."
+          }
+        >
+          <select
+            className="a2-select"
+            disabled={isSuper}
+            value={isSuper ? "" : (current?.id ?? "")}
+            onChange={(e) => {
+              const next = e.target.value || null;
+              assignScreenRole(row.loginId, next);
+              const name = access.roles.find((r) => r.id === next)?.name ?? "없음";
+              recordAction(`${row.name} (${row.id})`, "화면 권한 지정", name, by);
+            }}
+          >
+            <option value="">{isSuper ? "전체 화면" : "없음"}</option>
+            {access.roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name} · 화면 {r.screens.length}개
+              </option>
+            ))}
+          </select>
+        </FormRow>
+      </div>
+    </Panel>
   );
 }
