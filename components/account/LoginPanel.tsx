@@ -301,7 +301,7 @@ export default function LoginPanel({
                   아이디 찾기
                 </Link>
                 <span aria-hidden>|</span>
-                <Link href="/login/recover" className="hover:underline">
+                <Link href="/login/recover?tab=pw" className="hover:underline">
                   비밀번호 찾기
                 </Link>
               </div>

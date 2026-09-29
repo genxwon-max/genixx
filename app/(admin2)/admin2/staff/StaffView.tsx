@@ -77,12 +77,18 @@ export default function StaffView() {
           />
         ))}
         actions={
-          /* 이 화면에서 못 하는 일로 나가는 문 하나. 계정을 만졌으면 그 기록이 어디에
-             남는지가 바로 다음 질문이라 감사 로그를 붙였다. 동작하지 않는 「운영자 추가」
-             같은 단추는 두지 않았다 */
-          <Link href="/admin2/audit" className="a2-btn">
-            감사 로그
-          </Link>
+          /* 이 화면에서 못 하는 일로 나가는 문 둘. 화면 권한은 운영자마다 콘솔에서 들어갈
+             화면 묶음을 만드는 자리(ADM-03-2)다. 계정을 만졌으면 그 기록이 어디에 남는지가
+             바로 다음 질문이라 감사 로그를 붙였다. 동작하지 않는 「운영자 추가」 같은 단추는
+             두지 않았다 */
+          <>
+            <Link href="/admin2/staff/roles" className="a2-btn a2-btn-primary">
+              화면 권한
+            </Link>
+            <Link href="/admin2/audit" className="a2-btn">
+              감사 로그
+            </Link>
+          </>
         }
       />
       <StaffTable key={tab} rows={current.rows} empty={current.empty} />

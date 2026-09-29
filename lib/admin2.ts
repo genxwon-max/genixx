@@ -345,6 +345,8 @@ export const admin2Nav: Admin2NavGroup[] = [
     label: "시스템",
     items: [
       { code: "ADM-03", label: "운영자·권한", href: "/admin2/staff" },
+      /* 운영자마다 콘솔에서 들어갈 수 있는 화면 묶음(lib/screenAccessStore.ts) */
+      { code: "ADM-03-2", label: "화면 권한", href: "/admin2/staff/roles" },
       { code: "ADM-11", label: "감사 로그", href: "/admin2/audit" },
       { code: "ADM-13", label: "시스템 설정", href: "/admin2/settings" },
       { code: "ADM-13-1", label: "AI 프롬프트", href: "/admin2/ai" },

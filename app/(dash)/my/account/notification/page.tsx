@@ -16,7 +16,7 @@ export default function NotificationPage() {
         id="ACC-04-1"
         title="알림 설정"
         lead="어떤 소식을 어디로 받을지 고르실 수 있습니다."
-        back={{ href: "/my/account", label: "내 정보 설정으로" }}
+        back={{ href: "/mypage", label: "마이페이지로" }}
       />
 
       <div className={`${card} ${cardPad}`}>
@@ -64,14 +64,11 @@ export default function NotificationPage() {
         </table>
       </div>
 
-      <p className="mt-4 rounded-lg border border-soft-line bg-slate-50 px-5 py-4 text-[13px] leading-relaxed text-soft-muted">
-        응시 안내와 리포트 발행은 최소 한 개 채널로는 반드시 받으셔야 합니다. 아이의 응시 기한을
-        놓치면 회차가 마감되기 때문입니다.
-      </p>
-
-      <button type="button" className={`${btnPrimary} mt-5`}>
-        저장하기
-      </button>
+      <div className="mt-5 flex justify-end">
+        <button type="button" className={btnPrimary}>
+          저장하기
+        </button>
+      </div>
     </>
   );
 }

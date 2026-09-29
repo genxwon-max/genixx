@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useHydrated } from "@/lib/examStore";
 import { orderMethods, orderWon, useOrders, type Order } from "@/lib/orderStore";
-import { themeOf, type Variant } from "@/lib/authVariant";
+import type { Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
-import { eyebrow } from "@/components/exam/ui";
 import CounselPayPanel from "./CounselPayPanel";
 import ExamPayPanel from "./ExamPayPanel";
 import { card, listTd, listTh } from "./ui";
@@ -37,9 +36,9 @@ import { card, listTd, listTh } from "./ui";
 
 type Tab = "exam" | "counsel";
 
-const tabs: { id: Tab; label: string; note: string }[] = [
-  { id: "exam", label: "진단평가", note: "평가를 골라 학생 앞으로 접수합니다" },
-  { id: "counsel", label: "면담", note: "30분 · 60분 1:1 결과 해석 면담" },
+const tabs: { id: Tab; label: string }[] = [
+  { id: "exam", label: "진단평가" },
+  { id: "counsel", label: "면담" },
 ];
 
 /** 면담 결제인가 — 주문 번호가 아니라 상품 번호로 가른다(CS-30 · CS-60) */
@@ -56,7 +55,6 @@ export default function PaymentHub({
   selfId?: string;
   variant?: Variant;
 }) {
-  const t = themeOf(variant);
   const hydrated = useHydrated();
   const orders = useOrders();
   const [tab, setTab] = useState<Tab>("exam");
@@ -72,45 +70,32 @@ export default function PaymentHub({
 
   return (
     <>
-      <header className="mb-5 border-b border-soft-line pb-5">
-        <p className={eyebrow}>진단평가 · 면담</p>
-        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
-          결제
-        </h1>
-        <p className={`mt-2 text-[13px] leading-[1.7] ${t.muted}`}>
-          {selfId
-            ? "응시권과 면담을 이 자리에서 결제합니다. 결제한 내역은 갈래마다 아래에 쌓입니다."
-            : "응시권과 면담을 이 자리에서 결제합니다. 결제하신 내역은 갈래마다 아래에 쌓입니다."}
-        </p>
-      </header>
-
-      {/* 갈래 — 탭 */}
-      <div role="tablist" aria-label="결제 갈래" className="mb-6 flex gap-2">
-        {tabs.map((v) => {
-          const on = tab === v.id;
-          return (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={on}
-              onClick={() => setTab(v.id)}
-              className={`flex-1 rounded-[14px] border px-4 py-3.5 text-left transition-colors sm:flex-none sm:min-w-[13rem] ${
-                on
-                  ? "border-soft-primary bg-soft-primary-soft"
-                  : "border-soft-line bg-white hover:border-soft-primary"
-              }`}
-            >
-              <span
-                className={`block text-[15px] font-bold ${on ? "text-soft-primary" : "text-soft-ink"}`}
+      {/* 결제하러 온 화면이라 머리는 제목 한 줄과 갈래 탭만 둔다. 갈래 탭은 작은 밑줄 탭 —
+          큰 카드 둘로 세웠더니 상품보다 갈래가 먼저 눈에 들어왔다 */}
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-soft-line">
+        <h1 className="pb-3 text-[24px] font-bold tracking-tight text-soft-ink">결제</h1>
+        <div role="tablist" aria-label="결제 갈래" className="flex gap-5">
+          {tabs.map((v) => {
+            const on = tab === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setTab(v.id)}
+                className={`-mb-px border-b-2 pb-3 text-[14px] transition-colors ${
+                  on
+                    ? "border-soft-primary font-bold text-soft-primary"
+                    : "border-transparent font-medium text-soft-muted hover:text-soft-ink"
+                }`}
               >
                 {v.label}
-              </span>
-              <span className="mt-0.5 block text-[12px] text-soft-muted">{v.note}</span>
-            </button>
-          );
-        })}
-      </div>
+              </button>
+            );
+          })}
+        </div>
+      </header>
 
       {tab === "exam" ? (
         <ExamPayPanel initial={initial} selfId={selfId} variant={variant} />
@@ -120,9 +105,7 @@ export default function PaymentHub({
 
       {/* 결제 내역 — 보고 있는 갈래만 */}
       <section className="mt-10">
-        <SectionTitle note="이 브라우저에서 한 결제가 쌓입니다.">
-          {tab === "counsel" ? "면담 결제 내역" : "진단평가 결제 내역"}
-        </SectionTitle>
+        <SectionTitle>{tab === "counsel" ? "면담 결제 내역" : "결제 내역"}</SectionTitle>
 
         {/* 줄이 없으면 표를 세우지 않는다 — 가로로 긴 표 한가운데 적은 글은 좁은 화면에서
             화면 밖에 놓여, 빈 상자만 보인다 */}

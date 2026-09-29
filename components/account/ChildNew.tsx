@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  ageFromBirth,
-  CONSENT_AGE,
-  consentRouteFor,
-  consentRouteInfo,
-  consentStages,
-  type ConsentRoute,
-} from "@/lib/account";
+import { ageFromBirth, consentRouteFor, type ConsentRoute } from "@/lib/account";
 import { clearChildDraft } from "@/lib/childStore";
 import { useHydrated } from "@/lib/examStore";
 import AddressField, { emptyAddress, sidoOf, type AddressValue } from "./AddressField";
@@ -18,7 +11,7 @@ import { useSession } from "@/lib/authStore";
 import { ArrowRight } from "@/components/Icons";
 import { Button } from "@/components/ui/button";
 import { labelText as fieldLabel, field as input } from "@/components/account/ui";
-import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
+import { AccHead, btnGhost, btnPrimary, card, cardPad } from "./ui";
 
 /**
  * ACC-03 학생 등록 — 한 화면, 한 폼.
@@ -27,9 +20,10 @@ import { AccHead, btnGhost, btnPrimary, card, cardPad, LegalNote } from "./ui";
  * 아이 한 명을 넣는 데 화면을 세 번 넘겨야 했고, 중간에 초안을 브라우저에 들고
  * 다녀야 했다. 지금은 한 폼에서 끝낸다.
  *
- * 순서를 합쳐도 「동의 없이 아이 정보를 갖지 않는다」는 원칙은 그대로다. 폼에 친
- * 글자는 어디에도 저장되지 않고, 저장되는 시점은 필수 동의에 체크하고 등록을
- * 누른 그 한 번뿐이다(개인정보보호법 제22조의2).
+ * 동의 칸은 두지 않는다. 법정대리인 동의는 학부모 회원가입 때 휴대폰 본인인증과 함께
+ * 이미 받았다(lib/account.ts purposeConsents). 아이를 올릴 때마다 만 14세 미만 안내문·
+ * 동의 항목을 다시 펴 두었더니, 두 번째부터는 읽지 않고 체크하는 칸이 되었다.
+ * 학부모가 올린 아이는 그래서 처음부터 동의 완료(consent "granted")로 선다(lib/roster.ts).
  *
  * 필수는 이름·생년월일·학교급·학년·아이 휴대전화 다섯이다. 생년월일은 만 14세
  * 기준으로 동의 주체를 가르는 값이고, 학교급·학년은 어느 학년대 설문을 낼지 정하는
@@ -149,10 +143,6 @@ export default function ChildNew() {
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [interests, setInterests] = useState<string[]>([]);
   const [learning, setLearning] = useState<string[]>([]);
-  const [agreed, setAgreed] = useState<string[]>([]);
-  const [kidsNoticeRead, setKidsNoticeRead] = useState(false);
-  /** 만 14세 이상 자녀에게 보내는 가입 초대 링크를 복사했는가 */
-  const [inviteCopied, setInviteCopied] = useState(false);
   const [tried, setTried] = useState(false);
   const [issued, setIssued] = useState<{
     name: string;
@@ -170,13 +160,7 @@ export default function ChildNew() {
   const digits = form.birth.replace(/\D/g, "");
   const age = ageFromBirth(digits);
   const route = consentRouteFor(age);
-  const info = route ? consentRouteInfo[route] : null;
   const level = schoolLevels.find((l) => l.id === form.level);
-
-  const upfront = consentStages.filter((s) => s.upfront);
-  const allRequired = upfront.filter((s) => s.required).every((s) => agreed.includes(s.id));
-  // 만 14세 미만은 아이 눈높이 고지문을 함께 보여 줬는지도 확인한다
-  const kidsOk = route === "guardian" ? kidsNoticeRead : true;
 
   const nameOk = form.name.trim().length > 0;
   const gradeOk = !!level && form.grade !== "";
@@ -184,8 +168,7 @@ export default function ChildNew() {
   const phoneDigits = form.phone.replace(/\D/g, "");
   const phoneOk =
     form.hasPhone === "no" || (phoneDigits.length >= 10 && phoneDigits.length <= 11);
-  const ready =
-    nameOk && route !== null && !!level && gradeOk && phoneOk && allRequired && kidsOk;
+  const ready = nameOk && route !== null && !!level && gradeOk && phoneOk;
 
   const problem = !nameOk
     ? "이름을 적어 주세요."
@@ -195,11 +178,7 @@ export default function ChildNew() {
         ? "학교급을 골라 주세요."
         : !gradeOk
           ? "학년을 골라 주세요."
-          : !phoneOk
-            ? "아이 휴대전화 번호를 정확히 입력해 주세요. 없으면 「없음」을 골라 주세요."
-            : !kidsOk
-              ? "아이에게 보여 줄 안내문을 확인해 주세요."
-              : "필수 동의 항목에 체크해 주세요.";
+          : "아이 휴대전화 번호를 정확히 입력해 주세요. 없으면 「없음」을 골라 주세요.";
 
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -284,16 +263,10 @@ export default function ChildNew() {
               aria-invalid={tried && route === null}
               className={`mt-2 tabular-nums ${inputBad(tried && route === null)}`}
             />
-            {digits.length === 8 && age === null ? (
+            {digits.length === 8 && age === null && (
               <p role="alert" className="mt-1.5 text-[12px] font-bold text-rose-600">
                 날짜를 다시 확인해 주세요.
               </p>
-            ) : (
-              age !== null && (
-                <p className="mt-1.5 text-[12px] text-soft-muted">
-                  만 {age}세 — 아래에 동의 항목이 나왔습니다.
-                </p>
-              )
             )}
           </div>
 
@@ -500,136 +473,6 @@ export default function ChildNew() {
           </div>
         </div>
       </section>
-
-      {/* ③ 동의 — 생년월일이 들어와야 누가 동의하는지 정해진다 */}
-      {info && route && (
-        <div className={`${card} mt-4 ${cardPad}`}>
-          <p className="text-[15px] font-black text-soft-ink">
-            만 {age}세 — {info.label} · {info.who} 동의
-          </p>
-          <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{info.summary}</p>
-
-          {/* 만 14세 미만 — 아동 눈높이 고지문 병행 제시 */}
-          {route === "guardian" && (
-            <div className="mt-5">
-              <p className="text-[14px] font-bold text-soft-ink">아이에게 보여 줄 안내문</p>
-              <div className="mt-2.5 rounded-lg bg-slate-50 p-5 text-[14px] leading-[1.9] text-soft-ink">
-                <p>· 네가 푼 문제와 답을 선생님들이 보고, 네가 뭘 잘하는지 찾아볼 거야.</p>
-                <p>· 점수로 등수를 매기지 않아. 잘하는 걸 찾는 게 목적이야.</p>
-                <p>· 네 이름과 답은 선생님과 부모님만 볼 수 있어.</p>
-                <p>· 그만하고 싶으면 언제든 부모님께 말하면 돼. 지울 수 있어.</p>
-              </div>
-              <label className="mt-3 flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={kidsNoticeRead}
-                  onChange={(e) => setKidsNoticeRead(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 shrink-0 accent-[#365eef]"
-                />
-                <span className="text-[14px] leading-relaxed text-soft-ink">
-                  위 내용을 아이에게 읽어 주었거나 보여 주었습니다.
-                </span>
-              </label>
-            </div>
-          )}
-
-          {/* 만 14세 이상 — 본인 가입이 더 깔끔하다 */}
-          {route === "self" && (
-            <div className="mt-4 rounded-lg bg-slate-50 px-5 py-4">
-              <p className="text-[14px] leading-relaxed text-soft-ink">
-                만 {CONSENT_AGE}세 이상이라 법정대리인 동의를 받지 않습니다. 아이가{" "}
-                <b>본인 계정으로 직접 가입</b>하는 쪽이 가장 깔끔합니다. 보호자가 대신 전체 계정을
-                만드시기보다, 아이에게 가입을 안내하고 두 계정을 잇는 것을 권합니다.
-              </p>
-              <p className="mt-2 text-[14px] leading-relaxed text-soft-ink">
-                지금 그대로 등록하셔도 됩니다. 그때는 아이가 접속코드로 처음 들어올 때{" "}
-                <b>본인 동의 화면</b>이 먼저 뜨고, 아이가 동의해야 응시가 시작됩니다. 결과를
-                보호자와 공유할지도 아이가 직접 정합니다.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const url = `${window.location.origin}/signup/type?stage=age&type=student`;
-                    void navigator.clipboard?.writeText(url);
-                    setInviteCopied(true);
-                  }}
-                  className={btnGhost}
-                >
-                  {inviteCopied ? "초대 링크를 복사했습니다" : "학생에게 가입 초대 링크 복사"}
-                </button>
-                <Link
-                  href="/signup/type?stage=age&type=student"
-                  className="text-[13px] font-bold text-soft-primary-dark underline"
-                >
-                  학생 가입 화면 열기 ›
-                </Link>
-              </div>
-              <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
-                아이가 이 링크로 본인 동의를 마치고 계정을 만들면, 발급된 접속코드로 이 계정과
-                이어서 결과를 함께 보실 수 있습니다.
-              </p>
-            </div>
-          )}
-
-          <ul className="mt-5 border-t border-soft-line">
-            {upfront.map((s) => {
-              const on = agreed.includes(s.id);
-              return (
-                <li key={s.id} className="border-b border-soft-line">
-                  <label className="flex cursor-pointer gap-3.5 py-4">
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={() => setAgreed((p) => flip(p, s.id))}
-                      className="mt-1 h-5 w-5 shrink-0 accent-[#365eef]"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-[15px] font-bold text-soft-ink">{s.label}</span>
-                        <span
-                          className={`text-[12px] font-bold ${
-                            s.required ? "text-rose-600" : "text-soft-muted"
-                          }`}
-                        >
-                          {s.required ? "필수" : "선택"}
-                        </span>
-                      </span>
-                      <span className="mt-1.5 block text-[13px] leading-relaxed text-soft-muted">
-                        목적 {s.purpose} · 항목 {s.items}
-                      </span>
-                      <span className="mt-1 block text-[13px] text-soft-muted">보관 {s.keep}</span>
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-
-          <p className="mt-4 text-[13px] leading-relaxed text-soft-muted">
-            음성·영상·행동로그가 들어가는 2단계 심화진단과 면담 녹화는 지금 받지 않습니다. 해당
-            시점에 따로 여쭤봅니다.{" "}
-            <Link
-              href="/my/children/consent-stages"
-              className="font-bold text-soft-primary-dark underline"
-            >
-              단계별 동의 관리
-            </Link>
-          </p>
-        </div>
-      )}
-
-      {info && (
-        <div className="mt-4">
-          <LegalNote title={`${info.label} 처리 기준`} basis={info.basis}>
-            <ul className="list-disc space-y-1 pl-5">
-              {info.extra.map((x) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
-          </LegalNote>
-        </div>
-      )}
 
       {tried && !ready && (
         <p role="alert" className="mt-4 text-[13px] font-bold text-rose-600">

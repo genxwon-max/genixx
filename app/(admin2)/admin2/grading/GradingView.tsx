@@ -261,6 +261,20 @@ export default function GradingView() {
         ))}
       />
 
+      {/* 이 화면이 무엇을 하는 곳인지 한 줄로 — 「평가 채점」이라는 이름만으로는 사람이
+          점수를 처음부터 매기는 곳으로 읽혔다. 실제로는 AI가 먼저 매긴 서술형 응답을
+          사람이 확인해 확정하는 곳이다 */}
+      <div className="border-b border-(--a2-line) bg-(--a2-accent-soft) px-4 py-2.5 a2-t-sm text-(--a2-ink-2)">
+        <b className="text-(--a2-ink)">AI가 먼저 채점한 서술형 응답을 사람이 확인하고 확정하는 곳입니다.</b>{" "}
+        「검토 대기」의 응답을 열어 AI 판정(정답·부분정답·오답)이 맞는지 보고 확정하세요. 확신도가 낮은
+        응답은 「저신뢰」, 두 사람이 따로 매겨야 하는 표본은 「이중 채점」에 모입니다. 학생 한 명의
+        답안지 전체를 보려면{" "}
+        <Link href="/admin2/grading/members" className="text-(--a2-accent) hover:underline">
+          회원 채점
+        </Link>
+        으로 가세요.
+      </div>
+
       <Body>
         <Panel title="AI 채점" flush>
           <div className="a2-form">
