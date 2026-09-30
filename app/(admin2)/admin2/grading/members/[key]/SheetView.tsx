@@ -257,7 +257,7 @@ function Editor({ sheet, back }: { sheet: Sheet; back: React.ReactNode }) {
                 <Tag key={s}>{s}</Tag>
               ))}
             </FormRow>
-            <FormRow label="시험지 점수">
+            <FormRow label="지필 점수">
               <span className="a2-num a2-t-md font-bold text-(--a2-ink)">
                 {pt(paperGot + taskGot)} / {paperMax}
               </span>

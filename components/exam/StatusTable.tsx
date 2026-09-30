@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FREE_LIMIT_MIN,
   assessment,
@@ -17,15 +17,18 @@ import {
   isSelfSurvey,
   missingSurveys,
   reopenSurvey,
-  resetStudent,
+  resetRecord,
+  setActiveReg,
   submittedCount,
   surveyKeys,
   surveyMeta,
   useExamRecord,
   useHydrated,
   type ExamRecord,
+  type RegRef,
   type SurveyKey,
 } from "@/lib/examStore";
+import { evalName } from "@/lib/examCatalog";
 import { useClaimSet } from "@/lib/setStore";
 import { useSession } from "@/lib/authStore";
 import { formatCode, recordSurveySend, useRoster } from "@/lib/roster";
@@ -45,7 +48,6 @@ import {
   btnSm,
   btnSmGhost,
   btnSmMuted,
-  eyebrow,
   govTable,
   panel,
   td,
@@ -78,7 +80,6 @@ const stateText: Record<string, { label: string; className: string }> = {
  * 고른 평가(회차 · 학년)를 적는다 — 넘겨받지 않으면 예전처럼 지금 회차 이름을 쓴다.
  */
 export type StatusHeading = {
-  eyebrow: string;
   title: string;
   /** 「2026.08.01 ~ 2026.08.31」 */
   period: string;
@@ -86,27 +87,46 @@ export type StatusHeading = {
 
 export default function StatusTable({
   heading,
+  reg,
   studentId: forced,
   resultHref = "/exam/report",
+  embedded = false,
 }: {
   heading?: StatusHeading;
+  /**
+   * 이 판이 보여 주는 평가(회차 × 학년). 응시 기록은 평가마다 한 벌이라, 판은 자기 평가의
+   * 기록을 읽고 그 평가를 「지금 보고 있는 평가」로 가리켜 둔다 — 판에서 여는 시험 창 · 설문
+   * 창은 학생 ID만 들고 열리므로, 그 창이 적는 곳이 이 평가여야 한다.
+   * 넘기지 않으면 지금 보고 있는 평가(없으면 가장 최근에 접수한 평가)다.
+   */
+  reg?: RegRef;
   /**
    * 볼 학생을 밖에서 정해 줄 때. 학생 대시보드(/student/exams)가 이 판을 그대로 품어
    * 쓰는데, 거기서는 누구의 것인지를 그 화면이 이미 정해 두었다(components/student/self.tsx).
    * 넘어오면 「학생 세션이 아니면 돌려보내기」도 하지 않는다 — 부른 쪽이 이미 정했으므로.
    */
   studentId?: string;
-  /** 「결과 확인」과 최종 제출 뒤에 가는 곳. 대시보드에서는 /student/results다 */
+  /** 「결과 확인」과 최종 제출 뒤에 가는 곳. 대시보드에서는 그 진단의 결과지(/student/results/2026-3/e4)다 */
   resultHref?: string;
+  /**
+   * 다른 화면 안에 품을 때 — 머리(제목 · 응시 기간)와 응시자 정보 띠를 뺀다. 학생
+   * 대시보드의 「내 진단」은 진단 이름 · 기간 · 진행을 판 위의 요약에서 이미 말한다.
+   */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useSession();
   const config = useExamConfig();
   const studentId = forced ?? session?.studentId ?? "demo";
-  const record = useExamRecord(studentId);
+  const record = useExamRecord(studentId, reg);
   /* 셋트를 풀고 가입한 학생이 이 화면에 바로 닿을 수 있다 — 그 답을 물려받아 둔다 */
   useClaimSet(forced || session?.role === "student" ? studentId : null);
+  const regRound = reg?.round;
+  const regTrack = reg?.track;
+  useEffect(() => {
+    if (regRound && regTrack) setActiveReg(studentId, { round: regRound, track: regTrack });
+  }, [studentId, regRound, regTrack]);
   const roster = useRoster();
   const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
   /** 문자를 보낼 설문 — 번호 받는 창이 열려 있다 */
@@ -138,27 +158,40 @@ export default function StatusTable({
     return <StudentOnly role={session.role} />;
   }
 
-  const openExam = (subject: string) => examWindow(`/exam/session/paid/${subject}`);
-  /** 무료시험은 과목을 고르지 않는다 — 20문항이 한 창에서 이어진다 */
-  const openFree = () => examWindow("/exam/session/free");
+  /* 창을 열기 직전에 한 번 더 가리킨다 — 다른 탭에서 다른 평가 판을 열었으면 가리킴이
+     그쪽으로 옮겨 가 있다 */
+  const pin = () => reg && setActiveReg(studentId, reg);
+  const openExam = (subject: string) => {
+    pin();
+    examWindow(`/exam/session/paid/${subject}`);
+  };
+  /** 무료 진단은 과목을 고르지 않는다 — 20문항이 한 창에서 이어진다 */
+  const openFree = () => {
+    pin();
+    examWindow("/exam/session/free");
+  };
   const isFree = record.tier === "free";
-  const openSurvey = (key: SurveyKey) => surveyWindow(`/survey/${key}?student=${studentId}`);
+  const openSurvey = (key: SurveyKey) => {
+    pin();
+    surveyWindow(`/survey/${key}?student=${studentId}`);
+  };
 
   return (
     <div>
       {/* 응시자 정보 */}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
-        <div>
-          <p className={eyebrow}>{heading?.eyebrow ?? "ASM-01 · 응시 현황"}</p>
-          <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
-            {heading?.title ?? `${assessment.name} ${config.roundLabel} 진단 현황`}
-          </h1>
+      {!embedded && (
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
+          <div>
+            <h1 className="text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
+              {heading?.title ?? `${assessment.name} ${config.roundLabel} 진단 현황`}
+            </h1>
+          </div>
+          <p className="text-[12px] text-soft-muted">
+            응시 기간 {heading?.period ?? `${config.opensAt} ~ ${config.closesAt}`} · 조회 기준{" "}
+            {fmt(new Date().toISOString())}
+          </p>
         </div>
-        <p className="text-[12px] text-soft-muted">
-          응시 기간 {heading?.period ?? `${config.opensAt} ~ ${config.closesAt}`} · 조회 기준{" "}
-          {fmt(new Date().toISOString())}
-        </p>
-      </div>
+      )}
 
       {asGuardian && (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded border border-brand-300 bg-soft-primary-soft px-5 py-4">
@@ -174,6 +207,7 @@ export default function StatusTable({
         </div>
       )}
 
+      {!embedded && (
       <dl
         className={`mt-5 grid grid-cols-2 divide-x divide-slate-100 sm:grid-cols-3 lg:grid-cols-5 ${panel}`}
       >
@@ -183,7 +217,7 @@ export default function StatusTable({
           { t: "접속코드", v: student ? formatCode(student.code) : "-" },
           { t: "응시 갈래", v: tierOf(record.tier).label },
           {
-            /* 무료시험은 과목이 아니라 시험 하나라, 센 것도 문항이어야 한다 */
+            /* 무료 진단은 과목이 아니라 시험 하나라, 센 것도 문항이어야 한다 */
             t: isFree ? "응답 문항" : "제출 과목",
             v: isFree
               ? `${hydrated ? freeOrder().filter((q) => isAnswered(q, record.subjects[q.subject].answers[q.id])).length : 0} / ${freeOrder().length}`
@@ -196,23 +230,24 @@ export default function StatusTable({
           </div>
         ))}
       </dl>
+      )}
 
-      {/* 표 1 — 과목별 평가 */}
-      <section className="mt-9">
+      {/* 표 1 — 과목별 진단 */}
+      <section className={embedded ? (asGuardian ? "mt-6" : "") : "mt-9"}>
         <SectionTitle
           note={
             isFree
-              ? `무료시험은 과목을 고르지 않고 ${freeOrder().length}문항을 한 번에 이어서 풉니다. 응시 버튼을 누르면 별도 창이 열립니다.`
+              ? `무료 진단은 과목을 고르지 않고 ${freeOrder().length}문항을 한 번에 이어서 풉니다. 응시 버튼을 누르면 별도 창이 열립니다.`
               : `지금 ${tierOf(record.tier).label}으로 응시하고 있습니다. 과목마다 따로 응시하며, 문항 수와 제한 시간은 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`
           }
         >
-          평가 응시 현황
+          진단 응시 현황
         </SectionTitle>
 
         <div className="overflow-x-auto">
           <table className={govTable}>
             <caption className="sr-only">
-              {isFree ? "무료시험 응시 현황" : "과목별 응시 현황"}
+              {isFree ? "무료 진단 응시 현황" : "과목별 응시 현황"}
             </caption>
             <colgroup>
               <col className="w-[110px]" />
@@ -226,7 +261,7 @@ export default function StatusTable({
             <thead>
               <tr>
                 <th className={th}>구분</th>
-                <th className={th}>평가 과목</th>
+                <th className={th}>진단 과목</th>
                 <th className={th}>문항수</th>
                 <th className={th}>제한시간</th>
                 <th className={th}>진행상태</th>
@@ -235,7 +270,7 @@ export default function StatusTable({
               </tr>
             </thead>
             <tbody>
-              {/* 무료시험은 시험 하나다 — 과목마다 줄을 세우면 세 번 들어가는 것으로 읽힌다 */}
+              {/* 무료 진단은 시험 하나다 — 과목마다 줄을 세우면 세 번 들어가는 것으로 읽힌다 */}
               {isFree ? (
                 <FreeRow
                   answered={
@@ -273,7 +308,7 @@ export default function StatusTable({
                         className={`${td} bg-slate-50/60 font-bold text-soft-ink`}
                         rowSpan={subjects.length}
                       >
-                        필수 평가
+                        필수 과목
                       </td>
                     )}
                     {/* 과목 앞의 색점은 두지 않는다. 이름이 곧 구분이고,
@@ -310,7 +345,7 @@ export default function StatusTable({
                         <span className={btnSmMuted}>기회 소진</span>
                       ) : (
                         <button type="button" onClick={() => openExam(s.id)} className={btnSm}>
-                          {answered > 0 ? "이어서" : "평가 시작"}
+                          {answered > 0 ? "이어서" : "진단 시작"}
                         </button>
                       )}
                     </td>
@@ -380,6 +415,7 @@ export default function StatusTable({
                           <button
                             type="button"
                             onClick={() => {
+                              pin();
                               reopenSurvey(studentId, key, true);
                               openSurvey(key);
                             }}
@@ -390,6 +426,7 @@ export default function StatusTable({
                           <button
                             type="button"
                             onClick={() => {
+                              pin();
                               reopenSurvey(studentId, key, false);
                               openSurvey(key);
                             }}
@@ -450,7 +487,7 @@ export default function StatusTable({
                   ? `답안이 모두 제출되었습니다. 해석을 남기지 않은 과목이 ${noReflection.length}개 있습니다.`
                   : "답안과 해석이 모두 제출되었습니다. 최종 제출하면 결과 분석이 시작됩니다."
                 : isFree
-                  ? `무료시험 ${freeOrder().length}문항을 제출해야 최종 제출할 수 있습니다.`
+                  ? `무료 진단 ${freeOrder().length}문항을 제출해야 최종 제출할 수 있습니다.`
                   : "세 과목을 모두 제출해야 최종 제출할 수 있습니다."}
           </p>
           <p className="mt-1 text-[12px] text-soft-muted">
@@ -463,7 +500,7 @@ export default function StatusTable({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => resetStudent(studentId)}
+            onClick={() => resetRecord(studentId, reg)}
             className="rounded border border-soft-line bg-white px-4 py-2 text-[12px] font-bold text-soft-muted transition-colors hover:bg-slate-50"
           >
             시연용 초기화
@@ -500,15 +537,17 @@ export default function StatusTable({
             openSurvey(key);
           }}
           onConfirm={() => {
-            finalize(studentId);
+            finalize(studentId, reg);
             /* 제출과 동시에 규칙이 리포트를 조립한다. 조립된 것은 「검토 대기」이지
-               결과가 아니다 — 사람이 발행을 누르기 전까지 결과 화면은 닫혀 있다. */
+               결과가 아니다 — 사람이 발행을 누르기 전까지 결과 화면은 닫혀 있다.
+               리포트도 평가마다 한 벌이라 이 판의 평가를 붙여 둔다 */
             ensureReport(
               studentId,
               student?.name ?? "응시자",
               student?.grade ?? "",
-              assessment.round,
+              reg ? evalName(reg.round, reg.track) : assessment.round,
               record,
+              reg,
             );
             setAskFinal(false);
             router.push(resultHref);
@@ -541,7 +580,7 @@ export default function StatusTable({
 }
 
 /**
- * 무료시험 한 줄 — 과목 셋을 한 판으로 접어 보여 준다.
+ * 무료 진단 한 줄 — 과목 셋을 한 판으로 접어 보여 준다.
  *
  * 문항 수 · 제한 시간 · 진행 상태가 모두 시험 하나의 것이다. 과목 이름은 「국어 · 수학 ·
  * 과학」으로 한 칸에 적는다 — 무엇이 들었는지는 알려 주되, 따로 들어가는 자리가 아니라는
@@ -579,7 +618,7 @@ function FreeRow({
 
   return (
     <tr>
-      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`}>무료시험</td>
+      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`}>무료 진단</td>
       <td className={`${tdStrong} text-left`}>
         {subjects.map((s) => s.short).join(" · ")}
         <span className="ml-2 text-[12px] font-medium text-soft-muted">한 번에 이어서 응시</span>
@@ -605,7 +644,7 @@ function FreeRow({
           <span className={btnSmMuted}>기회 소진</span>
         ) : (
           <button type="button" onClick={onOpen} className={btnSm}>
-            {answered > 0 ? "이어서" : "평가 시작"}
+            {answered > 0 ? "이어서" : "진단 시작"}
           </button>
         )}
       </td>
@@ -643,8 +682,7 @@ function FinalDialog({
     >
       <div className="w-full max-w-lg rounded-[2px] border border-soft-line bg-white">
         <div className="border-b border-soft-line px-7 py-5">
-          <p className={eyebrow}>최종 제출 확인</p>
-          <h2 id="final-title" className="mt-2 text-[19px] font-bold text-soft-ink">
+          <h2 id="final-title" className="text-[19px] font-bold text-soft-ink">
             지금 제출하고 결과를 받을까요?
           </h2>
         </div>

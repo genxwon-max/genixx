@@ -51,7 +51,7 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
           title="회차를 찾지 못했습니다"
           actions={
             <Link href="/admin2/forms" className="a2-btn">
-              평가별 문항관리
+              진단별 문항관리
             </Link>
           }
         />
@@ -101,7 +101,7 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
           탭이 된다. 여기서도 회원 명부와 같이 누름 상태를 가진 단추로 정직하게 적는다 */}
       <div
         role="group"
-        aria-label="평가 과목"
+        aria-label="진단 과목"
         className="flex flex-wrap items-center gap-5 border-b border-(--a2-line) px-3"
       >
         {slots.map((s) => {
@@ -164,7 +164,7 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
         ) : (
           <Panel title="넣은 과목이 없습니다">
             <p className="a2-t-sm text-(--a2-ink-2)">
-              이 회차에 넣은 평가 과목이 하나도 없습니다. 과목을 넣어야 담을 검사지가 생깁니다.
+              이 회차에 넣은 진단 과목이 하나도 없습니다. 과목을 넣어야 담을 검사지가 생깁니다.
             </p>
             <div className="mt-2">
               <Link href={`/admin2/rounds/${round.id}`} className="a2-btn a2-btn-primary">

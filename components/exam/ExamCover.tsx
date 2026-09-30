@@ -89,7 +89,7 @@ export default function ExamCover({
 }: {
   /** 왼쪽 위 딱지 — 「제1교시」 */
   badge: string;
-  /** 회차 줄 — 「2026학년도 3분기 GENIXX 진단평가 무료시험 문항지」 */
+  /** 회차 줄 — 「2026학년도 3분기 GENIXX 재능 진단 무료 문항지」 */
   headline: string;
   /** 검사 이름 — 「TalentMe」 */
   title: string;

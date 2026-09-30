@@ -4,7 +4,7 @@ import PaymentHub from "@/components/account/PaymentHub";
 
 export const metadata: Metadata = {
   title: "결제",
-  description: "진단평가와 면담을 결제합니다. 평가는 결제와 동시에 접수됩니다. (PAY-03)",
+  description: "재능 진단과 면담을 결제합니다. 진단은 결제와 동시에 접수됩니다. (PAY-03)",
   robots: { index: false, follow: false },
 };
 
@@ -15,8 +15,8 @@ export const metadata: Metadata = {
  * 박혀 있고 학생을 고를 수 없다. 이 자리는 **열려 있는 평가를 골라 아이 앞으로 접수까지**
  * 하는 곳이다. 여기서 학생을 고르고 「다음」을 누르면 상품 화면(/my/payments/checkout)이 선다.
  *
- * 학생 목록에서 체크한 아이를 ?students=로 들고 오면 이미 고른 것이라 상품 화면으로 곧장
- * 넘긴다 — 예전 주소로 들어와도 같은 곳에 닿게.
+ * 아이를 ?students=로 들고 오면 이미 고른 것이라 상품 화면으로 곧장 넘긴다 — 예전 주소로
+ * 들어와도 같은 곳에 닿게.
  */
 export default async function MyPaymentsPage({ searchParams }: PageProps<"/my/payments">) {
   const { students, tab } = await searchParams;

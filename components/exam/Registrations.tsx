@@ -30,7 +30,7 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
 export type Registration = {
   round: string;
   track: TrackId;
-  /** 무료시험으로 접수한 것인가 유료시험인가 */
+  /** 무료 진단으로 접수한 것인가 유료 진단인가 */
   tier: UseTier;
   /** 접수 시각 (ISO) */
   at: string;
@@ -90,7 +90,7 @@ export function RegTable({
               번호
             </th>
             <th scope="col" className={th}>
-              검사명
+              진단명
             </th>
             <th scope="col" className={th}>
               접수일
@@ -122,7 +122,7 @@ export function RegTable({
                         : "bg-soft-primary text-white"
                     }`}
                   >
-                    {r.tier === "free" ? "무료시험" : "유료시험"}
+                    {r.tier === "free" ? "무료 진단" : "유료 진단"}
                   </span>
                 </td>
                 <td className={`${td} text-center tabular-nums`}>{day(r.at)}</td>
@@ -140,7 +140,7 @@ export function RegTable({
 export function GoApply() {
   return (
     <div className="mt-8 text-center">
-      <p className="text-[14px] text-soft-muted">접수하기 탭에서 평가를 먼저 접수해 주세요.</p>
+      <p className="text-[14px] text-soft-muted">접수하기 탭에서 진단을 먼저 접수해 주세요.</p>
       <Link href="/exam/apply" className={`mt-4 ${btnBox}`}>
         접수하기로 이동
       </Link>

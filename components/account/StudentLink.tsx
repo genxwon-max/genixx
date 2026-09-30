@@ -9,12 +9,12 @@ import { useHydrated } from "@/lib/examStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
 
 /**
- * ACC-01-5 학생 본인 가입 완료 — 기관코드·평가코드 잇기.
+ * ACC-01-5 학생 본인 가입 완료 — 기관코드·진단코드 잇기.
  *
  * 만 14세 이상 학생이 자기 이름으로 가입을 끝낸 다음 자리다. 흐름의 마지막 두 칸이
  * 여기서 채워진다 —
  *
- *   학생 계정 생성 → **기관코드 또는 평가코드 입력** → 평가 응시
+ *   학생 계정 생성 → **기관코드 또는 진단코드 입력** → 평가 응시
  *
  * 코드는 선택이다. 기관을 통하지 않고 혼자 온 학생도 무료 진단은 그대로 응시할 수
  * 있어야 하기 때문이다. 코드를 넣으면 그 기관의 회차에 이어지고, 기관 화면에는
@@ -73,7 +73,7 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
               {session?.name ?? "학생"}님, 가입이 끝났습니다
             </h1>
             <p className={`mt-3 text-[14px] leading-[1.7] ${t.muted}`}>
-              만 {CONSENT_AGE}세 이상이라 본인 동의로 계정을 만들었습니다. 이제 평가에 응시할 수
+              만 {CONSENT_AGE}세 이상이라 본인 동의로 계정을 만들었습니다. 이제 진단에 응시할 수
               있습니다.
             </p>
             {me && (
@@ -86,10 +86,10 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
             )}
           </div>
 
-          {/* 기관코드·평가코드 */}
+          {/* 기관코드·진단코드 */}
           <div className={`${t.card} flex flex-col gap-4 p-6`}>
             <div>
-              <p className="text-[16px] font-bold">기관코드 또는 평가코드 입력</p>
+              <p className="text-[16px] font-bold">기관코드 또는 진단코드 입력</p>
               <p className={`mt-1.5 text-[13px] leading-[1.7] ${t.muted}`}>
                 학교·학원에서 코드를 받으셨다면 넣어 주세요. 그 기관의 회차에 이어지고, 기관
                 화면에는 「학생 본인 가입 완료」로 표시됩니다. 없으셔도 무료 진단은 그대로 응시할
@@ -105,7 +105,7 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
               <>
                 <div className="flex gap-2">
                   <input
-                    aria-label="기관코드 또는 평가코드"
+                    aria-label="기관코드 또는 진단코드"
                     value={code}
                     onChange={(e) => {
                       setCode(e.target.value.toUpperCase().replace(/[^0-9A-Z-]/g, ""));
@@ -129,7 +129,7 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
 
           {/* 결과 공유 — 학생이 정한다 */}
           <div className={`${t.card} flex flex-col gap-3 p-6`}>
-            <p className="text-[16px] font-bold">학부모에게 평가 결과 공유</p>
+            <p className="text-[16px] font-bold">학부모에게 진단 결과 공유</p>
             <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
               만 {CONSENT_AGE}세 이상이면 동의의 주체가 본인이라, 보호자에게 결과를 보여 줄지도
               직접 정하실 수 있습니다. 고르지 않으시면 공유하지 않습니다. 나중에 언제든 바꿀 수
@@ -186,7 +186,7 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
           </div>
 
           <Link href="/exam" className={t.btnPrimary}>
-            평가 응시하러 가기
+            진단 응시하러 가기
           </Link>
         </div>
       </div>

@@ -20,7 +20,7 @@ export { examMenu };
  */
 /** 지금 열려 있는 메뉴 — /exam은 다른 것에 걸리지 않을 때의 바닥값이다 */
 export function activeExamHref(pathname: string): string | null {
-  /* 안내 화면(서비스 안내 · 시험 안내)은 메뉴 어느 것에도 속하지 않는다 */
+  /* 안내 화면(서비스 안내 · 진단 안내)은 메뉴 어느 것에도 속하지 않는다 */
   if (examGuideLinks.some((l) => pathname === l.href)) return null;
   return (
     examMenu.find(

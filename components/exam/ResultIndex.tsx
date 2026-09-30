@@ -6,13 +6,13 @@ import { useSession } from "@/lib/authStore";
 import { assessment } from "@/lib/exam";
 import { evalName, trackOf } from "@/lib/examCatalog";
 import { useCatalogRounds } from "@/lib/catalogRounds";
-import { getRecord, useExamStore, useHydrated } from "@/lib/examStore";
+import { getRecord, regId, useExamVersion, useHydrated, type RegRef } from "@/lib/examStore";
 import { phaseTone, progressOf, type Phase } from "@/lib/progress";
-import { useReports } from "@/lib/reportStore";
+import { reportFor, useReports } from "@/lib/reportStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { useRoster, type Student } from "@/lib/roster";
 import { useTickets, walletOf } from "@/lib/ticketStore";
-import { btnBoxGhost, eyebrow, govTable, panel, td, tdStrong, th } from "./ui";
+import { btnBoxGhost, govTable, panel, td, tdStrong, th } from "./ui";
 
 /**
  * 결과 리포트 목록 (/exam/result) — 아직 볼 결과가 없을 때 서는 자리.
@@ -25,7 +25,9 @@ import { btnBoxGhost, eyebrow, govTable, panel, td, tdStrong, th } from "./ui";
  * 「아직 등록된 학생이 없습니다」, 학생은 있는데 접수한 평가가 없으면 「아직 응시한
  * 시험이 없습니다」 — 둘은 해야 할 일이 다르므로 문구도 가는 길도 나눈다.
  *
- * 줄은 **접수 기록**(lib/ticketStore.ts)에서 나온다. 접수 기록이 없는데 응시 기록만
+ * 줄은 **접수 기록**(lib/ticketStore.ts)에서 나온다. 응시 기록과 리포트가 평가마다 한
+ * 벌이라, 줄마다 그 평가의 진행과 발행 상태를 읽는다 — 지난해 평가는 「결과 보기」, 올해
+ * 평가는 「응시중」처럼 한 아이의 줄이 서로 다르게 선다. 접수 기록이 없는데 응시 기록만
  * 남은 아이(시연용 씨앗·예전 저장분)는 지금 회차 이름으로 한 줄을 세운다 — 응시한
  * 흔적이 있는데 목록에서 사라지면 「내 결과가 없어졌다」로 읽힌다.
  */
@@ -33,6 +35,8 @@ import { btnBoxGhost, eyebrow, govTable, panel, td, tdStrong, th } from "./ui";
 type ResultRow = {
   key: string;
   student: Student;
+  /** 어느 평가의 줄인가 — 접수 기록 없이 남은 응시 기록이면 null */
+  reg: RegRef | null;
   /** 어떤 평가를 봤는가 */
   title: string;
   /** 접수 시각 (ISO) — 접수 기록이 없으면 없다 */
@@ -58,7 +62,7 @@ export default function ResultIndex() {
   const rounds = useCatalogRounds();
   const config = useExamConfig();
   // progressOf가 응시 기록을 React 밖에서 읽는다. 기록이 바뀌면 다시 세도록 구독만 걸어 둔다.
-  const store = useExamStore();
+  const store = useExamVersion();
 
   /**
    * 누구의 결과를 모아 보는 자리인가.
@@ -78,37 +82,39 @@ export default function ResultIndex() {
     const out: ResultRow[] = [];
 
     for (const student of scope) {
-      const record = getRecord(student.id);
-      const { phase } = progressOf(student);
-      const published =
-        reports.find((r) => r.studentId === student.id)?.state === "published";
       const uses = walletOf(tickets, student.id).used;
 
       if (uses.length === 0) {
+        const record = getRecord(student.id);
+        const { phase } = progressOf(student);
         // 접수 기록이 없는데 응시도 하지 않았으면 결과 목록에 설 까닭이 없다
         if (phase === "미응시") continue;
         out.push({
           key: student.id,
           student,
+          reg: null,
           title: `${assessment.name} ${config.roundLabel}`,
           at: record.finalizedAt,
           phase,
           finalized: record.finalized,
-          published,
+          published: reportFor(reports, student.id, null)?.state === "published",
         });
         continue;
       }
 
       for (const use of uses) {
+        const reg = { round: use.round, track: use.track };
         const info = rounds.find((r) => r.id === use.round);
+        const record = getRecord(student.id, reg);
         out.push({
           key: `${student.id}-${use.round}-${use.track}`,
           student,
+          reg,
           title: `${assessment.name} ${evalName(use.round, use.track, info?.label)} · ${trackOf(use.track).short}`,
           at: use.at,
-          phase,
+          phase: progressOf(student, reg).phase,
           finalized: record.finalized,
-          published,
+          published: reportFor(reports, student.id, reg)?.state === "published",
         });
       }
     }
@@ -121,18 +127,17 @@ export default function ResultIndex() {
   return (
     <div>
       <header className="border-b border-soft-line pb-5">
-        <p className={eyebrow}>RPT-01 · 결과 리포트</p>
-        <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
+        <h1 className="text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
           결과 리포트
         </h1>
         <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
-          누가 어떤 평가를 봤는지와 그 결과가 지금 어디까지 왔는지를 모아 둔 자리입니다.
+          누가 어떤 진단을 받았는지와 그 결과가 지금 어디까지 왔는지를 모아 둔 자리입니다.
         </p>
       </header>
 
       <div className={`mt-6 overflow-x-auto ${panel}`}>
         <table className={`${govTable} min-w-[720px]`}>
-          <caption className="sr-only">응시한 평가와 결과 발행 상태</caption>
+          <caption className="sr-only">응시한 진단과 결과 발행 상태</caption>
           <colgroup>
             <col className="w-[8%]" />
             <col className="w-[16%]" />
@@ -145,7 +150,7 @@ export default function ResultIndex() {
             <tr>
               <th className={th}>번호</th>
               <th className={th}>학생</th>
-              <th className={th}>평가</th>
+              <th className={th}>진단</th>
               <th className={th}>접수일</th>
               <th className={th}>진행</th>
               <th className={th}>결과</th>
@@ -164,12 +169,12 @@ export default function ResultIndex() {
                   <p className="text-[14px] font-semibold text-soft-ink">
                     {scope.length === 0
                       ? "아직 등록된 학생이 없습니다."
-                      : "아직 응시한 시험이 없습니다."}
+                      : "아직 응시한 진단이 없습니다."}
                   </p>
                   <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
                     {scope.length === 0
                       ? "학생을 등록하면 접속코드가 발급되고, 그때부터 응시 기록이 이 목록에 쌓입니다."
-                      : "접수한 평가를 아이가 응시하고 최종 제출하면 이 목록에 결과가 올라옵니다."}
+                      : "접수한 진단을 아이가 응시하고 최종 제출하면 이 목록에 결과가 올라옵니다."}
                   </p>
                   <Link
                     href={scope.length === 0 ? "/my/children/new" : "/my/children"}
@@ -202,7 +207,9 @@ export default function ResultIndex() {
                         "전문가 확인 중"
                       ) : (
                         <Link
-                          href={`/exam/result?student=${r.student.id}`}
+                          href={`/exam/result?student=${r.student.id}${
+                            r.reg ? `&reg=${encodeURIComponent(regId(r.reg))}` : ""
+                          }`}
                           className={btnBoxGhost}
                         >
                           결과 보기

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useExamRecord } from "@/lib/examStore";
+import { currentRegOf, useExamVersion } from "@/lib/examStore";
 import { progressOf, phaseTone, subjectTone, type StudentProgress } from "@/lib/progress";
 import { useRegistrations } from "@/components/exam/Registrations";
+import { examPath, resultPath } from "./diag";
 import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
 
 /**
@@ -12,20 +13,20 @@ import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
  * 보호자 홈(/my)과 같은 껍데기를 쓰되 보는 것이 다르다. 저쪽은 **아이들이 줄로** 서고
  * 여기는 **내 과목이 칸으로** 선다. 아이에게 목록은 필요 없다 — 자기 하나뿐이다.
  *
- * 세 덩이로 둔다.
+ * 두 덩이로 둔다.
  *   지금 할 일   한 줄과 단추 하나. 아이가 이 화면에서 찾는 것은 사실 이것뿐이다
  *   내 진행      과목 셋 · 설문 · 단계. 어디까지 왔는지
- *   바로가기     결과 · 정답과 해설처럼 다 풀고 나서 가는 자리
  *
- * ── 만 14세로 한 번 더 갈린다 ──
- * 만 14세 이상이면 바로가기에 **결제와 면담 신청**이 더 선다. 개인정보 동의를 본인이 할 수
- * 있는 나이부터는 응시권을 사고 면담 시각을 잡는 일도 본인 몫이다(components/student/self.tsx의
- * teen · DashShell의 studentTeenMenu). 미만인 아이 화면에는 그 자리를 세우지 않고, 어디에
- * 있는지만 아래 한 줄로 적는다.
+ * 예전에는 그 아래에 바로가기 카드(진단 보기 · 결과 · 정답과 해설 · 진단 안내 …)를 깔았다.
+ * 모두 왼쪽 레일에 있는 자리이거나 「내 진단」 안에서 진단마다 여는 것이라 걷었다 —
+ * 같은 곳으로 가는 길이 두 벌이면 아이는 어느 쪽을 눌러야 하는지부터 고른다.
  *
- * 실제 응시는 응시 존(/exam)에서 한다. 여기서 문항을 열지 않는 까닭은 시험지 껍데기가
- * 따로 있어서다 — 남은 시간과 과목만 남기고 메뉴를 감추는 그 틀이 대시보드 레일과 함께
- * 설 수 없다. 그래서 이 화면은 그 자리로 **건너가는 단추**를 가장 크게 둔다.
+ * 만 14세 이상이면 레일에 **결제와 면담 신청**이 더 선다(DashShell의 studentTeenMenu).
+ * 미만인 아이 화면에는 그 자리가 없으므로, 어디에 있는지만 아래 한 줄로 적는다.
+ *
+ * 문항은 「내 진단」에서 연다. 여기서 문항을 열지 않는 까닭은 시험지 창이 따로 있어서다 —
+ * 남은 시간과 과목만 남기고 메뉴를 감추는 그 틀이 대시보드 레일과 함께 설 수 없다. 그래서
+ * 이 화면은 그 자리로 **건너가는 단추**를 가장 크게 둔다.
  */
 /**
  * 「지금 할 일」 한 줄 — 아이에게 하는 말.
@@ -36,45 +37,48 @@ import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
  * 들어가야 하는 줄 알게 된다 — 갈 곳은 바로 옆의 단추다.
  */
 function todoLine(p: StudentProgress) {
-  if (p.phase === "미응시") return "아직 시작하지 않았습니다. 「평가 보기」에서 첫 과목을 열면 시작됩니다.";
+  if (p.phase === "미응시") return "아직 시작하지 않았습니다. 「내 진단」에서 첫 과목을 열면 시작됩니다.";
   if (p.phase === "응시중") return `${p.total - p.submitted}과목이 남았습니다.`;
   if (p.phase === "제출완료")
     return p.surveys === 0
       ? "과목을 모두 냈습니다. 설문을 채우거나 그대로 최종 제출할 수 있습니다."
       : "과목을 모두 냈습니다. 최종 제출하면 결과 분석이 시작됩니다.";
-  return "결과 리포트를 볼 수 있습니다.";
+  return "최종 제출을 마쳤습니다. 결과는 「진단 결과」에서 봅니다.";
 }
 
 export default function StudentHome() {
   const self = useSelf();
-  const record = useExamRecord(self.id);
+  /* 과목 상태가 바뀌면 다시 센다. 값 자체는 progressOf가 스토어에서 직접 읽는다 */
+  useExamVersion();
   const rows = useRegistrations(self.id);
-  const latest = rows[0];
-
-  /* 접수한 평가가 있으면 대시보드 안의 평가 판으로, 없으면 접수하러 보낸다.
-     응시 존으로 건너뛰지 않는다 — 과목은 「평가 보기」에서 바로 열린다 */
-  const goHref = latest ? "/student/exams" : "/exam/apply";
-  const goLabel = latest ? "평가 보기" : "접수하러 가기";
+  /* 지금 보고 있는 진단 — 아이가 마지막으로 연 진단, 없으면 가장 최근에 접수한 진단.
+     아래 「내 진행」도 같은 진단의 기록을 읽는다(useExamRecord · progressOf) */
+  const at = self.hydrated ? currentRegOf(self.id) : null;
+  const latest =
+    (at && rows.find((r) => r.round === at.round && r.track === at.track)) || rows[0];
 
   const progress = self.student ? progressOf(self.student) : null;
   const tone = progress ? phaseTone[progress.phase] : null;
+
+  /* 접수한 진단이 있으면 그 진단으로 바로 들어간다 — 최종 제출을 마쳤으면 결과지, 아니면
+     과목을 응시하는 판. 없으면 접수하러 보낸다 */
+  const ref = latest ? { round: latest.round, track: latest.track } : null;
+  const finished = progress?.phase === "최종제출";
+  const goHref = !ref ? "/exam/apply" : finished ? resultPath(ref) : examPath(ref);
+  const goLabel = !ref ? "진단 접수하기" : finished ? "결과 보기" : "진단 보기";
 
   return (
     <>
       <WhoNote self={self} />
 
       <Head
-        eyebrowText="내 평가"
         title={`${self.name}님, 안녕하세요`}
         right={
-          <>
+          latest ? (
             <Link href="/exam/apply" className={btnQuiet}>
-              접수하기
+              진단 접수하기
             </Link>
-            <Link href={goHref} className={btnGo}>
-              {goLabel} →
-            </Link>
-          </>
+          ) : undefined
         }
       />
 
@@ -87,18 +91,18 @@ export default function StudentHome() {
               {!self.hydrated
                 ? "확인 중입니다…"
                 : !latest
-                  ? "아직 접수한 평가가 없습니다"
+                  ? "아직 접수한 진단이 없습니다"
                   : progress
                     ? todoLine(progress)
-                    : "평가 보기에서 이어서 응시하세요."}
+                    : "「내 진단」에서 이어서 응시하세요."}
             </p>
             {self.hydrated && latest && (
               <p className="mt-2 text-[13px] text-soft-muted">{latest.title}</p>
             )}
             {self.hydrated && !latest && (
               <p className="mt-2 text-[13px] leading-[1.75] text-soft-muted">
-                접수하기에서 회차와 학년을 고르면 이 자리에 내 평가가 뜹니다. 무료시험은 20문항
-                한 판으로 바로 볼 수 있습니다.
+                진단 접수에서 분기와 학년을 고르면 이 자리에 내 진단이 뜹니다. 무료 진단은
+                20문항 한 판으로 바로 볼 수 있습니다.
               </p>
             )}
           </div>
@@ -148,51 +152,12 @@ export default function StudentHome() {
         )}
       </section>
 
-      {/* ── 바로가기 ── */}
-      <section className="mt-8">
-        <h2 className="mb-3 text-[17px] font-bold tracking-tight text-soft-ink">바로가기</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            { href: "/student/exams", t: "평가 보기", d: "국어·수학·과학을 바로 응시" },
-            { href: "/student/results", t: "응시 결과", d: "8재능 팔각형과 전문가 평가" },
-            /* 결제·면담은 만 14세 이상에게만 선다 — 레일과 같은 갈래다(DashShell) */
-            ...(self.teen
-              ? [
-                  { href: "/student/payments", t: "결제", d: "응시권과 면담 결제·내역" },
-                  { href: "/student/interviews", t: "면담 신청", d: "결과지를 전문가와 함께 읽기" },
-                ]
-              : []),
-            { href: "/exam/answers", t: "정답과 해설", d: "제출을 마친 평가의 정오표" },
-            { href: "/exam/info", t: "시험 안내", d: "과목·문항 수·시간" },
-          ].map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`${cardBox} p-5 transition-colors hover:border-soft-primary`}
-            >
-              <p className="text-[15px] font-bold text-soft-ink">{l.t}</p>
-              <p className="mt-1 text-[13px] text-soft-muted">{l.d}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {/* 결제·면담이 레일에 없는 아이에게 그 까닭을 한 줄로 적는다 — 없는 것을 찾다가
           문의로 오는 일이 여기서 끊긴다 */}
       {self.hydrated && self.student && !self.teen && (
         <p className="mt-6 text-[13px] leading-[1.8] text-soft-muted">
           응시권 결제와 면담 신청은 보호자 화면에 있습니다. 만 14세 미만은 돈이 드는 일을 직접
-          하지 않도록 법이 정해 두었기 때문입니다. 볼 평가가 아직 없으면 보호자에게 말해 주세요.
-        </p>
-      )}
-
-      {/* 최종 제출까지 간 아이에게는 결과가 다음 자리다 */}
-      {record.finalized && (
-        <p className="mt-6 text-center text-[13px] text-soft-muted">
-          최종 제출을 마쳤습니다.{" "}
-          <Link href="/student/results" className="font-semibold text-soft-primary hover:underline">
-            응시 결과 보기
-          </Link>
+          하지 않도록 법이 정해 두었기 때문입니다. 볼 진단이 아직 없으면 보호자에게 말해 주세요.
         </p>
       )}
     </>

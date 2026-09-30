@@ -29,7 +29,7 @@ function pad(n: number) {
 /**
  * 셋트 창이 머리에 건네는 교과 이름.
  *
- * 유료시험 창은 주소에 과목이 들어 있어(/exam/session/paid/수학) 머리가 혼자 읽는다. 셋트 창은
+ * 유료 진단 창은 주소에 과목이 들어 있어(/exam/session/paid/수학) 머리가 혼자 읽는다. 셋트 창은
  * 주소가 회차와 학년까지라, 교과는 시작 화면에서 고르고 나서야 정해진다. 머리는 레이아웃에,
  * 셋트는 페이지에 있어 서로 다른 트리다 — 「나가기」 신호와 같은 방법으로 건넨다.
  */
@@ -94,7 +94,7 @@ export default function ExamStatusBar() {
   const subject = slug === "paid" && isSubjectId(parts[4] ?? "") ? (parts[4] as SubjectId) : null;
   const wallet = useWallet(session?.studentId ?? "demo");
   /**
-   * 무료시험(/exam/session/free)은 과목 셋을 한 판으로 본다.
+   * 무료 진단(/exam/session/free)은 과목 셋을 한 판으로 본다.
    *
    * 세 기록이 함께 움직이므로(startFree · submitFree) 시계와 상태는 어느 하나를 봐도 같다.
    *
@@ -122,7 +122,7 @@ export default function ExamStatusBar() {
       : applied
         ? evalName(applied.round, applied.track)
         : config.roundLabel;
-  /** 지금 보는 과목 — 무료시험은 셋을 한 번에 본다 */
+  /** 지금 보는 과목 — 무료 진단은 셋을 한 번에 본다 */
   const subjectText = free
     ? subjects.map((x) => x.short).join(" · ")
     : subject
@@ -252,7 +252,7 @@ function HeadRow({
  *
  * 팝업이 막혀 같은 탭에서 열린 사람에게는 창을 닫을 수가 없어 주소로 돌려보낸다. 그
  * 돌아갈 자리가 갈래마다 다르다 — 셋트는 아직 회원이 아닌 사람이 온 자리라 평가 목록이고,
- * 무료·유료시험은 접수한 사람이 온 자리라 응시하기다.
+ * 무료·유료 진단은 접수한 사람이 온 자리라 응시하기다.
  */
 function CloseWindow({ fallback }: { fallback?: string }) {
   return (

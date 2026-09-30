@@ -4,7 +4,7 @@ import { Aside, Chapter, Rows } from "@/components/site/Article";
 
 const title = "심화진단 2단계";
 const lead =
-  "종이 검사로는 보기 어려운 청각·리듬, 신체·운동, 사회·관계 세 영역을 소리·움직임·함께하는 활동 과제로 확인합니다.";
+  "지필 진단으로는 보기 어려운 청각·리듬, 신체·운동, 사회·관계 세 영역을 소리·움직임·함께하는 활동 과제로 확인합니다.";
 
 export const metadata: Metadata = { title, description: lead };
 

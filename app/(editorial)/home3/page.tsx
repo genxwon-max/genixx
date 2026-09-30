@@ -58,7 +58,7 @@ const sampleType = primaryTypes.language;
 
 /** 숫자 넷 — 제품 사실만. 실적처럼 보이는 수는 두지 않는다 */
 const figures = [
-  { n: "40", unit: "인", l: "한국창의영재교육원의 출제·평가 전문가" },
+  { n: "40", unit: "인", l: "한국창의영재교육원의 출제·진단 전문가" },
   { n: String(axes.length), unit: "갈래", l: `재능 좌표. 2026년에는 ${measuredAxes.length}갈래를 먼저 잽니다` },
   {
     n: String(totalQuestions()),
@@ -420,7 +420,7 @@ export default function Home3() {
                 같은 전문가단이 맡습니다.
               </h2>
               <p className="ed-lead mt-6 max-w-2xl text-(--paper-2)">
-                한국창의영재교육원의 전문가 40인이 문항 출제와 평가에 참여합니다. 영재학교 교수진과 교장·교감
+                한국창의영재교육원의 전문가 40인이 문항 출제와 진단에 참여합니다. 영재학교 교수진과 교장·교감
                 출신 현장 교육자로 구성되며, AI는 1차 분석까지만 하고 판정은 케이스 회의에서 사람이
                 확정합니다.
               </p>
@@ -462,7 +462,7 @@ export default function Home3() {
               <>
                 영재를 가려내는 검사가 아니라,
                 <br className="hidden sm:block" />{" "}
-                숨은 재능을 찾는 검사입니다.
+                숨은 재능을 찾는 진단입니다.
               </>
             }
             lead="학력과 재능을 겹쳐 놓으면 네 자리가 생깁니다. 이 진단이 가장 먼저 찾는 것은 왼쪽 위, 성적에 가려져 있던 자리입니다."

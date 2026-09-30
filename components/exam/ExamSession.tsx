@@ -74,9 +74,9 @@ export function isAnswered(q: Question, value: number | string | undefined) {
 }
 
 /**
- * 응시 한 판이 보는 범위 — **유료시험의 과목 하나**이거나 **무료시험 전체**다.
+ * 응시 한 판이 보는 범위 — **유료 진단의 과목 하나**이거나 **무료 진단 전체**다.
  *
- * 유료시험은 과목마다 따로 들어간다(과목당 40분이 과목을 갈라 놓는 근거다). 무료시험은
+ * 유료 진단은 과목마다 따로 들어간다(과목당 40분이 과목을 갈라 놓는 근거다). 무료 진단은
  * 과목을 고르지 않고 20문항을 한 번에 이어서 푼다 — 절차가 그것을 시험 하나로 적고 있다.
  *
  * 둘이 화면을 나눠 쓰는 까닭은 아이가 보는 것이 같아서다. 왼쪽 자료 · 가운데 문제 ·
@@ -90,20 +90,20 @@ export function isAnswered(q: Question, value: number | string | undefined) {
  * 적혀 있지 않다. 이제 갈래마다 주소가 따로다 —
  *
  *   /exam/session/trial/[회차]/[학년]  비회원 셋트
- *   /exam/session/free                회원 무료시험
- *   /exam/session/paid/[과목]          회원 유료시험
+ *   /exam/session/free                회원 무료 진단
+ *   /exam/session/paid/[과목]          회원 유료 진단
  */
 export type ExamScope = { kind: "paid"; subject: SubjectId } | { kind: "free" };
 
 /**
  * 한 판의 상태와 손잡이.
  *
- * 저장은 그대로 과목마다 나뉘어 있다(lib/examStore.ts). 무료시험은 그 셋을 하나로 합쳐
+ * 저장은 그대로 과목마다 나뉘어 있다(lib/examStore.ts). 무료 진단은 그 셋을 하나로 합쳐
  * 읽고, 고칠 때는 셋을 한 번에 움직인다 — 국어만 제출되고 수학은 미시작으로 남는 상태가
  * 생기면 아이는 한 번 낸 시험이 왜 반만 끝났는지 알 수 없다.
  */
 type Sheet = {
-  /** 화면 머리에 적는 이름 — 「수학」 · 「무료시험」 */
+  /** 화면 머리에 적는 이름 — 「수학」 · 「무료 진단」 */
   title: string;
   /** 지금 열린 문항 — 푸는 차례대로 */
   list: Question[];
@@ -111,7 +111,7 @@ type Sheet = {
   full: Question[];
   /** 한 화면에 함께 서는 문항 묶음 */
   screens: Question[][];
-  /** 문항 이동판을 과목으로 갈라 세울까 — 과목이 섞인 판(무료시험)만 그렇다 */
+  /** 문항 이동판을 과목으로 갈라 세울까 — 과목이 섞인 판(무료 진단)만 그렇다 */
   grouped: boolean;
   answers: Record<string, number | string>;
   reflections: Record<string, string>;
@@ -121,7 +121,7 @@ type Sheet = {
   reflectionAt: string | null;
   attemptsLeft: number;
   limitMin: number;
-  /** 이번 회차에서 빠진 판인가 — 무료시험은 과목을 통째로 보므로 늘 false다 */
+  /** 이번 회차에서 빠진 판인가 — 무료 진단은 과목을 통째로 보므로 늘 false다 */
   disabled: boolean;
   start: () => void;
   submit: () => void;
@@ -156,10 +156,10 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
         .filter((sc) => sc.length > 0),
     );
     return {
-      title: "무료시험",
+      title: "무료 진단",
       list,
       grouped: true,
-      /* 무료시험에서 잠긴 문항은 유료시험이 여는 것이다 — 세 과목을 모두 늘어놓는다 */
+      /* 무료 진단에서 잠긴 문항은 유료 진단이 여는 것이다 — 세 과목을 모두 늘어놓는다 */
       full: SUBJECT_IDS.flatMap((id) => examOrderOf(id)),
       screens,
       answers: merge((r) => r.answers),
@@ -185,7 +185,7 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
 
   const subject = scope.subject;
   const rec = record.subjects[subject];
-  /* 갈래는 주소가 정한다 — 이 주소는 유료시험이므로 저장된 record.tier를 보지 않는다 */
+  /* 갈래는 주소가 정한다 — 이 주소는 유료 진단이므로 저장된 record.tier를 보지 않는다 */
   const list = tierQuestions("paid", subject);
   return {
     title: subjectOf(subject)!.name,
@@ -240,9 +240,9 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   const [entered, setEntered] = useState(false);
 
   /**
-   * 이 판이 여는 문항과 손잡이 — 과목 하나이거나 무료시험 스물이다.
+   * 이 판이 여는 문항과 손잡이 — 과목 하나이거나 무료 진단 스물이다.
    *
-   * 문항 은행 전체를 세지 않는다. 무료시험을 보는 아이에게 「총 50문항」이라 적고 20문항만
+   * 문항 은행 전체를 세지 않는다. 무료 진단을 보는 아이에게 「총 50문항」이라 적고 20문항만
    * 열면 시험이 끊긴 것으로 읽히고, 제출도 영원히 막힌다 — 아래 셈이 모두 이 목록을 센다.
    */
   const sheet = useSheet(studentId, scope, record);
@@ -416,12 +416,12 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
            * 과목 하나를 볼 때는 잠긴 문항까지 세운다 — 열린 것이 앞에서부터라 번호가 1부터
            * 죽 이어지고, 점선 번호가 「더 있다」를 말해 준다.
            *
-           * 무료시험은 열린 것만 세운다. 국어 앞 4 · 수학 앞 8 · 과학 앞 8이라 잠긴 문항이
+           * 무료 진단은 열린 것만 세운다. 국어 앞 4 · 수학 앞 8 · 과학 앞 8이라 잠긴 문항이
            * 사이사이에 끼고, 그것까지 늘어놓으면 스무 문항을 푸는 아이가 40번까지 붙은
            * 번호판을 보게 된다 — 머리의 「문항 3 / 20」과 번호판이 서로 다른 말을 한다.
            */
           list={scope.kind === "free" ? order : full}
-          /* 무료시험은 과목이 섞여 있어 번호판을 과목으로 갈라 세운다 */
+          /* 무료 진단은 과목이 섞여 있어 번호판을 과목으로 갈라 세운다 */
           grouped={sheet.grouped}
           /* 세트면 같은 자료를 읽는 문제들이 「함께 서 있는 것」이다 — 지금 오른쪽에 선
              문제는 isCurrent가 따로 말한다 */
@@ -435,13 +435,13 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
           doneLabel="답한 문항"
           doneVerb="응답함"
           footnote={
-            /* 무료시험을 보는 아이에게 남은 문항을 숨기지 않는다. 다만 지금 풀 수 없다는
+            /* 무료 진단을 보는 아이에게 남은 문항을 숨기지 않는다. 다만 지금 풀 수 없다는
                것을 점선과 이 줄로 함께 말한다 */
             record.tier === "paid" || full.length === order.length
               ? undefined
               : scope.kind === "free"
-                ? "유료시험으로 접수하면 과목마다 문항이 더 열립니다."
-                : "점선 번호는 유료시험으로 접수하면 풀 수 있습니다."
+                ? "유료 진단으로 접수하면 과목마다 문항이 더 열립니다."
+                : "점선 번호는 유료 진단으로 접수하면 풀 수 있습니다."
           }
         />
       </div>
@@ -541,7 +541,7 @@ export function QuestionPad({
   /**
    * 번호를 과목으로 갈라 세울까.
    *
-   * 무료시험은 국어 4 · 수학 8 · 과학 8이 한 판에 섞여 있다. 번호만 스물을 늘어놓으면
+   * 무료 진단은 국어 4 · 수학 8 · 과학 8이 한 판에 섞여 있다. 번호만 스물을 늘어놓으면
    * 13번이 어느 과목인지 알 수 없어, 「과학은 아직 손도 안 댔다」를 눈으로 셀 수 없다.
    * 번호는 1부터 끝까지 이어 붙이고 머리글만 갈라 둔다.
    */
@@ -671,8 +671,8 @@ export function QuestionPad({
  * 채워지고, 응시 과목도 고르는 것이 아니라 **정해진 것**이라 읽기만 한다.
  *
  * ── 교시 ──
- * 유료시험은 과목마다 따로 들어가므로 과목 차례가 곧 교시다(국어 제1교시 · 수학 제2교시 …).
- * 무료시험은 20문항을 한 번에 보는 한 교시짜리 시험이라 언제나 제1교시다.
+ * 유료 진단은 과목마다 따로 들어가므로 과목 차례가 곧 교시다(국어 제1교시 · 수학 제2교시 …).
+ * 무료 진단은 20문항을 한 번에 보는 한 교시짜리 시험이라 언제나 제1교시다.
  *
  * ── 회차 ──
  * 표지 첫 줄의 해 · 분기는 **접수 기록**에서 읽는다. 회차 설정의 이름(roundLabel)은 관리자가
@@ -689,7 +689,7 @@ function StartGate({
   scope: ExamScope;
   studentId: string;
   title: string;
-  /** 무료시험처럼 과목이 섞인 판에서 무엇을 어떻게 푸는지 한 줄 더 적는다 */
+  /** 무료 진단처럼 과목이 섞인 판에서 무엇을 어떻게 푸는지 한 줄 더 적는다 */
   note?: string | null;
   onStart: () => void;
 }) {
@@ -706,7 +706,7 @@ function StartGate({
     : config.roundLabel;
   const grade = applied ? trackOf(applied.track).grades : (student?.grade ?? "-");
 
-  /* 과목마다 따로 들어가는 유료시험은 과목 차례가 곧 교시다 */
+  /* 과목마다 따로 들어가는 유료 진단은 과목 차례가 곧 교시다 */
   const period =
     scope.kind === "free" ? 1 : subjects.findIndex((x) => x.id === scope.subject) + 1;
 
@@ -715,7 +715,7 @@ function StartGate({
       <div className="w-full max-w-[900px]">
         <ExamCover
           badge={`제${period}교시`}
-          headline={`${season} GENIXX 진단평가 ${title} 문항지`}
+          headline={`${season} GENIXX 재능 진단 ${scope.kind === "free" ? "무료" : title} 문항지`}
           title={assessment.name}
           watermark={`GENIXX${season.slice(0, 4)}`}
           notice="(이 면의 인적사항이 맞는지 확인한 뒤 아래 버튼을 눌러 시작해 주세요. 시작하면 전체화면으로 바뀌고 제한 시간이 흐르기 시작합니다.)"
@@ -752,7 +752,7 @@ function StartGate({
             {
               id: "subject",
               cells: [
-                /* 무료시험은 과목을 고르는 시험이 아니라 셋을 한 판으로 보는 시험이다.
+                /* 무료 진단은 과목을 고르는 시험이 아니라 셋을 한 판으로 보는 시험이다.
                    그 줄이 말해야 하는 것은 **지금 무료로 보고 있다**는 것 하나라, 과목 칸
                    (국어·수학·과학)을 세우지 않고 「무료 응시」 한 칸만 둔다 */
                 { kind: "label", text: scope.kind === "free" ? "무료 응시" : "응시 과목" },
@@ -774,7 +774,7 @@ function StartGate({
               onClick={onStart}
               className={`${btnPrimary} px-7 py-3.5 text-[15px]`}
             >
-              평가 시작
+              진단 시작
               <ArrowRight className="h-4 w-4" />
             </button>
           }
@@ -782,13 +782,13 @@ function StartGate({
 
         {/* ── 종이 바깥 ──
             표지에 적을 것을 줄였다. 문항 수 · 제한 시간 · 자동 제출 · 해석 단계 · 전체화면
-            같은 규칙은 이미 시험 안내(/exam/info)와 응시 규정 띠가 말하고 있고, 시작
+            같은 규칙은 이미 진단 안내(/exam/info)와 응시 규정 띠가 말하고 있고, 시작
             단추 앞에 여섯 줄을 세우면 아이는 그것을 읽지 않고 넘긴다. 여기 남기는 것은
             **누르기 전에 알아야 되돌릴 수 없는 것** 둘뿐이다 */}
         <ul className="mt-6 space-y-2 text-center text-[13px] leading-relaxed text-exam-muted">
           {note && <li>· {note}</li>}
           <li>· 답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다.</li>
-          <li>· 중간에 포기하면 이 시험의 응시 기회가 사라집니다.</li>
+          <li>· 중간에 포기하면 이번 응시 기회가 사라집니다.</li>
         </ul>
       </div>
     </div>
@@ -1140,7 +1140,7 @@ function ReflectAskDialog({ onDo, onLater }: { onDo: () => void; onLater: () => 
                 리포트가 점수표에 가까워집니다.
               </p>
               <p>
-                정확한 진단을 위해 지금 진행해 주시길 권합니다. 지금 어렵다면 평가 판의{" "}
+                정확한 진단을 위해 지금 진행해 주시길 권합니다. 지금 어렵다면 진단 현황의{" "}
                 <b className="text-exam-text">「해석 작성」</b>에서 나중에 이어서 쓰셔도 됩니다 —
                 기다렸다가 함께 읽습니다.
               </p>
@@ -1281,7 +1281,7 @@ function Submitted({
       {pending ? (
         <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
           답안이 저장되었습니다. <b className="text-exam-text">해석은 아직 비어 있습니다</b> —
-          평가 판의 「해석 작성」에서 언제든 이어서 쓸 수 있고, 적을수록 진단이 정확해집니다.
+          진단 현황의 「해석 작성」에서 언제든 이어서 쓸 수 있고, 적을수록 진단이 정확해집니다.
         </p>
       ) : (
         <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
@@ -1314,7 +1314,7 @@ function Forfeited({ sheet }: { sheet: Sheet }) {
         {sheet.title} 응시를 포기했습니다
       </h1>
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
-        이 시험의 응시 기회가 소모되었습니다. 남은 기회는{" "}
+        이번 응시 기회를 썼습니다. 남은 기회는{" "}
         <b className="tabular-nums text-rose-600">{attemptsLeft}회</b>입니다.
       </p>
       <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">

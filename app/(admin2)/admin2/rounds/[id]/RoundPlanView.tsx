@@ -299,7 +299,7 @@ export default function RoundPlanView({ id }: { id: string }) {
               {slots.length === 0 && (
                 <FormRow label="과목">
                   <span className="a2-t-sm text-(--a2-ink-4)">
-                    넣은 과목이 없습니다. 아래 평가 과목 편성에서 넣습니다.
+                    넣은 과목이 없습니다. 아래 진단 과목 편성에서 넣습니다.
                   </span>
                 </FormRow>
               )}

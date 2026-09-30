@@ -3,7 +3,7 @@ import { Body, PageHead } from "@/components/admin2/ui";
 import RoundsTable from "./RoundsTable";
 
 /**
- * ADM-05 평가 회차.
+ * ADM-05 진단 회차.
  *
  * 이 화면은 회차 목록 하나다. 답하는 것도 하나 — 「어느 회차를 손대야 하나」.
  *
@@ -19,11 +19,11 @@ export default function RoundsView() {
   return (
     <>
       <PageHead
-        title="평가 회차"
+        title="진단 회차"
         actions={
           <>
             <Link href="/admin2/forms" className="a2-btn">
-              평가별 문항관리
+              진단별 문항관리
             </Link>
             {/* 만드는 일은 목록 위에서 판을 펼치지 않고 제 주소로 간다(ADM-05-1).
                 「이번 회차 편성」은 뺐다 — 이 화면에 오는 까닭은 대개 다른 회차를 열려는

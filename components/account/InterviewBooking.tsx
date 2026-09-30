@@ -63,7 +63,6 @@ import { useSession } from "@/lib/authStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
 import { CheckIcon } from "@/components/Icons";
-import { eyebrow } from "@/components/exam/ui";
 import Toast from "@/components/exam/Toast";
 import ConfirmDialog from "./ConfirmDialog";
 import CounselorCard, { CounselorDetail } from "./CounselorCard";
@@ -276,8 +275,7 @@ export default function InterviewBooking({
   return (
     <>
       <header className="mb-6 border-b border-soft-line pb-5">
-        <p className={eyebrow}>결과 해석 면담</p>
-        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+        <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
           면담
         </h1>
         <p className={`mt-2 text-[13px] leading-[1.7] ${t.muted}`}>

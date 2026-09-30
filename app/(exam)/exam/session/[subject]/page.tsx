@@ -2,7 +2,7 @@ import { permanentRedirect, notFound } from "next/navigation";
 import { isSubjectId } from "@/lib/exam";
 
 /**
- * 옛 응시 주소 (/exam/session/[과목]) — 유료시험 주소로 넘긴다.
+ * 옛 응시 주소 (/exam/session/[과목]) — 유료 진단 주소로 넘긴다.
  *
  * 갈래가 주소에 적히기 전에는 이 주소 하나가 무료도 되고 유료도 되었다(저장된
  * record.tier가 갈랐다). 지금은 /exam/session/paid/[과목]이 그 자리다. 남아 있는 링크와

@@ -376,8 +376,10 @@ export function findById(id: string) {
  * 일괄 등록 열.
  *
  * 한 명씩 등록(ChildNew)과 같은 항목을 같은 필수·선택 구분으로 받는다 — 필수는 이름 ·
- * 생년월일 · 학교급 · 학년 · 휴대전화(있는 경우), 나머지는 선택이다. 예전에는 이름·생년월일
- * 둘만 받고 나머지를 학교·학년·반 정도로 두어, 여럿을 올린 아이는 프로필이 비어 있었다.
+ * 생년월일 · 학교급 · 학년 · 아이 휴대전화(없으면 「없음」), 나머지는 선택이다. 예전에는
+ * 이름·생년월일 둘만 받고 나머지를 학교·학년·반 정도로 두어, 여럿을 올린 아이는 프로필이
+ * 비어 있었다. 학부모의 일괄 등록 화면(BulkRegister)은 이 열로 명단 파일을 읽어 들인다
+ * (lib/bulkRegister.ts).
  *
  * 기관은 반과 법정대리인 연락처·성명을 더 받는다(만 14세 미만 동의 요청에 쓴다).
  *
@@ -421,14 +423,21 @@ export const bulkColumns: BulkColumn[] = [
   { key: "grade", label: "학년", required: true, hint: "숫자", example: "4" },
   {
     key: "phone",
-    label: "휴대전화",
+    label: "아이 휴대전화",
     required: true,
-    hint: "있는 경우",
+    hint: "없으면 「없음」",
     example: "01012345678",
-    aliases: ["아이 휴대전화", "학생 휴대전화", "연락처"],
+    aliases: ["휴대전화", "학생 휴대전화", "연락처"],
   },
   { key: "gender", label: "성별", required: false, hint: "남자·여자", example: "여자" },
-  { key: "region", label: "거주지", required: false, hint: "시·도", example: "서울", aliases: ["주소", "거주지 주소"] },
+  {
+    key: "region",
+    label: "거주지",
+    required: false,
+    hint: "시·도",
+    example: "서울",
+    aliases: ["거주 지역", "시·도", "주소", "거주지 주소"],
+  },
   { key: "school", label: "학교명", required: false, example: "목동초등학교", aliases: ["학교"] },
   {
     key: "interests",

@@ -50,7 +50,6 @@ export default function StudentSurveys() {
       <WhoNote self={self} />
 
       <Head
-        eyebrowText="설문"
         title="내 설문"
         lead="정답이 있는 검사가 아닙니다. 평소 내 모습을 그대로 고르면 됩니다. 우리 집과 선생님 설문이 함께 채워질수록 결과 해석이 촘촘해집니다."
         right={
@@ -143,7 +142,7 @@ export default function StudentSurveys() {
         사람이 셋을 채우면 서로 맞춰 보는 뜻이 없어지기 때문입니다. 선생님 설문은 연락처를 아는
         보호자 화면에서 보냅니다. 최종 제출은{" "}
         <Link href="/student/exams" className="font-semibold text-soft-primary hover:underline">
-          평가 보기
+          내 진단
         </Link>
         에서 합니다.
       </p>

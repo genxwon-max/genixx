@@ -56,11 +56,11 @@ export function applyAction(
   if (round.availability === "soon") {
     return { kind: "blocked", label: `${dotDate(round.opensOn).slice(5)} 접수 시작` };
   }
-  /* 같은 시기의 평가는 하나만 — 응시 기록이 학생마다 한 벌이다(lib/ticketStore.ts) */
+  /* 같은 시기의 평가는 하나만 — 한 시기에 두 학년을 볼 까닭이 없다(lib/ticketStore.ts) */
   if (used) {
     return { kind: "blocked", label: `${evalName(round.id, used.track, round.label)} 접수함` };
   }
-  if (round.subjects.length === 0) return { kind: "blocked", label: "준비 중인 평가입니다" };
+  if (round.subjects.length === 0) return { kind: "blocked", label: "준비 중인 진단입니다" };
   /* 보호자는 설문만 한다. 응시권을 쓰는 것은 시험을 보는 학생이다 */
   if (asGuardian) return { kind: "blocked", label: "학생 계정에서 접수합니다" };
   return { kind: "apply", label: "접수하기" };
@@ -70,17 +70,17 @@ export function applyAction(
  * 「접수하기」를 누른 뒤의 흐름 — 접수하고, 끝나면 응시하기 탭으로 갈 길을 연다.
  *
  * ── 갈래를 묻지 않는다 ──
- * 예전에는 이 창에서 「무료시험 / 유료시험」 두 칸을 세워 고르게 했다. 접수하려던 사람이
+ * 예전에는 이 창에서 「무료 진단 / 유료 진단」 두 칸을 세워 고르게 했다. 접수하려던 사람이
  * 문항 수와 응시권 매수를 견주는 자리에 먼저 서게 되고, 골라 놓고도 무엇을 고른 것인지
  * 응시할 때 다시 기억해 내야 한다. 고를 것이 아니라 **이미 정해져 있는 것**이다 —
  *
- *   응시권이 없으면   무료시험으로 접수한다. 20문항을 한 번에 이어서 푼다.
- *   응시권이 있으면   한 매를 써서 유료시험으로 접수한다. 과목마다 따로 응시한다.
+ *   응시권이 없으면   무료 진단으로 접수한다. 20문항을 한 번에 이어서 푼다.
+ *   응시권이 있으면   한 매를 써서 유료 진단으로 접수한다. 과목마다 따로 응시한다.
  *
  * 그래서 창은 묻는 대신 **어느 갈래로 접수되는지와 그 까닭을 적어 둔다**.
  *
  * ── 올리는 길도 두지 않는다 ──
- * 한때는 무료로 접수해 둔 평가를 이 창에서 유료로 올릴 수 있었다(「유료시험으로 올릴까요?」).
+ * 한때는 무료로 접수해 둔 평가를 이 창에서 유료로 올릴 수 있었다(「유료 진단으로 올릴까요?」).
  * 갈래를 고르게 하지 않기로 한 뒤에는 그 길이 갈래를 두 번 묻는 꼴이 된다 — 접수할 때 한
  * 번, 목록에 돌아와서 또 한 번. 갈래는 접수하는 순간 결제 여부가 정하고, 그것으로 끝이다.
  *
@@ -172,7 +172,7 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
         close();
         return;
       }
-      if (tier === "paid") raiseTier(studentId, "paid");
+      if (tier === "paid") raiseTier(studentId, "paid", { round: round.id, track });
       router.replace(appliedHref(pathname, round.id, track));
     };
 
@@ -196,16 +196,16 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
           </>
         }
       >
-        {/* 과목과 시간은 유료시험 창에만 — 아래 참고 */}
+        {/* 과목과 시간은 유료 진단 창에만 — 아래 참고 */}
         <Summary round={round} track={track} minutes={paid} />
 
         {/**
          * 접수되는 내용 — 문장으로 늘어놓지 않고 항목으로 세운다. 접수 확인은 읽는 글이
          * 아니라 **맞는지 훑는 표**라, 무엇이 어떤 값인지 눈이 왼쪽에서 찾을 수 있어야 한다.
          *
-         * ── 무료시험은 짧게 ──
-         * 적을 것이 같지 않다. 유료시험은 응시권 한 매가 나가고 과목마다 따로 들어가므로,
-         * 무엇이 몇 매나 어떻게 쓰이는지가 누르기 전에 보여야 한다. 무료시험은 나가는 것이
+         * ── 무료 진단은 짧게 ──
+         * 적을 것이 같지 않다. 유료 진단은 응시권 한 매가 나가고 과목마다 따로 들어가므로,
+         * 무엇이 몇 매나 어떻게 쓰이는지가 누르기 전에 보여야 한다. 무료 진단은 나가는 것이
          * 없고 한 번에 이어서 푸는 시험 하나라, 같은 칸을 다 세우면 확인할 것이 없는 자리에
          * 확인할 것을 늘어놓는 꼴이 된다. 유형과 문항 수만 둔다.
          */}
@@ -245,18 +245,18 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
         {/* 왜 이 유형인지 — 고르는 자리를 없앤 만큼 까닭은 적어 두어야 한다 */}
         <p className="mt-3.5 text-[13px] leading-relaxed text-soft-ink">
           {paid
-            ? "결제한 응시권이 있어 유료시험으로 접수합니다. 정밀 리포트와 전문가 해석으로 이어집니다."
+            ? "결제한 응시권이 있어 유료 진단으로 접수합니다. 정밀 리포트와 전문가 해석으로 이어집니다."
             : "결제 없이 응시하고 요약 리포트를 받습니다."}
         </p>
 
         <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-soft-muted">
-          <li>· 같은 기간에 열리는 평가는 하나만 접수할 수 있습니다.</li>
+          <li>· 같은 기간에 열리는 진단은 하나만 접수할 수 있습니다.</li>
           <li>· 학년은 접수한 뒤 바꿀 수 없습니다.</li>
           {!paid && (
             <li>
               · 응시권은 보호자가 결제해 넘겨줍니다
-              {examFee(round) > 0 && ` — 이 평가는 ${examFeeText(round)}입니다`}. 결제한 뒤에
-              접수하면 유료시험이 됩니다.
+              {examFee(round) > 0 && ` — 이 진단은 ${examFeeText(round)}입니다`}. 결제한 뒤에
+              접수하면 유료 진단이 됩니다.
             </li>
           )}
         </ul>
@@ -285,8 +285,8 @@ function Row({ t, children }: { t: string; children: ReactNode }) {
  * 아래가 표다.
  *
  * `minutes` — 과목마다의 제한 시간(「국어 40분 · 수학 40분 · 과학 40분」)을 적을까.
- * 과목마다 따로 들어가는 유료시험에서는 그 줄이 곧 「몇 번을, 얼마씩 앉아 있어야 하는가」
- * 지만, 무료시험은 셋을 한 번에 이어서 푸는 시험 하나라 과목별 40분이 맞는 말이 아니다.
+ * 과목마다 따로 들어가는 유료 진단에서는 그 줄이 곧 「몇 번을, 얼마씩 앉아 있어야 하는가」
+ * 지만, 무료 진단은 셋을 한 번에 이어서 푸는 시험 하나라 과목별 40분이 맞는 말이 아니다.
  */
 function Summary({
   round,

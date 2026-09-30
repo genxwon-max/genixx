@@ -15,7 +15,7 @@ import { axes } from "@/lib/result";
 export const metadata: Metadata = {
   title: "문항 미리보기",
   description:
-    "TalentMe 검사가 어떤 문항으로 이루어져 있는지, 과목별 예시 문항을 가입 전에 공개합니다. (PUB-04-3)",
+    "TalentMe 재능 진단이 어떤 문항으로 이루어져 있는지, 과목별 예시 문항을 가입 전에 공개합니다. (PUB-04-3)",
 };
 
 /**
@@ -50,19 +50,19 @@ export default function QuestionPreviewPage() {
       <SubHero
         href="/sample/questions"
         title="문항 미리보기"
-        lead={`${assessment.name}(${assessment.ko}) 검사가 어떤 문항으로 이루어져 있는지 가입 전에 공개합니다. 아래 예시는 실제 세트에서 그대로 가져온 문항이며, 정답은 싣지 않았습니다.`}
+        lead={`${assessment.name}(${assessment.ko}) 재능 진단이 어떤 문항으로 이루어져 있는지 가입 전에 공개합니다. 아래 예시는 실제 세트에서 그대로 가져온 문항이며, 정답은 싣지 않았습니다.`}
       />
 
       <div className="container-x section-y">
-        {/* ① 검사 구성 — 상자 네 개 대신 한 줄 명세 */}
+        {/* ① 진단 구성 — 상자 네 개 대신 한 줄 명세 */}
         <Chapter
           no="01"
-          title="검사 구성"
+          title="진단 구성"
           lead="한 번에 몰아 보지 않습니다. 과목마다 따로 접속해서 40분씩 풉니다."
         >
           <dl className="grid border-b border-brand-100 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4">
             {[
-              { t: "검사 이름", d: `${assessment.name} (${assessment.ko})` },
+              { t: "진단 이름", d: `${assessment.name} (${assessment.ko})` },
               { t: "회차", d: assessment.round },
               { t: "문항 수", d: questionCountText() },
               { t: "제한 시간", d: "과목당 40분" },

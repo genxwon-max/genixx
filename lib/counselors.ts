@@ -83,7 +83,7 @@ export const counselTopics: Record<CounselTopic, string> = {
   report: "결과지 해석",
   school: "학교생활 · 학습",
   career: "진로 · 심화 과정",
-  score: "점수 · 검사 이해",
+  score: "점수 · 진단 이해",
 };
 
 export const topicList = Object.keys(counselTopics) as CounselTopic[];

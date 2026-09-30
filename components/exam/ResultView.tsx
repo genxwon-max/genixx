@@ -3,7 +3,17 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { assessment, subjects } from "@/lib/exam";
-import { surveyKeys, surveyMeta, useExamRecord, useHydrated } from "@/lib/examStore";
+import {
+  currentRegOf,
+  parseRegId,
+  regId,
+  surveyKeys,
+  surveyMeta,
+  useExamRecord,
+  useHydrated,
+  type RegRef,
+} from "@/lib/examStore";
+import { evalName } from "@/lib/examCatalog";
 import { useSession } from "@/lib/authStore";
 import { findById, formatCode, useRoster } from "@/lib/roster";
 import { confidenceOf, decideType, scoreAxes, scoreSubject } from "@/lib/result";
@@ -51,7 +61,21 @@ function downloadPng(studentName: string) {
   img.src = url;
 }
 
-export default function ResultView() {
+export default function ResultView({
+  reg: forcedReg,
+  studentId: forcedStudent,
+  back,
+}: {
+  /** 펼칠 평가를 밖에서 정해 줄 때 — 결과보기 탭이 고른 줄을 넘긴다. 없으면 주소의 ?reg= */
+  reg?: RegRef;
+  /**
+   * 볼 학생을 밖에서 정해 줄 때. 학생 대시보드(/student/results/…)는 누구의 자리인지를 이미
+   * 정해 두었다(components/student/self.tsx) — 그때는 ?student= 를 읽지 않는다.
+   */
+  studentId?: string;
+  /** 목록에서 들어온 결과지 — 제목 위와 맨 아래에 돌아갈 길을 둔다(없으면 「응시 현황으로」) */
+  back?: { href: string; label: string };
+} = {}) {
   const hydrated = useHydrated();
   const session = useSession();
   const config = useExamConfig();
@@ -68,11 +92,14 @@ export default function ResultView() {
    */
   const asked = params.get("student");
   const mine = asked ? roster.find((s) => s.id === asked) : null;
-  const studentId = mine?.id ?? session?.studentId ?? "demo";
-  const record = useExamRecord(studentId);
-  const report = useReportOf(studentId);
+  const studentId = forcedStudent ?? mine?.id ?? session?.studentId ?? "demo";
+  /* 어느 평가의 결과인가 — 평가마다 결과가 따로다(?reg=2026-3/e4). 없으면 지금 보고 있는 평가 */
+  const reg = forcedReg ?? parseRegId(params.get("reg")) ?? undefined;
+  const record = useExamRecord(studentId, reg);
+  const report = useReportOf(studentId, reg);
   const student = hydrated ? findById(studentId) : null;
   const name = student?.name ?? session?.name ?? "응시자";
+  const at = hydrated ? (reg ?? currentRegOf(studentId)) : null;
 
   if (!hydrated) {
     return (
@@ -110,12 +137,19 @@ export default function ResultView() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div>
-          <p className={eyebrow}>RPT-01 · 결과 리포트</p>
-          <h1 className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
+          {back && (
+            <Link
+              href={back.href}
+              className="no-print mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-soft-muted hover:text-soft-ink"
+            >
+              ← {back.label}
+            </Link>
+          )}
+          <h1 className="text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">
             {name} 학생 진단 결과
           </h1>
           <p className="mt-2 text-[12px] text-soft-muted">
-            {assessment.name} {config.roundLabel} · 접속코드{" "}
+            {assessment.name} {at ? evalName(at.round, at.track) : config.roundLabel} · 접속코드{" "}
             {student ? formatCode(student.code) : "-"} · 발행{" "}
             {record.finalizedAt ? new Date(record.finalizedAt).toLocaleDateString("ko-KR") : "-"}
           </p>
@@ -130,7 +164,7 @@ export default function ResultView() {
         </div>
       </div>
 
-      <ReportLinks studentId={studentId} />
+      <ReportLinks studentId={studentId} reg={at} />
 
       {/* 유형 */}
       {type && (
@@ -268,7 +302,7 @@ export default function ResultView() {
         </section>
       )}
 
-      {/* 전문가 평가 */}
+      {/* 전문가 진단 */}
       <section className="mt-8">
         <SectionTitle
           note="AI 1차 분석 결과를 교육전문가가 검토해 확정한 코멘트입니다."
@@ -278,7 +312,7 @@ export default function ResultView() {
             </span>
           }
         >
-          전문가 평가
+          전문가 진단
         </SectionTitle>
 
         {/* 승인 화면(EXP-08)에서 확정된 문구를 그대로 싣는다. 담당자가 고친 문장이
@@ -302,7 +336,7 @@ export default function ResultView() {
             {" · "}측정 축 {measured.length} / {scores.length}
           </p>
           <span className="text-[12px] font-bold text-soft-ink">
-            판정 확정 · {report.publishedBy ?? "GENIXX 평가운영팀"} · {report.publishedAt ?? ""}
+            판정 확정 · {report.publishedBy ?? "GENIXX 진단운영팀"} · {report.publishedAt ?? ""}
           </span>
         </div>
       </section>
@@ -313,8 +347,8 @@ export default function ResultView() {
           있습니다.
         </p>
         <div className="flex gap-2">
-          <Link href="/exam" className={btnGhost}>
-            응시 현황으로
+          <Link href={back?.href ?? "/exam"} className={btnGhost}>
+            {back ? `${back.label} 목록으로` : "응시 현황으로"}
           </Link>
           <button type="button" onClick={() => window.print()} className={btnPrimary}>
             결과지 다운로드 (PDF)
@@ -332,9 +366,10 @@ export default function ResultView() {
  * 인쇄하거나 PDF로 저장한다. 정밀본은 결제 상품이지만 파일럿 기간에는 「받기」만 누르면
  * 열린다(lib/reportUnlockStore).
  */
-function ReportLinks({ studentId }: { studentId: string }) {
+function ReportLinks({ studentId, reg }: { studentId: string; reg: RegRef | null }) {
   const unlocked = useFullUnlocked(studentId);
-  const q = `?student=${encodeURIComponent(studentId)}`;
+  /* 보고서 창도 같은 평가를 펴야 한다 — 평가를 싣지 않으면 그 창은 지금 보고 있는 평가를 연다 */
+  const q = `?student=${encodeURIComponent(studentId)}${reg ? `&reg=${encodeURIComponent(regId(reg))}` : ""}`;
   const open = (edition: "summary" | "full") =>
     window.open(`/report/${edition}${q}`, "_blank", "noopener");
 

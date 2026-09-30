@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/authStore";
-import { useExamRecord } from "@/lib/examStore";
-import { useReportOf } from "@/lib/reportStore";
+import { getRecord, useExamVersion } from "@/lib/examStore";
+import { reportFor, useReports } from "@/lib/reportStore";
 import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
 import ResultView from "./ResultView";
 import StudentOnly from "./StudentOnly";
@@ -15,39 +15,40 @@ import StudentOnly from "./StudentOnly";
  * 결과를 바로 펼치지 않는 까닭은, 평가를 여러 번 보면 결과도 여러 벌이 되기 때문이다.
  * 어느 평가의 결과인지 고르는 자리가 목록이다.
  *
- * 결과 칸은 셋으로 갈린다 —
+ * 결과 칸은 셋으로 갈린다 — 줄마다 그 평가의 응시 기록과 리포트를 읽는다.
  *   최종 제출 전       「응시 완료 후 공개」
  *   전문가 확인 중      「확인 중」  (조립은 끝났지만 사람이 발행을 누르기 전)
- *   발행 완료          [보기] — 누르면 아래에 결과 리포트가 펼쳐진다
- *
- * ⚠ 응시 기록도 리포트도 학생마다 한 벌이라 어느 줄을 눌러도 같은 결과가 열린다. 한 시기에
- *   한 평가만 접수할 수 있게 막아 둔 까닭이 이것이다(lib/ticketStore.ts).
+ *   발행 완료          [보기] — 누르면 아래에 그 평가의 결과 리포트가 펼쳐진다
  */
 export default function ReportList() {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
-  const record = useExamRecord(studentId);
-  const report = useReportOf(studentId);
+  /* 줄마다 getRecord로 읽는다 — 기록이 바뀌면 다시 그리도록 구독만 건다 */
+  useExamVersion();
+  const reports = useReports();
   const rows = useRegistrations(studentId);
   const [open, setOpen] = useState<string | null>(null);
 
   if (session && session.role !== "student") return <StudentOnly role={session.role} />;
 
   const key = (r: Registration) => `${r.round}-${r.track}`;
+  const refOf = (r: Registration) => ({ round: r.round, track: r.track });
+  const isPublished = (r: Registration) =>
+    getRecord(studentId, refOf(r)).finalized &&
+    reportFor(reports, studentId, refOf(r))?.state === "published";
   const picked = rows.find((r) => key(r) === open) ?? null;
-  const published = report?.state === "published";
 
   return (
     <div>
       <PageTitle>결과보기</PageTitle>
       <div className="mt-10">
         <RegTable
-          caption="결과를 볼 수 있는 평가"
+          caption="결과를 볼 수 있는 진단"
           rows={rows}
           lastHead="결과"
           renderLast={(row) => {
-            if (!record.finalized) return <span>응시 완료 후 공개</span>;
-            if (!published) return <span>전문가 확인 중</span>;
+            if (!getRecord(studentId, refOf(row)).finalized) return <span>응시 완료 후 공개</span>;
+            if (!isPublished(row)) return <span>전문가 확인 중</span>;
             const on = open === key(row);
             return (
               <button
@@ -68,9 +69,9 @@ export default function ReportList() {
       </div>
       {rows.length === 0 && <GoApply />}
 
-      {picked && published && (
+      {picked && isPublished(picked) && (
         <section className="mt-12" aria-label={`${picked.title} 결과`}>
-          <ResultView />
+          <ResultView reg={refOf(picked)} />
         </section>
       )}
     </div>

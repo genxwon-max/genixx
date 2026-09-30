@@ -1,6 +1,6 @@
 "use client";
 
-import { getRecord, surveyKeys, type ExamRecord } from "./examStore";
+import { getRecord, surveyKeys, type ExamRecord, type RegRef } from "./examStore";
 import { SUBJECT_IDS, subjectOf, type SubjectId } from "./exam";
 import type { Student } from "./roster";
 
@@ -8,10 +8,11 @@ import type { Student } from "./roster";
  * 학생 한 명의 진행 상황 요약.
  *
  * 학부모 홈(/my)과 기관 대시보드(/org)가 같은 계산을 쓰기 때문에 한곳에 모았다.
- * 응시 기록은 학생별로 저장되므로(lib/examStore.ts) 명부와 짝지어 집계한다.
+ * 응시 기록은 접수한 평가마다 저장되므로(lib/examStore.ts) 평가를 넘기면 그 평가의 진행을,
+ * 넘기지 않으면 아이가 지금 보고 있는 평가의 진행을 센다.
  */
 
-export type Phase = "미응시" | "응시중" | "제출완료" | "검사완료";
+export type Phase = "미응시" | "응시중" | "제출완료" | "최종제출";
 
 /** 과목 한 칸의 상태. 막대 하나로 뭉뚱그리지 않고 과목별로 따로 보여 주기 위한 값이다. */
 export type SubjectState = "완료" | "진행중" | "포기" | "미완료";
@@ -40,14 +41,14 @@ export type StudentProgress = {
 };
 
 function phaseOf(record: ExamRecord, submitted: number, total: number): Phase {
-  if (record.finalized) return "검사완료";
+  if (record.finalized) return "최종제출";
   if (submitted >= total) return "제출완료";
   const started = SUBJECT_IDS.some((id) => record.subjects[id].status !== "ready");
   return started ? "응시중" : "미응시";
 }
 
-export function progressOf(student: Student): StudentProgress {
-  const record = getRecord(student.id);
+export function progressOf(student: Student, reg?: RegRef): StudentProgress {
+  const record = getRecord(student.id, reg);
   const total = SUBJECT_IDS.length;
   const subjectRows: SubjectProgress[] = SUBJECT_IDS.map((id) => {
     const st = record.subjects[id].status;
@@ -104,5 +105,5 @@ export const phaseTone: Record<Phase, { dot: string; text: string }> = {
   미응시: { dot: "bg-slate-300", text: "text-slate-500" },
   응시중: { dot: "bg-amber-500", text: "text-amber-700" },
   제출완료: { dot: "bg-soft-primary", text: "text-soft-primary" },
-  검사완료: { dot: "bg-emerald-500", text: "text-emerald-700" },
+  최종제출: { dot: "bg-emerald-500", text: "text-emerald-700" },
 };

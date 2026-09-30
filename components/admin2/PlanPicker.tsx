@@ -94,7 +94,7 @@ export default function PlanPicker({
 
       {/* ── 평가 과목 — 넣은 차례가 곧 순서 ── */}
       <FormRow
-        label="평가 과목"
+        label="진단 과목"
         req
         hint={hint}
       >

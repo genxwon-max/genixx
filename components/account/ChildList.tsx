@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 import { ageFromBirth } from "@/lib/account";
 import { formatCode, useRoster, type Student } from "@/lib/roster";
 import { subjects } from "@/lib/exam";
-import { getRecord, surveyKeys, useExamStore, useHydrated } from "@/lib/examStore";
+import { getRecord, surveyKeys, useExamVersion, useHydrated } from "@/lib/examStore";
 import { phaseTone, progressOf, type Phase } from "@/lib/progress";
 import { ticketsLeft, useTickets, walletOf } from "@/lib/ticketStore";
 import { ArrowRight } from "@/components/Icons";
@@ -31,7 +31,7 @@ const phaseOptions: { value: "all" | Phase; label: string }[] = [
   { value: "미응시", label: "미응시" },
   { value: "응시중", label: "응시중" },
   { value: "제출완료", label: "제출완료" },
-  { value: "검사완료", label: "검사완료" },
+  { value: "최종제출", label: "최종제출" },
 ];
 
 type SortKey = "recent" | "name" | "grade";
@@ -58,10 +58,12 @@ const birthText = (b: string) =>
 /**
  * ACC-03 학생(자녀) 프로필 관리.
  *
- * 보호자가 여기서 하는 일은 셋이다 — 아이마다 **응시권을 결제**하고, **접속코드를
- * 아이에게 넘기고**, 진행 상황을 본다. 한 명씩 큰 카드로 세우면 그 셋이 세로로 흩어져
- * 서로 견줄 수 없으므로, 한 명이 한 줄인 **표**로 세운다. 견줄 값이 칸으로 맞으면
- * 「누구 응시권이 비었는지」가 한눈에 보인다.
+ * 보호자가 여기서 하는 일은 둘이다 — **접속코드를 아이에게 넘기고**, 진행 상황을 본다.
+ * 한 명씩 큰 카드로 세우면 값이 세로로 흩어져 서로 견줄 수 없으므로, 한 명이 한 줄인
+ * **표**로 세운다. 견줄 값이 칸으로 맞으면 「누구 응시권이 비었는지」가 한눈에 보인다.
+ *
+ * 응시권 결제 단추는 두지 않는다. 결제는 결제 메뉴(/my/payments)에서 학생을 고르고
+ * 「다음」으로 넘어가는 한 길로 모았다. 응시권이 빈 줄의 「결제 필요」만 그 길로 잇는다.
  *
  * 문자 보내기는 줄마다 두지 않고 **체크해서 한 번에** 보낸다. 형제자매가 둘·셋이면
  * 줄마다 같은 버튼을 세 번 누르게 되기 때문이다. 반대로 코드 재발급처럼 되돌릴 수
@@ -72,7 +74,7 @@ export default function ChildList() {
   const hydrated = useHydrated();
   const all = useRoster();
   // 상태로 거르려면 응시 기록이 바뀔 때도 다시 그려야 한다. 값 자체는 progressOf가 읽는다.
-  const store = useExamStore();
+  const store = useExamVersion();
   const tickets = useTickets();
 
   const [page, setPage] = useState(1);
@@ -258,24 +260,6 @@ export default function ChildList() {
             </p>
             <div className="flex flex-wrap gap-2">
               <SendCodesButton chosen={chosen} onSent={pick.clear} className={rowShape} />
-              {/* 못 누를 때는 링크를 씌우지 않는다 — disabled를 준 <a>는 그대로 눌린다 */}
-              {chosen.length === 0 ? (
-                <Button disabled className={rowShape}>
-                  응시권 결제
-                </Button>
-              ) : (
-                <Button
-                  nativeButton={false}
-                  /* 체크해 둔 아이를 결제 화면까지 데리고 간다 — 저쪽에서 다시 고르게 하면
-                     같은 목록을 두 번 훑는다 */
-                  render={
-                    <Link href={`/my/payments/checkout?students=${chosen.map((c) => c.id).join(",")}`} />
-                  }
-                  className={rowShape}
-                >
-                  응시권 결제 {chosen.length}명
-                </Button>
-              )}
             </div>
           </div>
 
@@ -316,7 +300,7 @@ export default function ChildList() {
                   <th className={listTh}>접속코드</th>
                   <th className={listTh}>보호자 연락처</th>
                   <th className={listTh}>응시권</th>
-                  <th className={listTh}>시험</th>
+                  <th className={listTh}>진단</th>
                   <th className={listTh}>설문</th>
                   <th className={listTh}>상태</th>
                   <th className={listTh}>관리</th>

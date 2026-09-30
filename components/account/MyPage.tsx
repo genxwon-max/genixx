@@ -526,11 +526,10 @@ function ConsentSection({ variant, onWithdraw }: { variant: Variant; onWithdraw:
                       {c.required ? "필수" : "선택"}
                     </span>
                   </span>
-                  <span className={`mt-1.5 block text-[13px] leading-[1.7] ${t.muted}`}>
-                    {c.purpose} · {c.items}
-                  </span>
-                  <span className={`mt-1 block text-[12.5px] ${t.muted}`}>
-                    보유 기간 — {c.keep}
+                  {/* 한 줄로 쓰임새만 적는다. 수집 항목과 보관 기간까지 늘어놓으면 기본정보 한
+                      항목이 세 줄을 먹는다 — 그 둘은 아래 「동의 이력 보기」 화면에 편다 */}
+                  <span className={`mt-1 block text-[13px] leading-[1.6] ${t.muted}`}>
+                    {c.purpose}
                   </span>
                 </span>
                 <Toggle
@@ -550,8 +549,7 @@ function ConsentSection({ variant, onWithdraw }: { variant: Variant; onWithdraw:
         </ul>
         <div className={`border-t px-5 py-4 sm:px-6 ${rule}`}>
           <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-            필수 항목은 여기서 끌 수 없습니다. 끄시려면 탈퇴하셔야 하고, 그 경로는 아래 「회원
-            탈퇴」에 있습니다.
+            필수 항목은 끌 수 없습니다. 거두시려면 「회원 탈퇴」를 이용해 주세요.
           </p>
         </div>
       </section>
@@ -1144,7 +1142,7 @@ function LeaveSection({
         <ul
           className={`mt-3 flex list-disc flex-col gap-2 pl-5 text-[14px] leading-[1.7] ${t.muted}`}
         >
-          <li>발급된 접속코드가 즉시 막혀 응시 중인 검사는 이어서 볼 수 없습니다.</li>
+          <li>발급된 접속코드가 즉시 막혀 응시 중인 진단은 이어서 볼 수 없습니다.</li>
           <li>이미 발행된 리포트는 열람할 수 없게 됩니다. 필요하시면 탈퇴 전에 내려받으세요.</li>
           <li>
             개인정보는 지체 없이 파기하고 결과를 알려 드립니다. 다만 법령이 보관을 요구하는 기록은

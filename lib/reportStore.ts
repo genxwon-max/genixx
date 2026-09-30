@@ -1,7 +1,14 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { observerKeys, type ExamRecord } from "./examStore";
+import {
+  currentRegOf,
+  legacyOwnerOf,
+  observerKeys,
+  regId,
+  type ExamRecord,
+  type RegRef,
+} from "./examStore";
 import { confidenceOf, decideType, scoreAxes } from "./result";
 import { assembleFrom } from "./reportAssetStore";
 import { templateGradeFrom } from "./reportAssets";
@@ -69,6 +76,12 @@ export type ReportDoc = {
   student: string;
   grade: string;
   round: string;
+  /**
+   * 어느 평가의 리포트인가 — 「2026-3/e4」. 평가마다 한 벌이다.
+   * 없는 것은 평가마다 나누기 전에 만든 리포트(씨앗 포함)로, 그 아이가 가장 먼저 접수한
+   * 평가의 것으로 읽는다(lib/examStore.ts의 legacyOwnerOf).
+   */
+  reg?: string;
   typeCode: string;
   typeName: string;
   confidence: string;
@@ -409,9 +422,30 @@ export function useReports(): ReportDoc[] {
   return useSyncExternalStore(subscribe, read, () => SEED);
 }
 
-/** 이 학생의 리포트 — 없으면 아직 조립되지 않은 것이다 */
-export function useReportOf(studentId: string): ReportDoc | null {
-  return useReports().find((r) => r.studentId === studentId) ?? null;
+/**
+ * 한 평가의 리포트를 목록에서 찾는다 — 없으면 아직 조립되지 않은 것이다.
+ *
+ * 평가를 넘기지 않으면 아이가 지금 보고 있는 평가, 접수가 하나도 없으면 평가 표시가 없는
+ * 리포트를 찾는다.
+ */
+export function reportFor(
+  list: ReportDoc[],
+  studentId: string,
+  reg?: RegRef | null,
+): ReportDoc | null {
+  const at = reg === undefined ? currentRegOf(studentId) : reg;
+  const mine = list.filter((r) => r.studentId === studentId);
+  if (!at) return mine.find((r) => !r.reg) ?? null;
+  const own = mine.find((r) => r.reg === regId(at));
+  if (own) return own;
+  /* 평가 표시가 없는 옛 리포트는 가장 먼저 접수한 평가의 것이다 */
+  const owner = legacyOwnerOf(studentId);
+  return owner && regId(owner) === regId(at) ? (mine.find((r) => !r.reg) ?? null) : null;
+}
+
+/** 이 학생의 리포트 — reg를 주면 그 평가, 없으면 지금 보고 있는 평가 */
+export function useReportOf(studentId: string, reg?: RegRef | null): ReportDoc | null {
+  return reportFor(useReports(), studentId, reg);
 }
 
 function now() {
@@ -525,9 +559,12 @@ export function ensureReport(
   grade: string,
   round: string,
   record: ExamRecord,
+  /** 어느 평가의 리포트인가 — 평가마다 한 벌이라, 없으면 지금 보고 있는 평가로 본다 */
+  reg?: RegRef | null,
 ) {
   const list = read();
-  if (list.some((r) => r.studentId === studentId)) return;
+  const at = reg === undefined ? currentRegOf(studentId) : reg;
+  if (reportFor(list, studentId, at)) return;
 
   const scores = scoreAxes(record);
   const type = decideType(scores);
@@ -578,6 +615,7 @@ export function ensureReport(
     student,
     grade,
     round,
+    ...(at ? { reg: regId(at) } : {}),
     typeCode: type?.code ?? "미판정",
     typeName: type?.name ?? "판정 보류",
     confidence: conf.label,

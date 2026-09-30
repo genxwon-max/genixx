@@ -35,7 +35,6 @@ export default function StudentAccount() {
       <WhoNote self={self} />
 
       <Head
-        eyebrowText="내 정보"
         title="내 정보"
         lead="이름·학교가 틀렸으면 나를 등록한 보호자·선생님께 말해 주세요. 고치는 일은 명부에서 합니다."
       />
@@ -73,7 +72,7 @@ export default function StudentAccount() {
       </div>
 
       <p className="mt-5 text-[13px] leading-[1.8] text-soft-muted">
-        접속코드는 나만 씁니다. 다른 사람에게 알려 주면 그 사람이 내 이름으로 시험을 볼 수
+        접속코드는 나만 씁니다. 다른 사람에게 알려 주면 그 사람이 내 이름으로 진단을 받을 수
         있습니다. 코드를 잃어버렸으면 보호자가 다시 발급해 줄 수 있습니다.
       </p>
 
@@ -87,7 +86,7 @@ export default function StudentAccount() {
           1:1 문의
         </a>
         <Link href="/exam/info" className={btnQuiet}>
-          시험 안내
+          진단 안내
         </Link>
         <button
           type="button"

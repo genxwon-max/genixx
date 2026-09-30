@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  currentRegOf,
   isSelfSurvey,
   useExamRecord,
   useHydrated,
   surveyKeys,
   type SurveyKey,
 } from "@/lib/examStore";
+import { evalName } from "@/lib/examCatalog";
 import { recordSurveySend, useRoster } from "@/lib/roster";
 import { surveyWindow } from "@/lib/popup";
 import { ArrowRight } from "@/components/Icons";
@@ -73,6 +75,8 @@ export default function SurveyDetail({ id }: { id: string }) {
   }
 
   const done = surveyKeys.filter((k) => record.surveys[k] === "done").length;
+  /* 설문은 진단마다 따로 낸다 — 여기 선 것은 아이가 지금 보고 있는 평가의 설문이다 */
+  const at = currentRegOf(student.id);
 
   return (
     <>
@@ -94,6 +98,13 @@ export default function SurveyDetail({ id }: { id: string }) {
           {student.grade && <span className="ml-2 font-normal">{student.grade}</span>}
         </p>
       </div>
+
+      {at && (
+        <p className="mb-3 text-[13px] text-soft-muted">
+          <b className="font-semibold text-soft-ink">{evalName(at.round, at.track)}</b>의
+          설문입니다. 설문은 진단마다 따로 냅니다.
+        </p>
+      )}
 
       <div className={`${card} divide-y divide-slate-100`}>
         {surveyKeys.map((key) => (

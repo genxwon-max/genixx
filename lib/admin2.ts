@@ -127,10 +127,10 @@ export const admin2Nav: Admin2NavGroup[] = [
      * ⚠ 두 곳에 같은 화면을 두지 않는다. 운영 그룹에 남겨 두고 여기에도 세우면 같은 회차를
      *   두 자리에서 열게 되고, 어느 쪽이 진짜인지 묻는 사람이 생긴다.
      */
-    label: "평가 관리",
+    label: "진단 관리",
     items: [
-      { code: "ADM-05", label: "평가 회차", href: "/admin2/rounds" },
-      { code: "ADM-04-3", label: "평가별 문항관리", href: "/admin2/forms" },
+      { code: "ADM-05", label: "진단 회차", href: "/admin2/rounds" },
+      { code: "ADM-04-3", label: "진단별 문항관리", href: "/admin2/forms" },
     ],
   },
   {
@@ -162,7 +162,7 @@ export const admin2Nav: Admin2NavGroup[] = [
        */
       /* exact를 주지 않는다 — 채점대(/admin2/grading/SC-…)에서도 이 항목이 켜져야 한다.
          회원 채점과 겹치는 것은 껍데기가 「가장 긴 주소가 이긴다」로 가른다 */
-      { code: "EXP-04", label: "평가 채점", href: "/admin2/grading", live: "grading" },
+      { code: "EXP-04", label: "진단 채점", href: "/admin2/grading", live: "grading" },
       { code: "EXP-04-1", label: "회원 채점", href: "/admin2/grading/members" },
     ],
   },
@@ -182,7 +182,7 @@ export const admin2Nav: Admin2NavGroup[] = [
      * 맞추는 일**이라 성격이 다르고, 화면도 여럿이라 접었다 폈다 할 값이 있다.
      *
      * ── 두 화면인 까닭 ──
-     * 자료는 하나인데 묻는 것이 다르다. 「평가 채점 / 회원 채점」과 같은 가름이다.
+     * 자료는 하나인데 묻는 것이 다르다. 「진단 채점 / 회원 채점」과 같은 가름이다.
      *
      *   면담 신청  누구부터 잡나 — 단위가 케이스라 상태와 대기 일수로 세운다
      *   면담 일정  어느 날이 비었나 — 단위가 날짜라 달력으로 편다

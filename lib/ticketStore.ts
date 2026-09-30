@@ -10,10 +10,10 @@ import { isTrackId, type TrackId } from "./examCatalog";
  * 평가 카드를 접수할 때 한 매를 쓴다. 접수한 평가만 「응시하기」 탭에 올라온다. 과목마다
  * 쓰는 것이 아니라 **평가 한 벌(회차 × 학년)에 한 매**다.
  *
- * ── 무료시험은 응시권을 쓰지 않는다 ──
- * 접수 기록에 갈래(tier)를 함께 적는다. 무료시험은 가입한 학생이면 누구나 보는 것이라
- * 응시권이 들지 않고, 유료시험만 한 매를 쓴다. 남은 매수(ticketsLeft)가 유료 접수만 세는
- * 까닭이 이것이다 — 무료 접수까지 세면 무료시험을 본 아이는 결제한 응시권을 이미 쓴 것이
+ * ── 무료 진단은 응시권을 쓰지 않는다 ──
+ * 접수 기록에 갈래(tier)를 함께 적는다. 무료 진단은 가입한 학생이면 누구나 보는 것이라
+ * 응시권이 들지 않고, 유료 진단만 한 매를 쓴다. 남은 매수(ticketsLeft)가 유료 접수만 세는
+ * 까닭이 이것이다 — 무료 접수까지 세면 무료 진단을 본 아이는 결제한 응시권을 이미 쓴 것이
  * 된다.
  *
  * 갈래는 **접수하는 순간** 정해진다 — 응시권이 있으면 한 매를 써서 유료로, 없으면 무료로
@@ -23,9 +23,9 @@ import { isTrackId, type TrackId } from "./examCatalog";
  * 학년이라는 규칙은 그때도 그대로다.
  *
  * ── 한 회차에는 한 학년 ──
- * 같은 회차에서 두 학년을 접수할 수 없다. 응시 기록(lib/examStore.ts)이 학생마다 한
- * 벌이라, 두 학년을 받으면 초등 3-4학년에서 낸 국어가 5-6학년에도 「제출완료」로 선다.
- * 실제로도 한 회차에 두 학년 시험을 볼 까닭이 없다.
+ * 같은 회차에서 두 학년을 접수할 수 없다. 한 시기에 두 학년 시험을 볼 까닭이 없고, 받아
+ * 두면 그 시기 그 아이의 결과가 둘이 된다. 다른 회차의 평가는 함께 접수해 함께 볼 수
+ * 있다 — 응시 기록은 접수한 평가마다 따로 쌓인다(lib/examStore.ts).
  *
  * ⚠ 보유 수(owned)는 결제 결과가 넘어오는 자리다. 지금은 시연용 씨앗 3매에서 출발하고,
  *   회원 존의 결제 화면(/my/payments)이 grantTickets로 얹는다. 붙일 때는 결제 API가
@@ -33,7 +33,7 @@ import { isTrackId, type TrackId } from "./examCatalog";
  *   결제 성공 응답을 받는 자리로 옮겨 간다.
  */
 
-/** 접수에 매기는 갈래 — 무료시험은 응시권이 들지 않는다 */
+/** 접수에 매기는 갈래 — 무료 진단은 응시권이 들지 않는다 */
 export type UseTier = "free" | "paid";
 
 /** 접수 한 건 — at이 접수한 시각 */
@@ -153,6 +153,20 @@ export function useTickets(): Store {
 /** 훅 밖에서 한 사람의 지갑을 읽는다 — 화면이 열릴 때 한 번 맞추는 자리에서 쓴다 */
 export const getWallet = (studentId: string) => readWallet(studentId);
 
+/**
+ * 응시 기록 저장소(lib/examStore.ts)가 함께 구독하는 자리.
+ *
+ * 응시 기록은 접수한 평가마다 한 벌이라, 「지금 어느 평가의 기록인가」가 접수 기록에 달려
+ * 있다. 새로 접수하면 기록을 읽는 화면도 다시 그려야 한다.
+ */
+export const subscribeWallets = subscribe;
+
+/** 접수 기록이 바뀌었는지 가늠하는 값 — 저장된 글 그대로 */
+export function walletsRaw(): string | null {
+  readStore();
+  return cacheRaw;
+}
+
 /** useTickets()로 받은 저장소에서 한 사람 몫을 꺼낸다 */
 export const walletOf = (store: Store, studentId: string): Wallet =>
   store[studentId] ?? SEED_WALLET;
@@ -200,7 +214,7 @@ export function spendTicket(studentId: string, round: string, track: TrackId): b
 }
 
 /**
- * 무료 접수 — 응시권을 쓰지 않고 이 평가를 무료시험으로 접수한다.
+ * 무료 접수 — 응시권을 쓰지 않고 이 평가를 무료 진단으로 접수한다.
  *
  * 가입한 학생이 셋트를 물려받는 자리에서 부른다(lib/setStore.ts). 같은 회차에 이미 접수한
  * 것이 있으면 손대지 않는다 — 유료 접수를 무료로 끌어내리거나, 다른 학년을 덮어써서는

@@ -15,7 +15,7 @@ import {
   type Question,
   type SubjectId,
 } from "@/lib/exam";
-import { useExamRecord, type ExamRecord } from "@/lib/examStore";
+import { getRecord, useExamVersion, type ExamRecord } from "@/lib/examStore";
 import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
 import StudentOnly from "./StudentOnly";
 import { btnGhost, btnPrimary, eyebrow } from "./ui";
@@ -33,33 +33,39 @@ import { btnGhost, btnPrimary, eyebrow } from "./ui";
  *
  * 서술형은 정답이 하나로 정해지지 않아 전문가가 채점하므로 정오표에 「채점 중」으로 둔다.
  *
+ * 응시 기록은 평가마다 한 벌이라, 줄마다 그 평가의 기록으로 제출 여부를 보고 정오표를 편다.
+ *
  * ⚠ 문항 자료(lib/examQuestions.ts)에는 해설 문장이 아직 없다. 없는 해설을 지어 넣지
  *   않고, 해설 칸이 생기면 문항별 풀이에 붙인다.
  */
 export default function AnswerKey() {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
-  const record = useExamRecord(studentId);
+  /* 줄마다 getRecord로 읽는다 — 기록이 바뀌면 다시 그리도록 구독만 건다 */
+  useExamVersion();
   const rows = useRegistrations(studentId);
-  /* undefined — 아직 아무것도 누르지 않음. 그때는 첫 평가를 펼쳐 둔다 */
+  /* undefined — 아직 아무것도 누르지 않음. 그때는 제출을 마친 첫 평가를 펼쳐 둔다 */
   const [chosen, setChosen] = useState<string | null | undefined>(undefined);
 
   if (session && session.role !== "student") return <StudentOnly role={session.role} />;
 
   const key = (r: Registration) => `${r.round}-${r.track}`;
-  const open = chosen === undefined ? (record.finalized && rows[0] ? key(rows[0]) : null) : chosen;
+  const recordOf = (r: Registration) => getRecord(studentId, { round: r.round, track: r.track });
+  const firstDone = rows.find((r) => recordOf(r).finalized);
+  const open = chosen === undefined ? (firstDone ? key(firstDone) : null) : chosen;
   const picked = rows.find((r) => key(r) === open) ?? null;
+  const pickedRecord = picked ? recordOf(picked) : null;
 
   return (
     <div>
       <PageTitle>정답과 해설</PageTitle>
       <div className="mt-10">
         <RegTable
-          caption="정답과 해설을 볼 수 있는 평가"
+          caption="정답과 해설을 볼 수 있는 진단"
           rows={rows}
           lastHead="정답"
           renderLast={(row) =>
-            record.finalized ? (
+            recordOf(row).finalized ? (
               <button
                 type="button"
                 aria-expanded={open === key(row)}
@@ -80,8 +86,8 @@ export default function AnswerKey() {
       </div>
       {rows.length === 0 && <GoApply />}
 
-      {picked && record.finalized && (
-        <Sheet key={key(picked)} row={picked} record={record} student={session?.name ?? ""} />
+      {picked && pickedRecord?.finalized && (
+        <Sheet key={key(picked)} row={picked} record={pickedRecord} student={session?.name ?? ""} />
       )}
     </div>
   );
@@ -101,7 +107,7 @@ type Line = { q: Question; no: number; value: number | string | undefined; mark:
 /**
  * 한 과목의 정오표 줄 — 응시 때와 같은 차례 · 같은 번호.
  *
- * 갈래가 연 문항만 싣는다. 무료시험을 본 아이의 정오표에 풀지 않은 문항을 「답 안 함」으로
+ * 갈래가 연 문항만 싣는다. 무료 진단을 본 아이의 정오표에 풀지 않은 문항을 「답 안 함」으로
  * 스무 줄 세우면, 다 푼 아이가 자기 시험을 망친 것으로 읽는다.
  */
 function linesOf(subject: SubjectId, record: ExamRecord): Line[] {

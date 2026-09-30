@@ -201,7 +201,7 @@ export default function StudentDetail({ row }: { row: StudentRow }) {
 
           <Panel
             title="접속코드"
-            meta="8자리 · 이 코드로만 시험에 들어옵니다"
+            meta="8자리 · 이 코드로만 진단에 들어옵니다"
             actions={
               <button
                 type="button"

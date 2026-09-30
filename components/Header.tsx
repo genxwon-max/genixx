@@ -65,7 +65,7 @@ function HeaderActions({
         onClick={onNavigate}
         className="btn btn-md gap-2 bg-brand-900 text-white shadow-card hover:bg-brand-800"
       >
-        평가로 가기
+        진단으로 가기
         <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">
           학생 전용
         </span>

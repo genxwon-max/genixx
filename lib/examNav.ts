@@ -22,5 +22,5 @@ export const examMenu = [
  */
 export const examGuideLinks = [
   { href: "/exam/guide", label: "서비스 안내" },
-  { href: "/exam/info", label: "시험 안내" },
+  { href: "/exam/info", label: "진단 안내" },
 ];

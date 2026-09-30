@@ -4,11 +4,12 @@ import { useSyncExternalStore } from "react";
 import type { Span } from "./counselors";
 
 /**
- * 결제·면담에서 앞 화면이 고른 것을 뒤 화면이 이어 받는 자리.
+ * 결제·면담·학생 일괄 등록에서 앞 화면이 고른 것을 뒤 화면이 이어 받는 자리.
  *
- * 두 흐름은 걸음마다 주소가 다르다 — 결제는 /my/payments → /checkout → /done, 면담은
- * /my/interviews → /counselor → /time → /pay → /done. 걸음 하나가 화면 목록(docs/사용자 화면
- * 전체.csv)의 한 줄이고, 그 주소를 그대로 개발팀에 디자인으로 넘긴다.
+ * 세 흐름은 걸음마다 주소가 다르다 — 결제는 /my/payments → /checkout → /done, 면담은
+ * /my/interviews → /counselor → /time → /pay → /done, 일괄 등록은 /my/children/bulk → /done.
+ * 걸음 하나가 화면 목록(docs/사용자 화면 전체.csv)의 한 줄이고, 그 주소를 그대로 개발팀에
+ * 디자인으로 넘긴다.
  *
  * ── 왜 주소에 싣지 않는가 ──
  * 학생 · 전문가 · 날짜 · 시각을 모두 주소에 실으면 같은 화면의 주소가 고를 때마다 달라지고,
@@ -21,9 +22,19 @@ import type { Span } from "./counselors";
  * ⚠ 브라우저 저장소에만 남는다. 결제 정보는 두지 않는다 — 누구 · 누구와 · 언제뿐이다.
  */
 
-/** 결제 › 진단평가 — ① 학생 선택에서 고른 아이들 */
+/** 결제 › 재능 진단 — ① 학생 선택에서 고른 아이들 */
 export type PayDraft = {
   students: string[];
+};
+
+/**
+ * 학생 일괄 등록 — ① 명단에서 등록한 아이들을 ② 발급 화면이 이어 받는다.
+ *
+ * 명단에 적던 값(이름 · 생년월일 · 연락처)은 여기 두지 않는다. 등록을 마친 아이의 ID만
+ * 남기고, 발급 화면은 그 ID로 명부에서 코드를 읽는다.
+ */
+export type BulkDraft = {
+  issued: string[];
 };
 
 /** 면담 — ① 학생 · ② 전문가 · ③ 날짜 · 시각 */
@@ -96,6 +107,7 @@ function slot<T extends object>(key: string, blank: T) {
 }
 
 const pay = slot("genixx.draft.pay", blankPay);
+const bulk = slot<BulkDraft>("genixx.draft.bulk", { issued: [] });
 const counsel: Record<CounselZone, ReturnType<typeof slot<CounselDraft>>> = {
   "/my": slot("genixx.draft.counsel", blankCounsel),
   "/student": slot("genixx.draft.counsel.self", blankCounsel),
@@ -107,6 +119,14 @@ export function usePayDraft(): PayDraft {
 
 export function patchPayDraft(patch: Partial<PayDraft>) {
   pay.write({ ...pay.read(), ...patch });
+}
+
+export function useBulkDraft(): BulkDraft {
+  return useSyncExternalStore(bulk.subscribe, bulk.read, () => bulk.blank);
+}
+
+export function patchBulkDraft(patch: Partial<BulkDraft>) {
+  bulk.write({ ...bulk.read(), ...patch });
 }
 
 export function useCounselDraft(zone: CounselZone): CounselDraft {

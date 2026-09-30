@@ -41,7 +41,7 @@ import { btnGhost, btnPrimary, eyebrow, panel } from "./ui";
  * 셋트 창 (/exam/session/trial/[회차]/[학년]) — 가입하지 않고 **1셋트**를 풀어 보는 자리.
  *
  * 진단평가 절차의 둘째 단계다. 학년마다 1셋트(4문항)를 주고, 교과는 **수 · 과 · 국 중
- * 하나만** 고른다. 다 풀면 회원가입을 권하고, 가입하면 무료시험(모두 20문항)으로 넘어간다.
+ * 하나만** 고른다. 다 풀면 회원가입을 권하고, 가입하면 무료 진단(모두 20문항)으로 넘어간다.
  *
  * 평가 목록의 「무료로 풀어보기」가 **실제 응시와 같은 별도 창**(examWindow)으로 연다.
  * 주소가 /exam/session 아래라 응시 존 레이아웃이 메뉴·오른쪽 리모컨·하단 안내를 감추고,
@@ -54,7 +54,7 @@ import { btnGhost, btnPrimary, eyebrow, panel } from "./ui";
  *
  * ── 교과를 하나만 고른다 ──
  * 예전에는 과목을 갈아타며 셋을 다 풀어 볼 수 있었다. 절차가 「1개 교과」로 정한 까닭은
- * 셋트가 맛보기가 아니라 **무료시험의 앞 4문항**이라서다 — 셋을 다 풀게 하면 무료시험에
+ * 셋트가 맛보기가 아니라 **무료 진단의 앞 4문항**이라서다 — 셋을 다 풀게 하면 무료 진단에
  * 물려받을 것이 셋이 되어 「모두 20문항」이라는 셈이 깨진다.
  *
  * ── 학년도 여기서 고른다 ──
@@ -66,7 +66,7 @@ import { btnGhost, btnPrimary, eyebrow, panel } from "./ui";
  * 고른 학년이 사라진다.
  *
  * ── 답은 남긴다 ──
- * 답을 셋트 저장소(lib/setStore.ts)에 적어 둔다. 가입한 뒤 무료시험이 그 네 문항을
+ * 답을 셋트 저장소(lib/setStore.ts)에 적어 둔다. 가입한 뒤 무료 진단이 그 네 문항을
  * 물려받으므로, 아이는 같은 문제를 두 번 풀지 않는다. 시간은 재지 않는다.
  */
 export default function TrialSession({ roundId, trackId }: { roundId: string; trackId: TrackId }) {
@@ -109,7 +109,7 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
       answers={answers}
       onAnswer={(id, v) => {
         setAnswers((a) => ({ ...a, [id]: v }));
-        /* 창을 닫아도 남아야 한다 — 가입한 뒤 무료시험이 이 답을 물려받는다 */
+        /* 창을 닫아도 남아야 한다 — 가입한 뒤 무료 진단이 이 답을 물려받는다 */
         setSetAnswer({ round: roundId, track: trackId, subject }, id, v);
       }}
       onExit={() => setSubject(null)}
@@ -175,7 +175,7 @@ function TrialStart({
             한 장 안에 종이 밖의 단추가 얹힌다 */}
         <ExamCover
           badge="제1교시"
-          headline={`${season} GENIXX 진단평가 셋트 문항지`}
+          headline={`${season} GENIXX 재능 진단 셋트 문항지`}
           title={assessment.name}
           watermark={`GENIXX${season.slice(0, 4)}`}
           notice="(학년과 응시 교과를 빠짐없이 고른 뒤 아래 버튼을 눌러 시작해 주세요. 시작하면 전체화면으로 바뀝니다.)"
@@ -218,7 +218,7 @@ function TrialStart({
               disabled={!pick}
               className={`${btnPrimary} px-7 py-3.5 text-[15px] disabled:cursor-not-allowed disabled:opacity-45`}
             >
-              {pick ? "평가 시작" : "응시 교과를 고르세요"}
+              {pick ? "진단 시작" : "응시 교과를 고르세요"}
               <ArrowRight className="h-4 w-4" />
             </button>
           }
@@ -304,7 +304,7 @@ function TrialRun({
           onPick={goTo}
           doneLabel="답한 문항"
           doneVerb="응답함"
-          footnote={`점선 번호(문항 ${free.length + 1}~)는 회원가입 후 무료시험에서 풀 수 있습니다.`}
+          footnote={`점선 번호(문항 ${free.length + 1}~)는 회원가입 후 무료 진단에서 풀 수 있습니다.`}
         />
       </div>
 
@@ -381,7 +381,7 @@ function TrialRun({
  * 셋트를 다 푼 뒤 — 가입을 권한다.
  *
  * 다른 과목으로 갈 길은 두지 않는다. 절차가 한 교과만 고르게 했고, 여기서 과목을 갈아타게
- * 두면 무료시험이 물려받을 것이 여럿이 된다.
+ * 두면 무료 진단이 물려받을 것이 여럿이 된다.
  */
 function Wall({ subjectName }: { subjectName: string }) {
   return (
@@ -389,7 +389,7 @@ function Wall({ subjectName }: { subjectName: string }) {
       <div className={`mx-auto w-full max-w-xl p-8 text-center md:p-10 ${panel}`}>
         <p className={eyebrow}>1셋트 끝</p>
         <h2 className="mt-3 text-[22px] font-bold tracking-tight text-exam-text md:text-[26px]">
-          회원가입하면 무료시험으로 이어집니다
+          회원가입하면 무료 진단으로 이어집니다
         </h2>
         <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
           가입하면 {subjectName}의 나머지 문항과 다른 두 과목을 더해{" "}
