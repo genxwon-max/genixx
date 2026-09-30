@@ -3,20 +3,27 @@ import InterviewBooking from "@/components/account/InterviewBooking";
 
 export const metadata: Metadata = {
   title: "면담",
-  description: "날짜와 시간을 고르고 상담 전문가를 골라 결과 해석 면담을 신청합니다.",
+  description: "학생 · 상담 전문가 · 날짜와 시간을 차례로 골라 결과 해석 면담을 신청합니다.",
   robots: { index: false, follow: false },
 };
 
 /**
- * 결과 해석 면담 예약 — 회원 존 안에서 연다.
+ * 결과 해석 면담 예약 ① 학생 선택 — 회원 존 안에서 연다. 신청한 면담 내역도 여기 쌓인다.
+ * 다음 걸음은 /counselor → /time → /pay → /done이다(components/account/InterviewBooking.tsx).
  *
  * 전문가 콘솔의 면담 일정(EXP-06)과는 다른 자리다. 저쪽은 판정이 갈리는 사례를 우리가
  * 골라 부르는 면담이고, 여기는 보호자가 결과지를 들고 신청하는 면담이다.
  *
  * ?span=30 · 60으로 길이를 들고 올 수 있다 — 결제 화면의 면담 차림표에서 넘어오는 길이다.
+ * 전문가 걸음의 처음 조건이 된다.
  */
 export default async function MyInterviewsPage({ searchParams }: PageProps<"/my/interviews">) {
   const { span } = await searchParams;
   const picked = Number(Array.isArray(span) ? span[0] : span);
-  return <InterviewBooking initialSpan={picked === 30 || picked === 60 ? picked : undefined} />;
+  return (
+    <InterviewBooking
+      step="student"
+      initialSpan={picked === 30 || picked === 60 ? picked : undefined}
+    />
+  );
 }

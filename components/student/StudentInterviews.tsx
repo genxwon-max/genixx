@@ -1,6 +1,6 @@
 "use client";
 
-import InterviewBooking from "@/components/account/InterviewBooking";
+import InterviewBooking, { type BookStep } from "@/components/account/InterviewBooking";
 import type { Span } from "@/lib/counselors";
 import { Checking, GateNote, WhoNote, cardBox, useSelf } from "./self";
 
@@ -11,14 +11,25 @@ import { Checking, GateNote, WhoNote, cardBox, useSelf } from "./self";
  * 결제 화면(StudentPayments)과 같은 규칙으로 선다 — 만 14세부터 본인 것이고, 미만이면
  * 보호자 자리다. 다만 면담은 결제보다 한 겹 더 조심할 것이 있다: **약속은 사람과 시간을
  * 묶는 일**이라, 아이가 잡아 놓고 보호자가 모르면 그 시각에 아무도 앉지 않는다. 그래서
- * 만 19세 미만이면 결제 앞의 동의 칸에 「확정 안내도 보호자 연락처로 함께 간다」를 적어
- * 둔다(InterviewBooking의 selfId 갈래).
+ * 만 19세 미만이면 결제 앞에서 보호자 휴대전화로 인증번호를 받아 보호자가 직접 확인하고,
+ * 확정 안내도 그 연락처로 함께 보낸다(InterviewBooking의 selfId 갈래 · GuardianPhoneCheck).
  *
  * 예약 판은 보호자 것을 그대로 쓴다 — 전문가 마흔 명의 달력·시간표·취소 규정을 학생용으로
  * 한 벌 더 두면 자리 겹침을 세는 곳이 둘이 된다. 명부 대신 나 하나를 세우고 내 예약만
  * 세도록 학생 ID만 넘긴다.
+ *
+ * 걸음마다 주소가 따로다 — /student/interviews가 곧 전문가 걸음이고(면담할 사람이 자기
+ * 하나라 학생 걸음이 없다), 뒤는 /time · /pay · /done이다. 어느 걸음이든 나이 갈래는 여기서 본다.
  */
-export default function StudentInterviews({ initialSpan }: { initialSpan?: Span }) {
+export default function StudentInterviews({
+  step = "counselor",
+  initialSpan,
+  orderId,
+}: {
+  step?: BookStep | "done";
+  initialSpan?: Span;
+  orderId?: string;
+}) {
   const self = useSelf();
 
   if (!self.hydrated) return <Checking label="면담" title="면담" />;
@@ -49,17 +60,19 @@ export default function StudentInterviews({ initialSpan }: { initialSpan?: Span 
     <>
       <WhoNote self={self} />
 
-      {self.minor && (
+      {/* 신청을 마친 영수증에는 세우지 않는다 */}
+      {self.minor && step !== "done" && (
         <p
           className={`${cardBox} mb-5 border-soft-primary bg-soft-primary-soft px-5 py-4 text-[13px] leading-[1.8] text-soft-ink`}
         >
-          <b>만 19세 미만은 보호자에게 먼저 말해 주세요.</b> 면담은 값을 내고 전문가의 시간을
-          잡는 일이라 만 19세 미만이 혼자 한 계약은 보호자가 취소할 수 있습니다(민법 제5조).
-          확정 안내와 취소 안내는 보호자 연락처로도 함께 갑니다.
+          <b>만 19세 미만은 보호자 확인을 받아야 신청할 수 있습니다.</b> 면담은 값을 내고 전문가의
+          시간을 잡는 일이라 만 19세 미만이 혼자 한 계약은 보호자가 취소할 수 있습니다(민법 제5조).
+          결제하기 전에 보호자 휴대전화로 인증번호를 보내 보호자가 직접 확인하며, 확정 안내와 취소
+          안내도 보호자 연락처로 함께 갑니다.
         </p>
       )}
 
-      <InterviewBooking selfId={self.id} initialSpan={initialSpan} />
+      <InterviewBooking step={step} selfId={self.id} initialSpan={initialSpan} orderId={orderId} />
     </>
   );
 }

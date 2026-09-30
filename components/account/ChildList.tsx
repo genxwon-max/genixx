@@ -269,7 +269,7 @@ export default function ChildList() {
                   /* 체크해 둔 아이를 결제 화면까지 데리고 간다 — 저쪽에서 다시 고르게 하면
                      같은 목록을 두 번 훑는다 */
                   render={
-                    <Link href={`/my/payments?students=${chosen.map((c) => c.id).join(",")}`} />
+                    <Link href={`/my/payments/checkout?students=${chosen.map((c) => c.id).join(",")}`} />
                   }
                   className={rowShape}
                 >
@@ -426,7 +426,7 @@ function ChildRow({
           <span className="font-semibold text-soft-ink tabular-nums">{left}매</span>
         ) : (
           <Link
-            href={`/my/payments?students=${student.id}`}
+            href={`/my/payments/checkout?students=${student.id}`}
             className="font-semibold text-rose-600 hover:underline"
           >
             결제 필요

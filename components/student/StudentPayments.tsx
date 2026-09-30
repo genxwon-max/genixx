@@ -1,6 +1,6 @@
 "use client";
 
-import PaymentHub from "@/components/account/PaymentHub";
+import PaymentHub, { type PayTab } from "@/components/account/PaymentHub";
 import { Checking, GateNote, WhoNote, cardBox, useSelf } from "./self";
 
 /**
@@ -20,10 +20,19 @@ import { Checking, GateNote, WhoNote, cardBox, useSelf } from "./self";
  *
  * ── 열려 있다고 혼자 되는 것은 아니다 ──
  * 만 19세 미만은 민법상 미성년이라 재산상 의무가 붙는 계약은 취소될 수 있다(제5조).
- * 그래서 결제 단추 앞에 법정대리인 동의를 한 칸 더 받는다 — 그 칸은 결제 판 안에 있고,
+ * 그래서 결제 단추 앞에 보호자 휴대전화 인증을 받는다 — 그 칸은 결제 판 안에 있고,
  * 이 화면은 위에 그 사실을 미리 적어 둔다.
  */
-export default function StudentPayments() {
+export default function StudentPayments({
+  view = "hub",
+  tab = "exam",
+  orderId,
+}: {
+  /** 결제 첫 화면(/student/payments) · 결제 완료(/student/payments/done) */
+  view?: "hub" | "done";
+  tab?: PayTab;
+  orderId?: string;
+}) {
   const self = useSelf();
 
   /* 나이는 명부에서 읽는다 — 읽기 전에는 결제창을 펴지 않는다 */
@@ -56,19 +65,20 @@ export default function StudentPayments() {
       <WhoNote self={self} />
 
       {/* 결제 판을 펴기 전에 미성년 갈래를 먼저 적는다 — 카드번호를 넣기 직전이 아니라
-          화면에 들어선 자리에서 알아야, 보호자에게 말하고 다시 올 수 있다 */}
-      {self.minor && (
+          화면에 들어선 자리에서 알아야, 보호자에게 말하고 다시 올 수 있다. 결제를 마친
+          영수증에는 세우지 않는다 */}
+      {self.minor && view === "hub" && (
         <p
           className={`${cardBox} mb-5 border-soft-primary bg-soft-primary-soft px-5 py-4 text-[13px] leading-[1.8] text-soft-ink`}
         >
-          <b>만 19세 미만은 보호자 동의가 필요합니다.</b> 개인정보에 대한 동의는 만 14세부터
-          내가 하지만, 돈이 드는 계약은 만 19세부터 혼자 할 수 있습니다(민법 제5조). 보호자에게
-          알리지 않고 결제하면 보호자가 취소할 수 있으니, 먼저 말한 뒤 아래 동의 칸을 확인해
-          주세요. 보호자가 자기 계정에서 바로 결제해도 됩니다.
+          <b>만 19세 미만은 보호자 확인을 받아야 결제할 수 있습니다.</b> 개인정보에 대한 동의는
+          만 14세부터 내가 하지만, 돈이 드는 계약은 만 19세부터 혼자 할 수 있습니다(민법 제5조).
+          결제하기 전에 보호자 휴대전화로 인증번호를 보내 보호자가 직접 확인하니, 보호자가 곁에
+          있을 때 결제해 주세요. 보호자가 자기 계정에서 바로 결제해도 됩니다.
         </p>
       )}
 
-      <PaymentHub selfId={self.id} initial={[self.id]} />
+      <PaymentHub view={view} tab={tab} orderId={orderId} selfId={self.id} />
     </>
   );
 }
