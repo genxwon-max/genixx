@@ -7,10 +7,10 @@
 학부모 대시보드,학부모 홈,https://genixx-theta.vercel.app/my,로그인 후 도착하는 자리. 학생별 진단 진행 상황과 다음 할 일. 학생을 체크해 접속코드를 문자로 한 번에 보낼 수 있음. (ACC-03)
 학부모 대시보드,결과 리포트,https://genixx-theta.vercel.app/exam/result?student=mu6976f8-GFQTSQYZ,"8재능 팔각형 프로파일과 과목별 점수, 전문가 판정. 보호자·기관이 학생을 골라 봄. 발행 전이면 결과 목록(전문가 확인 중). (RPT-01)"
 학부모 대시보드,학생 프로필,https://genixx-theta.vercel.app/my/children,다학생 지원. 프로필 단위로 응시·리포트 이력이 귀속됨. (ACC-03)
-학부모 대시보드,학생 등록,https://genixx-theta.vercel.app/my/children/new,동의 + 기본정보 + 접속코드 발급을 한 폼에서. (ACC-03 · B00~B10)
+학부모 대시보드,학생 등록,https://genixx-theta.vercel.app/my/children/new,기본정보 입력부터 접속코드 발급까지 한 폼에서. 법정대리인 동의는 학부모 회원가입 때 받으므로 등록 폼에는 동의 칸이 없음. (ACC-03 · B01~B10)
 학부모 대시보드,학생 상세,https://genixx-theta.vercel.app/my/children/mu6976f8-GFQTSQYZ,학생 한 명의 등록 정보와 접속코드·응시권·진행 상황. 접속코드 재발급처럼 되돌릴 수 없는 작업을 여기서 함. (ACC-03-1)
 학부모 대시보드,단계별 동의 관리,https://genixx-theta.vercel.app/my/children/consent-stages,수집·이용 단계별 동의 상태를 확인하고 바꿈. (ACC-03-3)
-학부모 대시보드,동의 철회·데이터 파기 요청,https://genixx-theta.vercel.app/my/children/withdraw,철회하면 파기 절차가 자동으로 연동되고 처리 결과를 통지. (ACC-03-4)
+학부모 대시보드,동의 철회·데이터 파기 요청,https://genixx-theta.vercel.app/mypage?section=withdraw,마이페이지 안의 칸. 철회하면 파기 절차가 이어지고 처리 결과를 알림. 옛 주소 /my/children/withdraw는 여기로 넘김. (ACC-03-4)
 학부모 대시보드,학생 명부 (개별 등록),https://genixx-theta.vercel.app/my/students,학생 명부와 개별 등록. 접속코드 발급. (옛 /exam/roster)
 학부모 대시보드,학생 일괄 등록,https://genixx-theta.vercel.app/my/students?tab=bulk,"여러 학생을 한 번에 등록. 엑셀에서 복사해 붙여넣거나 CSV를 올리고, 발급된 접속코드를 CSV로 내려받음."
 학부모 대시보드,결제 · ① 학생 선택,https://genixx-theta.vercel.app/my/payments,진단평가와 면담 두 갈래 중 진단평가의 첫 걸음. 결제할 학생을 고르고(같은 학년끼리 함께) 「다음」을 누르면 ② 상품 화면이 섬. 아래에 결제 내역. 학생 목록에서 체크해 ?students= 로 들어오면 ② 화면으로 곧장 넘김. (PAY-03)
@@ -24,13 +24,13 @@
 학부모 대시보드,면담 · ③ 날짜·시간,https://genixx-theta.vercel.app/my/interviews/time,고른 전문가의 달력과 그날 시간표를 나란히 둠. 30 · 60분 중 고르고 한 번에 4자리까지. (ASM-06)
 학부모 대시보드,면담 · ④ 방식·결제,https://genixx-theta.vercel.app/my/interviews/pay,"화상·전화·대면 방식, 미리 알려 줄 점, 결제 수단과 결제 요약. 고른 시간이 그사이 마감되면 알리고 ③으로 가는 길을 둠. (ASM-06)"
 학부모 대시보드,면담 신청 완료,https://genixx-theta.vercel.app/my/interviews/done,결제를 마치면 ④ 화면을 갈아 끼우는 영수증. ?order= 로 주문을 가리키고 없으면 가장 최근 면담 결제를 보여 줌. (ASM-06)
-학부모 대시보드,마이페이지,https://genixx-theta.vercel.app/mypage,회원정보·동의·수신·이용권·결제·문의·탈퇴. 학부모·기관 공용 계정 허브. (ACC-05)
-학부모 대시보드,내 정보 설정,https://genixx-theta.vercel.app/my/account,비밀번호·연락처·수신 설정. (ACC-04)
+학부모 대시보드,마이페이지,https://genixx-theta.vercel.app/mypage,회원정보·학생 관리·동의·알림·결제·문의·자료 파기·탈퇴를 한 화면의 칸으로 둠. ?section= 으로 처음 펼 칸을 지정. 학부모·기관 공용 계정 허브. (ACC-05)
+학부모 대시보드,(구) 내 정보 설정,https://genixx-theta.vercel.app/my/account,옛 주소. 같은 내용이 마이페이지에 있어 /mypage로 넘김. (ACC-04)
 학부모 대시보드,알림 설정,https://genixx-theta.vercel.app/my/account/notification,응시 안내·리포트 발행·재진단 리마인드 채널 선택. (ACC-04-1)
-학부모 대시보드,회원 탈퇴,https://genixx-theta.vercel.app/my/account/leave,탈퇴 시 학생 프로필·응답 데이터 처리 방침을 고지. (ACC-04-2)
+학부모 대시보드,회원 탈퇴,https://genixx-theta.vercel.app/mypage?section=leave,마이페이지 맨 끝 「탈퇴하기」 → 정말 탈퇴하시겠어요? → 예/아니오로 마이페이지 안에서 끝냄. 옛 주소 /my/account/leave는 여기로 넘김. (ACC-04-2)
 학부모 대시보드,소속 승인 대기,https://genixx-theta.vercel.app/my/pending,교사·기관담당자 계정의 승인 진행 상태. 승인 전에는 레일에 홈·설정만 남음. (ACC-01-4)
 학부모 대시보드,(구) 응시권 결제,https://genixx-theta.vercel.app/exam/payment,응시 존 껍데기를 쓰는 옛 결제 화면. 상품이 코드에 박혀 있고 학생을 고를 수 없음. 기관 레일의 「응시권」이 여기로 옴. (PAY-03 · ORG-03)
-학부모 대시보드,(구) 별도 동의 화면,https://genixx-theta.vercel.app/my/children/consent,옛 주소. 동의가 등록 폼 안으로 들어갔으므로 /my/children/new로 넘김.
+학부모 대시보드,(구) 별도 동의 화면,https://genixx-theta.vercel.app/my/children/consent,옛 주소. /my/children/new로 넘김(법정대리인 동의는 학부모 회원가입 때 받음).
 학생 대시보드,학생 응시 로그인,https://genixx-theta.vercel.app/login/student,보호자가 발급한 접속코드로 학생이 들어옴.
 학생 대시보드,학생 홈,https://genixx-theta.vercel.app/student,"접속코드로 들어온 학생이 도착하는 자리. 내 평가와 진행 상황, 다음 할 일. (ACC-03 학생)"
 학생 대시보드,평가 보기,https://genixx-theta.vercel.app/student/exams,국어·수학·과학을 이 화면에서 바로 응시(응시 창을 새로 띄움). (ASM-01)
