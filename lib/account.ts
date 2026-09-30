@@ -38,6 +38,9 @@ export function ageFromBirth(birth: string, at: Date = new Date()): number | nul
   const m = Number(digits.slice(4, 6));
   const d = Number(digits.slice(6, 8));
   if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  /* 2월 30일처럼 달력에 없는 날 — Date는 말없이 다음 달로 넘겨 버리므로 되돌려 대 본다 */
+  const day = new Date(y, m - 1, d);
+  if (day.getMonth() !== m - 1 || day.getDate() !== d) return null;
 
   let age = at.getFullYear() - y;
   // 생일이 아직 지나지 않았으면 한 살 뺀다 (만 나이)
@@ -83,11 +86,11 @@ export const minorFeatureMatrix: {
 }[] = [
   { feature: "무료 회원가입", self: true, note: "학생 본인이 진행합니다." },
   { feature: "무료 모의고사 응시", self: true, note: "학생 본인이 진행합니다." },
-  { feature: "기관코드·평가코드 입력", self: true, note: "학생 본인이 진행합니다." },
+  { feature: "기관코드·진단코드 입력", self: true, note: "학생 본인이 진행합니다." },
   {
     feature: "학부모 결과 공유",
     self: true,
-    note: "학생이 공유 범위를 직접 정합니다. 기관 평가처럼 별도 근거가 있는 경우는 그 범위를 따릅니다.",
+    note: "학생이 공유 범위를 직접 정합니다. 기관 진단처럼 별도 근거가 있는 경우는 그 범위를 따릅니다.",
   },
   {
     feature: "유료 상품 결제",
@@ -275,7 +278,7 @@ export const signupTypes: SignupType[] = [
   {
     id: "student",
     label: "학생",
-    tagline: "본인 휴대폰 인증만으로 가입하고 배정된 평가에 응시합니다",
+    tagline: "본인 휴대폰 인증만으로 가입하고 배정된 진단에 응시합니다",
     detail:
       "만 14세 이상이면 본인이 동의하고 계정을 만듭니다. 법정대리인 동의를 따로 받지 않고, 기관에 합류할 때도 학부모 계정을 거치지 않습니다. 만 14세 미만은 혼자 가입을 끝낼 수 없고, 법정대리인 동의가 확인되면 계정이 열립니다.",
     next: "/signup/link",
@@ -310,7 +313,7 @@ export const signupTypes: SignupType[] = [
     label: "기관 담당자",
     tagline: "학교·학원·교육청 단위로 운영합니다",
     detail:
-      "학생 명부와 접속코드, 응시권·정산을 관리합니다. 사업자·학교 정보 확인 후 계정이 개설됩니다. 학생 등록과 평가 배정은 하지만, 법정대리인 동의를 대신하지는 않습니다.",
+      "학생 명부와 접속코드, 응시권·정산을 관리합니다. 사업자·학교 정보 확인 후 계정이 개설됩니다. 학생 등록과 진단 배정은 하지만, 법정대리인 동의를 대신하지는 않습니다.",
     next: "/my/pending",
     needsApproval: true,
     tone: "border-amber-300 bg-amber-50 text-amber-800",
@@ -348,12 +351,12 @@ export function signupTypeOf(id: SignupTypeId | null | undefined) {
 
 export const orgPowers = {
   can: [
-    "평가 생성",
+    "진단 생성",
     "학생 임시등록",
     "학생 초대·응시코드 발급",
     "법정대리인에게 동의 링크 발송",
     "보호자 동의 상태 확인",
-    "동의가 끝난 학생에게 평가 배정",
+    "동의가 끝난 학생에게 진단 배정",
     "허용된 범위의 결과 조회",
   ],
   cannot: [
@@ -372,7 +375,7 @@ export const orgApprovalMeans = {
   yes: [
     "실제 학교·학원·교육기관인가",
     "이 담당자가 그 기관 소속인가",
-    "평가를 개설하고 학생에게 배정할 권한이 있는가",
+    "진단을 개설하고 학생에게 배정할 권한이 있는가",
   ],
   no: [
     "이 담당자가 학생의 법정대리인이 된다",
@@ -387,9 +390,9 @@ export const orgVisibleStudentFields = [
   "학년·반",
   "연령 구분(만 14세 기준)",
   "보호자 동의 상태",
-  "평가 배정 상태",
+  "진단 배정 상태",
   "응시 여부",
-  "허용된 평가결과",
+  "허용된 진단 결과",
 ] as const;
 
 /** 기관 화면에 싣지 않는 값 */
@@ -442,14 +445,14 @@ export const guardianConsentInfo: Record<GuardianConsentStatus, GuardianConsentI
   granted: {
     label: "보호자 동의 완료",
     meaning: "법정대리인 본인확인과 자녀별 동의가 확인되었습니다.",
-    orgCan: ["평가 배정", "응시 허용", "허용된 범위의 결과 조회"],
+    orgCan: ["진단 배정", "응시 허용", "허용된 범위의 결과 조회"],
     canSit: true,
     tone: "text-emerald-600",
   },
   self: {
     label: "학생 본인 가입 완료",
     meaning: "만 14세 이상 학생이 직접 동의하고 계정을 만들었습니다.",
-    orgCan: ["평가 배정", "응시 허용", "허용된 범위의 결과 조회"],
+    orgCan: ["진단 배정", "응시 허용", "허용된 범위의 결과 조회"],
     canSit: true,
     tone: "text-emerald-600",
   },
@@ -526,7 +529,7 @@ export const consentCollectionModes = [
     label: "기관이 개인정보처리자, 우리는 수탁자",
     who: "기관이 개인정보처리자 · 우리가 수탁자",
     detail:
-      "학교·학원이 학생정보의 처리 주체가 되고 우리는 평가 시스템만 제공합니다. 개인정보보호법 제26조에 따라 위탁 목적·목적 외 처리 금지·보호조치·재위탁 제한·감독을 문서로 정하고 위탁 사실을 공개해야 합니다. 이 경로로 받은 학생정보는 우리 회원관리·광고·별도 분석에 쓸 수 없습니다.",
+      "학교·학원이 학생정보의 처리 주체가 되고 우리는 진단 시스템만 제공합니다. 개인정보보호법 제26조에 따라 위탁 목적·목적 외 처리 금지·보호조치·재위탁 제한·감독을 문서로 정하고 위탁 사실을 공개해야 합니다. 이 경로로 받은 학생정보는 우리 회원관리·광고·별도 분석에 쓸 수 없습니다.",
     default: false,
   },
 ] as const;
@@ -586,7 +589,7 @@ export const purposeConsents: PurposeConsent[] = [
       },
       {
         h: "제2조의3 (기관 회원의 지위)",
-        p: "기관 회원은 평가를 개설하고 소속 학생을 등록·배정할 수 있습니다. 그러나 기관 회원의 승인은 기관의 실재와 담당자의 권한을 확인하는 것에 그치며, 기관 회원에게 학생의 법정대리인 지위를 부여하지 않습니다. 기관 회원은 법정대리인의 동의를 대신할 수 없습니다.",
+        p: "기관 회원은 진단을 개설하고 소속 학생을 등록·배정할 수 있습니다. 그러나 기관 회원의 승인은 기관의 실재와 담당자의 권한을 확인하는 것에 그치며, 기관 회원에게 학생의 법정대리인 지위를 부여하지 않습니다. 기관 회원은 법정대리인의 동의를 대신할 수 없습니다.",
       },
       {
         h: "제3조 (계정의 관리)",

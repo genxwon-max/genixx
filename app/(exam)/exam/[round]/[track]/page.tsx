@@ -10,7 +10,7 @@ export async function generateMetadata({
 }: PageProps<"/exam/[round]/[track]">): Promise<Metadata> {
   const { round, track } = await params;
   return {
-    title: isTrackId(track) ? evalName(round, track) : "평가 응시",
+    title: isTrackId(track) ? evalName(round, track) : "진단 응시",
     robots: { index: false, follow: false },
   };
 }

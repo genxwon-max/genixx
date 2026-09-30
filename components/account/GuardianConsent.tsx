@@ -168,7 +168,7 @@ export default function GuardianConsent({
           {issued
             ? `${issued.name} 학생의 프로필이 활성화되었습니다.`
             : `${linked ? `${linked.name} 학생` : "학생"}의 프로필이 활성화되었습니다.`}{" "}
-          이제 배정된 평가에 응시할 수 있습니다.
+          이제 배정된 진단에 응시할 수 있습니다.
         </p>
 
         <div className={`${t.cardSoft} mt-6 p-5`}>

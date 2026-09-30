@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { formatCode, useRoster } from "@/lib/roster";
-import { useExamStore, useHydrated } from "@/lib/examStore";
+import { useExamVersion, useHydrated } from "@/lib/examStore";
 import { progressOf, phaseTone, subjectTone } from "@/lib/progress";
 import { ageFromBirth } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
-import { eyebrow } from "@/components/exam/ui";
 import { PickBox, SendCodesButton, usePicked } from "./SendCodes";
 import { listTd, listTh } from "./ui";
 
@@ -35,21 +34,20 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
   const session = useSession();
   const all = useRoster();
   // 과목 상태가 바뀌면 다시 세야 한다. 값 자체는 progressOf가 스토어에서 직접 읽는다.
-  useExamStore();
+  useExamVersion();
   const children = all.filter((s) => s.owner === "parent");
   const pick = usePicked();
 
-  const rows = hydrated ? children.map(progressOf) : [];
+  const rows = hydrated ? children.map((s) => progressOf(s)) : [];
   const chosen = children.filter((c) => pick.has(c.id));
   const allPicked = children.length > 0 && children.every((c) => pick.has(c.id));
 
   return (
     <>
-      {/* 머리 구성은 학생 명부와 같다 — 분류 · 제목 · 한 줄 · 아래 구분선 */}
+      {/* 머리 구성은 학생 명부와 같다 — 제목 · 아래 구분선 */}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div className="min-w-[16rem] flex-1">
-          <p className={eyebrow}>학생 현황</p>
-          <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+          <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
             {session?.name ?? "보호자"}님, 안녕하세요
           </h1>
         </div>
@@ -57,7 +55,7 @@ export default function ParentHome({ variant = 2 }: { variant?: Variant }) {
           <Link href="/my/children/new" className={t.btnOutline}>
             + 학생 개별 등록
           </Link>
-          <Link href="/my/students?tab=bulk" className={t.btnAction}>
+          <Link href="/my/children/bulk" className={t.btnAction}>
             + 학생 일괄 등록
           </Link>
         </div>

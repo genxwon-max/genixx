@@ -112,7 +112,7 @@ const payStepHref = { student: "/my/payments", product: "/my/payments/checkout" 
 export default function ExamPayPanel({
   /** 이 주소가 세우는 걸음. 학생 본인 자리에는 고를 아이가 없어 늘 "product"다 */
   step = "product",
-  /** 학생 목록에서 체크해 넘어온 아이 — /my/payments/checkout?students=S-1,S-2 */
+  /** 주소로 들고 온 아이 — 학생 목록의 「결제 필요」가 /my/payments/checkout?students=S-1 로 보낸다 */
   seed,
   /**
    * 학생 본인이 자기 몫을 결제하는 자리에서 넘어오는 학생 ID(/student/payments).
@@ -192,7 +192,7 @@ export default function ExamPayPanel({
     if (!isExam) return null;
     const mineTrack = trackOfStudent(s);
     if (!mineTrack) {
-      return s.grade ? `${s.grade}은 아직 평가가 열리지 않았습니다` : "학년이 비어 있습니다";
+      return s.grade ? `${s.grade}은 아직 진단이 열리지 않았습니다` : "학년이 비어 있습니다";
     }
     if (track && mineTrack !== track && !picked.has(s.id)) {
       return `${s.grade} — 학년이 달라 따로 결제합니다`;
@@ -257,7 +257,7 @@ export default function ExamPayPanel({
     if (trackOfStudent(s) !== track) return "학년이 달라 따로 결제합니다";
     if (!exam) return null;
     const used = usedOf(s, exam.round.id);
-    if (used?.track === track) return "이미 접수한 평가입니다";
+    if (used?.track === track) return "이미 접수한 진단입니다";
     if (used) return `이 분기에 ${trackLabel(used.track)}로 접수했습니다`;
     return null;
   }
@@ -327,8 +327,9 @@ export default function ExamPayPanel({
     for (const s of payable) {
       grantTickets(s.id, 1);
       spendTicket(s.id, exam.round.id, track);
-      /* 결제로 들어온 접수는 유료시험이다 — 응시 기록의 갈래도 함께 올려야 문항이 열린다 */
-      raiseTier(s.id, "paid");
+      /* 결제로 들어온 접수는 유료 진단이다 — 그 평가의 응시 기록 갈래도 함께 올려야 문항이
+         열린다. 아이가 지금 다른 평가를 보고 있을 수 있어 평가를 짚어 준다 */
+      raiseTier(s.id, "paid", { round: exam.round.id, track });
     }
     toReceipt(order.id);
   }
@@ -380,7 +381,7 @@ export default function ExamPayPanel({
                 blockOf={studentBlock}
                 noteOf={(s) => {
                   const mineTrack = trackOfStudent(s);
-                  return isExam && mineTrack ? `${trackLabel(mineTrack)} 평가 대상` : "";
+                  return isExam && mineTrack ? `${trackLabel(mineTrack)} 진단 대상` : "";
                 }}
               />
               <StepNav
@@ -495,12 +496,12 @@ export default function ExamPayPanel({
             ) : !track ? (
               <p className={`${card} px-5 py-10 text-center text-[13px] leading-[1.8] text-soft-muted`}>
                 {!selfId
-                  ? `${chosen[0]?.name ?? "고른"} 학생의 학년${chosen[0]?.grade ? `(${chosen[0].grade})` : ""}에 열린 평가가 아직 없습니다. 이전 걸음에서 학생을 다시 고르거나 다른 상품을 골라 주세요.`
+                  ? `${chosen[0]?.name ?? "고른"} 학생의 학년${chosen[0]?.grade ? `(${chosen[0].grade})` : ""}에 열린 진단이 아직 없습니다. 이전 걸음에서 학생을 다시 고르거나 다른 상품을 골라 주세요.`
                   : !hydrated
                     ? "확인 중입니다…"
                     : mine.length === 0
-                      ? "명부에서 내 이름을 찾지 못해 평가를 세울 수 없습니다. 접속코드로 다시 들어와 주세요."
-                      : "내 학년에 열린 평가가 아직 없습니다. 학년이 비어 있거나 틀렸으면 나를 등록한 보호자·선생님께 말해 주세요."}
+                      ? "명부에서 내 이름을 찾지 못해 진단을 세울 수 없습니다. 접속코드로 다시 들어와 주세요."
+                      : "내 학년에 열린 진단이 아직 없습니다. 학년이 비어 있거나 틀렸으면 나를 등록한 보호자·선생님께 말해 주세요."}
               </p>
             ) : (
               <>
@@ -561,7 +562,7 @@ export default function ExamPayPanel({
                       }}
                       className="h-4 w-4 accent-[#365eef]"
                     />
-                    지난 평가도 보기
+                    지난 진단도 보기
                   </label>
                 </div>
 
@@ -574,13 +575,13 @@ export default function ExamPayPanel({
                 {offTrack.length > 0 && (
                   <p className="mb-2.5 text-[12.5px] font-semibold leading-[1.7] text-amber-700">
                     {offTrack.map((s) => `${s.name}(${s.grade ?? "학년 없음"})`).join(" · ")} 학생은{" "}
-                    {trackLabel(track)} 평가를 함께 결제할 수 없습니다. 따로 결제해 주세요.
+                    {trackLabel(track)} 진단을 함께 결제할 수 없습니다. 따로 결제해 주세요.
                   </p>
                 )}
 
                 {found.length === 0 ? (
                   <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
-                    이 조건에 열린 평가가 없습니다. 다른 분기나 연도를 보아 주세요.
+                    이 조건에 열린 진단이 없습니다. 다른 분기나 연도를 보아 주세요.
                   </p>
                 ) : (
                   <ul className={`${card} divide-y divide-slate-100`}>
@@ -610,7 +611,7 @@ export default function ExamPayPanel({
                                 <span
                                   className={`text-[15px] font-bold ${open ? "text-soft-ink" : "text-slate-400"}`}
                                 >
-                                  {v.season.year}년 {quarterLabel(v.season.quarter)} 평가
+                                  {v.season.year}년 {quarterLabel(v.season.quarter)} 진단
                                 </span>
                                 <span className="rounded-full border border-soft-line bg-white px-2 py-0.5 text-[11.5px] font-semibold text-soft-muted">
                                   {trackLabel(track)}
@@ -719,7 +720,7 @@ export default function ExamPayPanel({
                 v={
                   isExam
                     ? exam
-                      ? `${exam.season.year}년 ${quarterLabel(exam.season.quarter)} 평가`
+                      ? `${exam.season.year}년 ${quarterLabel(exam.season.quarter)} 진단`
                       : "—"
                     : (product?.name ?? "—")
                 }
@@ -764,7 +765,7 @@ export default function ExamPayPanel({
                     ? "상품을 골라 주세요"
                     : payable.length === 0
                       ? selfId
-                        ? "이미 접수한 평가입니다"
+                        ? "이미 접수한 진단입니다"
                         : "접수할 수 있는 학생이 없습니다"
                       : needGuardian && !guardian
                         ? "보호자 확인을 마쳐 주세요"
@@ -862,13 +863,13 @@ export function PayDone({
       {order.grantsTicket && (
         <p className="mt-3 text-[12.5px] leading-[1.7] text-soft-muted">
           {selfId
-            ? "이제 「평가 보기」에서 과목을 열면 바로 응시할 수 있습니다."
+            ? "이제 「내 진단」에서 과목을 열면 바로 응시할 수 있습니다."
             : "이제 학생이 접속코드로 로그인해 「응시하기」에서 과목별로 응시합니다. 코드를 아직 넘기지 않으셨다면 학생 목록에서 문자로 보내실 수 있습니다."}
         </p>
       )}
       <div className="mt-6 flex flex-wrap justify-center gap-2.5">
         <Link href={selfId ? "/student/exams" : "/my/children"} className={t.btnAction}>
-          {selfId ? "평가 보러 가기" : "학생 목록으로"}
+          {selfId ? "내 진단 보기" : "학생 목록으로"}
         </Link>
         {/* 같은 아이로 다른 상품을 — 고른 아이는 저장소에 남아 있어 상품 화면으로 바로 간다 */}
         <Link href={selfId ? base : payStepHref.product} className={t.btnOutline}>

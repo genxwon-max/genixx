@@ -21,7 +21,7 @@ import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable"
 import { Body, FormRow, PageHead, Panel, Tab } from "@/components/admin2/ui";
 
 /**
- * EXP-04 평가 채점 — AI가 매긴 것을 사람이 확정한다.
+ * EXP-04 진단 채점 — AI가 매긴 것을 사람이 확정한다.
  *
  * 이 화면의 단위는 「학생」이 아니라 **응답 하나**다. 한 아이의 국어는 확신도 0.92인데
  * 수학은 0.51일 수 있고, 사람이 봐야 하는 것은 뒤의 것뿐이다. 학생으로 묶으면 볼 필요
@@ -248,7 +248,7 @@ export default function GradingView() {
   return (
     <>
       <PageHead
-        title="평가 채점"
+        title="진단 채점"
         tabsLabel="조회 조건"
         tabs={tabs.map((t) => (
           <Tab
@@ -261,7 +261,7 @@ export default function GradingView() {
         ))}
       />
 
-      {/* 이 화면이 무엇을 하는 곳인지 한 줄로 — 「평가 채점」이라는 이름만으로는 사람이
+      {/* 이 화면이 무엇을 하는 곳인지 한 줄로 — 「진단 채점」이라는 이름만으로는 사람이
           점수를 처음부터 매기는 곳으로 읽혔다. 실제로는 AI가 먼저 매긴 서술형 응답을
           사람이 확인해 확정하는 곳이다 */}
       <div className="border-b border-(--a2-line) bg-(--a2-accent-soft) px-4 py-2.5 a2-t-sm text-(--a2-ink-2)">

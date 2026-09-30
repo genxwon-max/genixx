@@ -91,7 +91,7 @@ const quadrants = [
 const sources = [
   {
     n: "01",
-    kind: "지필 평가",
+    kind: "지필 진단",
     who: "학생",
     what: "국어(언어)·수학·과학 각 10문항, 객관식과 서술형",
     use: "학력 축 · 언어 / 수리·논리 / 자연·탐구 3개 재능 축",
@@ -108,7 +108,7 @@ const sources = [
     kind: "관찰 설문",
     who: "학부모(어머니·아버지) · 지도교사",
     what: "가정과 수업에서 실제로 본 행동",
-    use: "검사만으로 보이지 않는 발현 조건 보완",
+    use: "지필 문항만으로 보이지 않는 발현 조건 보완",
   },
   {
     n: "04",
@@ -133,7 +133,7 @@ const situations = [
   },
   {
     q: "성적표로는 설명되지 않는 면이 있어요",
-    a: "학부모·교사 관찰 설문을 함께 넣어, 검사 상황에서 드러나지 않는 모습을 보완합니다.",
+    a: "학부모·교사 관찰 설문을 함께 넣어, 문항을 푸는 자리에서 드러나지 않는 모습을 보완합니다.",
     href: "/service/talent-base",
   },
   {
@@ -676,7 +676,7 @@ export default function HomePage() {
           />
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/exam" className={btnFilled}>
-              평가 시작하기
+              진단 시작하기
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link href="/signup" className={btnOutline}>

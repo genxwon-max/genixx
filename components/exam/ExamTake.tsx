@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { SUBJECT_IDS, freeOrder } from "@/lib/exam";
 import { dotDate, roomHref } from "@/lib/examCatalog";
-import { allSubmitted, submittedCount, useExamRecord, type ExamRecord } from "@/lib/examStore";
+import {
+  allSubmitted,
+  getRecord,
+  submittedCount,
+  useExamVersion,
+  type ExamRecord,
+} from "@/lib/examStore";
 import { useClaimSet } from "@/lib/setStore";
 import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
 import StudentOnly from "./StudentOnly";
@@ -15,14 +21,15 @@ import StudentOnly from "./StudentOnly";
  * 접수하기 탭에서 접수한 것만 여기 올라온다. 응시상태 칸의 버튼을 누르면 과목 판
  * (/exam/[회차]/[학년])으로 가서 과목을 하나씩 응시한다.
  *
- * 상태는 응시 기록 한 벌(lib/examStore.ts)에서 읽는다. 한 회차에 한 학년만 접수할 수
- * 있게 막아 둔 까닭이 이것이다(lib/ticketStore.ts).
+ * 상태는 줄마다 그 평가의 응시 기록(lib/examStore.ts)에서 읽는다 — 기록이 평가마다 한
+ * 벌이라, 두 평가를 함께 보고 있으면 두 줄이 저마다의 진행을 말한다.
  */
 export default function ExamTake() {
   const session = useSession();
   const studentId = session?.studentId ?? "demo";
-  const record = useExamRecord(studentId);
-  /* 가입을 마친 학생이 이 탭에 먼저 닿을 수 있다 — 셋트를 물려받고 갈래를 맞춘다 */
+  /* 줄마다 getRecord로 읽는다 — 기록이 바뀌면 다시 그리도록 구독만 건다 */
+  useExamVersion();
+  /* 가입을 마친 학생이 이 탭에 먼저 닿을 수 있다 — 셋트를 물려받는다 */
   useClaimSet(session?.role === "student" ? studentId : null);
   const rows = useRegistrations(studentId);
 
@@ -33,10 +40,15 @@ export default function ExamTake() {
       <PageTitle>응시하기</PageTitle>
       <div className="mt-10">
         <RegTable
-          caption="접수한 평가"
+          caption="접수한 진단"
           rows={rows}
           lastHead="응시상태"
-          renderLast={(row) => <TakeCell row={row} record={record} />}
+          renderLast={(row) => (
+            <TakeCell
+              row={row}
+              record={getRecord(studentId, { round: row.round, track: row.track })}
+            />
+          )}
         />
       </div>
       {rows.length === 0 && <GoApply />}
@@ -53,7 +65,7 @@ const cellBtnGhost =
  * 응시상태 칸 — 접수한 평가 한 줄의 오른쪽 끝.
  *
  * 학생 대시보드(/student/exams)가 같은 칸을 쓴다. 상태를 읽는 규칙(아직 열리지 않음 ·
- * 기간 종료 · 무료시험 제출 완료 · 이어서 응시)을 두 군데에 적어 두면 한쪽만 고쳐져
+ * 기간 종료 · 무료 진단 제출 완료 · 이어서 응시)을 두 군데에 적어 두면 한쪽만 고쳐져
  * 같은 평가가 자리마다 다른 말을 한다. 자리마다 다른 것은 **단추에 적는 말과 결과가
  * 가는 곳**뿐이라 그 둘만 프롭으로 받는다.
  */
@@ -72,7 +84,7 @@ export function TakeCell({
 }) {
   const href = roomHref(row.round, row.track);
   const started = SUBJECT_IDS.some((id) => record.subjects[id].status !== "ready");
-  /* 무료시험은 과목이 아니라 시험 하나다 — 「제출 1/3과목」이 아니라 문항 수로 센다 */
+  /* 무료 진단은 과목이 아니라 시험 하나다 — 「제출 1/3과목」이 아니라 문항 수로 센다 */
   const free = row.tier === "free";
   const all = row.info?.subjects.length ?? SUBJECT_IDS.length;
 
@@ -101,7 +113,7 @@ export function TakeCell({
     );
   }
 
-  /* 무료시험은 한 번에 내는 시험이라, 내고 나면 이 탭에서 더 할 일이 없다 — 남은 일은
+  /* 무료 진단은 한 번에 내는 시험이라, 내고 나면 이 탭에서 더 할 일이 없다 — 남은 일은
      설문과 최종 제출이고 그것은 평가 판에 있다 */
   if (free && allSubmitted(record)) {
     return (

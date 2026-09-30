@@ -9,7 +9,7 @@ import { ArrowRight } from "@/components/Icons";
 export const metadata: Metadata = {
   title: "참여진 소개",
   description:
-    "진단 설계·AI 개발·문항 출제·평가 판정에 참여하는 전문가와 각자의 역할, 이력을 공개합니다. (PUB-02-5)",
+    "진단 설계·AI 개발·문항 출제·진단 판정에 참여하는 전문가와 각자의 역할, 이력을 공개합니다. (PUB-02-5)",
 };
 
 export default function TeamPage() {

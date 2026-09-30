@@ -105,7 +105,7 @@ export function trackFromGrade(grade?: string): TrackId | null {
 }
 
 /**
- * 학생 화면에서 부르는 평가 이름 — 「2026 3분기 초4 평가」.
+ * 학생 화면에서 부르는 진단 이름 — 「2026 3분기 초4 진단」.
  *
  * 앞에는 언제(해 · 분기), 뒤에는 누구 것(학년)이 온다. 예전에는 「2026 3-1 평가」처럼
  * 시기 번호에 학년 차례를 붙여 불렀는데, 뒷번호가 무엇을 가리키는지 읽히지 않았다 —
@@ -119,7 +119,7 @@ export function trackFromGrade(grade?: string): TrackId | null {
 export function evalName(roundId: string, track: TrackId, fallback = roundId) {
   const m = /^(\d{4})-([1-4])$/.exec(roundId);
   const tag = trackOf(track).tag;
-  return m ? `${m[1]} ${m[2]}분기 ${tag} 평가` : `${fallback} ${tag} 평가`;
+  return m ? `${m[1]} ${m[2]}분기 ${tag} 진단` : `${fallback} ${tag} 진단`;
 }
 
 /**

@@ -18,7 +18,7 @@ import { PageTitle } from "./Registrations";
 import { examMenu } from "@/lib/examNav";
 
 /**
- * 시험 안내 (/exam/info) — 시험 세 갈래, 응시 순서, 규정.
+ * 진단 안내 (/exam/info) — 시험 세 갈래, 응시 순서, 규정.
  *
  * 순서는 응시 메뉴(접수하기 → 응시하기 → 정답과 해설 → 결과보기)를 그대로 따른다. 안내에
  * 적힌 단계와 헤더 아래 메뉴가 같은 이름이어야 읽은 대로 누를 수 있다.
@@ -31,9 +31,9 @@ import { examMenu } from "@/lib/examNav";
  */
 const stepDesc: Record<string, string> = {
   "/exam/apply":
-    "분기와 학년을 골라 무료시험 또는 유료시험으로 접수합니다. 로그인하지 않았다면 여기서 1셋트를 풀어 볼 수 있습니다.",
+    "분기와 학년을 골라 무료 진단 또는 유료 진단으로 접수합니다. 로그인하지 않았다면 여기서 1셋트를 풀어 볼 수 있습니다.",
   "/exam":
-    "무료시험은 20문항을 한 번에, 유료시험은 과목마다 따로 응시하고, 마친 뒤 설문에 답합니다.",
+    "무료 진단은 20문항을 한 번에, 유료 진단은 과목마다 따로 응시하고, 마친 뒤 설문에 답합니다.",
   "/exam/answers": "응시를 마친 과목의 정답과 내 답을 비교합니다.",
   "/exam/report": "전문가 검토를 거친 결과 리포트를 확인합니다.",
 };
@@ -51,7 +51,7 @@ export default function ExamInfo() {
 
   return (
     <div>
-      <PageTitle sub="접수부터 결과까지, 헤더 아래 메뉴 순서대로 진행합니다.">시험 안내</PageTitle>
+      <PageTitle sub="접수부터 결과까지, 헤더 아래 메뉴 순서대로 진행합니다.">진단 안내</PageTitle>
 
       {/* 한눈에 */}
       <dl className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -63,7 +63,7 @@ export default function ExamInfo() {
             d: tracks.map((t) => t.tag).join(" · "),
           },
           { t: "과목", d: on.map((s) => s.short).join(" · ") || "-" },
-          { t: "제한 시간", d: `무료시험 ${FREE_LIMIT_MIN}분 · 유료시험 ${limitText || "-"}` },
+          { t: "제한 시간", d: `무료 진단 ${FREE_LIMIT_MIN}분 · 유료 진단 ${limitText || "-"}` },
           { t: "응시 횟수", d: "해마다 4회 (1~4분기)" },
         ].map((s) => (
           <div key={s.t} className="rounded-[2px] border border-soft-line bg-white px-5 py-4">
@@ -73,10 +73,10 @@ export default function ExamInfo() {
         ))}
       </dl>
 
-      {/* 시험 세 갈래 */}
-      <h2 className="mt-12 text-[20px] font-bold tracking-tight text-soft-ink">시험 세 갈래</h2>
+      {/* 진단 세 갈래 */}
+      <h2 className="mt-12 text-[20px] font-bold tracking-tight text-soft-ink">진단 세 갈래</h2>
       <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
-        가입 전에 1셋트를 풀어 보고, 가입하면 무료시험, 접수하면 유료시험으로 이어집니다. 앞
+        가입 전에 1셋트를 풀어 보고, 가입하면 무료 진단, 접수하면 유료 진단으로 이어집니다. 앞
         단계에서 푼 문항은 다음 단계로 이어지니 다시 풀지 않습니다.
       </p>
       <ol className="mt-4 grid gap-3 md:grid-cols-3">
@@ -136,11 +136,11 @@ export default function ExamInfo() {
           <h2 className="text-[17px] font-bold text-soft-ink">응시 전에 확인해 주세요</h2>
           <ul className="mt-3 space-y-2 text-[14px] leading-relaxed text-soft-muted">
             <li>
-              · 무료시험은 과목을 고르지 않고 {FREE_TOTAL}문항을 한 번에 이어서 풉니다. 제한
+              · 무료 진단은 과목을 고르지 않고 {FREE_TOTAL}문항을 한 번에 이어서 풉니다. 제한
               시간은 {FREE_LIMIT_MIN}분입니다.
             </li>
             <li>
-              · 유료시험은 한 번에 몰아 보지 않고 과목마다 따로 응시합니다. 제한 시간은
+              · 유료 진단은 한 번에 몰아 보지 않고 과목마다 따로 응시합니다. 제한 시간은
               과목마다 따로 흐릅니다.
             </li>
             <li>· 답하지 않은 문항이 남아 있어도 제출할 수 있습니다.</li>
@@ -153,7 +153,7 @@ export default function ExamInfo() {
             <li>· 제출한 뒤에는 문제마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>
             <li>· 응시를 마치면 학생 설문, 이어서 학부모 설문에 답합니다. 필수는 아닙니다.</li>
             <li>· 설문은 낸 뒤에도 다시 열어 고칠 수 있고, 아직 안 낸 분은 나중에 내도 됩니다.</li>
-            <li>· 중간에 포기하면 그 시험의 응시 기회가 사라집니다.</li>
+            <li>· 중간에 포기하면 그 과목(무료 진단은 한 판 전체)의 응시 기회가 사라집니다.</li>
           </ul>
         </section>
         <section className="rounded-[2px] border border-soft-line bg-white p-6">

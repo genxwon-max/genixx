@@ -201,7 +201,7 @@ export default function FormSlot({
   /* AI 문항 추천 — 몇 문항을 뽑을지. 치는 중의 글자를 그대로 든다(빈칸 · 두 자리 입력) */
   const [want, setWant] = useState("10");
   const [suggested, setSuggested] = useState<string | null>(null);
-  /* 평가 미리보기 — 열려 있으면 지금 보는 문항 차례 */
+  /* 진단 미리보기 — 열려 있으면 지금 보는 문항 차례 */
   const [previewAt, setPreviewAt] = useState<number | null>(null);
 
   const dirty =
@@ -384,7 +384,7 @@ export default function FormSlot({
                 }
                 onClick={() => setPreviewAt(0)}
               >
-                평가 미리보기
+                진단 미리보기
               </button>
               {!locked && (
                 <>
@@ -674,7 +674,7 @@ export default function FormSlot({
 
       <LeaveDialog guard={guard} />
 
-      {/* 평가 미리보기 — 담은 차례(초안 기준) 그대로 한 문항씩. 번호는 검사지 전체에서 잇는다 */}
+      {/* 진단 미리보기 — 담은 차례(초안 기준) 그대로 한 문항씩. 번호는 검사지 전체에서 잇는다 */}
       {previewAt !== null && picked[previewAt] && (
         <ItemPreview
           key={picked[previewAt].id}

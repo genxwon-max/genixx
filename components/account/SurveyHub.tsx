@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useSession } from "@/lib/authStore";
-import { isSelfSurvey, useExamStore, useHydrated, surveyKeys, type SurveyKey } from "@/lib/examStore";
+import {
+  getRecord,
+  isSelfSurvey,
+  useExamVersion,
+  useHydrated,
+  surveyKeys,
+  type SurveyKey,
+} from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
 import { themeOf, type Variant } from "@/lib/authVariant";
-import { eyebrow } from "@/components/exam/ui";
 import { listTd, listTh } from "./ui";
 
 /**
@@ -36,7 +42,8 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
   const hydrated = useHydrated();
   const session = useSession();
   const roster = useRoster();
-  const records = useExamStore();
+  /* 설문은 평가마다 따로 낸다 — 줄마다 아이가 지금 보고 있는 평가의 기록을 읽는다 */
+  useExamVersion();
 
   const isOrg = session?.role === "director" || session?.role === "teacher";
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
@@ -44,8 +51,7 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
   return (
     <>
       <header className="mb-6 border-b border-soft-line pb-5">
-        <p className={eyebrow}>관찰 설문</p>
-        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+        <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
           설문
         </h1>
         <p className={`mt-2 text-[13px] ${t.muted}`}>
@@ -107,7 +113,7 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
             ) : (
               mine.map((student) => {
                 const done = surveyKeys.filter(
-                  (k) => records[student.id]?.surveys?.[k] === "done",
+                  (k) => getRecord(student.id).surveys[k] === "done",
                 ).length;
                 return (
                   <tr key={student.id}>
@@ -135,7 +141,7 @@ export default function SurveyHub({ variant = 2 }: { variant?: Variant }) {
 
                     {/* 넷이 어디까지 왔는지만 적는다. 보내거나 여는 일은 상세에서 한다 */}
                     {surveyKeys.map((key) => {
-                      const submitted = records[student.id]?.surveys?.[key] === "done";
+                      const submitted = getRecord(student.id).surveys[key] === "done";
                       const sent = student.surveySends?.[key];
                       return (
                         <td

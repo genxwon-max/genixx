@@ -70,7 +70,7 @@ const ic = {
   talk: (
     <path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7.5L8 20v-3.5H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5ZM7 9.5h10M7 12.5h6" />
   ),
-  /** 시험지 — 학생의 「내 평가」 */
+  /** 문항지 — 학생의 「내 진단」 */
   paper: (
     <path d="M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1ZM9 8h6M9 11.5h6M9 15h3.5" />
   ),
@@ -117,17 +117,18 @@ const parentMenu: Item[] = [
 /**
  * 학생(S) — 주소로 갈라 둔 학생 대시보드(/student).
  *
- * 학부모 메뉴를 그대로 물려주지 않는다. 아이에게 필요한 것은 **내가 볼 시험과 내 결과**
+ * 학부모 메뉴를 그대로 물려주지 않는다. 아이에게 필요한 것은 **내가 볼 진단과 내 결과**
  * 하나뿐이고, 학생 등록·결제·면담처럼 보호자가 하는 일은 눌러 봐야 「보호자 계정에서
  * 확인하세요」만 나온다. 그래서 학생 등록은 이 레일에 아예 없다.
  *
- * 응시도 이 레일 안에서 한다 — 「평가 보기」가 과목 셋을 바로 펴고, 누르면 응시 창이
- * 뜬다. 접수(/exam/apply)와 정답·해설만 아직 응시 존에 남아 있다.
+ * 응시도 이 레일 안에서 한다 — 「내 진단」 목록에서 진단을 누르면 과목 셋이 서고, 과목을
+ * 누르면 응시 창이 뜬다. 「진단 결과」도 목록에서 진단을 골라 결과지로 들어간다.
+ * 접수(/exam/apply)와 정답·해설만 아직 응시 존에 남아 있다.
  */
 const studentMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
-  { href: "/student/exams", label: "평가 보기", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
-  { href: "/student/results", label: "응시 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
+  { href: "/student/exams", label: "내 진단", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/results", label: "진단 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
   { href: "/student/account", label: "내 정보", sid: "ACC-04", icon: <Icon>{ic.me}</Icon> },
 ];
@@ -149,8 +150,8 @@ const studentMenu: Item[] = [
  */
 const studentTeenMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
-  { href: "/student/exams", label: "평가 보기", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
-  { href: "/student/results", label: "응시 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
+  { href: "/student/exams", label: "내 진단", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/results", label: "진단 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/student/payments", label: "결제", sid: "PAY-03", icon: <Icon>{ic.pay}</Icon> },
   { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
   { href: "/student/interviews", label: "면담", sid: "ASM-06", icon: <Icon>{ic.talk}</Icon> },
@@ -396,8 +397,10 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* 본문 폭·여백은 여기서 한 번만 정한다. 하위 화면(/my/children 등)이 저마다
-            컨테이너를 두지 않아도 레일에 딱 붙지 않는다. */}
-        <main className="mx-auto w-full max-w-[64rem] flex-1 px-4 pb-[5.25rem] pt-5 sm:px-6 sm:pt-6 lg:pb-8">
+            컨테이너를 두지 않아도 레일에 딱 붙지 않는다.
+            걸음을 넘길 때(결제 · 면담 · 일괄 등록) 라우터가 새 화면의 첫 덩이를 화면 맨 위로
+            끌어올리는데, 그 자리는 상단 상태바(4rem)에 덮인다 — 그만큼 띄워 둔다. */}
+        <main className="mx-auto w-full max-w-[64rem] flex-1 px-4 pb-[5.25rem] pt-5 sm:px-6 sm:pt-6 lg:pb-8 [&>*]:scroll-mt-20">
           {children}
         </main>
 

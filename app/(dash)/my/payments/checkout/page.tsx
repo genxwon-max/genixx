@@ -3,7 +3,7 @@ import PaymentHub from "@/components/account/PaymentHub";
 
 export const metadata: Metadata = {
   title: "결제 · 상품 고르기",
-  description: "고른 학생의 학년에 열린 평가와 상품을 고르고 결제합니다. (PAY-03)",
+  description: "고른 학생의 학년에 열린 진단과 상품을 고르고 결제합니다. (PAY-03)",
   robots: { index: false, follow: false },
 };
 

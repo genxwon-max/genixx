@@ -18,7 +18,6 @@ import { phaseTone, progressOf } from "@/lib/progress";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import { useExamConfig } from "@/lib/roundStore";
 import SectionTitle from "@/components/exam/SectionTitle";
-import { eyebrow } from "@/components/exam/ui";
 import { EmptyChild } from "./AuthArt";
 
 /**
@@ -88,7 +87,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
 
   /** 동의가 끝난 학생만 응시 진척에 센다. 나머지는 아직 시험을 볼 수 없다 */
   const active = students.filter(canSitStudent);
-  const rows = active.map(progressOf);
+  const rows = active.map((s) => progressOf(s));
   const submittedAll = rows.filter((r) => r.submitted >= r.total).length;
   const notStarted = rows.filter((r) => r.phase === "미응시");
   const running = rows.filter((r) => r.phase === "응시중");
@@ -118,11 +117,10 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
 
   return (
     <>
-      {/* 머리 구성은 학생 명부와 같다 — 분류 · 제목 · 한 줄 · 아래 구분선 */}
+      {/* 머리 구성은 학생 명부와 같다 — 제목 · 한 줄 · 아래 구분선 */}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div className="min-w-[16rem] flex-1">
-          <p className={eyebrow}>기관 현황</p>
-          <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+          <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
             {session?.org ?? "소속 기관"}
           </h1>
           <p className={`mt-2 text-[13px] ${t.muted}`}>

@@ -44,7 +44,7 @@ import { card, listTd, listTh } from "./ui";
 export type PayTab = "exam" | "counsel";
 
 const tabs: { id: PayTab; label: string }[] = [
-  { id: "exam", label: "진단평가" },
+  { id: "exam", label: "재능 진단" },
   { id: "counsel", label: "면담" },
 ];
 
@@ -56,7 +56,7 @@ export default function PaymentHub({
   view = "hub",
   /** 첫 화면의 갈래 — /my/payments?tab=counsel */
   tab = "exam",
-  /** 학생 목록에서 체크해 넘어온 아이 — /my/payments/checkout?students=S-1,S-2 */
+  /** 주소로 들고 온 아이 — 학생 목록의 「결제 필요」가 /my/payments/checkout?students=S-1 로 보낸다 */
   seed,
   /** 영수증에 세울 주문 — /my/payments/done?order=GX2026-000148 */
   orderId,
@@ -88,7 +88,7 @@ export default function PaymentHub({
     <>
       {/* 결제하러 온 화면이라 머리는 제목 한 줄과 갈래 탭만 둔다. 갈래 탭은 작은 밑줄 탭 —
           큰 카드 둘로 세웠더니 상품보다 갈래가 먼저 눈에 들어왔다. 상품 고르기·완료 화면은
-          진단평가 갈래 안의 걸음이라 탭을 세우지 않는다 */}
+          재능 진단 갈래 안의 걸음이라 탭을 세우지 않는다 */}
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-soft-line">
         <h1 className="pb-3 text-[24px] font-bold tracking-tight text-soft-ink">결제</h1>
         {view === "hub" && (
@@ -137,7 +137,7 @@ export default function PaymentHub({
                 ? "확인 중입니다…"
                 : tab === "counsel"
                   ? "아직 결제한 면담이 없습니다."
-                  : "아직 결제한 평가가 없습니다."}
+                  : "아직 결제한 진단이 없습니다."}
             </p>
           ) : (
             <div className={`${card} overflow-x-auto`}>

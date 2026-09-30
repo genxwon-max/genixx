@@ -1,9 +1,9 @@
 import FormsView from "./FormsView";
 
-export const metadata = { title: "평가별 문항관리" };
+export const metadata = { title: "진단별 문항관리" };
 
 /*
- * ADM-04-3 평가별 문항관리 — 회차 한 줄, 과목은 그 줄 안에.
+ * ADM-04-3 진단별 문항관리 — 회차 한 줄, 과목은 그 줄 안에.
  *
  * 목록이 답하는 것은 「어느 회차부터 손대야 하나」이고, 담는 일은 상세(forms/[round])의
  * 과목 탭에서 한다.

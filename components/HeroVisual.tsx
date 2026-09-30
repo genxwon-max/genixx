@@ -27,7 +27,7 @@ export default function HeroVisual() {
       <figure className="relative overflow-hidden rounded-3xl bg-white shadow-float ring-1 ring-brand-100/80">
         <Image
           src={composed.src}
-          alt="지능 검사 결과 그래프를 함께 보며 이야기하는 선생님과 학생. 8가지 핵심 지능 영역 분석과 맞춤 학습 방향 안내"
+          alt="재능 진단 결과 그래프를 함께 보며 이야기하는 선생님과 학생. 8가지 재능 영역 분석과 맞춤 학습 방향 안내"
           width={composed.width}
           height={composed.height}
           sizes="(max-width: 639px) 92vw, (max-width: 1279px) 780px, 1000px"

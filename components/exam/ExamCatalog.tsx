@@ -162,10 +162,10 @@ export default function ExamCatalog() {
         <PageTitle
           sub={
             <>
-              회원가입 없이 보고 싶은 평가를 골라 교과 하나로 1셋트 {SET_QUESTIONS}문항을 풀어 볼
+              회원가입 없이 보고 싶은 진단을 골라 교과 하나로 1셋트 {SET_QUESTIONS}문항을 풀어 볼
               수 있습니다.
               <br />
-              셋트를 풀고 가입하면 무료시험 {FREE_TOTAL}문항으로 이어집니다. 결과 리포트는{" "}
+              셋트를 풀고 가입하면 무료 진단 {FREE_TOTAL}문항으로 이어집니다. 결과 리포트는{" "}
               <Link href="/signup" className="font-semibold text-soft-primary hover:underline">
                 회원가입
               </Link>{" "}
@@ -177,7 +177,7 @@ export default function ExamCatalog() {
             </>
           }
         >
-          평가 둘러보기
+          진단 둘러보기
         </PageTitle>
       ) : (
         <PageTitle>접수하기</PageTitle>
@@ -197,7 +197,7 @@ export default function ExamCatalog() {
           {/* 검색 */}
           <form
             role="search"
-            aria-label="평가 검색"
+            aria-label="진단 검색"
             onSubmit={search}
             className="flex flex-wrap items-end gap-x-3 gap-y-3 border border-soft-line bg-white px-5 py-4"
           >
@@ -225,7 +225,7 @@ export default function ExamCatalog() {
                 type="search"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="평가명으로 찾기 (예: 2026, 3분기, 초4)"
+                placeholder="진단명으로 찾기 (예: 2026, 3분기, 초4)"
                 className="h-10 w-full rounded-[2px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none placeholder:text-slate-400 focus:border-soft-primary"
               />
             </Field>
@@ -282,7 +282,7 @@ export default function ExamCatalog() {
             <ListView items={items} total={all.length} offset={offset} />
           ) : items.length === 0 ? (
             <p className="border-y border-soft-line bg-white py-4 text-center text-[14px] text-soft-muted">
-              조건에 맞는 평가가 없습니다.
+              조건에 맞는 진단이 없습니다.
             </p>
           ) : (
             <ul className="grid gap-5 border-t-2 border-soft-primary pt-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -563,7 +563,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[680px] border-collapse bg-white text-[14px]">
-        <caption className="sr-only">접수할 수 있는 평가</caption>
+        <caption className="sr-only">접수할 수 있는 진단</caption>
         <colgroup>
           <col className="w-[7%]" />
           <col />
@@ -578,7 +578,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
               번호
             </th>
             <th scope="col" className={th}>
-              평가명
+              진단명
             </th>
             <th scope="col" className={th}>
               접수 기간
@@ -600,7 +600,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
           {items.length === 0 ? (
             <tr>
               <td colSpan={6} className={`${td} text-center`}>
-                조건에 맞는 평가가 없습니다.
+                조건에 맞는 진단이 없습니다.
               </td>
             </tr>
           ) : (
@@ -673,7 +673,7 @@ function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => v
     return (
       <span className="flex flex-col items-center gap-1">
         <span className="text-[13px] font-semibold text-soft-primary">
-          {action.tier === "free" ? "무료시험 접수" : "유료시험 접수"}
+          {action.tier === "free" ? "무료 진단 접수" : "유료 진단 접수"}
         </span>
         <Link href="/exam" className="text-[12px] text-soft-ink underline-offset-2 hover:underline">
           {action.label}
@@ -732,7 +732,7 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
           {assessment.name} {name}
         </h3>
 
-        <p className="mt-4 text-[12px] font-bold text-soft-muted">평가 과목</p>
+        <p className="mt-4 text-[12px] font-bold text-soft-muted">진단 과목</p>
         {round.subjects.length > 0 ? (
           <ul className="mt-1.5 divide-y divide-slate-100 border-y border-slate-100">
             {round.subjects.map((s) => (
@@ -764,7 +764,7 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
           {action.kind === "done" ? (
             <>
               <p className="mb-2 text-[13px] font-semibold text-soft-primary">
-                {action.tier === "free" ? "무료시험 접수 완료" : "유료시험 접수 완료"}
+                {action.tier === "free" ? "무료 진단 접수 완료" : "유료 진단 접수 완료"}
               </p>
               <Link href="/exam" className={`${btnBox} w-full`}>
                 {action.label}

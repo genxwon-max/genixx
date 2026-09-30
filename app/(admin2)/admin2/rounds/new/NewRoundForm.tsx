@@ -73,7 +73,7 @@ export default function NewRoundForm() {
     /* 기간은 편성 화면과 **같은 잣대**로 본다(checkPeriod). 여기서만 따로 재면
        만들 때는 통과한 기간이 편성 화면에서 막히는 날이 온다 */
     bad.push(...checkPeriod({ opensOn, opensAt, closesOn, closesAt }));
-    if (picked.length === 0) bad.push("평가 과목을 하나 이상 넣어 주세요. 과목이 없으면 응시할 것이 없습니다.");
+    if (picked.length === 0) bad.push("진단 과목을 하나 이상 넣어 주세요. 과목이 없으면 응시할 것이 없습니다.");
     /* 값은 편성 화면과 **같은 잣대**로 본다(checkPrice) — 여기서만 따로 재면 만들 때는
        통과한 값이 고치는 화면에서 막히는 날이 온다 */
     bad.push(...checkPrice({ price, salePrice }));
@@ -114,7 +114,7 @@ export default function NewRoundForm() {
         title="회차 생성"
         actions={
           <Link href="/admin2/rounds" className="a2-btn">
-            평가 회차
+            진단 회차
           </Link>
         }
       />

@@ -284,9 +284,7 @@ function PopupHeader({
           </p>
           {/* 판 번호를 여기 적어 둔다. 응답자에게는 쓸모없어 보여도, 문의가 들어왔을 때
               「어느 판을 보고 계셨는지」를 화면 사진 한 장으로 알 수 있다. */}
-          <p className="mt-1 tabular-nums">
-            {doc.code} · 설문 v{doc.liveVersion}
-          </p>
+          <p className="mt-1 tabular-nums">설문 v{doc.liveVersion}</p>
           {askingNow && (
             <p className="mt-2 text-rose-600">
               <span aria-hidden>*</span> 표시는 반드시 답해야 하는 문항입니다

@@ -12,7 +12,7 @@ import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable"
 import { PageHead, Status } from "@/components/admin2/ui";
 
 /**
- * ADM-04-3 평가별 문항관리 — **회차 한 줄**.
+ * ADM-04-3 진단별 문항관리 — **회차 한 줄**.
  *
  * ── 왜 줄을 회차로 세는가 ──
  * 한동안 회차 × 과목 × 학년 한 칸을 한 줄로 폈다. 「어느 칸이 비었나」는 잘 보였지만, 한
@@ -169,7 +169,7 @@ export default function FormsView() {
     () => [
       {
         key: "round",
-        head: "평가 회차",
+        head: "진단 회차",
         width: "12rem",
         nowrap: true,
         value: (r) => r.label,
@@ -205,7 +205,7 @@ export default function FormsView() {
       {
         /* 이 화면의 본체 — 한 회차가 보는 과목이 나란히 눕는다. 남는 폭을 이 칸이 먹는다 */
         key: "subjects",
-        head: "평가 과목",
+        head: "진단 과목",
         width: "100%",
         value: (r) =>
           r.cells
@@ -301,14 +301,14 @@ export default function FormsView() {
   return (
     <>
       <PageHead
-        title="평가별 문항관리"
+        title="진단별 문항관리"
         actions={
           <>
             <Link href="/admin2/items" className="a2-btn">
               문항 은행
             </Link>
             <Link href="/admin2/rounds" className="a2-btn">
-              평가 회차
+              진단 회차
             </Link>
           </>
         }

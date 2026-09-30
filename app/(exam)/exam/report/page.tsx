@@ -6,7 +6,7 @@ import ExamPaper from "@/components/exam/ExamPaper";
 
 export const metadata: Metadata = {
   title: "결과보기",
-  description: "접수한 평가의 결과 리포트를 확인합니다.",
+  description: "접수한 진단의 결과 리포트를 확인합니다.",
   robots: { index: false, follow: false },
 };
 

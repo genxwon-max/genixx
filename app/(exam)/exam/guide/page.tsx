@@ -78,7 +78,7 @@ export default function ExamGuidePage() {
             href="/exam/apply"
             className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-[4px] bg-soft-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-soft-primary-dark"
           >
-            평가 골라 무료로 풀어보기
+            진단 골라 무료로 풀어보기
             <ArrowRight className="h-4 w-4" />
           </Link>
         </section>
@@ -127,7 +127,7 @@ export default function ExamGuidePage() {
       <p className="mt-8 text-center text-[13px] text-soft-muted">
         샘플 문항에는 정답을 싣지 않습니다. 응시 순서와 규정은{" "}
         <Link href="/exam/info" className="font-semibold text-soft-primary hover:underline">
-          시험 안내
+          진단 안내
         </Link>
         에서 확인하세요.
       </p>

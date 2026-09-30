@@ -97,7 +97,7 @@ const steps = [
 const who = [
   {
     t: "전문가 40인이 정해요",
-    d: "한국창의영재교육원의 전문가 40인 — 영재학교 교수진, 교장·교감을 지낸 교육자 — 이 문항을 쓰고, 검수하고, 평가하고, 면담해요.",
+    d: "한국창의영재교육원의 전문가 40인 — 영재학교 교수진, 교장·교감을 지낸 교육자 — 이 문항을 쓰고, 검수하고, 진단하고, 면담해요.",
     tone: "#fbbf24",
   },
   {
@@ -131,7 +131,7 @@ const sheet = [
 const faqs = [
   {
     q: "영재를 가려내는 검사예요?",
-    a: "아니에요. 잼 파인더는 고르는 검사가 아니라 찾는 검사예요. 등급이나 석차 대신 이번 회차에 보인 모습을 좌표로 적고, 아이를 규정하는 이름은 붙이지 않아요.",
+    a: "아니에요. 잼 파인더는 고르는 검사가 아니라 찾는 진단이에요. 등급이나 석차 대신 이번 회차에 보인 모습을 좌표로 적고, 아이를 규정하는 이름은 붙이지 않아요.",
   },
   {
     q: "잼피가 결과를 정하나요?",
@@ -410,7 +410,7 @@ export default function Home5() {
           <Reveal className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[1.5rem] border border-(--j-line) bg-white px-6 py-4">
             <p className="jm-small text-(--j-ink-2)">
               <span className="jm-num text-(--j-primary)">40</span>
-              <span className="ml-2 font-bold text-(--j-ink)">인의 전문가가 출제 · 검수 · 평가 · 면담</span> — 진단 원리는 여기에
+              <span className="ml-2 font-bold text-(--j-ink)">인의 전문가가 출제 · 검수 · 진단 · 면담</span> — 진단 원리는 여기에
               자세히 적어 두었어요.
             </p>
             <Link href="/about/hitl" className="jm-btn jm-btn-soft jm-btn-sm">

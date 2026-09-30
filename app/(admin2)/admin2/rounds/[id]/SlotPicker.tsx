@@ -7,7 +7,7 @@ import PlanPicker from "@/components/admin2/PlanPicker";
 import { FormRow, Panel } from "@/components/admin2/ui";
 
 /**
- * 이 회차의 편성을 다시 정한다 — 학년과 평가 과목.
+ * 이 회차의 편성을 다시 정한다 — 학년과 진단 과목.
  *
  * 회차를 만들 때 고른 것을 나중에 고치는 자리다. 「이번엔 과학도 넣기로 했다」가 실제로
  * 생기고, 그때 회차를 새로 만들게 하면 이미 짜 둔 검사지가 따라오지 않는다.
@@ -45,7 +45,7 @@ export default function SlotPicker({
       .length ?? 0;
 
   return (
-    <Panel title="평가 과목 편성" flush>
+    <Panel title="진단 과목 편성" flush>
       {/* 잠긴 회차도 같은 두 줄로 적는다 — 고칠 수 있을 때와 없을 때 칸이 다른 자리에
           서면, 잠겼다는 사실보다 화면이 바뀌었다는 것이 먼저 읽힌다 */}
       <div className="a2-form">
@@ -57,7 +57,7 @@ export default function SlotPicker({
               </span>
             </FormRow>
             <FormRow
-              label="평가 과목"
+              label="진단 과목"
               hint="응시가 시작된 뒤에는 편성을 바꾸지 못합니다 — 아이마다 다른 검사지를 받게 됩니다."
             >
               <span className="a2-t-sm text-(--a2-ink-2)">{value.subjects.join(" · ") || "과목 없음"}</span>

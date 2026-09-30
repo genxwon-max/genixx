@@ -32,12 +32,11 @@ export default function StudentInterviews({
 }) {
   const self = useSelf();
 
-  if (!self.hydrated) return <Checking label="면담" title="면담" />;
+  if (!self.hydrated) return <Checking title="면담" />;
 
   if (!self.student) {
     return (
       <GateNote
-        label="면담"
         title="면담을 신청할 수 없습니다"
         head="명부에서 내 이름을 찾지 못했습니다"
         body="면담은 한 사람의 결과지를 놓고 나누는 자리입니다. 접속코드로 다시 들어오면 이 자리에서 신청할 수 있습니다."
@@ -48,7 +47,6 @@ export default function StudentInterviews({
   if (!self.teen) {
     return (
       <GateNote
-        label="면담"
         title="면담 신청은 보호자가 합니다"
         head="여기는 내 자리가 아닙니다"
         body="만 14세 미만은 면담을 직접 신청할 수 없습니다. 값을 내고 사람과 시간을 묶는 일이라 법정대리인이 정합니다. 결과지를 함께 읽고 싶으면 보호자에게 말해 주세요 — 보호자 화면에서 신청할 수 있습니다."

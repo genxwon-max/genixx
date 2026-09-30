@@ -3,9 +3,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ageFromBirth, consentRouteFor, type ConsentRoute } from "@/lib/account";
+import {
+  OBSERVATION_MAX,
+  genders,
+  interestAreas,
+  learningKinds,
+  schoolLevels,
+} from "@/lib/childOptions";
 import { clearChildDraft } from "@/lib/childStore";
 import { useHydrated } from "@/lib/examStore";
 import AddressField, { emptyAddress, sidoOf, type AddressValue } from "./AddressField";
+import Chips, { flip } from "./Chips";
 import { addStudents, formatCode, type ChildProfile } from "@/lib/roster";
 import { useSession } from "@/lib/authStore";
 import { ArrowRight } from "@/components/Icons";
@@ -31,46 +39,10 @@ import { AccHead, btnGhost, btnPrimary, card, cardPad } from "./ui";
  * 다르다.
  * 나머지는 결과를 더 잘 읽기 위한 값이므로, 지금 모르면 비워 두고 나중에 채우면 된다.
  * 항목 구분은 개인정보처리방침의 수집 항목 표와 맞춘다.
- */
-
-/**
- * 학교급과 그 안의 학년.
  *
- * 평가가 열리는 구간은 초등 3~6학년이지만, 학교급은 초·중·고 셋을 다 받는다. 형제자매를
- * 한 계정에 모아 두는 일이 흔한데 큰아이가 중학생이라고 명부에 올리지도 못하면 보호자는
- * 아이마다 다른 자리를 찾아야 한다.
- *
- * ⚠ 초1·2와 중·고등학생은 접수할 평가가 없다. 차림표(lib/examCatalog.ts)가 초3~6만 여는
- *   까닭은 진단평가 절차가 정한 대상 학년이 그것이라서다 — trackFromGrade가 나머지 학년을
- *   null로 돌려주므로 「내 학년」으로 걸리는 카드도 없다. 설문은 나간다 — 학년대
- *   (lib/surveyBands.ts)가 대상이 아닌 학년을 가장 어린 칸으로 받는다.
+ * 고르개 목록(학교급 · 관심 분야 …)은 여럿 등록(BulkRegister)과 함께 쓰도록
+ * lib/childOptions.ts에 둔다.
  */
-const schoolLevels = [
-  { id: "초등", label: "초등학교", grades: [1, 2, 3, 4, 5, 6] },
-  { id: "중등", label: "중학교", grades: [1, 2, 3] },
-  { id: "고등", label: "고등학교", grades: [1, 2, 3] },
-];
-const genders = ["남자", "여자"];
-const interestAreas = [
-  "읽기·글쓰기",
-  "수학·논리",
-  "과학·자연 탐구",
-  "그리기·만들기",
-  "음악",
-  "운동·신체 활동",
-  "코딩·디지털",
-  "사회·역사",
-  "외국어",
-];
-const learningKinds = [
-  "영재교육원·영재학급",
-  "경시·경진대회 참가",
-  "학원·과외",
-  "방과후 프로그램",
-  "온라인 학습",
-  "해외 거주·유학",
-];
-const OBSERVATION_MAX = 500;
 
 /** 입력 칸과 같은 모양이되 높이만 여러 줄로 */
 const textarea = `${input.replace("h-[3.25rem]", "")} min-h-[7.5rem] py-3 leading-relaxed`;
@@ -81,45 +53,6 @@ const textarea = `${input.replace("h-[3.25rem]", "")} min-h-[7.5rem] py-3 leadin
  */
 const inputBad = (on: boolean) =>
   on ? input.replace("border-soft-line", "border-[#e5484d]") : input;
-
-const flip = (list: string[], v: string) =>
-  list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-
-/** 눌러서 켜고 끄는 알약. 여러 개 고르는 항목과, 다시 누르면 풀리는 성별에 쓴다. */
-function Chips({
-  options,
-  picked,
-  onToggle,
-  labelledBy,
-}: {
-  options: string[];
-  picked: string[];
-  onToggle: (v: string) => void;
-  labelledBy: string;
-}) {
-  return (
-    <div role="group" aria-labelledby={labelledBy} className="mt-2 flex flex-wrap gap-2">
-      {options.map((o) => {
-        const on = picked.includes(o);
-        return (
-          <button
-            key={o}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onToggle(o)}
-            className={`h-10 rounded-full border px-4 text-[14px] font-semibold transition-colors ${
-              on
-                ? "border-soft-primary bg-soft-primary-soft text-soft-primary"
-                : "border-soft-line bg-white text-soft-muted hover:bg-slate-50"
-            }`}
-          >
-            {o}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function ChildNew() {
   const hydrated = useHydrated();

@@ -5,7 +5,7 @@ import ExamPaper from "@/components/exam/ExamPaper";
 
 export const metadata: Metadata = {
   title: "응시하기",
-  description: "접수한 평가에 응시합니다.",
+  description: "접수한 진단에 응시합니다.",
   robots: { index: false, follow: false },
 };
 

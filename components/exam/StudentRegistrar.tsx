@@ -32,9 +32,10 @@ import {
 import { createGuardianRequest, latestRequestFor, maskPhone } from "@/lib/guardianRequest";
 import { subjects } from "@/lib/exam";
 import {
+  getRecord,
   submittedCount,
   surveyMeta,
-  useExamStore,
+  useExamVersion,
   useHydrated,
   type SurveyKey,
 } from "@/lib/examStore";
@@ -47,7 +48,6 @@ import {
   btnPrimary,
   btnSm,
   btnSmGhost,
-  eyebrow,
   fieldLabel,
   govTable,
   input,
@@ -87,7 +87,8 @@ export default function StudentRegistrar({
   const hydrated = useHydrated();
   const session = useSession();
   const roster = useRoster();
-  const records = useExamStore();
+  /* 기록은 줄마다 getRecord로 읽는다(아이가 지금 보고 있는 평가). 여기서는 구독만 건다 */
+  useExamVersion();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [tab, setTab] = useState<"one" | "bulk">(initialTab);
@@ -191,7 +192,7 @@ export default function StudentRegistrar({
   const pendingParent =
     !isDirector && hydrated
       ? mine.filter((s) => {
-          return records[s.id]?.surveys?.guardian !== "done";
+          return getRecord(s.id).surveys.guardian !== "done";
         })
       : [];
   const showPrompt = surveyPrompt && !promptDismissed && pendingParent.length > 0;
@@ -209,8 +210,7 @@ export default function StudentRegistrar({
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div>
-          <p className={eyebrow}>{isDirector ? "소속 관리" : "학생 프로필 관리"}</p>
-          <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+          <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
             학생 등록 관리
           </h1>
           <p className="mt-2 text-[13px] text-soft-muted">
@@ -597,8 +597,8 @@ export default function StudentRegistrar({
                 </tr>
               ) : (
                 mine.map((s, i) => {
-                  const rec = records[s.id];
-                  const done = rec ? submittedCount(rec) : 0;
+                  const rec = getRecord(s.id);
+                  const done = submittedCount(rec);
                   const myKeys: SurveyKey[] = isDirector ? ["teacher"] : ["guardian"];
                   const under = isUnderConsentAge(s);
                   const info = guardianConsentInfo[s.consent];
@@ -646,7 +646,7 @@ export default function StudentRegistrar({
                       <td className={td}>
                         <div className="flex flex-col items-center gap-1.5">
                           {myKeys.map((k) => {
-                            const state = rec?.surveys?.[k] === "done";
+                            const state = rec.surveys[k] === "done";
                             return (
                               <span key={k} className="flex items-center gap-2">
                                 {!isDirector && (
@@ -898,8 +898,7 @@ function ParentSurveyPrompt({
     >
       <div className="w-full max-w-md rounded-[2px] border border-soft-line bg-white">
         <div className="border-b border-soft-line px-6 py-5">
-          <p className={eyebrow}>ASM-05 · 학부모 설문</p>
-          <h2 id="parent-survey-title" className="mt-2 text-[19px] font-bold text-soft-ink">
+          <h2 id="parent-survey-title" className="text-[19px] font-bold text-soft-ink">
             학생의 특징을 알려 주세요
           </h2>
           <p className="mt-2.5 text-[13px] leading-relaxed text-soft-muted">

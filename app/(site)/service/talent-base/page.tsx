@@ -4,7 +4,7 @@ import { Aside, Chapter, Rows } from "@/components/site/Article";
 
 const title = "재능진단 1단계";
 const lead =
-  "지필 검사, 상황판단(SJT), 학생·학부모 설문, 면담을 교차해 재능이 어떤 조건에서 드러나는지 확인합니다.";
+  "지필 진단, 상황판단(SJT), 학생·학부모 설문, 면담을 교차해 재능이 어떤 조건에서 드러나는지 확인합니다.";
 
 export const metadata: Metadata = { title, description: lead };
 
@@ -25,7 +25,7 @@ export default function TalentBasePage() {
             items={[
               {
                 t: "세션 1",
-                d: "본검사 — 지필 문항과, 어떤 상황에서 어떻게 할지 고르는 상황판단(SJT) 문항",
+                d: "본진단 — 지필 문항과, 어떤 상황에서 어떻게 할지 고르는 상황판단(SJT) 문항",
                 aside: "약 55분",
               },
               { t: "세션 2", d: "학생 소개와 학생 설문", aside: "15~19분" },

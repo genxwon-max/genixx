@@ -2,7 +2,9 @@
 
 import { useSyncExternalStore } from "react";
 import { SUBJECT_IDS, type ExamTier, type SubjectId } from "./exam";
+import { isTrackId, type TrackId } from "./examCatalog";
 import { getExamConfig } from "./roundStore";
+import { getWallet, subscribeWallets, walletsRaw } from "./ticketStore";
 
 /** 설문 상태 — 미제출 / 제출 완료 */
 export type SurveyState = "none" | "done";
@@ -10,8 +12,8 @@ export type SurveyState = "none" | "done";
 /**
  * 설문 주체 — 학생 · 학부모 · 지도교사 셋.
  *
- * 학생 설문이 앞에 선다. 진단평가 절차에서 학생 설문은 **무료시험 바로 뒤**, 학부모 설문은
- * 유료시험 뒤에 오므로 차례가 그렇다. 셋을 한 목록으로 두는 까닭은 제출 현황·리포트 근거를
+ * 학생 설문이 앞에 선다. 진단평가 절차에서 학생 설문은 **무료 진단 바로 뒤**, 학부모 설문은
+ * 유료 진단 뒤에 오므로 차례가 그렇다. 셋을 한 목록으로 두는 까닭은 제출 현황·리포트 근거를
  * 세는 자리가 한 군데라서다 — 갈래마다 따로 세면 어느 화면 하나는 늘 빠뜨린다.
  *
  * ── 학부모는 한 벌이다 ──
@@ -43,7 +45,7 @@ export const surveyMeta: Record<
   student: {
     label: "학생 설문",
     who: "학생 본인",
-    note: "무료시험을 마친 뒤 학생이 직접",
+    note: "무료 진단을 마친 뒤 학생이 직접",
     required: false,
   },
   guardian: {
@@ -164,13 +166,13 @@ export type SurveyAnswer = {
 
 export type ExamRecord = {
   /**
-   * 이 학생이 지금 보고 있는 갈래 — 무료시험이 기본이다.
+   * 이 학생이 지금 보고 있는 갈래 — 무료 진단이 기본이다.
    *
-   * 가입만 하면 무료시험(20문항)이 열리고, 유료 접수를 하면 「paid」로 올라 편성 문항 수
+   * 가입만 하면 무료 진단(20문항)이 열리고, 유료 접수를 하면 「paid」로 올라 편성 문항 수
    * (수 20 · 과 20 · 국 10)까지 열린다. 한 번 오른 갈래는 내려가지 않는다 — 결제한 아이의
    * 문항이 어느 날 줄어들면 그것은 우리 잘못이다.
    *
-   * ⚠ 유료시험의 「공통 문항」은 아직 없다. 지금은 같은 문항 은행에서 더 많이 열고, 앞서
+   * ⚠ 유료 진단의 「공통 문항」은 아직 없다. 지금은 같은 문항 은행에서 더 많이 열고, 앞서
    *   푼 답을 그대로 이어 쓴다. 유료용 문항이 오면 여기서부터 갈린다.
    */
   tier: ExamTier;
@@ -231,15 +233,117 @@ export const initialRecord: ExamRecord = {
   finalizedAt: null,
 };
 
+/* ───────────────────────── 평가마다 한 벌 ─────────────────────────
+
+   응시 기록은 **접수한 평가(회차 × 학년)마다** 한 벌이다. 한 아이가 지난해 평가를 마쳤고,
+   올해 두 평가를 함께 보고 있을 수 있다 — 학생마다 한 벌로 두면 둘째 평가를 접수하는 순간
+   첫째 평가의 과목 칸과 설문이 그대로 둘째 평가의 것이 된다.
+
+   저장 열쇠는 「학생@회차/학년」이다(2026-3/e4). 학생 ID만 받는 함수들 — 시험 창 · 설문 창 ·
+   평가 판 — 은 **지금 보고 있는 평가**에 적는다. 평가 판(StatusTable)이 열릴 때 그 평가를
+   가리켜 두고(setActiveReg), 가리킨 것이 없으면 가장 최근에 접수한 평가다. 여러 평가를
+   나란히 보는 화면(학생 상세 · 결과 목록)은 평가를 직접 넘긴다.
+
+   접수가 하나도 없는 아이는 학생 ID 그대로를 열쇠로 쓴다. 평가마다 나누기 전에 쌓인 기록도
+   그 열쇠에 남아 있는데, 그것은 **가장 먼저 접수한 평가**의 것으로 읽고 처음 고쳐 쓸 때 그
+   평가의 열쇠로 옮긴다. */
+
+/** 접수 한 건을 가리키는 값 — 회차 × 학년 */
+export type RegRef = { round: string; track: TrackId };
+
+/** 「2026-3/e4」 — 저장 열쇠와 주소(?reg=)에 쓴다 */
+export const regId = (r: RegRef) => `${r.round}/${r.track}`;
+
+/** 주소에 실려 온 「2026-3/e4」를 되돌린다 — 꼴이 맞지 않으면 null */
+export function parseRegId(v: string | null | undefined): RegRef | null {
+  const i = (v ?? "").lastIndexOf("/");
+  if (i <= 0) return null;
+  const round = v!.slice(0, i);
+  const track = v!.slice(i + 1);
+  return isTrackId(track) ? { round, track } : null;
+}
+
+const sameReg = (a: RegRef | null, b: RegRef | null) =>
+  !!a && !!b && a.round === b.round && a.track === b.track;
+
+const keyOf = (studentId: string, reg: RegRef | null) =>
+  reg ? `${studentId}@${regId(reg)}` : studentId;
+
 type Store = Record<string, ExamRecord>;
 
 const KEY = "genixx.exam.records";
 const EVENT = "genixx:exam-change";
+/** 학생마다 「지금 보고 있는 평가」 — 학생 ID → 「2026-3/e4」 */
+const ACTIVE_KEY = "genixx.exam.active";
 
 let cacheRaw: string | null = null;
 let cacheStore: Store = {};
-/** 학생별 정규화 결과를 캐시해 useSyncExternalStore가 안정된 참조를 받도록 한다 */
+/** 정규화 결과를 캐시해 useSyncExternalStore가 안정된 참조를 받도록 한다 */
 let cacheRecords: Record<string, ExamRecord> = {};
+
+let activeRaw: string | null = null;
+let activeValue: Record<string, string> = {};
+
+function readActive(): Record<string, string> {
+  if (typeof window === "undefined") return activeValue;
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(ACTIVE_KEY);
+  } catch {
+    return activeValue;
+  }
+  if (raw === activeRaw) return activeValue;
+  activeRaw = raw;
+  try {
+    activeValue = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    activeValue = {};
+  }
+  return activeValue;
+}
+
+/**
+ * 이 평가를 지금 보고 있는 평가로 가리킨다 — 평가 판이 열릴 때 부른다.
+ *
+ * 시험 창 · 설문 창은 학생 ID만 들고 열린다. 판에서 누른 과목이 그 판의 평가에 적히려면
+ * 창이 뜨기 전에 여기를 맞춰 두어야 한다. 이미 가리키고 있으면 아무 일도 하지 않는다 —
+ * 판이 그려질 때마다 알림을 쏘면 구독한 화면이 끝없이 다시 그린다.
+ */
+export function setActiveReg(studentId: string, reg: RegRef) {
+  const cur = readActive();
+  const id = regId(reg);
+  if (cur[studentId] === id) return;
+  try {
+    window.localStorage.setItem(ACTIVE_KEY, JSON.stringify({ ...cur, [studentId]: id }));
+  } catch {
+    return;
+  }
+  window.dispatchEvent(new Event(EVENT));
+}
+
+/** 이 아이가 지금 보고 있는 평가 — 마지막으로 연 평가 판, 없으면 가장 최근에 접수한 평가 */
+export function currentRegOf(studentId: string): RegRef | null {
+  const used = getWallet(studentId).used;
+  if (used.length === 0) return null;
+  const pinned = parseRegId(readActive()[studentId]);
+  if (pinned && used.some((u) => sameReg(u, pinned))) return pinned;
+  const last = used[used.length - 1];
+  return { round: last.round, track: last.track };
+}
+
+/** 평가마다 나누기 전의 기록(학생 ID 열쇠)이 붙는 평가 — 가장 먼저 접수한 것 */
+export function legacyOwnerOf(studentId: string): RegRef | null {
+  const first = getWallet(studentId).used[0];
+  return first ? { round: first.round, track: first.track } : null;
+}
+
+/** 이 평가를 무엇으로 접수했나 — 무료 진단이면 20문항, 유료 진단이면 편성 문항 수가 열린다 */
+function regTierOf(studentId: string, reg: RegRef | null): ExamTier | null {
+  if (!reg) return null;
+  return getWallet(studentId).used.find((u) => sameReg(u, reg))?.tier ?? null;
+}
+
+const TIER_ORDER: ExamTier[] = ["set", "free", "paid"];
 
 function normalize(raw: Partial<ExamRecord> | undefined): ExamRecord {
   const subjects = Object.fromEntries(
@@ -272,47 +376,93 @@ function readStore(): Store {
   return cacheStore;
 }
 
-function readRecord(studentId: string): ExamRecord {
+/**
+ * 한 평가의 기록. reg가 null이면 접수가 없는 아이의 기록(학생 ID 열쇠)이다.
+ *
+ * 갈래는 접수 기록과 맞춘다 — 유료로 접수한 평가의 기록이 「무료」로 남아 있으면 문항이 덜
+ * 열린다. 기록에 적힌 갈래와 접수한 갈래 중 높은 쪽을 쓴다(갈래는 내려가지 않는다).
+ */
+function readRecordAt(studentId: string, reg: RegRef | null): ExamRecord {
   if (typeof window === "undefined") return initialRecord;
   const store = readStore();
-  if (!cacheRecords[studentId]) cacheRecords[studentId] = normalize(store[studentId]);
-  return cacheRecords[studentId];
+  const key = keyOf(studentId, reg);
+  let raw = store[key];
+  let source = raw ? "own" : "none";
+  if (!raw && reg && store[studentId] && sameReg(reg, legacyOwnerOf(studentId))) {
+    raw = store[studentId];
+    source = "legacy";
+  }
+  const tier = regTierOf(studentId, reg);
+  const cacheKey = `${key}|${source}|${tier ?? ""}`;
+  if (!cacheRecords[cacheKey]) {
+    const rec = normalize(raw);
+    cacheRecords[cacheKey] =
+      tier && TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(rec.tier) ? { ...rec, tier } : rec;
+  }
+  return cacheRecords[cacheKey];
 }
 
-function writeRecord(studentId: string, next: ExamRecord) {
-  const store = { ...readStore(), [studentId]: next };
+function writeRecordAt(studentId: string, reg: RegRef | null, next: ExamRecord) {
+  const store: Store = { ...readStore(), [keyOf(studentId, reg)]: next };
+  /* 학생 ID 열쇠에 남은 옛 기록은 제 평가에 처음 적는 순간 옮겨 간다 — 두 곳에 두면 어느
+     쪽이 참인지 갈린다 */
+  if (reg && store[studentId] && sameReg(reg, legacyOwnerOf(studentId))) delete store[studentId];
   window.localStorage.setItem(KEY, JSON.stringify(store));
   window.dispatchEvent(new Event(EVENT));
 }
 
+/** 학생 ID만 받는 함수들은 지금 보고 있는 평가를 읽고 쓴다 */
+function readRecord(studentId: string): ExamRecord {
+  return readRecordAt(studentId, currentRegOf(studentId));
+}
+
+function writeRecord(studentId: string, next: ExamRecord) {
+  writeRecordAt(studentId, currentRegOf(studentId), next);
+}
+
+/* 지금 보고 있는 평가가 접수 기록에 달려 있어, 접수가 바뀌어도 다시 읽는다 */
 function subscribe(onChange: () => void) {
   window.addEventListener("storage", onChange);
   window.addEventListener(EVENT, onChange);
+  const offWallets = subscribeWallets(onChange);
   return () => {
     window.removeEventListener("storage", onChange);
     window.removeEventListener(EVENT, onChange);
+    offWallets();
   };
 }
 
-/** 학생 한 명의 응시 기록 */
-export function useExamRecord(studentId: string): ExamRecord {
+/**
+ * 한 아이의 응시 기록 — reg를 주면 그 평가, 없으면 지금 보고 있는 평가.
+ */
+export function useExamRecord(studentId: string, reg?: RegRef | null): ExamRecord {
   return useSyncExternalStore(
     subscribe,
-    () => readRecord(studentId),
+    () => (reg === undefined ? readRecord(studentId) : readRecordAt(studentId, reg)),
     () => initialRecord,
   );
 }
 
-/** 서버 스냅샷은 매번 같은 참조를 돌려줘야 한다 (새 객체면 무한 루프 경고) */
-const EMPTY_STORE: Store = {};
-
-/** 전체 학생의 기록 (학원장 현황 표) */
-export function useExamStore(): Store {
-  return useSyncExternalStore(subscribe, readStore, () => EMPTY_STORE);
+export function getRecord(studentId: string, reg?: RegRef | null) {
+  return reg === undefined ? readRecord(studentId) : readRecordAt(studentId, reg);
 }
 
-export function getRecord(studentId: string) {
-  return readRecord(studentId);
+function versionSnapshot() {
+  if (typeof window === "undefined") return "";
+  readStore();
+  readActive();
+  return `${cacheRaw ?? ""}\n${activeRaw ?? ""}\n${walletsRaw() ?? ""}`;
+}
+
+/**
+ * 기록 · 지금 보는 평가 · 접수 셋 가운데 무엇이든 바뀌면 달라지는 값.
+ *
+ * 여러 아이의 진행을 훅 밖에서 세는 화면(progressOf를 부르는 표)이 다시 그리도록 구독만
+ * 건다. 저장소를 통째로 돌려주지 않는다 — 열쇠가 「학생@평가」라 학생 ID로 꺼내 읽으면
+ * 틀린 기록이 나온다. 읽기는 getRecord로 한다.
+ */
+export function useExamVersion(): string {
+  return useSyncExternalStore(subscribe, versionSnapshot, () => "");
 }
 
 /** 클라이언트에서 하이드레이션이 끝났는지 — 저장값 렌더 전 깜빡임 방지용 */
@@ -475,10 +625,10 @@ export function reopenSurvey(studentId: string, key: SurveyKey, keepAnswers: boo
   });
 }
 
-/* ───────────────────────── 무료시험 ───────────────────────── */
+/* ───────────────────────── 무료 진단 ───────────────────────── */
 
 /**
- * 무료시험은 **과목 셋을 한 번에** 본다 — 시작 · 제출 · 포기 · 해석이 세 기록에 함께 적힌다.
+ * 무료 진단은 **과목 셋을 한 번에** 본다 — 시작 · 제출 · 포기 · 해석이 세 기록에 함께 적힌다.
  *
  * 저장은 그대로 과목마다 나눠 둔다. 문항이 제 과목을 알고 있어(Question.subject) 답은
  * 자기 자리에 들어가고, 정오표 · 리포트 · 관리자 화면이 모두 과목별 기록을 읽기 때문이다.
@@ -498,7 +648,7 @@ function patchAll(studentId: string, patch: (rec: SubjectRecord) => Partial<Subj
   });
 }
 
-/** 무료시험 시작 — 세 과목이 같은 시각에 시작하고 같은 제한 시간을 받는다 */
+/** 무료 진단 시작 — 세 과목이 같은 시각에 시작하고 같은 제한 시간을 받는다 */
 export function startFree(studentId: string, limitMin: number) {
   const at = new Date().toISOString();
   patchAll(studentId, (rec) =>
@@ -506,13 +656,13 @@ export function startFree(studentId: string, limitMin: number) {
   );
 }
 
-/** 무료시험 제출 */
+/** 무료 진단 제출 */
 export function submitFree(studentId: string) {
   const at = new Date().toISOString();
   patchAll(studentId, () => ({ status: "submitted", submittedAt: at }));
 }
 
-/** 무료시험 포기 — 세 과목의 답을 함께 버리고 기회 하나를 쓴다 */
+/** 무료 진단 포기 — 세 과목의 답을 함께 버리고 기회 하나를 쓴다 */
 export function forfeitFree(studentId: string) {
   const at = new Date().toISOString();
   patchAll(studentId, (rec) => ({
@@ -526,7 +676,7 @@ export function forfeitFree(studentId: string) {
   }));
 }
 
-/** 무료시험 다시 보기 */
+/** 무료 진단 다시 보기 */
 export function restartFree(studentId: string) {
   const current = readRecord(studentId);
   if (SUBJECT_IDS.some((id) => current.subjects[id].attemptsLeft <= 0)) return;
@@ -542,7 +692,7 @@ export function restartFree(studentId: string) {
   }));
 }
 
-/** 무료시험 해석 작성 마침 */
+/** 무료 진단 해석 작성 마침 */
 export function finishFreeReflection(studentId: string) {
   const at = new Date().toISOString();
   patchAll(studentId, () => ({ reflectionAt: at }));
@@ -557,19 +707,22 @@ export function finishFreeReflection(studentId: string) {
  * 가입한 날이 다를 수 있는데, 옮기면서 응시를 시작한 것으로 적으면 그 아이의 제한 시간은
  * 이미 지난 것이 된다.
  *
- * 고른 교과는 기록에 남긴다 — 무료시험이 그 과목만 4문항을 더 여는 근거다(FREE_EXTRA).
+ * 고른 교과는 기록에 남긴다 — 무료 진단이 그 과목만 4문항을 더 여는 근거다(FREE_EXTRA).
  */
 export function claimSet(
   studentId: string,
   subject: SubjectId,
   answers: Record<string, number | string>,
+  /** 셋트를 풀던 평가 — 넘기면 지금 보고 있는 평가가 아니라 그 평가에 옮긴다 */
+  reg?: RegRef,
 ) {
-  const current = readRecord(studentId);
+  const at = reg ?? currentRegOf(studentId);
+  const current = readRecordAt(studentId, at);
   /* 이미 물려받았거나 그 과목을 풀기 시작했으면 덮지 않는다 — 아이가 쓴 것이 먼저다 */
   if (current.setSubject) return;
   const rec = current.subjects[subject];
   if (rec.startedAt) return;
-  writeRecord(studentId, {
+  writeRecordAt(studentId, at, {
     ...current,
     setSubject: subject,
     subjects: {
@@ -580,29 +733,43 @@ export function claimSet(
 }
 
 /**
- * 갈래를 올린다 — 무료시험에서 유료시험으로.
+ * 갈래를 올린다 — 무료 진단에서 유료 진단으로.
  *
- * 내려가지 않는다. 결제한 아이의 문항이 줄어드는 일은 없어야 한다.
+ * 내려가지 않는다. 결제한 아이의 문항이 줄어드는 일은 없어야 한다. 접수한 평가의 기록은
+ * 읽을 때 접수 갈래와 맞춰지므로(readRecordAt), 여기서 적는 것은 그 값을 기록에 박아 두는
+ * 일이다 — 평가를 넘기지 않으면 지금 보고 있는 평가에 적는다.
  */
-export function raiseTier(studentId: string, tier: ExamTier) {
-  const order: ExamTier[] = ["set", "free", "paid"];
-  const current = readRecord(studentId);
-  if (order.indexOf(tier) <= order.indexOf(current.tier)) return;
-  writeRecord(studentId, { ...current, tier });
+export function raiseTier(studentId: string, tier: ExamTier, reg?: RegRef) {
+  const at = reg ?? currentRegOf(studentId);
+  const current = readRecordAt(studentId, at);
+  if (TIER_ORDER.indexOf(tier) <= TIER_ORDER.indexOf(current.tier)) return;
+  writeRecordAt(studentId, at, { ...current, tier });
 }
 
-/** 최종 제출 — 설문이 빠져 있어도 진행할 수 있다 */
-export function finalize(studentId: string) {
-  const current = readRecord(studentId);
-  writeRecord(studentId, {
+/** 최종 제출 — 설문이 빠져 있어도 진행할 수 있다. 평가를 넘기지 않으면 지금 보고 있는 평가 */
+export function finalize(studentId: string, reg?: RegRef) {
+  const at = reg ?? currentRegOf(studentId);
+  const current = readRecordAt(studentId, at);
+  writeRecordAt(studentId, at, {
     ...current,
     finalized: true,
     finalizedAt: new Date().toISOString(),
   });
 }
 
+/** 시연용 — 한 평가의 기록만 처음으로 되돌린다. 평가를 넘기지 않으면 지금 보고 있는 평가 */
+export function resetRecord(studentId: string, reg?: RegRef) {
+  writeRecordAt(studentId, reg ?? currentRegOf(studentId), initialRecord);
+}
+
+/** 시연용 — 이 아이의 기록을 평가마다 모두 지운다. 접수까지 되돌릴 때 함께 부른다 */
 export function resetStudent(studentId: string) {
-  writeRecord(studentId, initialRecord);
+  const store = { ...readStore() };
+  for (const key of Object.keys(store)) {
+    if (key === studentId || key.startsWith(`${studentId}@`)) delete store[key];
+  }
+  window.localStorage.setItem(KEY, JSON.stringify(store));
+  window.dispatchEvent(new Event(EVENT));
 }
 
 /** 세 과목을 모두 제출했는지 */

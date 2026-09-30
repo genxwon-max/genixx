@@ -1,30 +1,16 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import ResultView from "@/components/exam/ResultView";
+import StudentResults from "@/components/student/StudentResults";
 
 export const metadata: Metadata = {
-  title: "응시 결과",
-  description: "8재능 팔각형 프로파일과 전문가 평가를 확인합니다. (RPT-01)",
+  title: "진단 결과",
+  description: "접수한 진단마다 결과가 어디까지 왔는지 보고, 발행된 결과지를 엽니다. (RPT-01)",
   robots: { index: false, follow: false },
 };
 
 /**
- * 응시 결과 (/student/results).
- *
- * 리포트 화면은 보호자·기관과 같은 것(ResultView)을 쓰고 껍데기만 학생 레일이다. 볼 대상은
- * 세션이 정하므로 ?student= 를 붙이지 않는다 — 학생은 자기 것만 본다.
- * (useSearchParams가 안에 있어 경계는 그대로 둔다)
+ * 진단 결과 (/student/results) — 진단마다 한 줄. 발행된 줄을 누르면 결과지
+ * (/student/results/2026-3/e4)로 들어간다. 학생은 자기 것만 본다 — 볼 대상은 세션이 정한다.
  */
 export default function StudentResultsPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="py-20 text-center text-[13px] text-soft-muted">
-          결과를 불러오는 중입니다…
-        </div>
-      }
-    >
-      <ResultView />
-    </Suspense>
-  );
+  return <StudentResults />;
 }

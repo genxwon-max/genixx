@@ -21,7 +21,7 @@ import Preview from "./Preview";
  *
  * 판 넷이 사람이 하는 차례 그대로 선다 —
  *
- *   평가 정보  이 아이가 무엇을 어떻게 봤나. 리포트를 읽기 전에 먼저 보는 것
+ *   진단 정보  이 아이가 무엇을 어떻게 봤나. 리포트를 읽기 전에 먼저 보는 것
  *   발송       언제 나가고, 지금 보낼 것인가
  *   리포트     무엇이 담겼는지 한 줄. 읽고 고치는 것은 「리포트 보기」 안에서
  *   기록       누가 무엇을 했나
@@ -108,7 +108,7 @@ export default function ReportDetail({ id }: { id: string }) {
           </p>
         )}
 
-        <Panel title="평가 정보" meta={row.id}>
+        <Panel title="진단 정보" meta={row.id}>
           <div className="grid gap-3 lg:grid-cols-[1fr_18rem]">
             <DescList
               rows={[

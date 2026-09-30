@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
 import { buildLiveReport, editions, type Edition } from "@/lib/diagReport";
 import { SUBJECT_IDS, type SubjectId } from "@/lib/exam";
-import { useExamRecord, useHydrated } from "@/lib/examStore";
+import { parseRegId, useExamRecord, useHydrated } from "@/lib/examStore";
 import { decideType, scoreAxes, scoreSubject } from "@/lib/result";
 import { useReportOf } from "@/lib/reportStore";
 import { unlockFull, useFullUnlocked } from "@/lib/reportUnlockStore";
@@ -33,8 +33,10 @@ export default function LiveReport({ edition }: { edition: Edition }) {
   const asked = params.get("student");
   const mine = asked ? roster.find((s) => s.id === asked) : null;
   const studentId = mine?.id ?? session?.studentId ?? "demo";
-  const record = useExamRecord(studentId);
-  const report = useReportOf(studentId);
+  /* 평가마다 보고서가 따로다 — 결과 화면이 ?reg= 로 어느 평가인지 실어 보낸다 */
+  const reg = parseRegId(params.get("reg")) ?? undefined;
+  const record = useExamRecord(studentId, reg);
+  const report = useReportOf(studentId, reg);
   const unlocked = useFullUnlocked(studentId);
 
   if (!hydrated) return <Notice>보고서를 불러오는 중입니다…</Notice>;
@@ -63,7 +65,8 @@ export default function LiveReport({ edition }: { edition: Edition }) {
     grade: report.grade,
     date: new Date(record.finalizedAt ?? report.assembledAt),
     reportId: report.id,
-    round: config.roundLabel,
+    /* 평가를 붙여 조립한 보고서는 그 평가 이름을, 옛 보고서는 지금 회차 이름을 적는다 */
+    round: report.reg ? report.round : config.roundLabel,
     scores,
     typeName: type?.name,
     typeDesc: type?.summary,

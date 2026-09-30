@@ -27,7 +27,7 @@ const TOTAL = 10;
 
 export const fullToc = [
   "표지와 차례",
-  "보고서를 읽는 법과 평가 방식",
+  "보고서를 읽는 법과 진단 방식",
   "종합 진단 결과",
   "국어 심층 분석",
   "수학 심층 분석",
@@ -75,8 +75,8 @@ function Cover({ r }: { r: DiagReport }) {
       </>,
     ],
     ["진단일", r.date],
-    ["검사 과목", `국어 · 수학 · 과학 (${r.items}문항 / ${r.minutes}분)`],
-    ["평가 방식", "AI 정밀분석 + 전문가 40인 교차검증"],
+    ["진단 과목", `국어 · 수학 · 과학 (${r.items}문항 / ${r.minutes}분)`],
+    ["진단 방식", "AI 정밀분석 + 전문가 40인 교차검증"],
     ["보고서 번호", r.no],
   ];
   return (
@@ -165,7 +165,7 @@ function HowToRead({ r, foot }: { r: DiagReport; foot: string }) {
     ["교육심리 · 측정", "5", "문항 타당도 및 표준화 검토"],
   ];
   return (
-    <Page r={r} head={head(2, "보고서를 읽는 법 · 평가 방식")} no={2} total={TOTAL} foot={foot}>
+    <Page r={r} head={head(2, "보고서를 읽는 법 · 진단 방식")} no={2} total={TOTAL} foot={foot}>
       <BigTitle
         r={r}
         no="02"
@@ -926,7 +926,7 @@ function Home({ r, foot }: { r: DiagReport; foot: string }) {
         2026년 상반기 표준화 표본 초{r.student.gradeShort.replace("학년", "")}{" "}
         {r.norm.toLocaleString()}명 기준 상대 평가 결과입니다. 백분위는 진단 시점의 수행을 나타내며
         지능지수나 장래 성취를 예측하지 않습니다. 서술형은 전문가 2인 독립 채점 후 불일치 시 제3
-        위원이 조정했습니다. 채점자 간 일치도 {r.reliability.agreement}. · 재검사 권장 2027년 2월 ·
+        위원이 조정했습니다. 채점자 간 일치도 {r.reliability.agreement}. · 재진단 권장 2027년 2월 ·
         support@genixx.kr · {r.no}
       </p>
     </Page>

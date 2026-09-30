@@ -571,7 +571,7 @@ export const sampleReport: DiagReport = {
     reviewers: [
       { role: "주 검토 · 전문가", who: "A위원 · 과학교육 14년" },
       { role: "교차 검토 · 전문가", who: "C위원 · 국어교육 11년" },
-      { role: "최종 승인", who: "제닉스 진단평가위원회" },
+      { role: "최종 승인", who: "제닉스 재능진단위원회" },
     ],
   },
 };

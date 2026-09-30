@@ -13,14 +13,14 @@ export async function generateMetadata({
   const { subject } = await params;
   const meta = isSubjectId(subject) ? subjectOf(subject) : null;
   return {
-    title: meta ? `${meta.name} 유료시험 응시` : "유료시험 응시",
+    title: meta ? `${meta.name} 유료 진단 응시` : "유료 진단 응시",
     description: meta ? `${meta.name} ${meta.limitMin}분 응시 화면입니다.` : undefined,
     robots: { index: false, follow: false },
   };
 }
 
 /**
- * 유료시험 응시 창 (/exam/session/paid/[과목]).
+ * 유료 진단 응시 창 (/exam/session/paid/[과목]).
  *
  * 접수한 학생이 과목마다 따로 들어간다 — 과목당 40분이라는 제한이 과목을 갈라 놓는
  * 근거이고, 50문항을 한 자리에서 보게 할 수도 없다.

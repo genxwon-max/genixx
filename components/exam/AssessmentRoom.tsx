@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useSession } from "@/lib/authStore";
 import { useCatalogRounds } from "@/lib/catalogRounds";
 import { assessment } from "@/lib/exam";
-import { dotDate, evalName, trackLabel, type TrackId } from "@/lib/examCatalog";
+import { dotDate, evalName, type TrackId } from "@/lib/examCatalog";
 import { isApplied, useWallet } from "@/lib/ticketStore";
 import StatusTable from "./StatusTable";
 import StudentOnly from "./StudentOnly";
-import { btnBox, eyebrow, panel } from "./ui";
+import { btnBox, panel } from "./ui";
 
 /**
  * 과목 판 (/exam/[회차]/[학년]) — 응시하기 탭에서 과목을 하나씩 응시하는 자리.
@@ -41,9 +41,9 @@ export default function AssessmentRoom({ roundId, trackId }: { roundId: string; 
       <div>
         {back}
         <div className={`mx-auto mt-8 max-w-lg p-8 text-center ${panel}`}>
-          <h1 className="text-[20px] font-bold text-soft-ink">평가를 찾을 수 없습니다</h1>
+          <h1 className="text-[20px] font-bold text-soft-ink">진단을 찾을 수 없습니다</h1>
           <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
-            주소가 바뀌었거나 없어진 평가입니다. 응시하기 목록에서 다시 골라 주세요.
+            주소가 바뀌었거나 없어진 진단입니다. 응시하기 목록에서 다시 골라 주세요.
           </p>
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function AssessmentRoom({ roundId, trackId }: { roundId: string; 
     return (
       <div>
         <div className="mb-5">{back}</div>
-        <StatusTable heading={{ eyebrow: trackLabel(trackId), title: name, period }} />
+        <StatusTable heading={{ title: name, period }} reg={{ round: round.id, track: trackId }} />
       </div>
     );
   }
@@ -66,10 +66,9 @@ export default function AssessmentRoom({ roundId, trackId }: { roundId: string; 
     <div>
       {back}
       <div className={`mx-auto mt-8 max-w-lg p-8 text-center ${panel}`}>
-        <p className={eyebrow}>{trackLabel(trackId)}</p>
-        <h1 className="mt-2 text-[22px] font-bold text-soft-ink">{name}</h1>
+        <h1 className="text-[22px] font-bold text-soft-ink">{name}</h1>
         <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">
-          접수하지 않은 평가입니다. 접수하기 탭에서 먼저 접수해 주세요.
+          접수하지 않은 진단입니다. 접수하기 탭에서 먼저 접수해 주세요.
         </p>
         <Link href="/exam/apply" className={`mt-7 ${btnBox}`}>
           접수하기로 이동

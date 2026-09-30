@@ -117,7 +117,7 @@ export default function MembersView() {
       },
       {
         /*
-         * 평가명 — 「3회차」가 아니라 「2026 파일럿 3회차」를 그대로 적는다.
+         * 진단명 — 「3회차」가 아니라 「2026 파일럿 3회차」를 그대로 적는다.
          *
          * 회차 번호만 적어 두었을 때는 해가 바뀌면 같은 「3회차」가 둘이 되고, 리포트·문의에
          * 적히는 이름과도 달라 두 화면을 오가며 맞춰 봐야 했다. 이름 하나로 세운다.
@@ -126,7 +126,7 @@ export default function MembersView() {
          * 응시 판이 꼬리표로 적고, 목록에서 답할 물음은 「어느 회차의 답안지인가」다.
          */
         key: "round",
-        head: "평가명",
+        head: "진단명",
         width: "100%",
         value: (s) => roundLabel(s.round),
         sort: (s) => s.round,

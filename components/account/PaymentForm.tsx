@@ -91,8 +91,7 @@ export default function PaymentForm() {
   return (
     <div className="container-x py-8 md:py-10">
       <div className="border-b-2 border-exam-text/80 pb-5">
-        <p className={eyebrow}>PAY-03 · 결제</p>
-        <h1 className="mt-2.5 text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
+        <h1 className="text-[24px] font-black tracking-tight text-exam-text md:text-[28px]">
           응시권 결제
         </h1>
         <p className="mt-2 text-[12px] text-exam-muted">

@@ -55,7 +55,7 @@ export const pageContent: Record<string, PageContent> = {
   "/sample/report": {
     id: "PUB-04-1",
     title: "샘플 PDF 뷰어",
-    lead: "평가가 끝나면 받는 보고서가 어떤 모습인지 한 면을 미리 보여 드립니다.",
+    lead: "진단이 끝나면 받는 보고서가 어떤 모습인지 한 면을 미리 보여 드립니다.",
     blocks: [
       {
         kind: "reportPreview",
@@ -308,7 +308,7 @@ export const pageContent: Record<string, PageContent> = {
   "/legal/privacy-kids": {
     id: "PUB-08-3",
     title: "내가 답한 내용은 어떻게 쓰이나요?",
-    lead: "이 페이지는 검사를 보는 학생이 직접 읽을 수 있도록 쉬운 말로 썼습니다.",
+    lead: "이 페이지는 진단을 받는 학생이 직접 읽을 수 있도록 쉬운 말로 썼습니다.",
     blocks: [
       {
         kind: "points",
@@ -316,7 +316,7 @@ export const pageContent: Record<string, PageContent> = {
         items: [
           {
             t: "점수로 순위를 매기지 않아요",
-            d: "누가 더 잘했는지 줄을 세우려고 검사하는 게 아니에요.",
+            d: "누가 더 잘했는지 줄을 세우려고 진단하는 게 아니에요.",
           },
           {
             t: "네가 잘하는 걸 찾으려는 거예요",

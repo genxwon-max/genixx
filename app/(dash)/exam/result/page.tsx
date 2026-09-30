@@ -5,7 +5,7 @@ import ResultView from "@/components/exam/ResultView";
 
 export const metadata: Metadata = {
   title: "결과 리포트",
-  description: "8재능 팔각형 프로파일과 전문가 평가를 확인합니다.",
+  description: "8재능 팔각형 프로파일과 전문가 진단을 확인합니다.",
   robots: { index: false, follow: false },
 };
 

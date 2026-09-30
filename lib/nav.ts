@@ -54,7 +54,7 @@ export const menu: MenuGroup[] = [
         id: "PUB-02-5",
         label: "참여진 소개",
         href: "/about/team",
-        desc: "연구·AI 개발·출제·평가 참여자와 이력",
+        desc: "연구·AI 개발·출제·진단 참여자와 이력",
       },
     ],
   },

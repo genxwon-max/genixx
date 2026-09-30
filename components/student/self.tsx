@@ -115,7 +115,7 @@ export function WhoNote({ self }: { self: Self }) {
         <>
           <span>
             {self.anonymous ? "로그인하지 않았습니다." : "아직 등록된 학생이 없습니다."} 학생
-            접속코드로 들어오면 이 자리에 내 평가가 뜹니다.
+            접속코드로 들어오면 이 자리에 내 진단이 뜹니다.
           </span>
           <Link href="/login/student" className="font-semibold text-soft-primary hover:underline">
             학생 코드로 접속
@@ -128,25 +128,33 @@ export function WhoNote({ self }: { self: Self }) {
 
 /* ── 학생 대시보드가 함께 쓰는 조각 ── */
 
-/** 화면 머리 — 분류 · 제목 · 오른쪽 액션. 학부모 홈과 같은 구성이다 */
+/**
+ * 화면 머리 — 제목 · 오른쪽 액션. 학부모 홈과 같은 구성이다.
+ * 목록에서 들어온 상세 화면은 제목 위에 돌아갈 길(← 내 진단)을 단다 — 학생 상세(AccHead)와 같은 모양.
+ */
 export function Head({
-  eyebrowText,
   title,
   lead,
   right,
+  back,
 }: {
-  eyebrowText: string;
   title: string;
   lead?: string;
   right?: React.ReactNode;
+  back?: { href: string; label: string };
 }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
       <div className="min-w-[16rem] flex-1">
-        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-soft-primary">
-          {eyebrowText}
-        </p>
-        <h1 className="mt-1.5 text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
+        {back && (
+          <Link
+            href={back.href}
+            className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-soft-muted hover:text-soft-ink"
+          >
+            ← {back.label}
+          </Link>
+        )}
+        <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
           {title}
         </h1>
         {lead && <p className="mt-2.5 text-[13.5px] leading-[1.75] text-soft-muted">{lead}</p>}
@@ -174,19 +182,17 @@ export const cardBox = "rounded-[14px] border border-soft-line bg-white";
  * 달라서, 이름 한 칸만 받아 문장을 지으면 어느 한쪽이 어긋난다.
  */
 export function GateNote({
-  label,
   title,
   head,
   body,
 }: {
-  label: string;
   title: string;
   head: string;
   body: string;
 }) {
   return (
     <>
-      <Head eyebrowText={label} title={title} />
+      <Head title={title} />
       <div className={`${cardBox} mt-7 p-7 text-center sm:p-9`}>
         <p className="text-[15px] font-bold text-soft-ink">{head}</p>
         <p className="mx-auto mt-2.5 max-w-[34rem] text-[13px] leading-[1.8] text-soft-muted">
@@ -194,10 +200,10 @@ export function GateNote({
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
           <Link href="/student" className={btnGo}>
-            내 평가로 돌아가기
+            내 진단으로 돌아가기
           </Link>
           <Link href="/exam/info" className={btnQuiet}>
-            시험 안내
+            진단 안내
           </Link>
         </div>
       </div>
@@ -212,10 +218,10 @@ export function GateNote({
  * 있어서 첫 그림에는 없다. 그 사이에 결제창을 먼저 펴 두면 만 14세 미만 아이에게 결제가
  * 한 번 번쩍 보이고 사라진다. 한 박자 기다리는 편이 낫다.
  */
-export function Checking({ label, title }: { label: string; title: string }) {
+export function Checking({ title }: { title: string }) {
   return (
     <>
-      <Head eyebrowText={label} title={title} />
+      <Head title={title} />
       <p className={`${cardBox} mt-7 p-12 text-center text-[13px] text-soft-muted`}>
         확인 중입니다…
       </p>
