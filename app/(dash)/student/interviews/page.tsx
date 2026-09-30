@@ -8,10 +8,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * ASM-06(학생) 면담 — 만 14세 이상 학생 대시보드에만 서는 자리.
+ * ASM-06(학생) 면담 ① 전문가 선택 — 만 14세 이상 학생 대시보드에만 서는 자리. 신청한 면담
+ * 내역도 여기 쌓인다. 다음 걸음은 /time → /pay → /done이다.
  *
  * ?span=30 · 60으로 길이를 들고 올 수 있다 — 학생 결제 화면의 면담 차림표에서 넘어오는
- * 길이다(/student/payments → CounselPayPanel의 zone).
+ * 길이다(/student/payments?tab=counsel → CounselPayPanel의 zone).
  */
 export default async function StudentInterviewsPage({
   searchParams,

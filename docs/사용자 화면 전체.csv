@@ -13,10 +13,17 @@
 학부모 대시보드,동의 철회·데이터 파기 요청,https://genixx-theta.vercel.app/my/children/withdraw,철회하면 파기 절차가 자동으로 연동되고 처리 결과를 통지. (ACC-03-4)
 학부모 대시보드,학생 명부 (개별 등록),https://genixx-theta.vercel.app/my/students,학생 명부와 개별 등록. 접속코드 발급. (옛 /exam/roster)
 학부모 대시보드,학생 일괄 등록,https://genixx-theta.vercel.app/my/students?tab=bulk,"여러 학생을 한 번에 등록. 엑셀에서 복사해 붙여넣거나 CSV를 올리고, 발급된 접속코드를 CSV로 내려받음."
-학부모 대시보드,결제,https://genixx-theta.vercel.app/my/payments,진단평가와 면담 두 갈래. 열려 있는 평가를 골라 아이 앞으로 접수까지 함. 학생 목록에서 체크한 아이가 ?students= 로 넘어옴. 접수 화면이 그 평가의 응시료를 말함. (PAY-03)
+학부모 대시보드,결제 · ① 학생 선택,https://genixx-theta.vercel.app/my/payments,진단평가와 면담 두 갈래 중 진단평가의 첫 걸음. 결제할 학생을 고르고(같은 학년끼리 함께) 「다음」을 누르면 ② 상품 화면이 섬. 아래에 결제 내역. 학생 목록에서 체크해 ?students= 로 들어오면 ② 화면으로 곧장 넘김. (PAY-03)
+학부모 대시보드,결제 · 면담 탭,https://genixx-theta.vercel.app/my/payments?tab=counsel,면담 30분 · 60분 차림표와 면담 결제 내역. 고르면 면담 신청(/my/interviews?span=)으로 넘어감. (PAY-03)
+학부모 대시보드,결제 · ② 상품 고르기·결제,https://genixx-theta.vercel.app/my/payments/checkout,①에서 고른 학생의 학년에 열린 평가·상품을 골라 결제. 결제와 함께 접수까지 함. 줄마다 그 평가의 응시료를 적음. 고른 학생 없이 들어오면 ①로 돌려보냄. (PAY-03)
+학부모 대시보드,결제 완료,https://genixx-theta.vercel.app/my/payments/done,결제를 마치면 ② 화면을 갈아 끼우는 영수증(뒤로 가기는 ①로). ?order= 로 주문을 가리키고 없으면 가장 최근 결제를 보여 줌. (PAY-03)
 학부모 대시보드,설문 현황,https://genixx-theta.vercel.app/my/surveys,학생별 설문 제출 현황과 작성 링크. 문항 작성만 새 창(/survey/[역할])으로 띄움.
 학부모 대시보드,학생 설문 상세,https://genixx-theta.vercel.app/my/surveys/mu6976f8-GFQTSQYZ,학부모·교사 설문을 문자로 보내거나 지금 작성. 보낸 번호와 날짜가 남음. 학생 설문은 아이가 직접. (ASM-05)
-학부모 대시보드,면담,https://genixx-theta.vercel.app/my/interviews,날짜와 시간을 고르고 상담 전문가를 골라 결과 해석 면담을 신청. ?span=30 · 60으로 길이를 들고 옴. (ASM-06)
+학부모 대시보드,면담 · ① 학생 선택,https://genixx-theta.vercel.app/my/interviews,결과 해석 면담의 첫 걸음. 면담할 학생을 고르고 「다음」. 아래에 면담 내역(예약 취소). ?span=30 · 60으로 길이를 들고 오면 ② 전문가 고르개의 처음 조건이 됨. (ASM-06)
+학부모 대시보드,면담 · ② 전문가 선택,https://genixx-theta.vercel.app/my/interviews/counselor,주제·방식·길이로 좁혀 상담 전문가를 고름. 고르면 아래로 펼치지 않고 「다음」으로 ③에 넘어감. 앞 걸음에서 고른 것이 없으면 그 걸음으로 돌려보냄(③ ④도 같음). (ASM-06)
+학부모 대시보드,면담 · ③ 날짜·시간,https://genixx-theta.vercel.app/my/interviews/time,고른 전문가의 달력과 그날 시간표를 나란히 둠. 30 · 60분 중 고르고 한 번에 4자리까지. (ASM-06)
+학부모 대시보드,면담 · ④ 방식·결제,https://genixx-theta.vercel.app/my/interviews/pay,"화상·전화·대면 방식, 미리 알려 줄 점, 결제 수단과 결제 요약. 고른 시간이 그사이 마감되면 알리고 ③으로 가는 길을 둠. (ASM-06)"
+학부모 대시보드,면담 신청 완료,https://genixx-theta.vercel.app/my/interviews/done,결제를 마치면 ④ 화면을 갈아 끼우는 영수증. ?order= 로 주문을 가리키고 없으면 가장 최근 면담 결제를 보여 줌. (ASM-06)
 학부모 대시보드,마이페이지,https://genixx-theta.vercel.app/mypage,회원정보·동의·수신·이용권·결제·문의·탈퇴. 학부모·기관 공용 계정 허브. (ACC-05)
 학부모 대시보드,내 정보 설정,https://genixx-theta.vercel.app/my/account,비밀번호·연락처·수신 설정. (ACC-04)
 학부모 대시보드,알림 설정,https://genixx-theta.vercel.app/my/account/notification,응시 안내·리포트 발행·재진단 리마인드 채널 선택. (ACC-04-1)
@@ -30,8 +37,13 @@
 학생 대시보드,응시 결과,https://genixx-theta.vercel.app/student/results,8재능 팔각형 프로파일과 전문가 평가. 리포트는 보호자와 같은 화면이고 껍데기만 학생 레일. 학생은 자기 것만 봄. (RPT-01)
 학생 대시보드,내 설문,https://genixx-theta.vercel.app/student/surveys,학생 본인이 내는 설문과 제출 현황. 이 화면에서 부모님 설문 링크를 보냄. (ASM-04)
 학생 대시보드,내 정보,https://genixx-theta.vercel.app/student/account,이름·학교·접속코드를 확인. (ACC-04 학생)
-학생 대시보드,결제 (만 14세 이상),https://genixx-theta.vercel.app/student/payments,만 14세 이상 학생이 자기 응시권과 면담을 결제. 만 19세 미만은 법정대리인 동의를 한 칸 더 받음. 미만 학생은 들어와도 까닭만 읽음. (PAY-03 학생)
-학생 대시보드,면담 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews,만 14세 이상 학생이 결과 해석 면담을 직접 신청. ?span=30 · 60. (ASM-06 학생)
+학생 대시보드,결제 (만 14세 이상),https://genixx-theta.vercel.app/student/payments,만 14세 이상 학생이 자기 응시권과 면담을 결제. 고를 학생이 자기 하나라 학생 걸음 없이 곧바로 상품 화면. 만 19세 미만은 결제 전에 보호자 휴대전화 인증을 받음(보호자 번호로 인증번호 · 3분 · 5회). 미만 학생은 들어와도 까닭만 읽음. (PAY-03 학생)
+학생 대시보드,결제 · 면담 탭 (만 14세 이상),https://genixx-theta.vercel.app/student/payments?tab=counsel,면담 30분 · 60분 차림표와 내 면담 결제 내역. (PAY-03 학생)
+학생 대시보드,결제 완료 (만 14세 이상),https://genixx-theta.vercel.app/student/payments/done,결제를 마치면 서는 영수증. ?order= 로 주문을 가리키고 없으면 가장 최근 결제. (PAY-03 학생)
+학생 대시보드,면담 · ① 전문가 선택 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews,면담할 사람이 자기 하나라 학생 걸음 없이 전문가부터. 아래에 내 면담 내역. ?span=30 · 60. (ASM-06 학생)
+학생 대시보드,면담 · ② 날짜·시간 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews/time,고른 전문가의 달력과 그날 시간표. (ASM-06 학생)
+학생 대시보드,면담 · ③ 방식·결제 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews/pay,방식·결제 요약. 만 19세 미만은 결제 전에 보호자 휴대전화 인증을 받음 — 등록된 보호자 번호로만 보내고 학생 본인 번호는 받지 않음. (ASM-06 학생)
+학생 대시보드,면담 신청 완료 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews/done,확정된 면담 영수증. (ASM-06 학생)
 평가 — 비회원,평가 목록 (셋트 모드),https://genixx-theta.vercel.app/exam,로그인하지 않고 들어오면 로그인 벽 대신 평가 목록이 섬. 교과 하나를 골라 셋트를 풀어 볼 수 있음. 오른쪽 위에 로그인(접속코드)·회원가입.
 평가 — 비회원,셋트 문항 (무료 체험),https://genixx-theta.vercel.app/exam/session/trial/2026-3/e34,"가입 없이 여는 체험 창(별도 창). 고른 교과의 앞 4문항이 1셋트. 답은 저장되지 않고, 다 풀면 가입을 권함."
 평가 — 비회원,접수하기 (평가 둘러보기),https://genixx-theta.vercel.app/exam/apply,학년 카테고리·접수 상태·검색어로 평가 목록을 거름. 비회원은 「무료로 풀어보기」로 체험 창을 엶.

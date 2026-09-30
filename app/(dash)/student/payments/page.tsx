@@ -12,7 +12,14 @@ export const metadata: Metadata = {
  *
  * 보호자 결제(/my/payments)와 판은 같고 세우는 학생만 다르다. 만 14세 미만 학생은 이
  * 주소에 들어와도 까닭만 읽고 돌아간다 — 나이 갈래는 화면 쪽에서 본다(StudentPayments).
+ * 고를 아이가 자기 하나라 학생 걸음 없이 곧바로 상품 화면이고, 면담 갈래는 ?tab=counsel,
+ * 결제를 마치면 /student/payments/done에 영수증이 선다.
  */
-export default function StudentPaymentsPage() {
-  return <StudentPayments />;
+export default async function StudentPaymentsPage({
+  searchParams,
+}: PageProps<"/student/payments">) {
+  const { tab } = await searchParams;
+  return (
+    <StudentPayments tab={(Array.isArray(tab) ? tab[0] : tab) === "counsel" ? "counsel" : "exam"} />
+  );
 }

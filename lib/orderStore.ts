@@ -41,6 +41,21 @@ export const orderMethods: Record<OrderMethod, string> = {
 /** 결제에 얹힌 아이 한 명 — 이름을 함께 박는다. 명부에서 지워져도 영수증은 남는다 */
 export type OrderStudent = { id: string; name: string };
 
+/**
+ * 만 14세 이상 19세 미만 학생이 스스로 결제할 때 받은 보호자 휴대전화 확인.
+ *
+ * 개인정보 동의는 만 14세부터 본인이 하지만, 돈이 드는 계약은 만 19세 미만이면 법정대리인이
+ * 취소할 수 있다(민법 제5조). 보호자가 자기 휴대전화로 받은 인증번호를 넣어야 결제가 열리고,
+ * 그 사실을 주문에 박아 둔다 — 「몰랐다」는 말에 답할 근거다. 번호는 끝 네 자리만 남긴다.
+ */
+export type GuardianCheck = {
+  name: string;
+  /** 가린 번호 — 010-****-5678 */
+  phone: string;
+  /** 확인한 시각 "2026-09-30 16:05" */
+  at: string;
+};
+
 export type Order = {
   /** 주문번호 — GX2026-000148 */
   id: string;
@@ -58,6 +73,8 @@ export type Order = {
   /** 실제로 낸 금액 = unit × qty */
   amount: number;
   method: OrderMethod;
+  /** 미성년 학생 본인 결제에서 받은 보호자 확인 — 보호자가 결제한 주문에는 없다 */
+  guardian?: GuardianCheck;
 };
 
 const KEY = "genixx.orders";
