@@ -38,6 +38,9 @@ import TableBox from "./TableBox";
  *    칸인지 안 잊는다. 붙이려면 표를 감싼 상자가 스크롤 컨테이너가 아니어야 해서, 표가
  *    좁아 가로 스크롤이 필요 없을 때만 overflow-x를 끈다 — 아래 useEffect가 하는 일이다.
  *  · 줄 수는 늘 적어 둔다. 거르개를 걸고 나서 몇 줄이 남았는지가 곧 답일 때가 많다.
+ *  · 줄에서 할 일이 「열어 본다」 하나뿐인 목록은 줄 전체를 누르게 한다(`rowLink`).
+ *    기본은 주지 않는다 — 줄 끝에 단추를 세운 표에서 줄까지 눌리면 같은 곳으로 가는
+ *    길이 한 줄에 둘이 된다.
  */
 export type Col<T> = {
   key: string;
@@ -106,6 +109,33 @@ export type Selection<T> = {
   labelOf?: (row: T) => string;
 };
 
+/**
+ * 줄 누르기 — 줄 어디를 눌러도 **그 줄 안의 첫 링크**를 대신 눌러 준다.
+ *
+ * 줄에서 할 일이 「열어 본다」 하나뿐인 목록이 쓴다(DataTable의 rowLink). 손으로 짠 표도
+ * 같은 동작을 내려면 tr의 onClick에 이것을 그대로 건다.
+ *
+ * 주소를 따로 받아 router로 보내지 않고 링크를 누르는 까닭 —
+ *  · 줄(tr)은 키보드 초점을 받지 못한다. Tab으로 닿는 길로 어차피 링크 하나가 서 있어야
+ *    하고, 그 링크가 있으면 같은 주소를 두 곳에 적을 까닭이 없다.
+ *  · 링크로 나가야 손댄 채 나가려는 것을 붙잡는 장치(EditGuard)에 걸린다. 그 장치는
+ *    링크 누름만 듣는다 — router로 바로 보내면 고치던 값이 물음 없이 사라진다.
+ *
+ * 누른 것으로 치지 않는 것 —
+ *  · 줄 안의 링크·단추·입력. 제 일만 한다 — 줄까지 따라 움직이면 한 번 눌러 두 번 간다.
+ *  · 글자를 끌어 고른 것. ID를 베껴 가려고 끄는 일이 잦고, 그때마다 화면이 넘어가면 그
+ *    ID를 영영 못 베낀다.
+ * Ctrl·⌘을 누른 채면 새 탭으로 연다 — 링크에서 하던 대로.
+ */
+export function openRowLink(e: React.MouseEvent<HTMLTableRowElement>) {
+  if ((e.target as HTMLElement).closest("a, button, input, select, textarea, label")) return;
+  if (window.getSelection()?.toString()) return;
+  const link = e.currentTarget.querySelector<HTMLAnchorElement>("a[href]");
+  if (!link) return;
+  if (e.metaKey || e.ctrlKey) window.open(link.href, "_blank", "noopener");
+  else link.click();
+}
+
 const hideCls = {
   sm: "max-sm:hidden",
   md: "max-md:hidden",
@@ -123,6 +153,7 @@ export default function DataTable<T>({
   showCount = true,
   toolbarExtra,
   selection,
+  rowLink = false,
   csv,
   empty = "조건에 맞는 줄이 없습니다.",
 }: {
@@ -145,6 +176,13 @@ export default function DataTable<T>({
   toolbarExtra?: React.ReactNode;
   /** 줄마다 체크상자를 세운다 — 고르는 표에만 */
   selection?: Selection<T>;
+  /**
+   * 줄 전체를 누르게 한다 — 눌린 줄 안의 첫 링크로 간다(openRowLink).
+   *
+   * ⚠ 칸 하나(대개 이름)에 상세로 가는 링크를 세워 두어야 한다. 줄을 눌렀을 때 가는 곳이
+   *   그 링크이고, Tab으로 닿는 길도 그 링크뿐이다.
+   */
+  rowLink?: boolean;
   /** 도구 줄에 CSV 내려받기를 세운다 */
   csv?: CsvSpec<T>;
   empty?: string;
@@ -416,7 +454,12 @@ export default function DataTable<T>({
           </thead>
           <tbody>
             {slice.map((r, i) => (
-              <tr key={getKey(r)} data-on={selection && chosenSet.has(getKey(r)) ? "true" : undefined}>
+              <tr
+                key={getKey(r)}
+                data-on={selection && chosenSet.has(getKey(r)) ? "true" : undefined}
+                className={rowLink ? "cursor-pointer" : undefined}
+                onClick={rowLink ? openRowLink : undefined}
+              >
                 {selection && (
                   <td>
                     <input

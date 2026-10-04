@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FormRow } from "./ui";
 
 /**
  * 고치는 칸의 공통 장치 — 초안 · 저장 줄 · 나가기 확인.
@@ -281,6 +282,49 @@ export function Field({
         onChange={(e) => onChange?.(e.target.value)}
       />
     </label>
+  );
+}
+
+/**
+ * 가로로 눕힌 고치는 칸 하나 — 왼쪽에 이름, 오른쪽에 입력.
+ *
+ * Field와 하는 일은 같고 이름표의 자리만 다르다. 줄과 선은 FormRow(ui.tsx)가 맡으므로
+ * 반드시 .a2-form 안에서 쓴다.
+ *
+ * FormRow의 이름표는 입력과 묶여 있지 않다(label이 아니라 칸이다). 눈에는 같은 줄이라
+ * 읽히지만 화면 읽기 프로그램은 「편집」까지만 읽으므로 이름을 aria-label로 한 번 더 건넨다.
+ *
+ * 폭은 둘뿐이다 — 글자를 적는 칸(20rem)과 값이 짧게 정해진 칸(short · 10rem). 칸마다 제
+ * 폭을 주면 오른쪽 끝이 줄마다 달라져 열 줄이 열 개의 길이로 선다. 같은 줄에 세우는
+ * 고르개(select)도 짧은 쪽에 맞춘다(max-w-40).
+ */
+export function FieldRow({
+  label,
+  value,
+  onChange,
+  type = "text",
+  disabled = false,
+  short = false,
+}: {
+  label: string;
+  value: string | number;
+  onChange: (v: string) => void;
+  type?: "text" | "email" | "tel" | "date" | "number";
+  disabled?: boolean;
+  /** 값이 짧게 정해진 칸 — 숫자 · 날짜 */
+  short?: boolean;
+}) {
+  return (
+    <FormRow label={label}>
+      <input
+        type={type}
+        aria-label={label}
+        className={`a2-input ${short ? "max-w-40" : "max-w-80"}`}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </FormRow>
   );
 }
 

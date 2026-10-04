@@ -667,8 +667,9 @@ export function QuestionPad({
  * 응시 전 표지 — 셋트 창과 같은 시험지 표지(components/exam/ExamCover.tsx)를 쓴다.
  *
  * 가입 전에 본 종이와 가입한 뒤 받는 종이가 다르면, 아이는 같은 검사를 두 번 처음 보는
- * 셈이 된다. 다른 것은 표에 적히는 값뿐이다 — 여기서는 학년 · 이름 · 접속코드가 실제로
- * 채워지고, 응시 과목도 고르는 것이 아니라 **정해진 것**이라 읽기만 한다.
+ * 셈이 된다. 다른 것은 인적사항 표뿐이다 — 셋트 창은 아직 적을 것이 없어 표를 세우지 않고,
+ * 여기서는 학년 · 이름 · 접속코드가 실제로 채워진다. 응시 과목도 고르는 것이 아니라
+ * **정해진 것**이라 읽기만 한다.
  *
  * ── 교시 ──
  * 유료 진단은 과목마다 따로 들어가므로 과목 차례가 곧 교시다(국어 제1교시 · 수학 제2교시 …).
@@ -756,7 +757,7 @@ function StartGate({
                    그 줄이 말해야 하는 것은 **지금 무료로 보고 있다**는 것 하나라, 과목 칸
                    (국어·수학·과학)을 세우지 않고 「무료 응시」 한 칸만 둔다 */
                 { kind: "label", text: scope.kind === "free" ? "무료 응시" : "응시 과목" },
-                /* 고르는 칸이 아니다 — 무엇을 보는지 적어 둘 뿐이라 onPick을 두지 않는다 */
+                /* 고르는 칸이 아니다 — 무엇을 보는지 적어 둘 뿐이다 */
                 ...(scope.kind === "free"
                   ? []
                   : subjects.map((x) => ({
@@ -1882,51 +1883,12 @@ export function QuestionBody({
       {q.blocks && q.blocks.length > 0 && <BlockList blocks={q.blocks} className="mt-6" />}
 
       {q.type === "choice" ? (
-        <fieldset className="relative mt-6">
-          <legend className="sr-only">보기 선택</legend>
-          {/* 보기마다 상자를 두르지 않는다 — 큐넷 CBT·맞춤형 학업성취도 자율평가·ETS가
-                모두 번호 표시만 칠한다. 종이 시험지에서 번호에 동그라미를 치던 손짓 그대로다.
-                상자를 걷으면 화면이 조용해지고, 고른 답 하나만 검게 남는다.
-                -mx-3: 누르는 자리는 좌우로 넓히되 글줄은 발문과 같은 선에서 시작한다. */}
-          <ul className="-mx-3">
-            {q.choices?.map((c, i) => {
-              const on = value === i;
-              return (
-                <li key={c}>
-                  {/* relative는 숨긴 라디오(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨
-                        위를 기준으로 놓여 응시 화면 바깥에 스크롤이 생긴다. */}
-                  <label className="group relative flex cursor-pointer items-start gap-3.5 rounded-[2px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text">
-                    <input
-                      type="radio"
-                      name={q.id}
-                      value={i}
-                      checked={on}
-                      onChange={() => onAnswer(i)}
-                      className="sr-only"
-                    />
-                    <span
-                      aria-hidden
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
-                        on
-                          ? "border-exam-text bg-exam-text text-white"
-                          : "border-exam-line text-exam-muted group-hover:border-exam-muted"
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                    <span
-                      className={`text-[14px] leading-[1.7] ${
-                        on ? "font-semibold text-exam-text" : "text-exam-text"
-                      }`}
-                    >
-                      {c}
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </fieldset>
+        <ChoiceList
+          name={q.id}
+          choices={q.choices ?? []}
+          value={typeof value === "number" ? value : undefined}
+          onPick={onAnswer}
+        />
       ) : q.blanks ? (
         <BlankFields q={q} blanks={q.blanks} value={value} onAnswer={onAnswer} />
       ) : (
@@ -1956,6 +1918,77 @@ export function QuestionBody({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * 객관식 보기 — 번호 동그라미를 칠해 고른다.
+ *
+ * 문항의 보기와 셋트 앞의 「흥미 있는 과목」(components/exam/TrialSession.tsx)이 같은 것을
+ * 쓴다. 가입 전에 처음 고르는 보기와 그 뒤에 받는 문항의 보기가 같은 손짓이어야 한다.
+ */
+export function ChoiceList({
+  name,
+  choices,
+  value,
+  onPick,
+  legend = "보기 선택",
+}: {
+  /** 라디오 묶음의 이름 — 한 화면에 문항이 여럿 서므로 문항마다 달라야 한다 */
+  name: string;
+  choices: string[];
+  /** 고른 보기의 차례(0부터) — 아직 고르지 않았으면 없다 */
+  value: number | undefined;
+  onPick: (index: number) => void;
+  /** 낭독기에 읽히는 묶음 이름 */
+  legend?: string;
+}) {
+  return (
+    <fieldset className="relative mt-6">
+      <legend className="sr-only">{legend}</legend>
+      {/* 보기마다 상자를 두르지 않는다 — 큐넷 CBT·맞춤형 학업성취도 자율평가·ETS가
+            모두 번호 표시만 칠한다. 종이 시험지에서 번호에 동그라미를 치던 손짓 그대로다.
+            상자를 걷으면 화면이 조용해지고, 고른 답 하나만 검게 남는다.
+            -mx-3: 누르는 자리는 좌우로 넓히되 글줄은 발문과 같은 선에서 시작한다. */}
+      <ul className="-mx-3">
+        {choices.map((c, i) => {
+          const on = value === i;
+          return (
+            <li key={c}>
+              {/* relative는 숨긴 라디오(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨
+                    위를 기준으로 놓여 응시 화면 바깥에 스크롤이 생긴다. */}
+              <label className="group relative flex cursor-pointer items-start gap-3.5 rounded-[2px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text">
+                <input
+                  type="radio"
+                  name={name}
+                  value={i}
+                  checked={on}
+                  onChange={() => onPick(i)}
+                  className="sr-only"
+                />
+                <span
+                  aria-hidden
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
+                    on
+                      ? "border-exam-text bg-exam-text text-white"
+                      : "border-exam-line text-exam-muted group-hover:border-exam-muted"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <span
+                  className={`text-[14px] leading-[1.7] ${
+                    on ? "font-semibold text-exam-text" : "text-exam-text"
+                  }`}
+                >
+                  {c}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </fieldset>
   );
 }
 

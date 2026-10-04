@@ -48,7 +48,7 @@
 학생 대시보드,면담 · ③ 방식·결제 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews/pay,방식·결제 요약. 만 19세 미만은 결제 전에 보호자 휴대전화 인증을 받음 — 등록된 보호자 번호로만 보내고 학생 본인 번호는 받지 않음. (ASM-06 학생)
 학생 대시보드,면담 신청 완료 (만 14세 이상),https://genixx-theta.vercel.app/student/interviews/done,확정된 면담 영수증. (ASM-06 학생)
 진단 — 비회원,진단 목록 (셋트 모드),https://genixx-theta.vercel.app/exam,로그인하지 않고 들어오면 로그인 벽 대신 진단 목록이 섬. 교과 하나를 골라 셋트를 풀어 볼 수 있음. 오른쪽 위에 로그인(접속코드)·회원가입.
-진단 — 비회원,셋트 문항 (무료 체험),https://genixx-theta.vercel.app/exam/session/trial/2026-3/e34,"가입 없이 여는 체험 창(별도 창). 고른 교과의 앞 4문항이 1셋트. 답은 저장되지 않고, 다 풀면 가입을 권함."
+진단 — 비회원,셋트 문항 (무료 체험),https://genixx-theta.vercel.app/exam/session/trial/2026-3/e4,"가입 없이 여는 체험 창(별도 창). 표지에서 시작하면 1번에서 학교(초·중·고)와 학년, 2번에서 흥미 있는 과목(국어·수학·과학)을 고르고, 이어서 그 과목의 앞 4문항이 1셋트로 나옴. 다 풀면 가입을 권하고, 가입하면 푼 답이 무료 진단으로 이어짐."
 진단 — 비회원,접수하기 (진단 둘러보기),https://genixx-theta.vercel.app/exam/apply,학년 카테고리·접수 상태·검색어로 진단 목록을 거름. 비회원은 「무료로 풀어보기」로 체험 창을 엶.
 진단 — 비회원,진단 안내,https://genixx-theta.vercel.app/exam/info,접수부터 응시·설문·결과까지의 순서와 과목별 문항 수·제한 시간·응시 규정. 로그인 없이 읽음.
 진단 — 비회원,서비스 안내,https://genixx-theta.vercel.app/exam/guide,학력진단(정답이 있는 교과 문항)과 재능진단(상황판단·확산적 사고)을 샘플로 나란히 비교. 응시 메뉴가 그대로 남아 바로 접수로 옮겨 갈 수 있음.

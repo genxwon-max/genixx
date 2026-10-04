@@ -12,11 +12,22 @@ import { userStateLabel, type StudentRow } from "@/lib/adminUsers";
  *
  * ── 칸 순서를 이렇게 정한 이유 ──
  * 왼쪽 넷(ID · 이름 · 접속코드 · 학교)은 「이 학생이 맞나」를 확인하는 칸이고,
- * 오른쪽 셋(계정 상태 · 등록일 · 동작)은 「무엇을 해 줘야 하나」를 정하는 칸이다.
+ * 오른쪽 둘(계정 상태 · 등록일)은 「무엇을 해 줘야 하나」를 정하는 칸이다.
  * 접속코드를 이름 바로 옆에 붙인 것은 전화로 오는 문의가 대부분 「코드가 안 먹는다」이고,
  * 그때 운영자가 눈으로 잇는 것이 이름↔코드 두 값이기 때문이다.
  *
+ * ── 줄을 누르면 상세로 간다 ──
+ * 오른쪽 끝에 「수정하기」를 세운 관리 칸은 걷었다. 이 목록의 줄에서 할 일은 그 학생을
+ * 열어 보는 것 하나뿐이라, 단추까지 손을 옮기지 않고 줄 어디든 누르면 된다(DataTable의
+ * rowLink). 회원 목록(ADM-02)과 같은 동작이다.
+ * 가는 곳은 이름 칸의 링크다. 줄을 누르면 이 링크가 대신 눌리고, Tab으로 닿는 길과 새
+ * 탭으로 여는 길도 이 링크다. 밑줄·파랑은 입히지 않는다 — 줄 전체가 눌리는 표에서 이름만
+ * 링크 꼴이면 「이름을 눌러야 간다」로 읽힌다.
+ *
  * ── 일부러 뺀 것 ──
+ * · 코드 재발급 — 줄에 세워 두었던 단추는 눌러도 아무 일이 없는 자리만이었다. 상세
+ *   (ADM-02-1-1)로 옮겨 실제로 코드를 내게 했다. 148줄 위에 그런 단추를 세워 두면 눌러 본
+ *   사람이 「재발급됐나?」를 매번 다른 곳에서 확인해야 한다.
  * · 응시 상태 — 위 탭이 이미 그 축으로 목록을 가른다. 탭으로 좁혀 놓고 같은 값을 칸으로
  *   또 세우면, 148줄이 전부 같은 상태인 표에 그 상태가 148번 적힌다.
  * · 생년월일 — 목록에 두지 않기로 한 값(page.tsx 머리 주석).
@@ -45,7 +56,11 @@ const cols: Col<StudentRow>[] = [
     width: "5rem",
     nowrap: true,
     value: (s) => s.name,
-    cell: (s) => <span className="font-semibold text-(--a2-ink)">{s.name}</span>,
+    cell: (s) => (
+      <Link href={`/admin2/students/${s.id}`} className="font-semibold text-(--a2-ink)">
+        {s.name}
+      </Link>
+    ),
   },
   {
     // 코드는 자릿수가 어긋나면 대조가 안 된다 — 여덟 자리를 고정폭으로 세운다
@@ -122,23 +137,6 @@ const cols: Col<StudentRow>[] = [
     value: (s) => s.joinedAt,
     cell: (s) => <span className="a2-mono a2-t-sm">{s.joinedAt}</span>,
   },
-  {
-    // hover에서만 나타나는 동작을 두지 않는다(admin2.css 규칙) — 오른쪽 끝에 늘 세워 둔다.
-    // 정렬·검색을 달지 않는다: value가 없으면 머리 행이 눌리는 단추가 되지 않는다.
-    //
-    // 여기 있던 「코드 재발급」은 눌러도 아무 일이 없는 자리만이었다. 상세(ADM-02-1-1)로
-    // 옮겨 실제로 코드를 내게 했다 — 148줄 위에 그런 단추를 세워 두면 눌러 본 사람이
-    // 「재발급됐나?」를 매번 다른 곳에서 확인해야 한다.
-    key: "act",
-    head: "관리",
-    width: "5.5rem",
-    nowrap: true,
-    cell: (s) => (
-      <Link href={`/admin2/students/${s.id}`} className="a2-btn a2-btn-sm" aria-label={`${s.name} 수정하기`}>
-        수정하기
-      </Link>
-    ),
-  },
 ];
 
 /* 줄은 머리(StudentsView)가 탭으로 잘라 넘긴다. 씨앗 명부가 아니라 「씨앗 + 고친 것」이
@@ -176,6 +174,7 @@ export default function StudentsTable({ rows, empty }: { rows: StudentRow[]; emp
       cols={cols}
       getKey={(s) => s.id}
       filters={filters}
+      rowLink
       searchHint="이름 · 접속코드 · 학교 · 보호자"
       csv={{ name: "학생_접속코드" }}
       empty={empty}

@@ -59,19 +59,25 @@ function stateOptions(list: readonly { state: UserState }[]) {
   return userStateOptions.filter((o) => present.has(o.value));
 }
 
-/* 표 오른쪽 끝의 관리 칸 — 두 명부가 같은 자리에 같은 말로 세운다.
-   hover에서만 나타나게 두지 않는다(admin2.css 규칙): 96줄을 훑다가 「이 줄에서 뭘 할 수
-   있더라」를 묻게 되는 순간 목록이 아니라 수수께끼가 된다.
-   정렬·검색을 달지 않는다 — value가 없으면 머리 행이 눌리는 단추가 되지 않는다. */
-function editCol<T extends { id: string; name: string }>(): Col<T> {
+/* ── 줄을 누르면 상세로 간다 ──
+   오른쪽 끝에 「수정하기」를 세운 관리 칸은 걷었다. 이 목록의 줄에서 할 일은 그 사람을
+   열어 보는 것 하나뿐이라, 단추까지 손을 옮기지 않고 줄 어디든 누르면 된다
+   (DataTable의 rowLink).
+
+   가는 곳은 이름 칸의 링크다 — 두 명부가 같은 자리에 같은 꼴로 세운다. 줄을 누르면 이
+   링크가 대신 눌리고, Tab으로 닿는 길과 새 탭으로 여는 길도 이 링크다. 밑줄·파랑은
+   입히지 않는다 — 줄 전체가 눌리는 표에서 이름만 링크 꼴이면 「이름을 눌러야 간다」로
+   읽힌다. */
+function nameCol<T extends { id: string; name: string }>(): Col<T> {
   return {
-    key: "act",
-    head: "관리",
+    key: "name",
+    head: "이름",
     width: "5.5rem",
     nowrap: true,
+    value: (r) => r.name,
     cell: (r) => (
-      <Link href={`/admin2/members/${r.id}`} className="a2-btn a2-btn-sm" aria-label={`${r.name} 수정하기`}>
-        수정하기
+      <Link href={`/admin2/members/${r.id}`} className="font-semibold text-(--a2-ink)">
+        {r.name}
       </Link>
     ),
   };
@@ -91,14 +97,7 @@ const parentCols: Col<ParentRow>[] = [
     value: (r) => r.id,
     cell: (r) => <span className="a2-mono">{r.id}</span>,
   },
-  {
-    key: "name",
-    head: "이름",
-    width: "5.5rem",
-    nowrap: true,
-    value: (r) => r.name,
-    cell: (r) => <span className="font-semibold text-(--a2-ink)">{r.name}</span>,
-  },
+  nameCol<ParentRow>(),
   {
     key: "contact",
     head: "연락처",
@@ -163,7 +162,6 @@ const parentCols: Col<ParentRow>[] = [
     value: (r) => r.lastSeen,
     cell: (r) => <span className="a2-mono a2-t-sm">{r.lastSeen}</span>,
   },
-  editCol<ParentRow>(),
 ];
 
 function parentFilters(rows: ParentRow[]): Filter<ParentRow>[] {
@@ -187,14 +185,7 @@ const teacherCols: Col<TeacherRow>[] = [
     value: (r) => r.id,
     cell: (r) => <span className="a2-mono">{r.id}</span>,
   },
-  {
-    key: "name",
-    head: "이름",
-    width: "5.5rem",
-    nowrap: true,
-    value: (r) => r.name,
-    cell: (r) => <span className="font-semibold text-(--a2-ink)">{r.name}</span>,
-  },
+  nameCol<TeacherRow>(),
   {
     key: "contact",
     head: "연락처",
@@ -253,7 +244,6 @@ const teacherCols: Col<TeacherRow>[] = [
     value: (r) => r.joinedAt,
     cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.joinedAt}</span>,
   },
-  editCol<TeacherRow>(),
 ];
 
 function teacherFilters(rows: TeacherRow[]): Filter<TeacherRow>[] {
@@ -322,6 +312,7 @@ export default function MembersTable() {
           cols={parentCols}
           filters={pFilters}
           getKey={(r) => r.id}
+          rowLink
           searchHint="이름 · ID · 연락처"
           csv={{ name: "회원정보_학부모" }}
           empty="조건에 맞는 학부모가 없습니다."
@@ -333,6 +324,7 @@ export default function MembersTable() {
           cols={teacherCols}
           filters={tFilters}
           getKey={(r) => r.id}
+          rowLink
           searchHint="이름 · ID · 연락처"
           csv={{ name: "회원정보_교사" }}
           empty="조건에 맞는 교사가 없습니다."

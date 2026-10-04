@@ -13,59 +13,47 @@ import type { ReactNode } from "react";
  * 다르면, 같은 검사를 두 번 처음 보는 셈이 된다. 갈래마다 다른 것은 **표에 무엇이 적히는가**
  * 뿐이라 그 부분만 밖에서 넘긴다.
  *
- * ── 표를 고르개로 쓴다 ──
- * 종이에서 손으로 적는 칸이 화면에서는 곧 고르개다. 칸에 onPick이 있으면 누를 수 있고, 고른
- * 칸은 채워진다. 표를 그려 놓고 그 아래에 따로 고르개를 두면 같은 것을 두 번 묻는 꼴이 된다.
+ * ── 표는 읽기만 한다 ──
+ * 한동안 셋트 창이 이 표를 고르개로 썼다 — 학년 칸과 응시 교과 칸을 눌러 채워야 시작할 수
+ * 있었다. 이제 그 둘은 표지를 넘긴 뒤 1번 · 2번 문항으로 묻는다(TrialSession). 표지에서
+ * 고를 것이 없어졌으므로 표는 이미 정해진 것(응시 창의 학년 · 이름 · 접속코드 · 과목)을
+ * 적어 보이는 자리로만 남는다. 적을 것이 하나도 없는 셋트 창은 표를 세우지 않는다.
  *
  * 채울 수 없는 칸(비어 있는 수강학원)은 비워 둔다. 비어 있다는 것 자체가 「여기는 아직
- * 없다」를 말한다. 가입 전의 이름·ID처럼 왜 비었는지가 따로 있는 칸에는 그 까닭을 옅은
- * 글씨로 적는다(muted).
+ * 없다」를 말한다. 명부에 없는 사람의 이름·ID처럼 왜 비었는지가 따로 있는 칸에는 그 까닭을
+ * 옅은 글씨로 적는다(muted).
  */
 
 /** 표의 한 칸 */
 export type CoverCell =
   /** 회색 이름 칸 — 「학년」·「이름」 */
   | { kind: "label"; text: string }
-  /** 값 칸. onPick이 있으면 고르개, on이면 채워진 칸, muted면 아직 없는 값 */
-  | {
-      kind: "value";
-      key: string;
-      text: string;
-      on?: boolean;
-      muted?: boolean;
-      width?: string;
-      onPick?: () => void;
-    };
+  /** 값 칸. on이면 채워진 칸, muted면 아직 없는 값 */
+  | { kind: "value"; key: string; text: string; on?: boolean; muted?: boolean; width?: string };
 
-/** 테두리로 묶인 표 하나 — 「학년 3 4 5 6」 */
+/** 테두리로 묶인 표 하나 — 「이름 김하늘 ID RXP6-N9TR」 */
 export type CoverGroup = {
   id: string;
   cells: CoverCell[];
-  /** 고르개인 표에만 — 낭독기가 무엇을 고르는 자리인지 말한다 */
-  ariaLabel?: string;
   /** 좁은 화면에서 감춘다 — 적을 것이 없는 칸이 종이 밖으로 삐져나가면 종이로 안 보인다 */
   hideOnNarrow?: boolean;
 };
 
 /* 좁은 화면에서는 좌우 여백을 줄인다 — 인적사항 한 줄(이름 · ID)이 종이 폭을 넘으면
-   표가 종이 밖으로 비어져 나간다. 줄이는 것은 여백뿐이고, 누르는 칸의 최소 폭
-   (min-w-[3.5rem])과 높이(h-12)는 그대로라 손가락으로 누르기에 좁아지지 않는다 */
+   표가 종이 밖으로 비어져 나간다. 줄이는 것은 여백뿐이고, 칸의 최소 폭(min-w-[3.5rem])과
+   높이(h-12)는 그대로다 */
 const labelCell =
   "flex h-12 items-center justify-center whitespace-nowrap bg-slate-100 px-3 text-[14.5px] font-medium text-exam-text md:h-14 md:px-5 md:text-[15.5px]";
 
 /**
  * 값 칸의 꼴.
  *
- * ── 고른 칸을 먹칠하지 않는다 ──
- * 예전에는 고른 칸을 시험지 글자색(짙은 남색)으로 통째로 채웠다. 표에서 그 칸만 먼저
- * 읽히고, 종이 위에 검은 딱지를 붙인 꼴이 된다. 옅게 깔고 테두리를 한 겹 더 두른다 —
- * 종이에서 답을 고를 때 칸에 동그라미를 치는 것과 같은 말이다.
- *
- * ── 칸을 크게 둔다 ──
- * 학년 넷과 교과 셋은 이 표에서 **누르는 자리**다. 글씨만 적어 두는 칸과 같은 크기면
- * 누를 것이 있다는 것이 보이지 않고, 손가락으로 누르기에도 좁다.
+ * ── 채워진 칸을 먹칠하지 않는다 ──
+ * 예전에는 채워진 칸(지금 보는 과목)을 시험지 글자색(짙은 남색)으로 통째로 채웠다. 표에서
+ * 그 칸만 먼저 읽히고, 종이 위에 검은 딱지를 붙인 꼴이 된다. 옅게 깔고 테두리를 한 겹 더
+ * 두른다 — 종이에서 칸에 동그라미를 치는 것과 같은 말이다.
  */
-function valueClass(on: boolean, pickable: boolean, muted: boolean, width?: string) {
+function valueClass(on: boolean, muted: boolean, width?: string) {
   /* 줄을 바꾸지 않는다 — 접속코드(RXP6-N9TR)가 붙임표에서 두 줄로 갈려 칸 높이가
      옆 칸과 어긋났다. 종이의 인적사항 칸은 한 줄로 적는 자리다. 칸이 좁으면 글자를
      접을 것이 아니라 칸이 넓어져야 하므로, 폭은 아래에서 min-w로 준다 */
@@ -73,8 +61,7 @@ function valueClass(on: boolean, pickable: boolean, muted: boolean, width?: stri
     width ?? "min-w-[3.5rem]"
   }`;
   if (on)
-    return `${base} bg-soft-primary-soft font-bold text-soft-primary shadow-[inset_0_0_0_2px_var(--color-soft-primary)] transition-colors`;
-  if (pickable) return `${base} text-exam-text transition-colors hover:bg-exam-raised`;
+    return `${base} bg-soft-primary-soft font-bold text-soft-primary shadow-[inset_0_0_0_2px_var(--color-soft-primary)]`;
   return `${base} ${muted ? "text-[13px] text-exam-muted" : "text-exam-text"}`;
 }
 
@@ -95,6 +82,7 @@ export default function ExamCover({
   title: string;
   /** 비스듬한 워터마크 글자 */
   watermark: string;
+  /** 인적사항 표 — 적을 것이 없으면(셋트 창) 비워 넘기고, 그때는 표를 세우지 않는다 */
   groups: CoverGroup[];
   /** 「넘기지 마시오」 상자 아래 괄호 줄 */
   notice: ReactNode;
@@ -136,44 +124,31 @@ export default function ExamCover({
           {title}
         </h1>
 
-        <div className="mt-7 flex flex-wrap items-start gap-x-3 gap-y-3">
-          {groups.map((g) => (
-            <div
-              key={g.id}
-              role={g.ariaLabel ? "group" : undefined}
-              aria-label={g.ariaLabel}
-              className={`border border-exam-text/70 ${g.hideOnNarrow ? "hidden sm:flex" : "flex"}`}
-            >
-              {g.cells.map((c, i) =>
-                c.kind === "label" ? (
-                  <span
-                    key={`l-${i}`}
-                    className={`${labelCell} ${i > 0 ? "border-l border-exam-text/70" : ""}`}
-                  >
-                    {c.text}
-                  </span>
-                ) : c.onPick ? (
-                  <button
-                    key={c.key}
-                    type="button"
-                    aria-pressed={!!c.on}
-                    onClick={c.onPick}
-                    className={valueClass(!!c.on, true, false, c.width)}
-                  >
-                    {c.text}
-                  </button>
-                ) : (
-                  <span
-                    key={c.key}
-                    className={valueClass(!!c.on, false, !!c.muted, c.width)}
-                  >
-                    {c.text}
-                  </span>
-                ),
-              )}
-            </div>
-          ))}
-        </div>
+        {groups.length > 0 && (
+          <div className="mt-7 flex flex-wrap items-start gap-x-3 gap-y-3">
+            {groups.map((g) => (
+              <div
+                key={g.id}
+                className={`border border-exam-text/70 ${g.hideOnNarrow ? "hidden sm:flex" : "flex"}`}
+              >
+                {g.cells.map((c, i) =>
+                  c.kind === "label" ? (
+                    <span
+                      key={`l-${i}`}
+                      className={`${labelCell} ${i > 0 ? "border-l border-exam-text/70" : ""}`}
+                    >
+                      {c.text}
+                    </span>
+                  ) : (
+                    <span key={c.key} className={valueClass(!!c.on, !!c.muted, c.width)}>
+                      {c.text}
+                    </span>
+                  ),
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-12 border border-exam-text/70 md:mt-16">
           <p className="bg-slate-100 px-4 py-3 text-center text-[15px] font-bold tracking-tight text-exam-text md:text-[19px]">
