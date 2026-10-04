@@ -143,8 +143,9 @@ export default function AuthoringView() {
         width: "8.5rem",
         nowrap: true,
         value: (r) => r.code || r.id,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */
         cell: (r) => (
-          <Link href={`/admin2/items/${r.id}`} className="a2-mono font-semibold text-(--a2-ink) hover:underline">
+          <Link href={`/admin2/items/${r.id}`} className="a2-mono font-semibold text-(--a2-ink)">
             {r.code || <span className="text-(--a2-ink-4)">ID 미정</span>}
           </Link>
         ),
@@ -246,32 +247,9 @@ export default function AuthoringView() {
         value: (r) => r.createdAt,
         cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.createdAt}</span>,
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "6.5rem",
-        nowrap: true,
-        cell: (r) =>
-          /* 넘긴 문항은 여기서 고칠 수 없다. 이어 쓰기 단추를 그대로 두면 눌러 놓고
-             왜 안 고쳐지는지 상세까지 들어가 확인하게 된다 */
-          r.state === "submitted" ? (
-            <Link
-              href="/admin2/review"
-              className="a2-btn a2-btn-sm"
-              aria-label={`${r.code || r.id} 검수판에서 보기`}
-            >
-              검수판에서
-            </Link>
-          ) : (
-            <Link
-              href={`/admin2/items/${r.id}`}
-              className="a2-btn a2-btn-sm"
-              aria-label={`${r.code || r.id} 수정하기`}
-            >
-              수정하기
-            </Link>
-          ),
-      },
+      /* 오른쪽 끝의 「수정하기 · 검수판에서」 단추는 걷었다 — 줄을 누르면 문항 상세로 간다.
+         넘긴 문항은 여기서 고칠 수 없는데, 그 사실은 상태 칸(검수 대기)이 줄에서 말하고
+         상세가 잠긴 채로 열려 한 번 더 말한다 */
     ],
     [],
   );
@@ -370,6 +348,7 @@ export default function AuthoringView() {
           cols={cols}
           filters={filters}
           getKey={(r) => r.id}
+          rowLink
           searchHint="문항 ID · 발문 · 단원"
           empty={current.empty}
           showCount={false}

@@ -73,11 +73,9 @@ export default function PurgeView() {
         value: (v) => `${v.name} ${v.kind}`,
         cell: (v) => (
           <span className="inline-flex items-center gap-1.5">
-            {/* 지우기 전에 「이 사람이 왜 여기 섰나」를 볼 수 있어야 한다 */}
-            <Link
-              href={`/admin2/privacy/${v.id}`}
-              className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            >
+            {/* 지우기 전에 「이 사람이 왜 여기 섰나」를 볼 수 있어야 한다. 줄을 누르면 이
+                링크가 대신 눌려 그 회원의 동의 이력으로 간다(DataTable의 rowLink) */}
+            <Link href={`/admin2/privacy/${v.id}`} className="font-semibold text-(--a2-ink)">
               {v.name}
             </Link>
             <span className="a2-t-xs text-(--a2-ink-4)">{v.kind}</span>
@@ -117,7 +115,7 @@ export default function PurgeView() {
       },
       {
         /* 완료한 줄만 채워지는 칸이다 — 대기 줄에서는 비워 두고, 회원마다의 이력은
-           이름을 눌러 들어가는 상세가 답한다 */
+           줄을 눌러 들어가는 상세가 답한다 */
         key: "mark",
         head: "실행자 · 적어 둔 까닭",
         width: "100%",
@@ -321,6 +319,7 @@ export default function PurgeView() {
         cols={cols}
         filters={filters}
         getKey={(v) => v.id}
+        rowLink
         pageSize={25}
         searchHint="회원 ID · 이름"
         empty={current.empty}

@@ -131,11 +131,9 @@ export default function GradingView() {
         value: (t) => `${t.seat} ${t.grade}`,
         cell: (t) => (
           <span className="inline-flex items-center gap-1.5">
-            {/* 목록에 이름을 적지 않는다 — 채점하는 사람이 누구 답인지 알면 안 된다 */}
-            <Link
-              href={`/admin2/grading/${t.id}`}
-              className="a2-mono font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            >
+            {/* 목록에 이름을 적지 않는다 — 채점하는 사람이 누구 답인지 알면 안 된다.
+                줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */}
+            <Link href={`/admin2/grading/${t.id}`} className="a2-mono font-semibold text-(--a2-ink)">
               {t.seat}
             </Link>
             <span className="a2-t-xs text-(--a2-ink-4)">{t.grade}</span>
@@ -204,21 +202,8 @@ export default function GradingView() {
           </span>
         ),
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (t) => (
-          <Link
-            href={`/admin2/grading/${t.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${t.seat} ${t.subject} 채점`}
-          >
-            {scoreDone(t) ? "보기" : "채점"}
-          </Link>
-        ),
-      },
+      /* 오른쪽 끝의 「채점 · 보기」 단추는 걷었다. 확정했는지는 「사람 확정」 칸이 이미
+         말하고(대기 · 판정값), 여는 일은 줄을 누르면 된다 */
     ],
     [],
   );
@@ -323,6 +308,7 @@ export default function GradingView() {
         cols={cols}
         filters={filters}
         getKey={(t) => t.id}
+        rowLink
         pageSize={25}
         searchHint="응시번호 · 발문"
         empty={current.empty}

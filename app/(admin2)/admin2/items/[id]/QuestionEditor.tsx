@@ -136,7 +136,7 @@ export function QuestionList({
                 난이도
               </th>
               <th>발문</th>
-              <th className="a2-nowrap" style={{ width: "13rem" }}>
+              <th className="a2-nowrap" style={{ width: "9rem" }}>
                 관리
               </th>
             </tr>
@@ -145,8 +145,24 @@ export function QuestionList({
             {questions.map((q, k) => {
               const summary = stemSummary(q);
               return (
-                <tr key={q.id}>
-                  <td className="a2-td-key a2-nowrap">문항 {k + 1}</td>
+                /* 줄을 누르면 그 문항이 열린다 — 콘솔의 다른 목록과 같은 동작이다. 「수정하기 ·
+                   열어 보기」 단추는 걷었다. 여기는 주소로 가는 것이 아니라 같은 화면에서
+                   펴는 것이라 링크 대신 문항 번호를 단추로 세운다 — Tab으로 닿는 길이다.
+                   줄 안의 단추(차례 · 지우기)와 끌어 고른 글자는 누른 것으로 치지 않는다 */
+                <tr
+                  key={q.id}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("a, button, input, select, textarea, label")) return;
+                    if (window.getSelection()?.toString()) return;
+                    onOpen(q.id);
+                  }}
+                >
+                  <td className="a2-td-key a2-nowrap">
+                    <button type="button" className="font-semibold" onClick={() => onOpen(q.id)}>
+                      문항 {k + 1}
+                    </button>
+                  </td>
                   <td className="a2-nowrap a2-t-sm text-(--a2-ink-2)">{typeLabel(q.type)}</td>
                   <td className="a2-nowrap a2-mono a2-t-sm text-(--a2-ink-2)">{q.level}</td>
                   <td className="a2-nowrap a2-mono a2-t-sm text-(--a2-ink-2)">
@@ -165,13 +181,6 @@ export function QuestionList({
                   </td>
                   <td className="a2-nowrap">
                     <span className="flex gap-1">
-                      <button
-                        type="button"
-                        className="a2-btn a2-btn-sm"
-                        onClick={() => onOpen(q.id)}
-                      >
-                        {disabled ? "열어 보기" : "수정하기"}
-                      </button>
                       <button
                         type="button"
                         className="a2-btn a2-btn-sm"

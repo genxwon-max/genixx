@@ -36,9 +36,9 @@ import { Body, PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
  * 아래 거르개로 내려가야 했다. 지금은 숫자가 곧 조회 조건이다 — 누르면 표가 그 묶음만
  * 남는다. 그래서 표의 출처 거르개도 걷었다. 같은 조건을 두 군데서 걸면 서로 부딪친다.
  *
- * 승인됨·반려됨 탭은 이미 판정이 끝난 것이라 검수할 수 없다. 그 줄에서는 관리 단추도
- * 「검수하기」가 아니라 「문항 열기」로 바뀐다 — 누를 수 없는 일을 같은 글자로 세워 두면
- * 눌러 놓고 왜 안 되는지 상세까지 들어가 확인하게 된다.
+ * 줄을 누르면 문항 상세로 간다. 승인됨·반려됨 탭은 이미 판정이 끝난 것이라 검수할 수
+ * 없고, 그 줄을 열면 검수판 없이 문항만 선다 — 줄 끝에 「검수하기 · 문항 열기」를 가려
+ * 적던 단추는 걷었다. 어느 줄이 검수할 줄인지는 탭이 이미 갈라 놓는다.
  *
  * ⚠ 쓰다 만 검수(reviewDraft)가 있는 줄을 따로 표시한다. 그 줄은 누군가 이미 열어서 짚기
  *   시작한 것이라, 모르고 다시 열면 짚어 둔 것을 덮어쓴다.
@@ -166,8 +166,9 @@ export default function ReviewQueue() {
         width: "8.5rem",
         nowrap: true,
         value: (r) => r.code || r.id,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */
         cell: (r) => (
-          <Link href={`/admin2/items/${r.id}`} className="a2-mono font-semibold text-(--a2-ink) hover:underline">
+          <Link href={`/admin2/items/${r.id}`} className="a2-mono font-semibold text-(--a2-ink)">
             {r.code || <span className="text-(--a2-ink-4)">ID 미정</span>}
           </Link>
         ),
@@ -318,32 +319,9 @@ export default function ReviewQueue() {
         value: (r) => r.updatedAt,
         cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.updatedAt}</span>,
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) =>
-          /* 판정이 끝난 줄은 검수할 것이 없다. 같은 글자의 단추를 세워 두면 눌러 놓고
-             왜 검수판이 안 열리는지 상세까지 들어가 확인하게 된다 */
-          humanReviewable(r) ? (
-            <Link
-              href={`/admin2/items/${r.id}`}
-              className="a2-btn a2-btn-sm a2-btn-primary"
-              aria-label={`${r.code || r.id} 검수하기`}
-            >
-              검수하기
-            </Link>
-          ) : (
-            <Link
-              href={`/admin2/items/${r.id}`}
-              className="a2-btn a2-btn-sm"
-              aria-label={`${r.code || r.id} 문항 열기`}
-            >
-              문항 열기
-            </Link>
-          ),
-      },
+      /* 오른쪽 끝의 「검수하기 · 문항 열기」 단추는 걷었다 — 줄을 누르면 문항 상세로 가고,
+         검수할 수 있는 줄인지는 그 화면이 검수판을 여는지로 갈린다. 목록에서는 탭(검수
+         대기 · 검수 완료)이 이미 그 둘을 갈라 놓는다 */
     ],
     [],
   );
@@ -453,6 +431,7 @@ export default function ReviewQueue() {
         cols={cols}
         filters={filters}
         getKey={(r) => r.id}
+        rowLink
         searchHint="문항 ID · 발문 · 출제자"
         empty={current.empty}
         showCount={false}

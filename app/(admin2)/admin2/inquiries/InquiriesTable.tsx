@@ -25,7 +25,7 @@ import { Status, Tag } from "@/components/admin2/ui";
  *   무엇인가 (문의 ID)
  *     → 어디로 들어왔나 (채널)  → 무엇에 대한 것인가 (분류)  → 내용 (제목)
  *     → 누가 (작성자)          → 얼마나 기다렸나 (대기)
- *     → 지금 어떤가 (상태)      → 동작
+ *     → 지금 어떤가 (상태)
  * 채널·분류를 제목 앞에 세운 것은 이 둘이 곧 「누가 답해야 하는 문의인가」라서다.
  * 기관 도입은 영업이 받고 접속코드·개인정보는 운영이 받는다. 제목을 먼저 읽고 나서
  * 담당을 되짚는 것보다, 담당을 보고 제목으로 내려가는 쪽이 한 줄당 눈이 덜 움직인다.
@@ -130,14 +130,10 @@ const COLS: Col<InquiryRow>[] = [
     width: "100%",
     clip: true,
     value: (r) => r.title,
-    // 제목이 상세로 가는 문이다. 오른쪽 끝 단추와 같은 곳으로 가지만, 표를 훑는 눈이
-    // 멈추는 자리가 제목이라 거기서 바로 열 수 있어야 한다 — 이 콘솔의 다른 목록도 같다
+    // 제목이 상세로 가는 문이다. 줄 어디를 눌러도 이 링크가 대신 눌린다(DataTable의
+    // rowLink) — Tab으로 닿는 길과 새 탭으로 여는 길도 이 링크다
     cell: (r) => (
-      <Link
-        href={`/admin2/inquiries/${r.id}`}
-        className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-        title={r.title}
-      >
+      <Link href={`/admin2/inquiries/${r.id}`} className="font-semibold text-(--a2-ink)" title={r.title}>
         {r.title}
       </Link>
     ),
@@ -178,29 +174,12 @@ const COLS: Col<InquiryRow>[] = [
 ];
 
 /*
- * 동작 칸.
+ * 동작 칸은 없다.
  *
- * 답을 목록 아래에서 펴던 때는 이 칸이 「답변」과 「닫기」를 가려 적어야 해서 컴포넌트 안에서
- * 매번 지었다. 지금은 제 주소로 가는 문이라 다른 칸과 같은 모듈 바깥 상수다.
- *
- * 답변 완료 줄에도 같은 단추를 남긴다. 지난 답을 다시 읽고 고쳐 보내는 자리가 결국 같은
- * 화면이라, 줄마다 갈 데가 있고 없고를 가르면 훑는 눈이 그 자리에서 한 번 멈춘다.
+ * 오른쪽 끝에 「답변」 단추를 세워 두었었다. 그 단추가 가는 곳은 제목과 같은 상세였고, 지금은
+ * 줄 어디를 눌러도 그리로 간다(rowLink). 답변 완료 줄도 똑같이 눌린다 — 지난 답을 다시 읽고
+ * 고쳐 보내는 자리가 결국 같은 화면이다.
  */
-const ACT_COL: Col<Inquiry> = {
-  key: "reply",
-  head: "동작",
-  width: "4.5rem",
-  nowrap: true,
-  cell: (r) => (
-    <Link
-      href={`/admin2/inquiries/${r.id}`}
-      className="a2-btn a2-btn-sm"
-      aria-label={`${r.id} 답변`}
-    >
-      답변
-    </Link>
-  ),
-};
 
 /* 거르개 차림표는 실제로 등장한 값에서만 뽑는다. 골라도 0줄이 나오는 선택지가 하나라도
    있으면 거르개 전체를 못 믿게 된다 */
@@ -233,14 +212,13 @@ export function sortInquiries(rows: Inquiry[]): Inquiry[] {
   );
 }
 
-const ALL_COLS: Col<Inquiry>[] = [...(COLS as Col<Inquiry>[]), ACT_COL];
-
 export default function InquiriesTable({ rows, empty }: { rows: Inquiry[]; empty: string }) {
   return (
     <DataTable
       rows={rows}
-      cols={ALL_COLS}
+      cols={COLS as Col<Inquiry>[]}
       getKey={(r) => r.id}
+      rowLink
       filters={FILTERS as Filter<Inquiry>[]}
       searchHint="문의 ID · 제목 · 작성자 · 분류"
       empty={empty}

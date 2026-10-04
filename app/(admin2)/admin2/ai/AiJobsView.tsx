@@ -39,11 +39,9 @@ export default function AiJobsView() {
         width: "11rem",
         nowrap: true,
         value: (j) => j.label,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「열기」 단추는 걷었다 */
         cell: (j) => (
-          <Link
-            href={`/admin2/ai/${j.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-          >
+          <Link href={`/admin2/ai/${j.id}`} className="font-semibold text-(--a2-ink)">
             {j.label}
           </Link>
         ),
@@ -100,17 +98,6 @@ export default function AiJobsView() {
         nowrap: true,
         cell: (j) => <JobCount job={j} hydrated={hydrated} />,
       },
-      {
-        key: "act",
-        head: "",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (j) => (
-          <Link href={`/admin2/ai/${j.id}`} className="a2-btn a2-btn-sm" aria-label={`${j.label} 열기`}>
-            열기
-          </Link>
-        ),
-      },
     ],
     [hydrated],
   );
@@ -122,6 +109,7 @@ export default function AiJobsView() {
         rows={aiJobs}
         cols={cols}
         getKey={(j) => j.id}
+        rowLink
         search={false}
         showCount={false}
         empty="AI가 도는 자리가 없습니다."

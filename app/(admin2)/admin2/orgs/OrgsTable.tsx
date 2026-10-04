@@ -26,11 +26,11 @@ import { Status, Tag } from "@/components/admin2/ui";
  *  · 담당자 연락처·기관 주소: 목록에서 훑을 값이 아니고, 원문 연락처는 이 콘솔의
  *    목록 화면에 두지 않는다. 필요하면 상세에서 사유를 남기고 연다.
  *  · 결제·청구 이력: 응시권 배정으로 이미 규모가 읽히고, 금액은 정산 화면의 몫이다.
- *  · 기관 이름에 링크를 걸지 않았다. 상세 화면은 생겼지만(ORG-02-1) 한 줄에서 가는
- *    길은 오른쪽 끝의 「수정하기」 하나로 둔다 — 이름에도 링크를 걸면 같은 곳으로 가는
- *    길이 한 줄에 둘이 된다.
- *    ⚠ 회원·학생 목록은 이 단추를 걷고 줄 전체를 누르게 바꿨다(DataTable의 rowLink).
- *      이 표만 아직 예전 꼴이다.
+ *
+ * ── 줄을 누르면 상세로 간다 ──
+ * 오른쪽 끝에 「수정하기」를 세운 관리 칸은 걷었다. 줄 어디든 누르면 그 기관의 상세
+ * (ORG-02-1)로 간다(DataTable의 rowLink) — 회원·학생 목록과 같은 동작이다. 가는 곳은 이름
+ * 칸의 링크이고, Tab으로 닿는 길과 새 탭으로 여는 길도 그 링크다.
  */
 
 export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: string }) {
@@ -50,7 +50,13 @@ export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: stri
         head: "이름",
         nowrap: true,
         value: (o) => o.name,
-        cell: (o) => <span className="font-semibold text-(--a2-ink)">{o.name}</span>,
+        /* 밑줄·파랑은 입히지 않는다 — 줄 전체가 눌리는 표에서 이름만 링크 꼴이면 「이름을
+           눌러야 간다」로 읽힌다 */
+        cell: (o) => (
+          <Link href={`/admin2/orgs/${o.id}`} className="font-semibold text-(--a2-ink)">
+            {o.name}
+          </Link>
+        ),
       },
       {
         key: "kind",
@@ -107,19 +113,6 @@ export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: stri
         value: (o) => o.until,
         cell: (o) => <span className="a2-mono">{o.until}</span>,
       },
-      {
-        // 오른쪽 끝의 관리 칸.
-        // 정렬·검색을 달지 않는다: value가 없으면 머리 행이 눌리는 단추가 되지 않는다
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (o) => (
-          <Link href={`/admin2/orgs/${o.id}`} className="a2-btn a2-btn-sm" aria-label={`${o.name} 수정하기`}>
-            수정하기
-          </Link>
-        ),
-      },
     ],
     [],
   );
@@ -147,6 +140,7 @@ export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: stri
       cols={cols}
       filters={filters}
       getKey={(o) => o.id}
+      rowLink
       // 기관은 서른 곳 남짓이다. 기본 25로 끊으면 소진율 순으로 훑을 때마다 두 쪽을
       // 넘겨야 하므로, 이 표는 한 쪽에 다 세운다
       pageSize={50}

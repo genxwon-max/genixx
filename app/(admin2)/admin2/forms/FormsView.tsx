@@ -173,11 +173,10 @@ export default function FormsView() {
         width: "12rem",
         nowrap: true,
         value: (r) => r.label,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「문항 편성」 단추는 걷었다.
+           과목 꼬리표는 그대로 제 과목 탭으로 간다 — 줄 안의 링크는 제 일만 한다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/forms/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-          >
+          <Link href={`/admin2/forms/${r.id}`} className="font-semibold text-(--a2-ink)">
             {r.label}
           </Link>
         ),
@@ -248,17 +247,6 @@ export default function FormsView() {
         value: (r) => r.points,
         cell: (r) => (r.points ? n(r.points) : dash),
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link href={`/admin2/forms/${r.id}`} className="a2-btn a2-btn-sm" aria-label={`${r.label} 문항 편성하기`}>
-            문항 편성
-          </Link>
-        ),
-      },
     ],
     [],
   );
@@ -319,6 +307,7 @@ export default function FormsView() {
         cols={cols}
         filters={filters}
         getKey={(r) => r.id}
+        rowLink
         pageSize={25}
         searchHint="회차 이름 · 과목"
         empty="조건에 맞는 회차가 없습니다."

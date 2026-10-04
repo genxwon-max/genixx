@@ -44,12 +44,9 @@ export default function FaqView() {
         width: "100%",
         clip: true,
         value: (r) => r.q,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「수정하기」 단추는 걷었다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/faq/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            title={r.q}
-          >
+          <Link href={`/admin2/faq/${r.id}`} className="font-semibold text-(--a2-ink)" title={r.q}>
             {r.q || <span className="text-(--a2-ink-4)">질문 없음</span>}
           </Link>
         ),
@@ -69,21 +66,6 @@ export default function FaqView() {
         nowrap: true,
         value: (r) => (r.home ? "홈" : ""),
         cell: (r) => (r.home ? <span className="a2-t-sm">홈</span> : dash),
-      },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/faq/${r.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${r.q || r.id} 수정하기`}
-          >
-            수정하기
-          </Link>
-        ),
       },
     ],
     [],
@@ -146,6 +128,7 @@ export default function FaqView() {
             cols={cols}
             filters={filters}
             getKey={(r) => r.id}
+            rowLink
             searchHint="질문"
             empty="아직 올린 질문이 없습니다."
           />

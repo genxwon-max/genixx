@@ -4,6 +4,7 @@ import Link from "next/link";
 import { rounds, roundStates } from "@/lib/admin";
 import { n, pct, roundTone } from "@/lib/admin2";
 import { planOf, useCurrentRound, usePlans } from "@/lib/roundPlanStore";
+import { openRowLink } from "@/components/admin2/DataTable";
 import { Bar, Kpi, Panel, Status } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
 
@@ -85,12 +86,12 @@ export default function RoundsProgress() {
             {rounds.map((r, i) => {
               const st = planOf(plans, r.id).state;
               return (
-                <tr key={r.id}>
+                /* 줄을 누르면 그 회차의 편성 화면으로 간다 — 회차 목록(ADM-05)과 같은 동작이다.
+                   가는 곳은 이름 칸의 링크다(DataTable.tsx의 openRowLink) */
+                <tr key={r.id} className="cursor-pointer" onClick={openRowLink}>
                   <td className="a2-td-num a2-nowrap a2-t-sm text-(--a2-ink-3)">{rounds.length - i}</td>
                   <td className="a2-td-key a2-nowrap">
-                    <Link href={`/admin2/rounds/${r.id}`} className="hover:text-(--a2-accent) hover:underline">
-                      {r.label}
-                    </Link>
+                    <Link href={`/admin2/rounds/${r.id}`}>{r.label}</Link>
                   </td>
                   <td className="a2-nowrap">
                     <Status tone={roundTone[st]}>{roundStates[st].label}</Status>

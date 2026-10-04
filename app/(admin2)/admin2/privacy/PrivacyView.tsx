@@ -125,10 +125,8 @@ export default function PrivacyView() {
         value: (v) => v.name,
         cell: (v) => (
           <span className="inline-flex items-center gap-1.5">
-            <Link
-              href={`/admin2/privacy/${v.id}`}
-              className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            >
+            {/* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */}
+            <Link href={`/admin2/privacy/${v.id}`} className="font-semibold text-(--a2-ink)">
               {v.name}
             </Link>
             {v.minor && <span className="a2-t-xs text-(--a2-ink-4)">만 14세 미만</span>}
@@ -184,23 +182,8 @@ export default function PrivacyView() {
             </span>
           ),
       },
-      {
-        /* 동의 이력 전건은 여기 다 못 들어간다 — 갈래 넷에 시각·누가·경로까지라
-           한 줄로 펴면 표가 옆으로 넘어간다. 상세에서 본다 */
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (v) => (
-          <Link
-            href={`/admin2/privacy/${v.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${v.name} 동의 이력`}
-          >
-            이력
-          </Link>
-        ),
-      },
+      /* 동의 이력 전건은 여기 다 못 들어간다 — 갈래 넷에 시각·누가·경로까지라 한 줄로 펴면
+         표가 옆으로 넘어간다. 줄을 눌러 상세에서 본다(오른쪽 끝의 「이력」 단추는 걷었다) */
     ],
     [now],
   );
@@ -289,6 +272,7 @@ export default function PrivacyView() {
         cols={cols}
         filters={filters}
         getKey={(v) => v.id}
+        rowLink
         pageSize={25}
         searchHint="회원 ID · 이름"
         empty={current.empty}

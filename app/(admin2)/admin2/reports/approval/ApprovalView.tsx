@@ -22,8 +22,8 @@ import { PageHead, SeedNote, Status, Tab } from "@/components/admin2/ui";
  * ── 줄에서 단추를 걷어 냈다 ──
  * 「1주일 뒤 · 2주 뒤 · 지금 보내기」를 줄마다 세웠더니 표가 단추밭이 되었고, 무엇보다
  * **되돌릴 수 없는 발송이 훑는 자리에 서 있었다.** 스무 줄을 훑다가 손이 미끄러지면 그
- * 아이에게 리포트가 나간다. 줄에서 할 수 있는 일은 「상세보기」 하나로 두고, 보내는 일은
- * 그 아이 하나를 붙들고 보는 자리에서만 한다.
+ * 아이에게 리포트가 나간다. 줄에서 할 수 있는 일은 「열어 본다」 하나로 두고 — 줄을 누르면
+ * 상세로 간다 — 보내는 일은 그 아이 하나를 붙들고 보는 자리에서만 한다.
  *
  * 예약도 줄에서 걷었다. 실제로 하는 결정은 「이 회차는 조립하고 며칠 뒤에 내보낸다」 한
  * 줄인데, 그것을 스무 줄에 스무 번 거는 것은 같은 결정을 스무 번 되풀이하는 일이다.
@@ -76,11 +76,9 @@ export default function ApprovalView() {
         nowrap: true,
         value: (r) => `${r.student} ${r.grade}`,
         sort: (r) => r.student,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「상세보기」 단추는 걷었다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/reports/approval/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-          >
+          <Link href={`/admin2/reports/approval/${r.id}`} className="font-semibold text-(--a2-ink)">
             {r.student}
             <span className="mt-0.5 block a2-t-xs font-normal text-(--a2-ink-3)">{r.grade}</span>
           </Link>
@@ -166,21 +164,6 @@ export default function ApprovalView() {
             </>
           ),
       },
-      {
-        key: "act",
-        head: "",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/reports/approval/${r.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${r.student} 리포트 상세보기`}
-          >
-            상세보기
-          </Link>
-        ),
-      },
     ],
     [],
   );
@@ -233,6 +216,7 @@ export default function ApprovalView() {
         rows={current.rows}
         cols={cols}
         getKey={(r) => r.id}
+        rowLink
         filters={filters}
         showCount={false}
         searchHint="회원 이름 · 리포트 번호 검색"

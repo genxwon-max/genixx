@@ -73,8 +73,9 @@ export default function RoundsTable() {
         nowrap: true,
         /* 이름 앞에 연도가 있어 이름순이 사실상 시간순이다 */
         value: (r) => r.label,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「수정하기」 단추는 걷었다 */
         cell: (r) => (
-          <Link href={`/admin2/rounds/${r.id}`} className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline">
+          <Link href={`/admin2/rounds/${r.id}`} className="font-semibold text-(--a2-ink)">
             {r.label}
           </Link>
         ),
@@ -114,17 +115,17 @@ export default function RoundsTable() {
         cell: (r) => {
           const mine = forms.filter((f) => f.round === r.id);
           const ok = mine.filter((f) => f.state === "confirmed").length;
+          /* 이 칸에도 편성 화면으로 가는 링크를 걸어 두었었다. 줄을 누르면 같은 곳으로
+             가므로 글자만 남긴다 */
           return mine.length === 0 ? (
-            <Link href={`/admin2/rounds/${r.id}`} className="a2-t-sm text-(--a2-ink-4) hover:text-(--a2-accent) hover:underline">
-              아직 없음
-            </Link>
+            <span className="a2-t-sm text-(--a2-ink-4)">아직 없음</span>
           ) : (
-            <Link href={`/admin2/rounds/${r.id}`} className="a2-t-sm hover:text-(--a2-accent) hover:underline">
+            <span className="a2-t-sm">
               <span className="a2-num">
                 {ok}/{mine.length}
               </span>{" "}
               확정
-            </Link>
+            </span>
           );
         },
       },
@@ -194,20 +195,6 @@ export default function RoundsTable() {
         hide: "md",
         cell: (r) => (r.submitted ? <Bar value={r.published} total={r.submitted} /> : dash),
       },
-      {
-        /* 오른쪽 끝의 관리 칸 — 콘솔의 다른 목록과 같은 자리에 같은 말로 세운다.
-           회차 이름에도 링크가 걸려 있지만 그것은 표를 훑다가 눈에 걸린 이름을 바로
-           누르는 길이고, 이 단추는 「이 줄을 고친다」가 늘 같은 자리에 있게 하는 것이다 */
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link href={`/admin2/rounds/${r.id}`} className="a2-btn a2-btn-sm" aria-label={`${r.label} 수정하기`}>
-            수정하기
-          </Link>
-        ),
-      },
     ],
     [plans, forms],
   );
@@ -217,6 +204,7 @@ export default function RoundsTable() {
       rows={allRounds}
       cols={cols}
       getKey={(r) => r.id}
+      rowLink
       filters={filters}
       /* 회차 이름으로 찾는다. 한동안 껐던 것은 넷뿐이라 눈으로 찾는 편이 빨라서인데,
          여기서 회차를 만들 수 있게 되면서 분기마다 한 줄씩 쌓이는 목록이 되었다 */

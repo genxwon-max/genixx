@@ -12,7 +12,6 @@ import {
   interviewModes,
   isOverdue,
   scheduleText,
-  seatOf,
   waitedOf,
   type Interview,
 } from "@/lib/interviewStore";
@@ -82,11 +81,9 @@ export default function InterviewList({
         width: "8.5rem",
         nowrap: true,
         value: (r) => r.id,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */
         cell: (r) => (
-          <Link
-            href={`/admin2/interviews/${r.id}`}
-            className="a2-mono font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-          >
+          <Link href={`/admin2/interviews/${r.id}`} className="a2-mono font-semibold text-(--a2-ink)">
             {r.id}
           </Link>
         ),
@@ -232,24 +229,8 @@ export default function InterviewList({
           );
         },
       },
-      {
-        key: "act",
-        head: "",
-        width: "6.5rem",
-        nowrap: true,
-        cell: (r) => {
-          const jab = r.state === "applied" || r.state === "queued" || isOverdue(r, now);
-          return (
-            <Link
-              href={`/admin2/interviews/${r.id}`}
-              className="a2-btn a2-btn-sm"
-              aria-label={`${seatOf(r)} ${jab ? "일정 잡기" : "상세보기"}`}
-            >
-              {jab ? "일정 잡기" : "상세보기"}
-            </Link>
-          );
-        },
-      },
+      /* 오른쪽 끝의 「일정 잡기 · 상세보기」 단추는 걷었다. 날짜를 잡아야 하는 줄인지는 상태
+         칸과 일정 칸(미정 · 지남)이 이미 말하고, 여는 일은 줄을 누르면 된다 */
     ],
     [now],
   );
@@ -297,6 +278,7 @@ export default function InterviewList({
         rows={rows}
         cols={cols}
         getKey={(r) => r.id}
+        rowLink
         filters={filters}
         showCount={false}
         searchHint="응시번호 · 신청자 · 면담원 검색"

@@ -56,11 +56,9 @@ const cols: Col<StaffRow>[] = [
     width: "5.5rem",
     nowrap: true,
     value: (r) => r.name,
+    /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */
     cell: (r) => (
-      <Link
-        href={`/admin2/staff/${r.id}`}
-        className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-      >
+      <Link href={`/admin2/staff/${r.id}`} className="font-semibold text-(--a2-ink)">
         {r.name}
       </Link>
     ),
@@ -141,25 +139,9 @@ const cols: Col<StaffRow>[] = [
     value: (r) => r.joinedAt,
     cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.joinedAt}</span>,
   },
-  /* 동작: 이 줄의 상세로 가는 문 하나. 예전에는 화면 아래 「역할 × 권한」 대조표로
-     뛰기만 했다. 대조표는 「출제자는 무엇을 할 수 있나」에 답하는 자리라 「이 사람에게
-     감사 로그를 열어 주자」로 이어지지 못하고 늘 거기서 끝났고, 상세가 그 일까지
-     맡으면서 대조표는 걷어 냈다. 정지·MFA 초기화가 붙을 자리도 상세다 */
-  {
-    key: "act",
-    head: "동작",
-    width: "5.5rem",
-    nowrap: true,
-    cell: (r) => (
-      <Link
-        href={`/admin2/staff/${r.id}`}
-        className="a2-btn a2-btn-sm"
-        title={`${r.name}의 역할과 권한을 봅니다`}
-      >
-        권한 보기
-      </Link>
-    ),
-  },
+  /* 동작 칸은 없다 — 줄을 누르면 그 사람의 상세로 간다. 오른쪽 끝에 세워 두었던 「권한
+     보기」가 가던 곳이 그 상세다. 역할과 권한을 보고 고치는 일, 정지·MFA 초기화가 붙을
+     자리도 상세다 */
 ];
 
 /* 거르개 셋. 「2단계 인증」은 켬/끔 두 갈래가 아니라 끈 계정만 남기는 한 갈래로 둔다 —
@@ -183,6 +165,7 @@ export default function StaffTable({ rows, empty }: { rows: StaffRow[]; empty: s
       cols={cols}
       filters={filters}
       getKey={(r) => r.id}
+      rowLink
       // 스물여덟 줄뿐이라 기본 25로 두면 두 쪽으로 잘린다. 「지금 운영자가 몇인가」를
       // 세는 화면에서 마지막 세 줄이 다음 쪽에 숨는 것은 이득이 없다
       pageSize={50}
