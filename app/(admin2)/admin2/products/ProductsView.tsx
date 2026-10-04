@@ -107,8 +107,9 @@ export default function ProductsView() {
         width: "6rem",
         nowrap: true,
         value: (p) => p.id,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「수정하기」 단추는 걷었다 */
         cell: (p) => (
-          <Link href={`/admin2/products/${p.id}`} className="a2-mono font-semibold text-(--a2-ink) hover:underline">
+          <Link href={`/admin2/products/${p.id}`} className="a2-mono font-semibold text-(--a2-ink)">
             {p.id}
           </Link>
         ),
@@ -211,17 +212,6 @@ export default function ProductsView() {
         value: (p) => p.updatedAt,
         cell: (p) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{p.updatedAt}</span>,
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "5rem",
-        nowrap: true,
-        cell: (p) => (
-          <Link href={`/admin2/products/${p.id}`} className="a2-btn a2-btn-sm" aria-label={`${p.name} 수정하기`}>
-            수정하기
-          </Link>
-        ),
-      },
     ],
     [],
   );
@@ -288,6 +278,7 @@ export default function ProductsView() {
         cols={cols}
         filters={filters}
         getKey={(p) => p.id}
+        rowLink
         pageSize={25}
         searchHint="상품명 · 상품 ID · 한 줄 소개"
         empty={current.empty}

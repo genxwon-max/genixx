@@ -18,9 +18,9 @@ import { Status } from "@/components/admin2/ui";
  *     → 지금 어디까지 왔나 (상태)
  *     → 무엇이라 판정했고 얼마나 믿는가 (제안 축 · 신뢰도)
  *     → 그 판정을 받쳐 주는 것 (설문 3종)
- *     → 누가 붙어 있나 (검토자) → 언제 (갱신) → 동작
+ *     → 누가 붙어 있나 (검토자) → 언제 (갱신)
  * 사람이 표를 읽는 순서(대상 → 상태 → 값 → 담당 → 시각)를 그대로 왼쪽에서 오른쪽으로
- * 폈다. 동작은 admin2.css의 규칙대로 늘 맨 오른쪽 끝에 세워 둔다.
+ * 폈다.
  *
  * ── 일부러 뺀 것 ──
  *  · 학생 이름·생년월일·보호자 연락처: lib/admin.ts가 응시번호(seat)만 주는 것도 같은
@@ -188,20 +188,10 @@ const COLS: Col<GradingCase>[] = [
     value: (c) => c.updatedAt,
     cell: (c) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{c.updatedAt}</span>,
   },
-  {
-    // 정렬 화살표가 설 이유가 없어 value를 주지 않는다
-    key: "open",
-    head: "동작",
-    width: "4.5rem",
-    nowrap: true,
-    // ⚠ 케이스 상세(EXP-08)가 아직 없어 지금은 자리만 잡아 둔다. 붙일 때 이 버튼을
-    //   /admin2/queue/[id] 링크로 바꾸면 된다. hover에서만 나타나게 두지 않는다
-    cell: () => (
-      <button type="button" className="a2-btn a2-btn-sm" title="케이스 상세 열기">
-        열기
-      </button>
-    ),
-  },
+  // ⚠ 동작 칸은 없다. 오른쪽 끝에 「열기」 단추를 자리만 잡아 두었었는데, 콘솔의 목록이
+  //   모두 줄을 눌러 여는 것으로 바뀌면서 걷었다. 케이스 상세(EXP-08)는 아직 없어 이 표의
+  //   줄은 눌리지 않는다 — 붙일 때 케이스 칸을 /admin2/queue/[id] 링크로 바꾸고 표에
+  //   rowLink를 주면 된다
 ];
 
 /* 상태는 머리의 탭이 맡는다(QueueView). 같은 조건을 두 군데서 걸면 서로 부딪친다 */

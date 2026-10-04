@@ -72,8 +72,9 @@ const COLS: Col<ItemDraft>[] = [
     width: "8.5rem",
     nowrap: true,
     value: (r) => r.code || r.id,
+    /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 콘솔의 다른 목록과 같다 */
     cell: (r) => (
-      <Link href={`/admin2/items/${r.id}`} className="a2-mono font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline">
+      <Link href={`/admin2/items/${r.id}`} className="a2-mono font-semibold text-(--a2-ink)">
         {r.code || <span className="text-(--a2-ink-4)">ID 미정</span>}
       </Link>
     ),
@@ -350,6 +351,7 @@ export default function ItemBank() {
         rows={rows}
         cols={COLS}
         getKey={(r) => r.id}
+        rowLink
         filters={FILTERS}
         searchHint="문항 ID · 발문 · 단원 · 출제자"
         csv={ITEM_CSV}

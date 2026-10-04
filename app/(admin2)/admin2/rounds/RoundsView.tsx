@@ -27,7 +27,7 @@ export default function RoundsView() {
             </Link>
             {/* 만드는 일은 목록 위에서 판을 펼치지 않고 제 주소로 간다(ADM-05-1).
                 「이번 회차 편성」은 뺐다 — 이 화면에 오는 까닭은 대개 다른 회차를 열려는
-                것이고, 지금 회차로 가는 길은 표의 수정하기가 이미 낸다 */}
+                것이고, 지금 회차로 가는 길은 표의 그 줄이 이미 낸다 */}
             <Link href="/admin2/rounds/new" className="a2-btn a2-btn-primary">
               회차 생성
             </Link>

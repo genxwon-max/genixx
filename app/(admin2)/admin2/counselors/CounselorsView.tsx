@@ -54,11 +54,10 @@ export default function CounselorsView() {
         width: "9rem",
         nowrap: true,
         value: (r) => nameOf(r) || r.id,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「수정하기」 단추는 걷었다.
+           노출 스위치는 그대로 제 일만 한다: 줄 안의 단추는 줄을 누른 것으로 치지 않는다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/counselors/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-          >
+          <Link href={`/admin2/counselors/${r.id}`} className="font-semibold text-(--a2-ink)">
             {nameOf(r) || <span className="text-(--a2-ink-4)">이름 없음</span>}
           </Link>
         ),
@@ -143,21 +142,6 @@ export default function CounselorsView() {
           </span>
         ),
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/counselors/${r.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${nameOf(r) || r.id} 수정하기`}
-          >
-            수정하기
-          </Link>
-        ),
-      },
     ],
     [fees],
   );
@@ -211,6 +195,7 @@ export default function CounselorsView() {
             cols={cols}
             filters={filters}
             getKey={(r) => r.id}
+            rowLink
             searchHint="이름 · 직함"
             showCount={false}
             empty="아직 등록한 상담사가 없습니다."

@@ -32,12 +32,9 @@ export default function NoticesView() {
         width: "100%",
         clip: true,
         value: (r) => r.title,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「수정하기」 단추는 걷었다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/notices/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            title={r.title}
-          >
+          <Link href={`/admin2/notices/${r.id}`} className="font-semibold text-(--a2-ink)" title={r.title}>
             {r.title || <span className="text-(--a2-ink-4)">제목 없음</span>}
           </Link>
         ),
@@ -80,21 +77,6 @@ export default function NoticesView() {
         nowrap: true,
         value: (r) => (r.pinned ? "고정" : ""),
         cell: (r) => (r.pinned ? <span className="a2-t-sm">고정</span> : dash),
-      },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/notices/${r.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${r.title || r.id} 수정하기`}
-          >
-            수정하기
-          </Link>
-        ),
       },
     ],
     [],
@@ -150,6 +132,7 @@ export default function NoticesView() {
             cols={cols}
             filters={filters}
             getKey={(r) => r.id}
+            rowLink
             searchHint="제목"
             empty="아직 올린 공지가 없습니다."
           />

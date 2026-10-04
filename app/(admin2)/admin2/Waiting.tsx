@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { queueCounts } from "@/lib/admin2";
 import { useItems } from "@/lib/itemStore";
+import { openRowLink } from "@/components/admin2/DataTable";
 import { Panel } from "@/components/admin2/ui";
 
 /**
@@ -28,12 +29,12 @@ export default function Waiting() {
     <Panel title="처리 대기" flush meta="사람 손이 필요한 것">
       <table className="a2-table">
         <tbody>
+          {/* 줄을 누르면 그 일이 쌓여 있는 화면으로 간다 — 가는 곳은 이름 칸의 링크다
+              (DataTable.tsx의 openRowLink) */}
           {rows.map((w) => (
-            <tr key={w.label}>
+            <tr key={w.label} className="cursor-pointer" onClick={openRowLink}>
               <td className="a2-td-key a2-nowrap" style={{ width: "6.5rem" }}>
-                <Link href={w.href} className="hover:text-(--a2-accent) hover:underline">
-                  {w.label}
-                </Link>
+                <Link href={w.href}>{w.label}</Link>
               </td>
               <td className="a2-t-xs text-(--a2-ink-4)">{w.note}</td>
               <td className="a2-td-num" style={{ width: "3.5rem" }}>

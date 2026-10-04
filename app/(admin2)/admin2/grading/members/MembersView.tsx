@@ -104,11 +104,9 @@ export default function MembersView() {
         value: (s) => `${s.seat} ${s.grade}`,
         cell: (s) => (
           <span className="inline-flex items-center gap-1.5">
-            {/* 이름을 적지 않는다 — 채점하는 사람이 누구 답인지 알면 안 된다 */}
-            <Link
-              href={`/admin2/grading/members/${s.key}`}
-              className="a2-mono font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            >
+            {/* 이름을 적지 않는다 — 채점하는 사람이 누구 답인지 알면 안 된다.
+                줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) */}
+            <Link href={`/admin2/grading/members/${s.key}`} className="a2-mono font-semibold text-(--a2-ink)">
               {s.seat}
             </Link>
             <span className="a2-t-xs text-(--a2-ink-4)">{s.grade}</span>
@@ -207,21 +205,6 @@ export default function MembersView() {
           );
         },
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (s) => (
-          <Link
-            href={`/admin2/grading/members/${s.key}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${s.seat} 답안지`}
-          >
-            답안지
-          </Link>
-        ),
-      },
     ],
     /* 칸이 채점 상태를 읽으므로 셈이 바뀌면 칸도 다시 세워야 한다 — 빈 배열로 두면
        점수를 손보고 돌아왔을 때 표만 옛 숫자를 계속 그린다 */
@@ -272,6 +255,7 @@ export default function MembersView() {
         cols={cols}
         filters={filters}
         getKey={(s) => s.key}
+        rowLink
         pageSize={25}
         searchHint="응시번호 · 과목"
         empty={current.empty}

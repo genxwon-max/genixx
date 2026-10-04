@@ -89,12 +89,11 @@ export default function ClipsView() {
         width: "100%",
         clip: true,
         value: (r) => r.title,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 「수정하기」 단추는 걷었다.
+           차례 단추 · 노출 스위치 · 주소 링크는 그대로 제 일만 한다. ⚠ 줄을 누르면 줄 안의
+           **첫 링크**가 눌리므로, 바깥으로 나가는 주소 칸은 이 칸보다 뒤에 있어야 한다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/clips/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-            title={r.title}
-          >
+          <Link href={`/admin2/clips/${r.id}`} className="font-semibold text-(--a2-ink)" title={r.title}>
             {r.title || <span className="text-(--a2-ink-4)">제목 없음</span>}
           </Link>
         ),
@@ -144,21 +143,6 @@ export default function ClipsView() {
             />
             <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "내림"}</Status>
           </span>
-        ),
-      },
-      {
-        key: "act",
-        head: "관리",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/clips/${r.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${r.title || r.id} 수정하기`}
-          >
-            수정하기
-          </Link>
         ),
       },
     ],
@@ -219,6 +203,7 @@ export default function ClipsView() {
             cols={cols}
             filters={filters}
             getKey={(r) => r.id}
+            rowLink
             searchHint="제목 · 설명"
             showCount={false}
             empty="아직 걸어 둔 영상이 없습니다."

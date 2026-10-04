@@ -36,11 +36,9 @@ export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; e
         width: "8.5rem",
         nowrap: true,
         value: (a) => a.id,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink) — 상세보기 단추는 걷었다 */
         cell: (a) => (
-          <Link
-            href={`/admin2/approvals/${a.id}`}
-            className="a2-mono font-semibold text-(--a2-ink) hover:underline"
-          >
+          <Link href={`/admin2/approvals/${a.id}`} className="a2-mono font-semibold text-(--a2-ink)">
             {a.id}
           </Link>
         ),
@@ -108,21 +106,6 @@ export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; e
           </span>
         ),
       },
-      {
-        key: "act",
-        head: "관리",
-        width: "6rem",
-        nowrap: true,
-        cell: (a) => (
-          <Link
-            href={`/admin2/approvals/${a.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${a.id} 상세보기`}
-          >
-            상세보기
-          </Link>
-        ),
-      },
     ],
     [],
   );
@@ -157,6 +140,7 @@ export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; e
       cols={cols}
       filters={filters}
       getKey={(a) => a.id}
+      rowLink
       searchHint="신청 ID · 신청자 · 소속"
       empty={empty}
     />

@@ -287,25 +287,23 @@ export default function InterviewCalendar({
                 <div className="grid gap-2">
                   {/* 아래 목록이 같은 것을 더 자세히 세므로 띠는 자리만 그린다 */}
                   <DayStrip blocks={strip} times={false} />
-                  <ul className="grid gap-1.5">
+                  <ul className="grid">
                     {dayRows.map((v) => (
-                      <li
-                        key={v.id}
-                        className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-(--a2-line) pt-1.5 first:border-t-0 first:pt-0"
-                      >
-                        <span className="a2-mono a2-t-sm font-semibold text-(--a2-ink)">
-                          {v.start}
-                        </span>
-                        <span className="a2-t-xs text-(--a2-ink-3)">{v.minutes}분</span>
-                        {v.mode && <Tag>{interviewModes[v.mode]}</Tag>}
-                        <span className="a2-t-sm">{v.interviewerName ?? "면담원 미정"}</span>
-                        <span className="a2-mono a2-t-xs text-(--a2-ink-3)">{seatOf(v)}</span>
+                      <li key={v.id} className="border-t border-(--a2-line) first:border-t-0">
+                        {/* 줄 전체가 그 면담의 상세로 가는 링크다. 오른쪽 끝에 「상세보기」 단추를
+                            세워 두었었는데, 콘솔의 목록이 모두 줄을 눌러 여는 것으로 바뀌면서
+                            걷었다 — 달력의 칩을 누를 때와 같은 곳으로 간다 */}
                         <Link
                           href={`/admin2/interviews/${v.id}`}
-                          className="a2-btn a2-btn-sm ml-auto"
-                          aria-label={`${seatOf(v)} 면담 상세보기`}
+                          className="-mx-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[3px] px-1.5 py-2 transition-colors hover:bg-(--a2-hover)"
                         >
-                          상세보기
+                          <span className="a2-mono a2-t-sm font-semibold text-(--a2-ink)">
+                            {v.start}
+                          </span>
+                          <span className="a2-t-xs text-(--a2-ink-3)">{v.minutes}분</span>
+                          {v.mode && <Tag>{interviewModes[v.mode]}</Tag>}
+                          <span className="a2-t-sm">{v.interviewerName ?? "면담원 미정"}</span>
+                          <span className="a2-mono a2-t-xs text-(--a2-ink-3)">{seatOf(v)}</span>
                         </Link>
                       </li>
                     ))}

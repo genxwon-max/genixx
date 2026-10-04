@@ -123,11 +123,10 @@ export default function TemplatesView() {
         width: "10rem",
         nowrap: true,
         value: (r) => r.title,
+        /* 줄을 누르면 이 링크가 대신 눌린다(DataTable의 rowLink). 오른쪽 끝의 「쓰기 · 고치기」
+           단추는 걷었다 — 비어 있는지는 상태 칸(빈 칸)과 문구 칸이 이미 말한다 */
         cell: (r) => (
-          <Link
-            href={`/admin2/reports/templates/${r.id}`}
-            className="font-semibold text-(--a2-ink) hover:text-(--a2-accent) hover:underline"
-          >
+          <Link href={`/admin2/reports/templates/${r.id}`} className="font-semibold text-(--a2-ink)">
             {r.title || <span className="text-(--a2-ink-4)">제목 없음</span>}
           </Link>
         ),
@@ -163,21 +162,6 @@ export default function TemplatesView() {
           ) : (
             <Status tone="muted">기본 문구</Status>
           ),
-      },
-      {
-        key: "act",
-        head: "",
-        width: "5.5rem",
-        nowrap: true,
-        cell: (r) => (
-          <Link
-            href={`/admin2/reports/templates/${r.id}`}
-            className="a2-btn a2-btn-sm"
-            aria-label={`${slotOf(r.slot).label} 문구 ${r.empty ? "쓰기" : "고치기"}`}
-          >
-            {r.empty ? "쓰기" : "고치기"}
-          </Link>
-        ),
       },
     ],
     [],
@@ -259,6 +243,7 @@ export default function TemplatesView() {
         rows={rows}
         cols={cols}
         getKey={(r) => r.id}
+        rowLink
         filters={filters}
         showCount={false}
         searchHint="문구 · 제목 · 축 검색"
