@@ -7,15 +7,16 @@ import { useAdminPrefs, useLocalAudit } from "@/lib/adminStore";
 import { REGIONS, memberKindLabel, type FoundMember } from "@/lib/adminUsers";
 import { actOnAccount, patchInfo, usePatches, useStudents } from "@/lib/directoryStore";
 import {
-  Field,
+  FieldRow,
   LeaveDialog,
   PageSaveBar,
   useEditDraft,
   useUnsavedGuard,
 } from "@/components/admin2/EditGuard";
 import { AccountStateBar } from "@/components/admin2/AccountActions";
+import { openRowLink } from "@/components/admin2/DataTable";
 import RecordList from "@/components/admin2/RecordList";
-import { Body, PageHead, Panel } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, Panel } from "@/components/admin2/ui";
 import TableBox from "@/components/admin2/TableBox";
 
 /**
@@ -26,6 +27,13 @@ import TableBox from "@/components/admin2/TableBox";
  * 칸이 섰다. 그러면 고치다가 눈이 자꾸 오른쪽으로 끌려가고, 좁은 화면에서는 그 둘이
  * 세로로 접히면서 순서가 뒤바뀐다. 위에서 아래로 한 줄이면 읽는 차례가 하나다 —
  * 기본정보 → 등록된 학생 → 기록.
+ *
+ * ── 기본정보는 왼쪽에 이름, 오른쪽에 값 ──
+ * 이름표를 칸 위에 얹어 두세 칸으로 접어 세우던 것을 한 줄에 한 값으로 돌렸다
+ * (.a2-form · FormRow · FieldRow). 접어 세우면 화면 폭에 따라 칸의 자리가 바뀌는데, 한
+ * 줄에 한 값이면 눈이 왼쪽 기둥만 타고 내려가면 된다.
+ * 잠긴 둘(회원 번호 · 최근 접속)은 입력 칸 없이 글자로만 적는다. 고치는 칸과 같은 상자를
+ * 두르면 눌러 보고서야 안 눌리는 줄 안다.
  *
  * ── 계정 상태를 머리에 올린 까닭 ──
  * 이 화면에서 사람이 제일 먼저 확인하는 것은 「이 계정이 살아 있는가」다. 그 답이
@@ -118,16 +126,19 @@ export default function MemberDetail(found: FoundMember) {
           <Panel
             title="기본정보"
             meta={patch.at ? `마지막 변경 ${patch.at} · ${patch.by}` : memberKindLabel[found.kind]}
+            flush
           >
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Field label="회원 번호" value={row.id} readOnly mono />
-              <Field
+            <div className="a2-form">
+              <FormRow label="회원 번호">
+                <span className="a2-mono a2-t-sm text-(--a2-ink)">{row.id}</span>
+              </FormRow>
+              <FieldRow
                 label="이름"
                 value={String(info.value.name ?? "")}
                 disabled={gone}
                 onChange={(v) => info.set("name", v)}
               />
-              <Field
+              <FieldRow
                 label="이메일"
                 type="email"
                 value={String(info.value.contact ?? "")}
@@ -135,7 +146,7 @@ export default function MemberDetail(found: FoundMember) {
                 onChange={(v) => info.set("contact", v)}
               />
               {isParent && (
-                <Field
+                <FieldRow
                   label="연락처"
                   type="tel"
                   value={String(info.value.phone ?? "")}
@@ -144,7 +155,7 @@ export default function MemberDetail(found: FoundMember) {
                 />
               )}
               {!isParent && (
-                <Field
+                <FieldRow
                   label="소속 학교"
                   value={String(info.value.school ?? "")}
                   disabled={gone}
@@ -152,10 +163,10 @@ export default function MemberDetail(found: FoundMember) {
                 />
               )}
 
-              <label className="a2-field block">
-                <span className="a2-label">지역</span>
+              <FormRow label="지역">
                 <select
-                  className="a2-select"
+                  aria-label="지역"
+                  className="a2-select max-w-40"
                   value={String(info.value.region ?? "")}
                   disabled={gone}
                   onChange={(e) => info.set("region", e.target.value)}
@@ -166,46 +177,53 @@ export default function MemberDetail(found: FoundMember) {
                     </option>
                   ))}
                 </select>
-              </label>
+              </FormRow>
 
               {!isParent && (
-                <Field
+                <FieldRow
                   label="담당 학급 수"
                   type="number"
+                  short
                   value={Number(info.value.classes ?? 0)}
                   disabled={gone}
                   onChange={(v) => info.set("classes", Number(v))}
                 />
               )}
               {!isParent && (
-                <Field
+                <FieldRow
                   label="담당 학생 수"
                   type="number"
+                  short
                   value={Number(info.value.charge ?? 0)}
                   disabled={gone}
                   onChange={(v) => info.set("charge", Number(v))}
                 />
               )}
-              <Field
+              <FieldRow
                 label="가입일"
                 type="date"
+                short
                 value={String(info.value.joinedAt ?? "")}
                 disabled={gone}
                 onChange={(v) => info.set("joinedAt", v)}
               />
-              {isParent && <Field label="최근 접속" value={found.row.lastSeen} readOnly mono />}
-            </div>
+              {isParent && (
+                <FormRow label="최근 접속">
+                  <span className="a2-mono a2-t-sm text-(--a2-ink-2)">{found.row.lastSeen}</span>
+                </FormRow>
+              )}
 
-            <label className="a2-field mt-3 block">
-              <span className="a2-label">운영 메모</span>
-              <textarea
-                className="a2-textarea"
-                value={String(info.value.memo ?? "")}
-                disabled={gone}
-                placeholder="다음에 이 계정을 볼 사람에게 남기는 메모입니다. 개인정보는 적지 않습니다."
-                onChange={(e) => info.set("memo", e.target.value)}
-              />
-            </label>
+              <FormRow label="운영 메모">
+                <textarea
+                  aria-label="운영 메모"
+                  className="a2-textarea"
+                  value={String(info.value.memo ?? "")}
+                  disabled={gone}
+                  placeholder="다음에 이 계정을 볼 사람에게 남기는 메모입니다. 개인정보는 적지 않습니다."
+                  onChange={(e) => info.set("memo", e.target.value)}
+                />
+              </FormRow>
+            </div>
           </Panel>
 
           {isParent && (
@@ -242,35 +260,31 @@ export default function MemberDetail(found: FoundMember) {
                       <th scope="col" style={{ width: "6.5rem" }}>
                         생성 날짜
                       </th>
-                      <th scope="col" style={{ width: "5.5rem" }}>
-                        관리
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
+                    {/* 줄을 누르면 학생 상세로 간다 — 학생 목록(ADM-02-1)과 같은 동작이다.
+                        가는 곳은 이름 칸의 링크다(DataTable.tsx의 openRowLink) */}
                     {kids.map((s, i) => (
-                      <tr key={s.id}>
+                      <tr key={s.id} className="cursor-pointer" onClick={openRowLink}>
                         <td className="a2-td-num a2-nowrap a2-t-sm text-(--a2-ink-3)">
                           {kids.length - i}
                         </td>
                         <td className="a2-mono a2-nowrap">{s.id}</td>
-                        <td className="a2-td-key a2-nowrap">{s.name}</td>
+                        <td className="a2-td-key a2-nowrap">
+                          <Link href={`/admin2/students/${s.id}`}>{s.name}</Link>
+                        </td>
                         <td className="a2-mono a2-nowrap">{s.code}</td>
                         <td className="a2-clip" title={s.school}>
                           {s.school}
                         </td>
                         <td className="a2-nowrap">{s.grade}</td>
                         <td className="a2-mono a2-nowrap">{s.joinedAt}</td>
-                        <td className="a2-nowrap">
-                          <Link href={`/admin2/students/${s.id}`} className="a2-btn a2-btn-sm">
-                            수정하기
-                          </Link>
-                        </td>
                       </tr>
                     ))}
                     {kids.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="text-center text-(--a2-ink-4)">
+                        <td colSpan={7} className="text-center text-(--a2-ink-4)">
                           <span className="block py-6">
                             아직 등록된 학생이 없습니다. 가입만 하고 아이를 등록하지 않은 계정입니다.
                           </span>

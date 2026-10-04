@@ -8,14 +8,14 @@ import { useAdminPrefs, useLocalAudit } from "@/lib/adminStore";
 import { GRADES, examStateLabel, findMember, type StudentRow } from "@/lib/adminUsers";
 import { actOnAccount, patchInfo, reissueCode, usePatches } from "@/lib/directoryStore";
 import {
-  Field,
+  FieldRow,
   LeaveDialog,
   PageSaveBar,
   useEditDraft,
   useUnsavedGuard,
 } from "@/components/admin2/EditGuard";
 import { AccountStateBar } from "@/components/admin2/AccountActions";
-import { Body, PageHead, Panel, Status } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, Panel, Status } from "@/components/admin2/ui";
 import RecordList from "@/components/admin2/RecordList";
 
 /**
@@ -25,6 +25,10 @@ import RecordList from "@/components/admin2/RecordList";
  * 본문은 위에서 아래로 한 줄(기본정보 → 접속코드 → 기록), 저장은 화면 오른쪽 아래.
  * 같은 콘솔에서 같은 성격의 화면이 서로 다른 자리를 쓰면, 한 화면을 익혀도 다음 화면에서
  * 다시 찾아야 한다.
+ *
+ * 기본정보도 회원 상세와 같은 꼴이다 — 한 줄에 한 값, 왼쪽에 이름 · 오른쪽에 값
+ * (.a2-form · FormRow · FieldRow). 고칠 수 없는 값(학생 ID · 보호자 · 응시 상태)은 입력 칸
+ * 없이 글자로만 적는다.
  *
  * ── 관리자는 다 고친다 ──
  * 이름 · 학교 · 학년 · 생성 날짜를 연다. 예전에는 학년과 메모만 열어 두었는데, 오탈자
@@ -103,26 +107,29 @@ export default function StudentDetail({ row }: { row: StudentRow }) {
           <Panel
             title="기본정보"
             meta={patch.at ? `마지막 변경 ${patch.at} · ${patch.by}` : undefined}
+            flush
           >
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Field label="학생 ID" value={row.id} readOnly mono />
-              <Field
+            <div className="a2-form">
+              <FormRow label="학생 ID">
+                <span className="a2-mono a2-t-sm text-(--a2-ink)">{row.id}</span>
+              </FormRow>
+              <FieldRow
                 label="이름"
                 value={info.value.name}
                 disabled={gone}
                 onChange={(v) => info.set("name", v)}
               />
-              <Field
+              <FieldRow
                 label="학교"
                 value={info.value.school}
                 disabled={gone}
                 onChange={(v) => info.set("school", v)}
               />
 
-              <label className="a2-field block">
-                <span className="a2-label">학년</span>
+              <FormRow label="학년">
                 <select
-                  className="a2-select"
+                  aria-label="학년"
+                  className="a2-select max-w-40"
                   value={info.value.grade}
                   disabled={gone}
                   onChange={(e) => info.set("grade", e.target.value)}
@@ -133,70 +140,65 @@ export default function StudentDetail({ row }: { row: StudentRow }) {
                     </option>
                   ))}
                 </select>
-              </label>
+              </FormRow>
 
-              <Field
+              <FieldRow
                 label="생성 날짜"
                 type="date"
+                short
                 value={info.value.joinedAt}
                 disabled={gone}
                 onChange={(v) => info.set("joinedAt", v)}
               />
 
-              <label className="a2-field block sm:col-span-2 xl:col-span-1">
-                <span className="a2-label">보호자</span>
-                <div className="flex min-h-8 flex-col justify-center gap-0.5">
-                  {guardian ? (
-                    <>
-                      <Link
-                        href={`/admin2/members/${row.guardianId}`}
-                        className="inline-flex w-fit items-baseline gap-1.5 font-semibold text-(--a2-accent-2) underline"
-                      >
-                        {row.guardian}
-                        <span className="a2-mono a2-t-xs">{row.guardianId}</span>
-                      </Link>
-                      {guardian.kind === "parent" && (
-                        <span className="flex flex-wrap items-center gap-x-2 a2-mono a2-t-xs text-(--a2-ink-3)">
-                          <a href={`tel:${guardian.row.phone.replace(/-/g, "")}`} className="underline">
-                            {guardian.row.phone}
-                          </a>
-                          <span aria-hidden>·</span>
-                          <a href={`mailto:${guardian.row.contact}`} className="underline">
-                            {guardian.row.contact}
-                          </a>
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="a2-t-sm text-(--a2-ink-4)">
-                      {row.guardian} <span className="a2-mono a2-t-xs">{row.guardianId}</span> —
-                      명부에 없음
-                    </span>
-                  )}
-                </div>
-              </label>
-
-              <label className="a2-field block">
-                <span className="a2-label">응시 상태</span>
-                <div className="flex h-8 items-center">
-                  <Status tone={examTone[row.exam]}>{examStateLabel[row.exam].label}</Status>
-                  <span className="ml-2 a2-t-sm text-(--a2-ink-3)">
-                    응시 누적 <span className="a2-num text-(--a2-ink)">{row.attempts}</span>회
+              <FormRow label="보호자">
+                {guardian ? (
+                  <>
+                    <Link
+                      href={`/admin2/members/${row.guardianId}`}
+                      className="inline-flex items-baseline gap-1.5 a2-t-sm font-semibold text-(--a2-accent-2) underline"
+                    >
+                      {row.guardian}
+                      <span className="a2-mono a2-t-xs">{row.guardianId}</span>
+                    </Link>
+                    {guardian.kind === "parent" && (
+                      <span className="flex flex-wrap items-center gap-x-2 a2-mono a2-t-xs text-(--a2-ink-3)">
+                        <a href={`tel:${guardian.row.phone.replace(/-/g, "")}`} className="underline">
+                          {guardian.row.phone}
+                        </a>
+                        <span aria-hidden>·</span>
+                        <a href={`mailto:${guardian.row.contact}`} className="underline">
+                          {guardian.row.contact}
+                        </a>
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="a2-t-sm text-(--a2-ink-4)">
+                    {row.guardian} <span className="a2-mono a2-t-xs">{row.guardianId}</span> —
+                    명부에 없음
                   </span>
-                </div>
-              </label>
-            </div>
+                )}
+              </FormRow>
 
-            <label className="a2-field mt-3 block">
-              <span className="a2-label">운영 메모</span>
-              <textarea
-                className="a2-textarea"
-                value={info.value.memo}
-                disabled={gone}
-                placeholder="다음에 이 계정을 볼 사람에게 남기는 메모입니다. 개인정보는 적지 않습니다."
-                onChange={(e) => info.set("memo", e.target.value)}
-              />
-            </label>
+              <FormRow label="응시 상태">
+                <Status tone={examTone[row.exam]}>{examStateLabel[row.exam].label}</Status>
+                <span className="a2-t-sm text-(--a2-ink-3)">
+                  응시 누적 <span className="a2-num text-(--a2-ink)">{row.attempts}</span>회
+                </span>
+              </FormRow>
+
+              <FormRow label="운영 메모">
+                <textarea
+                  aria-label="운영 메모"
+                  className="a2-textarea"
+                  value={info.value.memo}
+                  disabled={gone}
+                  placeholder="다음에 이 계정을 볼 사람에게 남기는 메모입니다. 개인정보는 적지 않습니다."
+                  onChange={(e) => info.set("memo", e.target.value)}
+                />
+              </FormRow>
+            </div>
           </Panel>
 
           <Panel
