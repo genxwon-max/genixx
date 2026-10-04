@@ -117,9 +117,18 @@ export function trackFromGrade(grade?: string): TrackId | null {
  * 시기 번호 꼴(YYYY-N)이 아닌 것(관리자가 만든 회차)은 넘겨받은 이름에 학년을 붙인다.
  */
 export function evalName(roundId: string, track: TrackId, fallback = roundId) {
+  return `${seasonName(roundId, fallback)} ${trackOf(track).tag} 진단`;
+}
+
+/**
+ * 진단 이름의 앞쪽 — 「2026 3분기」. 학년이 붙기 전의 이름이다.
+ *
+ * 셋트 창은 학년을 창 안에서 묻는다. 차림표에 없는 학년(초1 · 2, 중 · 고)을 고르면 붙일
+ * 학년 칸이 없어, 머리에는 여기까지만 적는다(components/exam/TrialSession.tsx).
+ */
+export function seasonName(roundId: string, fallback = roundId) {
   const m = /^(\d{4})-([1-4])$/.exec(roundId);
-  const tag = trackOf(track).tag;
-  return m ? `${m[1]} ${m[2]}분기 ${tag} 진단` : `${fallback} ${tag} 진단`;
+  return m ? `${m[1]} ${m[2]}분기` : fallback;
 }
 
 /**

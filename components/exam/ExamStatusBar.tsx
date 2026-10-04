@@ -24,38 +24,43 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-/* ───────────────────────── 셋트가 고른 교과 ───────────────────────── */
+/* ───────────────────────── 셋트가 고른 학년과 과목 ───────────────────────── */
 
 /**
- * 셋트 창이 머리에 건네는 교과 이름.
+ * 셋트 창이 머리에 건네는 진단 이름과 과목.
  *
  * 유료 진단 창은 주소에 과목이 들어 있어(/exam/session/paid/수학) 머리가 혼자 읽는다. 셋트 창은
- * 주소가 회차와 학년까지라, 교과는 시작 화면에서 고르고 나서야 정해진다. 머리는 레이아웃에,
- * 셋트는 페이지에 있어 서로 다른 트리다 — 「나가기」 신호와 같은 방법으로 건넨다.
+ * 학년도 과목도 **창 안에서 묻는다** — 표지를 넘기면 1번이 학교와 학년, 2번이 흥미 있는
+ * 과목이다. 주소의 학년은 목록에서 누른 줄일 뿐이라, 1번에서 바꾸면 머리가 주소만 읽어서는
+ * 다른 학년을 적게 된다. 머리는 레이아웃에, 셋트는 페이지에 있어 서로 다른 트리다 —
+ * 「나가기」 신호와 같은 방법으로 건넨다.
  */
-let trialSubject: string | null = null;
+type TrialHead = { name: string | null; subject: string | null };
+
+const NO_TRIAL_HEAD: TrialHead = { name: null, subject: null };
+let trialHead = NO_TRIAL_HEAD;
 const trialWatchers = new Set<() => void>();
 
-/** 셋트 응시 화면이 켜져 있는 동안 머리에 과목을 적는다 */
-export function useTrialSubject(name: string | null) {
+/** 셋트 창이 켜져 있는 동안 머리에 진단 이름과 과목을 적는다 — 과목은 셋트에 들어선 뒤에만 있다 */
+export function useTrialHead(name: string, subject: string | null) {
   useEffect(() => {
-    trialSubject = name;
+    trialHead = { name, subject };
     trialWatchers.forEach((w) => w());
     return () => {
-      trialSubject = null;
+      trialHead = NO_TRIAL_HEAD;
       trialWatchers.forEach((w) => w());
     };
-  }, [name]);
+  }, [name, subject]);
 }
 
-function useTrialSubjectName() {
+function useTrialHeadValue() {
   return useSyncExternalStore(
     (cb) => {
       trialWatchers.add(cb);
       return () => trialWatchers.delete(cb);
     },
-    () => trialSubject,
-    () => null,
+    () => trialHead,
+    () => NO_TRIAL_HEAD,
   );
 }
 
@@ -74,9 +79,10 @@ function useTrialSubjectName() {
  * 연다(lib/fullscreen.ts). 셋트는 시계가 없어 「셋트 그만하기」만 선다.
  *
  * ── 평가명은 어디서 오는가 ──
- * 셋트 창은 주소에 회차와 학년이 들어 있다(/exam/session/trial/2026-3/e4). 응시 창은 주소에
- * 없으므로 **접수 기록**에서 가장 최근 것을 읽는다 — 한 회차에 한 학년만 접수할 수 있어
- * 그 줄이 곧 지금 보는 평가다.
+ * 셋트 창은 주소에 회차와 학년이 들어 있다(/exam/session/trial/2026-3/e4). 다만 학년은 창
+ * 안의 1번에서 바꿀 수 있어, 창이 건넨 이름(useTrialHead)이 있으면 그것을 쓴다. 응시 창은
+ * 주소에 없으므로 **접수 기록**에서 가장 최근 것을 읽는다 — 한 회차에 한 학년만 접수할 수
+ * 있어 그 줄이 곧 지금 보는 평가다.
  */
 export default function ExamStatusBar() {
   const pathname = usePathname();
@@ -86,7 +92,7 @@ export default function ExamStatusBar() {
   const config = useExamConfig();
   const [now, setNow] = useState(0);
   const canExit = useExamExitAvailable();
-  const trialName = useTrialSubjectName();
+  const trial = useTrialHeadValue();
 
   /* /exam/session/{갈래}/… — 갈래는 trial · free · paid 셋이고 늘 주소 세 번째 칸이다 */
   const parts = pathname.startsWith("/exam/session/") ? pathname.split("/") : [];
@@ -143,7 +149,9 @@ export default function ExamStatusBar() {
      것으로 이미 읽히고, 머리에 문장을 하나 더 두면 평가명·과목이 뒤로 밀린다 */
   if (slug === "trial") {
     return (
-      <HeadRow name={examName} subject={trialName}>
+      /* 이름은 셋트 창이 건넨 것이 먼저다 — 1번에서 학년을 바꾸면 주소의 학년과 갈린다.
+         주소에서 읽은 이름은 창이 아직 건네기 전의 첫 그림에만 선다 */
+      <HeadRow name={trial.name ?? examName} subject={trial.subject}>
         {/* 시작하기 전(표지)에는 나갈 길이 「창 닫기」다. 시작한 뒤에는 전체화면이라
             브라우저의 닫기 단추가 보이지 않으므로 「셋트 그만하기」가 그 자리를 잇는다 */}
         {canExit ? <ExitLink>셋트 그만하기</ExitLink> : <CloseWindow fallback="/exam/apply" />}
