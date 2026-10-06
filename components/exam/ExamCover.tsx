@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import ExamWatermark from "./ExamWatermark";
 
 /**
  * 시험지 **표지**.
@@ -96,16 +97,10 @@ export default function ExamCover({
   action?: ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden border border-exam-line bg-white px-7 py-10 shadow-sm md:px-14 md:py-14">
-      {/* 워터마크 — 종이의 그것처럼 읽히되 읽는 것을 가리지 않는다 */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
-      >
-        <span className="-rotate-[28deg] whitespace-nowrap text-[68px] font-black tracking-[0.06em] text-exam-text/[0.055] md:text-[104px]">
-          {watermark}
-        </span>
-      </span>
+    <div className="relative isolate overflow-hidden border border-exam-line bg-white px-7 py-10 shadow-sm md:px-14 md:py-14">
+      {/* 워터마크 — 종이의 그것처럼 읽히되 읽는 것을 가리지 않는다. 표지를 넘긴 뒤의
+          문항지에도 같은 것이 깔린다(ExamWatermark) */}
+      <ExamWatermark text={watermark} tone="cover" />
 
       <div className="relative font-myeongjo">
         <p className="inline-flex items-center rounded-full border-2 border-exam-text px-6 py-1.5 text-[19px] font-bold tracking-[0.3em] text-exam-text md:text-[22px]">
