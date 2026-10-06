@@ -28,6 +28,7 @@ import { clearSetTrial, setSetAnswer } from "@/lib/setStore";
 import { closeExamWindow } from "@/lib/popup";
 import { ArrowRight } from "@/components/Icons";
 import ExamCover from "./ExamCover";
+import ExamWatermark, { watermarkOf } from "./ExamWatermark";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import {
   BriefPanel,
@@ -122,11 +123,14 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
   /** 표지 첫 줄 — 「2026학년도 3분기」. 회차 목록을 못 읽었으면 회차 번호에서 뽑는다 */
   const { year, quarter } = seasonOf(round ?? { id: roundId, opensOn: "" });
   const season = `${year}학년도 ${quarterLabel(quarter)}`;
+  /* 표지에 깔린 워터마크 — 넘긴 뒤의 1번 · 2번과 셋트에도 같은 것을 깐다 */
+  const watermark = watermarkOf(season);
 
   if (phase === "cover") {
     return (
       <TrialStart
         season={season}
+        watermark={watermark}
         onStart={async () => {
           /* 실제 응시처럼 전체화면으로 들어간다 — 클릭 안에서 불러야 브라우저가 허용한다 */
           await enterFullscreen();
@@ -152,6 +156,7 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
     <>
       {phase === "ask" || !subject || !meta ? (
         <TrialAsk
+          watermark={watermark}
           step={step}
           grade={grade}
           onGrade={setGrade}
@@ -164,6 +169,7 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
       ) : (
         <TrialRun
           key={answersOf}
+          watermark={watermark}
           subject={subject}
           /* 물려줄 진단이 없는 학년은 「가입하면 이어진다」고 말하지 않는다 */
           offGrade={track ? null : gradeText(grade)}
@@ -256,10 +262,13 @@ async function openInMain(href: string) {
  */
 function TrialStart({
   season,
+  watermark,
   onStart,
 }: {
   /** 「2026학년도 3분기」 */
   season: string;
+  /** 「GENIXX2026」 */
+  watermark: string;
   onStart: () => void;
 }) {
   return (
@@ -271,7 +280,7 @@ function TrialStart({
           badge="제1교시"
           headline={`${season} GENIXX 재능 진단 셋트 문항지`}
           title={assessment.name}
-          watermark={`GENIXX${season.slice(0, 4)}`}
+          watermark={watermark}
           notice={`(아래 버튼을 눌러 시작해 주세요. 학년과 흥미 있는 과목을 먼저 묻고, 이어서 1셋트 ${SET_QUESTIONS}문항이 나옵니다. 시작하면 전체화면으로 바뀝니다.)`}
           groups={[]}
           action={
@@ -309,6 +318,7 @@ function TrialStart({
  * 뒤에야 알게 하지 않는다.
  */
 function TrialAsk({
+  watermark,
   step,
   grade,
   onGrade,
@@ -318,6 +328,8 @@ function TrialAsk({
   onPrev,
   onNext,
 }: {
+  /** 「GENIXX2026」 — 표지에 깔린 것과 같은 워터마크를 이 종이에도 깐다 */
+  watermark: string;
   step: 0 | 1;
   grade: GradePick;
   onGrade: (g: GradePick) => void;
@@ -338,8 +350,9 @@ function TrialAsk({
           {/* key — 문항이 바뀌면 칸을 새로 세워 초점이 앞 문항의 보기에 남지 않는다 */}
           <section
             key={step}
-            className={`font-myeongjo w-full max-w-[720px] px-6 py-8 md:px-10 md:py-10 ${panel}`}
+            className={`font-myeongjo relative isolate w-full max-w-[720px] px-6 py-8 md:px-10 md:py-10 ${panel}`}
           >
+            <ExamWatermark text={watermark} tone="page" />
             {step === 0 ? (
               <>
                 <AskStem num={1}>지금 다니는 학교와 학년을 고르세요.</AskStem>
@@ -495,12 +508,15 @@ function PickRow<T extends string | number>({
 /* ───────────────────────── 셋트 ───────────────────────── */
 
 function TrialRun({
+  watermark,
   subject,
   offGrade,
   answers,
   onAnswer,
   onBack,
 }: {
+  /** 「GENIXX2026」 — 자료 상자와 문항 위에 겹쳐 깐다 */
+  watermark: string;
   subject: SubjectId;
   /** 접수할 진단이 없는 학년이면 그 이름(「중학교 2학년」) — 가입을 권하는 말이 달라진다 */
   offGrade: string | null;
@@ -537,10 +553,15 @@ function TrialRun({
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
         {question ? (
           <>
-            <BriefPanel brief={question.brief} range={setRange(order, question)} />
+            <BriefPanel
+              brief={question.brief}
+              range={setRange(order, question)}
+              watermark={watermark}
+            />
             <ScreenColumn
               order={order}
               screen={screen!}
+              watermark={watermark}
               renderQuestion={(q) => (
                 <QuestionBody
                   key={q.id}
@@ -548,6 +569,7 @@ function TrialRun({
                   num={order.indexOf(q) + 1}
                   value={answers[q.id]}
                   onAnswer={(v) => onAnswer(q.id, v)}
+                  watermark={watermark}
                 />
               )}
             />

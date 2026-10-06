@@ -54,6 +54,7 @@ import { quarterLabel, seasonOf, trackOf } from "@/lib/examCatalog";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useWallet } from "@/lib/ticketStore";
 import ExamCover from "./ExamCover";
+import { ItemWatermark, watermarkOf } from "./ExamWatermark";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { btnDanger, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
@@ -215,6 +216,24 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
   };
 }
 
+/**
+ * 가장 최근에 접수한 진단과, 그 회차의 해 · 분기(「2026학년도 3분기」).
+ *
+ * 표지의 첫 줄 · 학년 · 워터마크가 여기서 온다. 표지 안에서만 셈하던 것을 밖으로 뺀 까닭은
+ * 표지를 넘긴 뒤의 문항지도 같은 워터마크를 깔기 때문이다 — 두 곳이 따로 셈하면 표지와
+ * 문항지에 서로 다른 해가 찍히는 날이 온다.
+ */
+function useApplied(studentId: string) {
+  const config = useExamConfig();
+  const wallet = useWallet(studentId);
+  const applied = wallet.used[wallet.used.length - 1] ?? null;
+  const at = applied ? seasonOf({ id: applied.round, opensOn: "" }) : null;
+  return {
+    applied,
+    season: at ? `${at.year}학년도 ${quarterLabel(at.quarter)}` : config.roundLabel,
+  };
+}
+
 export default function ExamSession({ scope }: { scope: ExamScope }) {
   const hydrated = useHydrated();
   const session = useSession();
@@ -248,6 +267,9 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   const sheet = useSheet(studentId, scope, record);
   const { list, full } = sheet;
   const running = sheet.status === "ready" || sheet.status === "in-progress";
+  /* 표지에 깔린 워터마크를 넘긴 뒤의 문항에도 겹쳐 깐다 — 표지와 같은 해를 읽는다 */
+  const { season } = useApplied(studentId);
+  const watermark = watermarkOf(season);
 
   /**
    * 제한 시간은 **시작할 때의 값**을 쓴다.
@@ -323,6 +345,7 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
     return (
       <ReflectionStep
         sheet={sheet}
+        watermark={watermark}
         onLater={async () => {
           await leaveFullscreen();
           setReflect("later");
@@ -393,11 +416,16 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
     <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
       {/* 본문 — 좌: 자료(보기) / 가운데: 문제 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
-        <BriefPanel brief={question.brief} range={setRange(order, question)} />
+        <BriefPanel
+          brief={question.brief}
+          range={setRange(order, question)}
+          watermark={watermark}
+        />
 
         <ScreenColumn
           order={order}
           screen={screen}
+          watermark={watermark}
           renderQuestion={(q) => (
             <QuestionBody
               key={q.id}
@@ -405,6 +433,7 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
               num={order.indexOf(q) + 1}
               value={sheet.answers[q.id]}
               onAnswer={(v) => sheet.answer(q, v)}
+              watermark={watermark}
             />
           )}
         />
@@ -694,17 +723,12 @@ function StartGate({
   note?: string | null;
   onStart: () => void;
 }) {
-  const config = useExamConfig();
   const hydrated = useHydrated();
-  const wallet = useWallet(studentId);
   const roster = useRoster();
   const student = hydrated ? (roster.find((r) => r.id === studentId) ?? null) : null;
 
   /* 가장 최근에 접수한 평가 — 표지의 해 · 분기와 학년이 여기서 온다 */
-  const applied = wallet.used[wallet.used.length - 1] ?? null;
-  const season = applied
-    ? `${seasonOf({ id: applied.round, opensOn: "" }).year}학년도 ${quarterLabel(seasonOf({ id: applied.round, opensOn: "" }).quarter)}`
-    : config.roundLabel;
+  const { applied, season } = useApplied(studentId);
   const grade = applied ? trackOf(applied.track).grades : (student?.grade ?? "-");
 
   /* 과목마다 따로 들어가는 유료 진단은 과목 차례가 곧 교시다 */
@@ -718,7 +742,7 @@ function StartGate({
           badge={`제${period}교시`}
           headline={`${season} GENIXX 재능 진단 ${scope.kind === "free" ? "무료" : title} 문항지`}
           title={assessment.name}
-          watermark={`GENIXX${season.slice(0, 4)}`}
+          watermark={watermarkOf(season)}
           notice="(이 면의 인적사항이 맞는지 확인한 뒤 아래 버튼을 눌러 시작해 주세요. 시작하면 전체화면으로 바뀌고 제한 시간이 흐르기 시작합니다.)"
           groups={[
             {
@@ -831,7 +855,16 @@ function StartGate({
  * 정답은 알려 주지 않는다. 맞았는지 틀렸는지를 먼저 알려 주면 아이는 자기 생각을 적는
  * 대신 오답 노트를 쓴다. 여기서 받고 싶은 것은 채점 결과가 아니라 그때의 생각이다.
  */
-function ReflectionStep({ sheet, onLater }: { sheet: Sheet; onLater: () => void }) {
+function ReflectionStep({
+  sheet,
+  watermark,
+  onLater,
+}: {
+  sheet: Sheet;
+  /** 응시 때와 같은 문항이다 — 같은 워터마크가 겹친다 */
+  watermark: string;
+  onLater: () => void;
+}) {
   /* 응시 때와 같은 차례·같은 번호로 되짚는다 — 판이 열지 않은 문항은 풀지 않았으므로 없다 */
   const order = sheet.list;
   const screens = sheet.screens;
@@ -867,11 +900,16 @@ function ReflectionStep({ sheet, onLater }: { sheet: Sheet; onLater: () => void 
 
       {/* 본문 — 좌: 자료(보기) / 가운데: 문항과 그 아래 해석 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
-        <BriefPanel brief={question.brief} range={setRange(order, question)} />
+        <BriefPanel
+          brief={question.brief}
+          range={setRange(order, question)}
+          watermark={watermark}
+        />
 
         <ScreenColumn
           order={order}
           screen={screen}
+          watermark={watermark}
           renderQuestion={(q) => (
             <div key={q.id}>
               {/* 문항과 낸 답 — 응시 때와 같은 모양, 다만 잠겨 있다.
@@ -884,6 +922,7 @@ function ReflectionStep({ sheet, onLater }: { sheet: Sheet; onLater: () => void 
                   num={order.indexOf(q) + 1}
                   value={sheet.answers[q.id]}
                   onAnswer={() => {}}
+                  watermark={watermark}
                 />
               </fieldset>
 
@@ -981,8 +1020,10 @@ function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
        고를 까닭도 「내가 쓴 글」도 문항·보기와 같은 자리에 선 글이다. 여기만 고딕으로 두면
        시험지 한 장 안에서 아래쪽만 화면 말투로 바뀌어, 해석이 시험에 딸린 설문처럼 읽힌다.
        상태 딱지(작성함)만 고딕으로 남긴다 — 그것은 글이 아니라 화면이 하는 말이다
-       (서술형 자수 표시와 같은 규칙). */
-    <section className="font-myeongjo border-t border-exam-line bg-exam-panel px-6 py-6 lg:px-10">
+       (서술형 자수 표시와 같은 규칙).
+       relative는 숨긴 이름표(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨 위를 기준으로
+       놓여, 해석 칸이 화면 아래로 길어질 때 응시 화면 바깥에 스크롤이 생긴다. */
+    <section className="font-myeongjo relative border-t border-exam-line bg-exam-panel px-6 py-6 lg:px-10">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[14px] font-bold text-exam-text">
           {blank
@@ -1371,7 +1412,19 @@ export function WithBlanks({ text, compact = false }: { text: string; compact?: 
  * 시험지처럼 지시문을 위에 두고 본문과 사진을 테두리 상자 안에 담는다 — 문제를
  * 넘겨도 이 상자는 그대로 있다.
  */
-export function BriefPanel({ brief, range }: { brief: Brief; range?: string | null }) {
+export function BriefPanel({
+  brief,
+  range,
+  watermark,
+}: {
+  brief: Brief;
+  range?: string | null;
+  /**
+   * 「GENIXX2026」 — 넘기면 자료 상자 위에 겹쳐 깐다(ItemWatermark).
+   * 응시 화면만 넘긴다. 검수 미리보기처럼 시험지가 아닌 자리에는 깔지 않는다.
+   */
+  watermark?: string;
+}) {
   return (
     <section className="font-myeongjo order-2 border-b border-exam-line bg-exam-panel px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
       {/* 시험지처럼 「[1~4] 다음 … 답하시오.」 한 줄로 연다 — 자료 이름표 · 제목 · 안내 문구는
@@ -1381,8 +1434,9 @@ export function BriefPanel({ brief, range }: { brief: Brief; range?: string | nu
         {brief.lead ?? "다음을 읽고 물음에 답하시오."}
       </p>
 
-      <div className="mt-3 border border-exam-text/70 px-5 py-5 md:px-6">
+      <div className="relative isolate mt-3 border border-exam-text/70 px-5 py-5 md:px-6">
         <BriefBody brief={brief} />
+        {watermark && <ItemWatermark text={watermark} />}
       </div>
     </section>
   );
@@ -1816,10 +1870,13 @@ export function ScreenColumn({
   order,
   screen,
   renderQuestion,
+  watermark,
 }: {
   order: Question[];
   screen: Question[];
   renderQuestion: (q: Question) => ReactNode;
+  /** 「GENIXX2026」 — 넘기면 묶음 머리 자료 위에 겹쳐 깐다. 문항의 것은 QuestionBody가 따로 받는다 */
+  watermark?: string;
 }) {
   const groupBrief = screen[0].groupBrief;
   return (
@@ -1834,8 +1891,9 @@ export function ScreenColumn({
             </span>
             {groupBrief.lead ?? "다음을 읽고 물음에 답하시오."}
           </p>
-          <div className="mt-4 border border-exam-text/70 px-3 py-4 xl:px-5 xl:py-5">
+          <div className="relative isolate mt-4 border border-exam-text/70 px-3 py-4 xl:px-5 xl:py-5">
             <BriefBody brief={groupBrief} />
+            {watermark && <ItemWatermark text={watermark} />}
           </div>
         </section>
       )}
@@ -1857,6 +1915,7 @@ export function QuestionBody({
   num,
   value,
   onAnswer,
+  watermark,
 }: {
   q: Question;
   /** 학생에게 보이는 문제 번호 — 푸는 차례로 매긴다 */
@@ -1864,9 +1923,11 @@ export function QuestionBody({
   value: number | string | undefined;
   /** 답을 어디에 적을지는 부르는 쪽이 정한다 — 응시는 응시 기록에, 셋트는 셋트 저장소에 */
   onAnswer: (value: number | string) => void;
+  /** 「GENIXX2026」 — 넘기면 이 문항 위에 겹쳐 깐다(ItemWatermark). 응시 화면만 넘긴다 */
+  watermark?: string;
 }) {
   return (
-    <section className="font-myeongjo px-6 py-7 lg:px-10 lg:py-9">
+    <section className="font-myeongjo relative isolate px-6 py-7 lg:px-10 lg:py-9">
       {/*
         시험지처럼 **번호를 발문 왼쪽에** 붙인다.
         굵은 글씨는 번호에만 둔다 — 발문까지 굵으면 한 덩이가 통째로 강조되어, 무엇이 문항을
@@ -1904,19 +1965,23 @@ export function QuestionBody({
               ))}
             </ol>
           )}
+          {/* relative z-20 — 문항 위에 얹은 워터마크보다 위에 선다. 여기는 찍혀 나갈 문항이
+              아니라 아이가 쓰는 자리라, 쓴 글 위로 무늬가 지나가지 않게 한다 */}
           <textarea
             rows={9}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onAnswer(e.target.value)}
             placeholder={q.placeholder}
             aria-label="서술형 답안"
-            className="w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
+            className="relative z-20 w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
           />
           <p className="mt-2 text-right font-sans text-[12px] tabular-nums text-exam-muted">
             {(typeof value === "string" ? value : "").trim().length}자
           </p>
         </div>
       )}
+
+      {watermark && <ItemWatermark text={watermark} />}
     </section>
   );
 }
