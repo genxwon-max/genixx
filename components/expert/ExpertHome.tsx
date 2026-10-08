@@ -4,7 +4,8 @@ import Link from "next/link";
 import { counselModes, spanLabel } from "@/lib/counselors";
 import { today } from "@/lib/calendar";
 import { expertDuties, type ExpertAccount } from "@/lib/expertAccounts";
-import { Head, cardBox } from "@/components/student/self";
+import { expertWorks, worksOf } from "@/lib/expertConsole";
+import { Head, btnGo, cardBox } from "@/components/student/self";
 import {
   bookerText,
   CaseTag,
@@ -144,7 +145,8 @@ function Dashboard({ account }: { account: ExpertAccount }) {
   const now = today();
   const coming = bookings.filter((b) => !isDead(b.status) && b.status !== "done" && b.date >= now);
   const waiting = coming.filter((b) => b.status === "requested").length;
-  const console_ = account.duties.some((d) => d !== "counselor");
+  /* 상담은 이 자리에 화면이 있다(상담 일정 · 상담 관리) — 콘솔로 가는 길은 출제 · 검토 · 채점만 */
+  const works = worksOf(account).filter((w) => w !== "counsel");
 
   return (
     <>
@@ -164,11 +166,19 @@ function Dashboard({ account }: { account: ExpertAccount }) {
                 </li>
               ))}
           </ul>
-          {console_ && (
-            <p className="mt-4 border-t border-slate-100 pt-4 text-[12.5px] leading-[1.75] text-soft-muted">
-              문항 출제·검토와 답안 진단은 운영 콘솔에서 합니다. 콘솔 계정은 운영진이 권한에 맞춰
-              따로 발급해 드립니다.
-            </p>
+          {works.length > 0 && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="flex flex-wrap gap-2">
+                {works.map((w) => (
+                  <Link key={w} href={`/expert/work/${w}`} className={btnGo}>
+                    {expertWorks[w].label} 화면 열기
+                  </Link>
+                ))}
+              </div>
+              <p className="mt-3 text-[12.5px] leading-[1.75] text-soft-muted">
+                운영 콘솔의 작업 화면으로 이동합니다. 받은 권한의 화면만 열립니다.
+              </p>
+            </div>
           )}
         </div>
       </section>

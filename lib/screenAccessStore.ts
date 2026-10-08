@@ -85,6 +85,9 @@ function subscribe(onChange: () => void) {
   };
 }
 
+/** 훅 밖에서 읽는다 — 전문가 계정을 콘솔 화면 권한에 맞출 때(lib/expertConsole.ts) */
+export const getScreenAccess = (): State => read();
+
 export function useScreenAccess(): State {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }

@@ -14,6 +14,7 @@ import {
   useAdminPrefs,
 } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
+import { isExpertConsoleLogin } from "@/lib/expertConsole";
 import { useItems } from "@/lib/itemStore";
 import { scoreDone, useExpert } from "@/lib/expertStore";
 import { useInterviewDesk } from "@/lib/interviewStore";
@@ -91,11 +92,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const isSuper = prefs.role === "super";
   const screens = visibleScreens(access, { loginId: prefs.loginId, super: isSuper });
   const previewRole = isSuper && access.preview ? access.roles.find((r) => r.id === access.preview) : null;
-  const nav = screens
+  const navAll = screens
     ? admin2Nav
         .map((g) => ({ ...g, items: g.items.filter((it) => screens.includes(it.href)) }))
         .filter((g) => g.items.length > 0)
     : admin2Nav;
+  /* 전문가 전용 화면(내 상담 …)은 전문가로 들어온 사람에게만 세운다 */
+  const asExpert = isExpertConsoleLogin(prefs.loginId);
+  const nav = asExpert
+    ? navAll
+    : navAll
+        .map((g) => ({ ...g, items: g.items.filter((it) => !it.expertOnly) }))
+        .filter((g) => g.items.length > 0);
   const [open, setOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   /* 펼쳐 둔 그룹. 처음에는 지금 있는 그룹 하나만 편다 — 넷을 다 펴 두면 접는 뜻이 없다.
@@ -142,11 +150,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   // 저장된 로그인 상태는 브라우저에만 있어서, 하이드레이션 전에는 판단하지 않는다
   if (!hydrated) return <div className="min-h-screen bg-(--a2-bg)" />;
+  /* 권한별로 보기(/admin2/as/…)는 문보다 먼저 선다 — 그 주소가 곧 들어가는 길이다 */
+  if (pathname.startsWith("/admin2/as/")) return <>{children}</>;
   if (!prefs.loginId || (!isSuper && !roleFor(access, prefs.loginId))) {
     return <ConsoleGate role={prefs.loginId ? prefs.role : null} name={prefs.staffName} />;
   }
   /* 미리보기 중에도 화면 권한 화면은 연다 — 거기서 미리보기를 끝내고 묶음을 고친다 */
-  const allowed = canOpen(screens, pathname) || (!!previewRole && pathname.startsWith("/admin2/staff/roles"));
+  /* 「내 정보」는 화면 권한과 상관없이 연다 — 자기 계정을 보는 자리다 */
+  const allowed =
+    canOpen(screens, pathname) ||
+    pathname === "/admin2/me" ||
+    (!!previewRole && pathname.startsWith("/admin2/staff/roles"));
 
   return (
     <div className="a2-shell" style={{ ["--a2-zoom" as string]: prefs.a2Zoom }}>
@@ -302,7 +316,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </button>
               {/* 누구로 들어와 있나 — 로그아웃 바로 왼쪽. 상단 바가 40px이라 두 줄로 쌓지 않고
                   한 줄에 이름 · 역할 · 아이디를 늘어놓는다. 좁아지면 역할 · 아이디부터 접는다 */}
-              <div className="hidden min-w-0 items-center gap-2 border-l border-(--a2-side-line) pl-2 sm:flex">
+              <Link
+                href="/admin2/me"
+                title="내 정보"
+                className="hidden min-w-0 items-center gap-2 border-l border-(--a2-side-line) pl-2 hover:opacity-80 sm:flex"
+              >
                 <span
                   aria-hidden
                   className="a2-t-xs flex h-6 w-6 shrink-0 items-center justify-center rounded-(--a2-radius) bg-(--a2-side-2) font-bold text-white"
@@ -314,7 +332,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   {isSuper ? roleOf(prefs.role).short : (roleFor(access, prefs.loginId)?.name ?? roleOf(prefs.role).short)} ·{" "}
                   <span className="a2-mono">{prefs.loginId}</span>
                 </span>
-              </div>
+              </Link>
+              {/* 전문가 계정으로 건너온 사람은 돌아갈 곳이 전문가 홈이다(lib/expertConsole.ts) */}
+              {isExpertConsoleLogin(prefs.loginId) && (
+                <Link href="/expert" className="a2-btn a2-btn-sm a2-btn-dark">
+                  전문가 홈
+                </Link>
+              )}
               <button type="button" onClick={adminSignOut} className="a2-btn a2-btn-sm a2-btn-dark">
                 로그아웃
               </button>
