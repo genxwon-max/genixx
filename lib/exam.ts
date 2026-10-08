@@ -66,7 +66,7 @@ function answerFields(
   r: Response,
 ): Pick<
   Question,
-  "type" | "choices" | "answer" | "blanks" | "guide" | "placeholder" | "minLength"
+  "type" | "choices" | "answer" | "blanks" | "guide" | "placeholder" | "minLength" | "upload"
 > {
   switch (r.kind) {
     case "choice":
@@ -75,9 +75,12 @@ function answerFields(
       return { type: "essay", blanks: r.blanks };
     case "essay":
       return { type: "essay", guide: r.guide, placeholder: r.placeholder, minLength: r.minLength };
-    case "match":
     case "upload":
-      /* 선 잇기 · 파일 제출 화면은 아직 없다 — 그리기 전까지는 긴 글 칸으로 받는다 */
+      /* 사진은 글 대신 파일로 낸다 — 채점은 서술형과 같이 전문가가 한다.
+         녹음 제출 화면은 두지 않는다. 말로 답하는 것은 긴 글 칸의 음성 입력이 받아 적는다 */
+      return r.media === "image" ? { type: "essay", upload: "image" } : { type: "essay" };
+    case "match":
+      /* 선 잇기 화면은 아직 없다 — 그리기 전까지는 긴 글 칸으로 받는다 */
       return { type: "essay" };
   }
 }
@@ -254,6 +257,13 @@ export type Question = {
    *   없으면   한 문장 이상 쓰는 칸
    */
   blanks?: Blank[];
+  /**
+   * 파일로 내는 문제 — 종이에 쓰거나 그린 것을 찍어 사진으로 올린다.
+   *
+   * 있으면 긴 글 칸 대신 올리는 칸을 연다. 파일은 브라우저의 파일 저장소에 두고
+   * (lib/answerMedia.ts), 답 자리에는 그 열쇠만 적는다(joinUpload).
+   */
+  upload?: "image";
   /** 채점 기준 — 학생 화면에는 내보이지 않는다 */
   scoring?: string[];
   /** 예시 답 — 칸이 있으면 칸 순서대로 */
@@ -310,12 +320,39 @@ export function splitBlanks(value: number | string | undefined, count: number): 
   return Array.from({ length: count }, (_, i) => list[i] ?? "");
 }
 
+/** 파일로 낸 답 — 파일은 파일 저장소에 있고 답 자리에는 이것만 적는다 */
+export type UploadAnswer = {
+  media: "image";
+  /** 파일 저장소의 열쇠 */
+  key: string;
+};
+
+/** 파일로 낸 답을 저장용 문자열로 */
+export function joinUpload(a: UploadAnswer) {
+  return JSON.stringify({ upload: a.media, key: a.key });
+}
+
+/** 저장된 답에서 낸 파일을 읽는다 — 내지 않았으면 null */
+export function splitUpload(value: number | string | undefined): UploadAnswer | null {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const v = JSON.parse(value) as { upload?: unknown; key?: unknown };
+    if (v.upload !== "image" || typeof v.key !== "string") return null;
+    return { media: v.upload, key: v.key };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 서술형 답을 사람이 읽는 글로 — 칸이 있으면 「차이점: … / 공통점: …」처럼 줄마다 편다.
  * 해설 · 해석 화면처럼 쓴 답을 그대로 보여 주는 자리에서 쓴다.
  */
 export function answerText(q: Question, value: number | string | undefined): string {
   if (typeof value !== "string") return "";
+  if (q.upload) {
+    return splitUpload(value) ? "사진을 제출했습니다." : "";
+  }
   if (!q.blanks) return value.trim();
   const parts = splitBlanks(value, q.blanks.length);
   if (parts.every((p) => !p.trim())) return "";
