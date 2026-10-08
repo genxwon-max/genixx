@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { dutyLabel, type ExpertAccount, type ExpertProfile as Profile } from "@/lib/expertAccounts";
 import { canonProfile, saveExpertProfile } from "@/lib/expertAccountStore";
+import { shrinkPhoto } from "@/lib/photo";
 import { Field, field as fieldCls } from "@/components/account/ui";
 import { Head, btnGo, btnQuiet, cardBox } from "@/components/student/self";
 import { ExpertGate, ExpertPhoto, useExpertMe } from "./me";
@@ -25,43 +26,6 @@ import { ExpertGate, ExpertPhoto, useExpertMe } from "./me";
  * 저장소가 넘친다.
  */
 
-const PHOTO_PX = 320;
-
-/** 고른 파일을 정사각으로 잘라 줄인 data URL로 바꾼다. 그림이 아니면 null */
-function shrinkPhoto(file: File): Promise<string | null> {
-  return new Promise((resolve) => {
-    if (!file.type.startsWith("image/")) return resolve(null);
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const side = Math.min(img.naturalWidth, img.naturalHeight);
-      const canvas = document.createElement("canvas");
-      canvas.width = PHOTO_PX;
-      canvas.height = PHOTO_PX;
-      const ctx = canvas.getContext("2d");
-      URL.revokeObjectURL(url);
-      if (!ctx || side === 0) return resolve(null);
-      /* 가운데를 정사각으로 — 세로 사진은 위아래를, 가로 사진은 좌우를 덜어 낸다 */
-      ctx.drawImage(
-        img,
-        (img.naturalWidth - side) / 2,
-        (img.naturalHeight - side) / 2,
-        side,
-        side,
-        0,
-        0,
-        PHOTO_PX,
-        PHOTO_PX,
-      );
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    img.src = url;
-  });
-}
 
 const area =
   "w-full rounded-[12px] border border-soft-line bg-white px-4 py-3 text-[15px] leading-[1.7] text-soft-ink outline-none transition-colors placeholder:text-slate-400 focus:border-soft-primary focus:ring-2 focus:ring-soft-primary-soft";

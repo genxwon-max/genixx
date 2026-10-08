@@ -40,6 +40,11 @@ export type Admin2NavItem = {
    *   review  검수 대기 — 검수 화면에 서 있는 줄 수
    */
   live?: "drafts" | "review" | "approvals" | "grading" | "interviews";
+  /**
+   * 전문가 계정으로 들어온 사람에게만 세우는 화면 — 「내 상담」처럼 자기 것을 보는 자리다.
+   * 운영자에게는 볼 「내 것」이 없어 기둥에서 뺀다(components/admin2/Shell.tsx).
+   */
+  expertOnly?: boolean;
 };
 
 export type Admin2NavGroup = {
@@ -207,6 +212,9 @@ export const admin2Nav: Admin2NavGroup[] = [
        * 값만 떼어 놓고 정하게 되어 「60분을 안 받는 사람에게 60분 값이 매겨지는」 줄이 선다.
        */
       { code: "EXP-06-2", label: "상담사 관리", href: "/admin2/counselors" },
+      /* 상담사 본인의 자리 — 나에게 들어온 신청과 내 상담 가능 시간 */
+      { code: "EXP-06-3", label: "내 상담", href: "/admin2/counsel", expertOnly: true },
+      { code: "EXP-06-4", label: "내 상담 일정", href: "/admin2/counsel/schedule", expertOnly: true },
     ],
   },
   {

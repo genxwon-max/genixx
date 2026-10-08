@@ -8,6 +8,7 @@ import {
   saveCounselor,
   setCounselorShown,
 } from "./counselorStore";
+import { syncExpertConsole } from "./expertConsole";
 import {
   blankExpertProfile,
   DEMO_EXPERT_ID,
@@ -247,6 +248,8 @@ export function decideExpert(
     duties: given,
   };
   put({ ...next, counselorId: syncCounselor(next) });
+  /* 출제 · 검토 · 채점 권한은 콘솔의 화면 권한으로 옮긴다 */
+  syncExpertConsole(next);
   recordAction(
     `신청 ${cur.id} · ${cur.profile.name}`,
     verdict === "approved" ? "가입 승인" : "가입 반려",
@@ -264,6 +267,7 @@ export function setExpertDuties(id: string, duties: ExpertDuty[], by: string): b
 
   const next: ExpertAccount = { ...cur, duties: given };
   put({ ...next, counselorId: syncCounselor(next) });
+  syncExpertConsole(next);
   recordAction(
     `신청 ${cur.id} · ${cur.profile.name}`,
     "전문가 권한 변경",

@@ -8,6 +8,7 @@ import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
 import type { ExpertAccount } from "@/lib/expertAccounts";
 import { useExpertAccount } from "@/lib/expertAccountStore";
+import { expertWorks, worksOf } from "@/lib/expertConsole";
 import { ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
 import { useSelf } from "@/components/student/self";
@@ -195,6 +196,15 @@ function expertMenuFor(account: ExpertAccount | null): Item[] {
       sid: "EXP-01",
       icon: <Icon>{ic.home}</Icon>,
     },
+    /* 출제 · 검토 · 채점은 운영 콘솔의 작업 화면으로 건너간다(/expert/work/…가 다리다) */
+    ...worksOf(account)
+      .filter((w) => w !== "counsel")
+      .map((w) => ({
+      href: `/expert/work/${w}`,
+      label: expertWorks[w].label,
+      sid: "EXP-03",
+      icon: <Icon>{ic.paper}</Icon>,
+    })),
     ...(approved && account.duties.includes("counselor")
       ? [
           { href: "/expert/schedule", label: "상담 일정", sid: "EXP-06-4", icon: <Icon>{ic.roster}</Icon> },
