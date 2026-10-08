@@ -283,7 +283,7 @@ export function DictateBar({
   );
 }
 
-/** 괄호 칸 옆의 작은 음성 입력 단추 — 짧은 칸 · 쓰는 칸 */
+/** 괄호 칸 옆의 음성 입력 단추 — 짧은 칸 · 쓰는 칸 */
 export function DictateButton({
   onText,
   label,
@@ -296,16 +296,18 @@ export function DictateButton({
   if (!d.supported) return null;
   const name = `${label ? `${label} ` : ""}음성 입력${d.listening ? " 끝내기" : ""}`;
   return (
-    <span className="relative z-20 shrink-0 font-sans">
+    <span className="relative z-20 ml-auto shrink-0 font-sans">
       <button
         type="button"
         onClick={d.toggle}
         aria-pressed={d.listening}
         aria-label={name}
         title={d.listening ? "음성 입력 끝내기" : "음성 입력"}
-        className={`${d.listening ? btnInk : btnLine} w-10 px-0`}
+        className={`${d.listening ? btnInk : btnLine} whitespace-nowrap px-3`}
       >
         {d.listening ? <StopIcon className="h-4 w-4" /> : <MicIcon className="h-4 w-4" />}
+        {/* 칸 옆이라 자리가 좁다 — 듣는 중에는 「끝내기」만 적는다 */}
+        {d.listening ? "끝내기" : "음성 입력"}
       </button>
       {d.listening && (
         <span

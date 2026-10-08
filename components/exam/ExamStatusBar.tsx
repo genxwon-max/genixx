@@ -12,6 +12,7 @@ import {
   type SubjectId,
 } from "@/lib/exam";
 import { evalName, isTrackId } from "@/lib/examCatalog";
+import { designOf, isDesignKind } from "@/lib/examDesign";
 import { useWallet } from "@/lib/ticketStore";
 import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
@@ -144,6 +145,16 @@ export default function ExamStatusBar() {
    * 서 있는 자리라, 같은 이름이 한 줄에 두 번 서고 로그인한 사람 이름 앞을 막았다.
    */
   if (!slug) return null;
+
+  /* 문항 유형 디자인 보기(/exam/session/design/[유형]) — 응시가 아니라 평가명도 시계도 없다 */
+  if (slug === "design") {
+    const kind = parts[4] ?? "";
+    return (
+      <HeadRow name="문항 유형" subject={isDesignKind(kind) ? designOf(kind).name : null}>
+        {null}
+      </HeadRow>
+    );
+  }
 
   /* 셋트에도 시계가 없다는 말은 머리에 적지 않는다. 시계가 서야 할 자리가 비어 있는
      것으로 이미 읽히고, 머리에 문장을 하나 더 두면 평가명·과목이 뒤로 밀린다 */

@@ -2218,7 +2218,9 @@ function BlankFields({
         }
 
         return (
-          <li key={i} className="flex items-start gap-3">
+          /* flex-wrap — 칸이 좁으면 음성 입력 단추가 아랫줄로 내려간다. 단추에 밀려 쓰는
+             칸이 몇 글자 폭으로 줄어들면 답을 쓸 수 없다 */
+          <li key={i} className="flex flex-wrap items-start gap-x-3 gap-y-2">
             <label
               htmlFor={id}
               className="flex shrink-0 items-center gap-2 whitespace-nowrap pt-2.5 text-[14px] font-bold text-exam-text"
@@ -2227,7 +2229,7 @@ function BlankFields({
             </label>
             <div
               className={`flex min-w-0 items-start gap-1.5 text-[14px] text-exam-text ${
-                b.short ? "" : "flex-1"
+                b.short ? "" : "min-w-[11rem] flex-1"
               }`}
             >
               <span aria-hidden className="pt-2">
@@ -2255,11 +2257,11 @@ function BlankFields({
               <span aria-hidden className="pt-2">
                 )
               </span>
-              <DictateButton
-                label={b.label}
-                onText={(t) => put(i, b.short ? t : addSpoken(values[i], t))}
-              />
             </div>
+            <DictateButton
+              label={b.label}
+              onText={(t) => put(i, b.short ? t : addSpoken(values[i], t))}
+            />
           </li>
         );
       })}
