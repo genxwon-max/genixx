@@ -2,10 +2,20 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
+/** 전체화면 요청의 대답을 기다리는 시간 — 지나면 일반 창으로 진행한다 */
+const FULLSCREEN_WAIT_MS = 1000;
+
 /** 응시 화면 전체화면 제어. 사용자 동작(클릭) 안에서 호출해야 브라우저가 허용한다. */
 export async function enterFullscreen() {
   try {
-    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    if (document.fullscreenElement) return;
+    /* 대답을 끝없이 기다리지 않는다. 앱 안에 끼워 넣은 브라우저처럼 전체화면 요청을 받아
+       주지도 거절하지도 않는 곳이 있는데, 거기서 기다리면 「진단 시작」이 눌리지 않은 것처럼
+       멈춘다. 전체화면은 응시를 돕는 것이지 응시의 조건이 아니다 */
+    await Promise.race([
+      document.documentElement.requestFullscreen(),
+      new Promise((resolve) => window.setTimeout(resolve, FULLSCREEN_WAIT_MS)),
+    ]);
   } catch {
     // 브라우저가 막으면 일반 창으로 진행한다
   }
