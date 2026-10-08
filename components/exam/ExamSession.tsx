@@ -18,6 +18,7 @@ import {
   SLOT,
   slotValues,
   splitBlanks,
+  splitUpload,
   subjectOf,
   type Blank,
   type Block,
@@ -55,6 +56,7 @@ import { formatCode, useRoster } from "@/lib/roster";
 import { useWallet } from "@/lib/ticketStore";
 import ExamCover from "./ExamCover";
 import { ItemWatermark, watermarkOf } from "./ExamWatermark";
+import { addSpoken, DictateBar, DictateButton, ImageAnswer, ListenClip } from "./AnswerMedia";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { btnDanger, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
@@ -67,6 +69,7 @@ function pad(n: number) {
 export function isAnswered(q: Question, value: number | string | undefined) {
   if (value === undefined) return false;
   if (q.type === "choice") return typeof value === "number";
+  if (q.upload) return splitUpload(value) !== null;
   if (q.blanks) {
     const values = splitBlanks(value, q.blanks.length);
     return q.blanks.every((b, i) => blankFilled(b, values[i]));
@@ -1030,7 +1033,9 @@ function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
             ? "왜 풀지 못했는지 알려 주세요"
             : picked !== null
               ? `${picked + 1}번을 고른 이유를 알려 주세요`
-              : "왜 그렇게 썼는지 알려 주세요"}
+              : q.upload
+                ? "왜 그렇게 답했는지 알려 주세요"
+                : "왜 그렇게 썼는지 알려 주세요"}
         </p>
         <span
           className={`font-sans text-[11.5px] font-bold ${
@@ -1533,9 +1538,9 @@ function BlockView({ block: b }: { block: Block }) {
       /* 듣기 문항이라 대본은 학생에게 내보이지 않는다 — 채점 · 검수가 읽는다 */
       return (
         <figure>
-          <audio src={b.src} controls preload="metadata" className="w-full" />
+          <ListenClip src={b.src} />
           {b.caption && (
-            <figcaption className="mt-1.5 text-[13px] text-exam-text">{b.caption}</figcaption>
+            <figcaption className="mt-2 text-[13px] text-exam-text">{b.caption}</figcaption>
           )}
         </figure>
       );
@@ -1907,8 +1912,9 @@ export function ScreenColumn({
 /**
  * 발문 · 보기 · 답 쓰는 칸.
  *
- * 답 쓰는 칸은 셋 중 하나다 — 객관식 보기, 괄호 칸(시험지의 「○ 차이점 : (    )」),
- * 긴 글 칸.
+ * 답 쓰는 칸은 넷 중 하나다 — 객관식 보기, 괄호 칸(시험지의 「○ 차이점 : (    )」),
+ * 긴 글 칸, 사진을 올리는 칸. 글로 쓰는 칸(짧은 칸 · 쓰는 칸 · 긴 글 칸)에는 음성 입력이
+ * 붙는다 — 말한 것을 글로 받아 적어 그 칸에 잇는다.
  */
 export function QuestionBody({
   q,
@@ -1950,6 +1956,8 @@ export function QuestionBody({
           value={typeof value === "number" ? value : undefined}
           onPick={onAnswer}
         />
+      ) : q.upload === "image" ? (
+        <ImageAnswer value={value} onAnswer={onAnswer} />
       ) : q.blanks ? (
         <BlankFields q={q} blanks={q.blanks} value={value} onAnswer={onAnswer} />
       ) : (
@@ -1975,9 +1983,11 @@ export function QuestionBody({
             aria-label="서술형 답안"
             className="relative z-20 w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
           />
-          <p className="mt-2 text-right font-sans text-[12px] tabular-nums text-exam-muted">
+          <DictateBar
+            onText={(t) => onAnswer(addSpoken(typeof value === "string" ? value : "", t))}
+          >
             {(typeof value === "string" ? value : "").trim().length}자
-          </p>
+          </DictateBar>
         </div>
       )}
 
@@ -2245,6 +2255,10 @@ function BlankFields({
               <span aria-hidden className="pt-2">
                 )
               </span>
+              <DictateButton
+                label={b.label}
+                onText={(t) => put(i, b.short ? t : addSpoken(values[i], t))}
+              />
             </div>
           </li>
         );
