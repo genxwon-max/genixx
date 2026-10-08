@@ -62,7 +62,7 @@ export default function InterviewsView() {
       { id: "overdue" as ListTab, label: "지난 일정", rows: rows.filter((r) => isOverdue(r, now)) },
       {
         id: "done" as ListTab,
-        label: "마친 것",
+        label: "완료",
         rows: rows.filter((r) => r.state === "recorded" || r.state === "coded"),
       },
     ],

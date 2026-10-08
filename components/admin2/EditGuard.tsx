@@ -419,7 +419,7 @@ export function LeaveDialog({ guard }: { guard: LeaveGuard }) {
   if (!guard.pending) return null;
 
   /* 주소가 바뀌는 이동은 「나가기」, 판만 갈리는 이동은 「옮기기」로 묻는다 */
-  const away = guard.kind === "run" ? "옮기기" : "나가기";
+  const away = guard.kind === "run" ? "이동하기" : "나가기";
 
   return (
     <div
@@ -438,7 +438,7 @@ export function LeaveDialog({ guard }: { guard: LeaveGuard }) {
         </h2>
         <p className="mt-2 a2-t-sm leading-[1.6] text-(--a2-ink-2)">
           {guard.kind === "run"
-            ? "다른 것을 열면 고친 내용이 사라집니다. 저장하고 옮길까요?"
+            ? "다른 항목을 열면 고친 내용이 사라집니다. 저장하고 이동할까요?"
             : "이 화면을 떠나면 고친 내용이 사라집니다. 저장하고 나갈까요?"}
         </p>
         <div className="mt-4 flex flex-wrap justify-end gap-1.5">

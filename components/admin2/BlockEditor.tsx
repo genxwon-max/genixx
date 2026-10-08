@@ -59,7 +59,7 @@ export default function BlockEditor({
   blocks,
   disabled,
   onChange,
-  empty = "아직 쌓은 블록이 없습니다. 아래에서 문단 · 사진 · 표를 더하세요.",
+  empty = "아직 추가한 블록이 없습니다. 아래에서 문단 · 사진 · 표를 추가하세요.",
   kinds = ADDABLE,
 }: {
   blocks: Block[];
@@ -122,7 +122,7 @@ export default function BlockEditor({
 
       {/* 더하기 — 쓰는 차례대로 아래에 붙는다 */}
       <div className="a2-cell-pad flex flex-wrap items-center gap-1.5">
-        <span className="a2-t-sm mr-1 font-bold text-(--a2-ink-3)">+ 더하기</span>
+        <span className="a2-t-sm mr-1 font-bold text-(--a2-ink-3)">+ 추가</span>
         {kinds.map((kind) => (
           <button
             key={kind}
@@ -179,7 +179,7 @@ function BlockFields({
             onChange={(e) => onChange({ ...b, items: e.target.value.split("\n") })}
           />
           <span className="a2-hint">
-            한 줄에 하나씩 씁니다. [ ]로 시작하는 줄은 굵은 머리, ○로 시작하는 줄은 둘째 줄부터 들여
+            한 줄에 하나씩 씁니다. [ ]로 시작하는 줄은 굵은 제목, ○로 시작하는 줄은 둘째 줄부터 들여
             씁니다.
           </span>
         </div>
@@ -259,7 +259,7 @@ function BlockFields({
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(b.body) }}
             />
             <span className="a2-hint">
-              굵게 · 밑줄 같은 꾸밈이 든 글입니다. 고치려면 왼쪽 「문서 편집기」를 여세요.
+              굵게 · 밑줄 같은 서식이 들어간 글입니다. 고치려면 왼쪽 「문서 편집기」를 여세요.
             </span>
           </div>
         );
@@ -275,7 +275,7 @@ function BlockFields({
             onChange={(e) => onChange({ ...b, body: e.target.value })}
           />
           <span className="a2-hint">
-            예전에 마크다운으로 쓴 지문입니다. 새로 쓰는 자료는 블록으로 나눠 쌓으세요.
+            예전에 마크다운으로 쓴 지문입니다. 새로 쓰는 자료는 블록으로 나눠 추가하세요.
           </span>
         </div>
       );
@@ -332,7 +332,7 @@ function ImagesFields({
   return (
     <div className="a2-body-flush">
       <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
-        <span className="a2-t-sm font-bold text-(--a2-ink-3)">놓는 방식</span>
+        <span className="a2-t-sm font-bold text-(--a2-ink-3)">배치 방식</span>
         {(
           [
             ["row", "나란히"],
@@ -515,7 +515,7 @@ function ImagesFields({
           disabled={disabled || busy}
           onClick={() => fileRef.current?.click()}
         >
-          {busy ? "줄이는 중…" : "사진 올리기"}
+          {busy ? "이미지 압축 중…" : "사진 올리기"}
         </button>
         {b.images.length === 0 && (
           <span className="a2-t-sm text-(--a2-ink-4)">여러 장을 한 번에 고를 수 있습니다.</span>
@@ -583,8 +583,8 @@ function TableFields({
                     className={`${cell} font-bold`}
                     value={h}
                     disabled={disabled}
-                    aria-label={`머리 ${c + 1}`}
-                    placeholder={c === 0 ? "(줄 이름)" : "머리"}
+                    aria-label={`머리글 ${c + 1}`}
+                    placeholder={c === 0 ? "(줄 이름)" : "머리글"}
                     onChange={(e) =>
                       onChange({ ...t, head: t.head.map((x, i) => (i === c ? e.target.value : x)) })
                     }
@@ -627,7 +627,7 @@ function TableFields({
           disabled={disabled}
           onClick={() => onChange({ ...t, rows: [...t.rows, Array(cols).fill("")] })}
         >
-          줄 더하기
+          줄 추가
         </button>
         <button
           type="button"
@@ -635,7 +635,7 @@ function TableFields({
           disabled={disabled || t.rows.length <= 1}
           onClick={() => onChange({ ...t, rows: t.rows.slice(0, -1) })}
         >
-          마지막 줄 빼기
+          마지막 줄 삭제
         </button>
         <button
           type="button"
@@ -651,7 +651,7 @@ function TableFields({
             })
           }
         >
-          열 더하기
+          열 추가
         </button>
         <button
           type="button"
@@ -666,11 +666,11 @@ function TableFields({
             })
           }
         >
-          마지막 열 빼기
+          마지막 열 삭제
         </button>
         <span className="a2-t-xs ml-1 text-(--a2-ink-4)">
-          첫 머리 칸을 비우면 첫 열이 줄 이름(학생 A)으로 굵게 섭니다. 칸 안의 ( ㄱ )은 빈칸으로
-          섭니다.
+          첫 머리글 칸을 비우면 첫 열이 줄 이름(학생 A)으로 굵게 표시됩니다. 칸 안의 ( ㄱ )은 빈칸으로
+          표시됩니다.
         </span>
       </div>
     </div>
@@ -700,7 +700,7 @@ function MediaFields({
               className="a2-input min-w-0 flex-1"
               value={b.src.startsWith("blob:") ? "(올린 파일)" : b.src}
               disabled={disabled}
-              placeholder="주소를 붙이거나 파일을 올립니다"
+              placeholder="주소를 붙여 넣거나 파일을 올립니다"
               onChange={(e) => onChange({ ...b, src: e.target.value })}
             />
             <button

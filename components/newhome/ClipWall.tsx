@@ -76,8 +76,8 @@ export default function ClipWall() {
           <p className="type-eyebrow text-brand-300">영상으로 보기</p>
           <h2 className="type-h2 mt-2 font-black">읽기보다 보는 쪽이 빠르다면</h2>
           <p className="type-lead mt-3 max-w-2xl text-brand-100">
-            진단 과정과 진단서 읽는 법을 영상으로 정리하고 있습니다. 올라오는 대로 이 자리에
-            걸립니다.
+            진단 과정과 진단서 읽는 법을 영상으로 정리하고 있습니다. 올라오는 대로 여기에
+            게시됩니다.
           </p>
         </Rise>
 

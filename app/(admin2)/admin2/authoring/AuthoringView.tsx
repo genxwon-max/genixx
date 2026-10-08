@@ -98,7 +98,7 @@ export default function AuthoringView() {
         label: "전체",
         count: mine.length,
         rows: mine,
-        empty: "쓰는 중인 문항이 없습니다. 새 문항을 만들거나 AI로 생성해 보세요.",
+        empty: "작성 중인 문항이 없습니다. 새 문항을 만들거나 AI로 생성해 보세요.",
       },
       {
         id: "rejected" as const,
@@ -181,6 +181,7 @@ export default function AuthoringView() {
       },
       {
         key: "form",
+        detail: true,
         head: "구성",
         width: "6.5rem",
         nowrap: true,
@@ -190,6 +191,7 @@ export default function AuthoringView() {
       },
       {
         key: "type",
+        detail: true,
         head: "유형",
         /* 세트는 안에 든 유형을 모아 적어 「객관식 · 서술형」처럼 길어진다 */
         width: "7rem",
@@ -218,6 +220,7 @@ export default function AuthoringView() {
            둘은 같이 움직이지만 같지 않다. 같은 S2 안에서도 b가 -1.2와 0.4면 검사지에
            나란히 담을 수 없다. 음수가 쉬운 쪽이므로 정렬은 값 그대로 둔다 */
         key: "b",
+        detail: true,
         head: "난이도",
         width: "5rem",
         num: true,
@@ -240,6 +243,7 @@ export default function AuthoringView() {
       },
       {
         key: "createdAt",
+        detail: true,
         head: "등록일",
         width: "8rem",
         nowrap: true,

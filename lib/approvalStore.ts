@@ -1,8 +1,10 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { approvals, type Approval } from "./admin";
 import { recordAction } from "./adminStore";
+import type { ExpertAccount, ExpertDuty } from "./expertAccounts";
+import { decideExpert, useExpertAccounts } from "./expertAccountStore";
 
 /**
  * 가입 신청의 처리 결과 (ADM-02-2).
@@ -10,6 +12,12 @@ import { recordAction } from "./adminStore";
  * 신청서 자체는 씨앗(lib/admin.ts approvals)이고 여기 담기는 것은 **사람이 내린 결론**
  * 뿐이다 — 승인인가 반려인가, 무슨 까닭으로, 언제, 누가. 회원·학생·기관의 고친 값을
  * 담는 방식(lib/directoryStore.ts)과 같은 꼴이다.
+ *
+ * ── 전문가 신청은 계정이 주인이다 ──
+ * 전문가 회원가입(lib/expertAccounts.ts)은 씨앗 신청서가 아니라 **계정 한 줄**로 들어온다.
+ * 결론에 권한이 딸려 오고 승인 뒤에도 그 권한을 고치므로, 결론을 여기 따로 담지 않고
+ * 계정에 둔다(lib/expertAccountStore.ts). 이 저장소는 그 계정을 신청 한 건으로 펴서
+ * 교사·기관 신청과 같은 목록에 세울 뿐이다.
  *
  * ⚠ 결론을 내려도 줄을 목록에서 지우지 않는다. 상태만 바꾸고 그대로 세워 둔다 —
  *   사라지면 방금 무엇을 했는지 확인할 자리가 없어지고, 「어제 반려한 그 건」을 다시
@@ -35,6 +43,8 @@ export type Decisions = Record<string, Decision>;
 export type ApprovalRow = Approval & {
   state: "pending" | Verdict;
   decision?: Decision;
+  /** 전문가 신청이면 그 계정 — 가입 수단과 준 권한을 상세가 여기서 읽는다 */
+  expert?: ExpertAccount;
 };
 
 export const verdictLabel: Record<ApprovalRow["state"], string> = {
@@ -50,6 +60,7 @@ export const decisionReasons: Record<Verdict, string[]> = {
     "유선으로 소속 확인 완료",
     "이미 계약된 기관의 추가 담당자",
     "기관 대표가 직접 확인해 줌",
+    "전문가단 추천으로 경력 확인 완료",
   ],
   rejected: [
     "제출 증빙이 확인되지 않음",
@@ -118,8 +129,29 @@ function readRows(): ApprovalRow[] {
   return rowsValue;
 }
 
+/** 전문가 계정 한 줄을 신청 한 건으로 편다 */
+function rowOfExpert(a: ExpertAccount): ApprovalRow {
+  return {
+    id: a.id,
+    kind: "expert",
+    name: a.profile.name,
+    org: a.profile.org,
+    /* 전문가 가입은 소속 · 신청 내용 · 증빙을 받지 않는다 — 상세도 이 칸들을 그리지 않는다 */
+    detail: "",
+    proof: "",
+    requestedAt: a.appliedAt,
+    warning: a.warning,
+    state: a.state,
+    decision: a.decision,
+    expert: a,
+  };
+}
+
+/** 전문가 신청이 위에 선다 — 가입 입구가 전문가로 바뀐 뒤로 새로 들어오는 것은 이쪽이다 */
 export function useApprovals(): ApprovalRow[] {
-  return useSyncExternalStore(subscribe, readRows, () => SEED_ROWS);
+  const seeded = useSyncExternalStore(subscribe, readRows, () => SEED_ROWS);
+  const experts = useExpertAccounts();
+  return useMemo(() => [...experts.map(rowOfExpert), ...seeded], [experts, seeded]);
 }
 
 /** 기둥의 배지와 회원 화면 단추가 읽는 수 — 아직 처리하지 않은 것만 센다 */
@@ -148,8 +180,15 @@ export function decideApproval(
   verdict: Verdict,
   reason: string,
   by: string,
+  /** 전문가 신청을 승인할 때 함께 주는 권한 */
+  duties: ExpertDuty[] = [],
 ): Decision {
   const decision: Decision = { verdict, reason, at: stamp(), by };
+  /* 전문가는 결론과 권한을 계정에 함께 적는다 — 감사 기록도 저쪽이 남긴다 */
+  if (row.kind === "expert") {
+    decideExpert(row.id, verdict, reason, by, duties);
+    return decision;
+  }
   write({ ...read(), [row.id]: decision });
   recordAction(
     `신청 ${row.id} · ${row.name}`,

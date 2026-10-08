@@ -108,15 +108,15 @@ const WHY_RIGHT = [
 ];
 
 const WHY_WRONG = [
-  "고른 보기는 자료에 나오는 말이지만 묻는 것과는 다릅니다. 발문이 무엇을 묻는지 다시 짚어야 합니다.",
+  "고른 보기는 자료에 나오는 말이지만 묻는 것과는 다릅니다. 발문이 무엇을 묻는지 다시 확인해야 합니다.",
   "흔한 오개념을 담은 보기를 골랐습니다. 배운 것을 반대로 적용한 것으로 보입니다.",
   "자료의 앞부분만 읽고 고른 것으로 보입니다. 뒤에 조건이 하나 더 붙어 있습니다.",
 ];
 
 /** 서술형에 붙는 AI 채점 해설 — 지어낸 답의 결에 맞춘다 */
 const ESSAY_WHY = {
-  full: "묻는 것에 답했고, 그렇게 본 까닭을 자료에서 끌어왔습니다.",
-  partial: "답은 바르게 짚었으나 까닭이 없거나 자료와 이어지지 않습니다.",
+  full: "묻는 것에 답했고, 그렇게 본 이유를 자료에서 끌어왔습니다.",
+  partial: "답은 바르게 짚었으나 이유가 없거나 자료와 이어지지 않습니다.",
   none: "묻는 것과 다른 것을 적었거나 판단할 만한 내용이 적습니다.",
 } as const;
 
@@ -217,7 +217,7 @@ export function answersOf(seat: string, subject: SubjectId): SheetAnswer[] {
         reflectPickText: reason.text,
         reflectText: r() < 0.45 ? pickOne(REFLECT_TEXTS[kind], r) : "",
         aiWhy: !answered
-          ? "답을 내지 않았습니다. 자아성찰에 적은 까닭을 함께 보아 주세요."
+          ? "답을 내지 않았습니다. 자아성찰에 적은 이유를 함께 보아 주세요."
           : right
             ? pickOne(WHY_RIGHT, r)
             : pickOne(WHY_WRONG, r),
@@ -246,7 +246,7 @@ export function answersOf(seat: string, subject: SubjectId): SheetAnswer[] {
       reflectText: r() < 0.5 ? pickOne(REFLECT_TEXTS[kind], r) : "",
       aiWhy: answered
         ? ESSAY_WHY[grade]
-        : "답을 내지 않았습니다. 자아성찰에 적은 까닭을 함께 보아 주세요.",
+        : "답을 내지 않았습니다. 자아성찰에 적은 이유를 함께 보아 주세요.",
       aiPoints: answered ? AI_POINT_OF[grade] : 0,
       max: QUESTION_POINT,
     };

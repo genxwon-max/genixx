@@ -244,7 +244,7 @@ export default function FormSlot({
     const target = form ?? createForm(roundId, slot.subject, slot.band, by, slot.grade);
     const added = draftIds.filter((id) => !savedIds.includes(id)).length;
     const dropped = savedIds.filter((id) => !draftIds.includes(id)).length;
-    const what = [added && `${added}문항 담음`, dropped && `${dropped}문항 뺌`].filter(Boolean);
+    const what = [added && `${added}문항 추가`, dropped && `${dropped}문항 제외`].filter(Boolean);
     setFormItems(
       target.id,
       draftIds,
@@ -415,7 +415,7 @@ export default function FormSlot({
                       !wantOk
                         ? "1에서 60 사이의 문항 수를 적어 주세요"
                         : picked.length > 0
-                          ? "지금 담은 것을 추천으로 갈아 끼웁니다"
+                          ? "지금 담은 것을 추천으로 교체합니다"
                           : undefined
                     }
                     onClick={recommend}
@@ -516,7 +516,7 @@ export default function FormSlot({
                   <tr>
                     <td colSpan={6} className="text-center text-(--a2-ink-4)">
                       <span className="block py-5">
-                        {locked ? "담은 문항이 없습니다." : "오른쪽 은행에서 체크해 담습니다."}
+                        {locked ? "담은 문항이 없습니다." : "오른쪽 문항 은행에서 선택해 담습니다."}
                       </span>
                     </td>
                   </tr>
@@ -544,7 +544,7 @@ export default function FormSlot({
               getKey={(r) => r.id}
               pageSize={25}
               searchHint="문항 ID · 발문 · 단원"
-              empty="담을 수 있는 승인 문항이 없습니다. 문항 은행에서 만들어 검수를 거쳐야 여기에 뜹니다."
+              empty="담을 수 있는 승인 문항이 없습니다. 문항 은행에서 만들어 검수를 거쳐야 여기에 표시됩니다."
               selection={{
                 chosen,
                 onToggle: toggle,
@@ -554,11 +554,11 @@ export default function FormSlot({
               toolbarExtra={
                 <>
                   <span className="a2-t-xs text-(--a2-ink-4)">
-                    고른 것 <span className="a2-num text-(--a2-ink-2)">{chosen.length}</span>
+                    선택한 문항 <span className="a2-num text-(--a2-ink-2)">{chosen.length}</span>
                   </span>
                   {chosen.length > 0 && (
                     <button type="button" className="a2-btn a2-btn-sm" onClick={() => setChosen([])}>
-                      고르기 지우기
+                      선택 해제
                     </button>
                   )}
                   <button
@@ -573,7 +573,7 @@ export default function FormSlot({
                       setChosen([]);
                     }}
                   >
-                    ← 고른 것 담기
+                    ← 선택한 문항 담기
                   </button>
                 </>
               }
@@ -589,12 +589,12 @@ export default function FormSlot({
           <div className="a2-form a2-form-lg">
             {locked ? (
               <>
-                <FormRow label="확정" hint="회차를 열면 이대로 나갑니다.">
+                <FormRow label="확정" hint="회차를 열면 이대로 출제됩니다.">
                   <span className="a2-mono a2-t-sm text-(--a2-ink-2)">{form.confirmedAt}</span>
                   <span className="a2-t-sm text-(--a2-ink-2)">{form.confirmedBy}</span>
                 </FormRow>
 
-                <FormRow label="잠금을 푸는 까닭" req>
+                <FormRow label="잠금을 푸는 사유" req>
                   <textarea
                     className="a2-textarea a2-textarea-lg"
                     rows={3}
@@ -664,7 +664,7 @@ export default function FormSlot({
           onCancel={discard}
           note={
             dirty
-              ? `저장하지 않은 담기가 있습니다 — ${picked.length}문항`
+              ? `저장하지 않은 변경이 있습니다 — ${picked.length}문항`
               : form
                 ? undefined
                 : "저장을 누르면 이 과목의 검사지가 만들어집니다."

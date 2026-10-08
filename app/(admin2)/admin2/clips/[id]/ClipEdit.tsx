@@ -59,7 +59,7 @@ export default function ClipEdit({ id }: { id: string }) {
           <Panel title="찾지 못했습니다">
             <p className="a2-t-sm text-(--a2-ink-2)">
               <span className="a2-mono">{id}</span> 영상이 목록에 없습니다. 지워졌거나 다른
-              브라우저에서 걸어 둔 칸일 수 있습니다(목록은 이 브라우저에만 저장됩니다).
+              브라우저에서 등록한 영상일 수 있습니다(목록은 이 브라우저에만 저장됩니다).
             </p>
           </Panel>
         </Body>
@@ -145,7 +145,7 @@ function Editor({
       <Body>
         <Panel title="영상" meta={row.id} flush>
           <div className="a2-form a2-form-lg">
-            <FormRow label="갈래" req>
+            <FormRow label="분류" req>
               {clipKinds.map((k) => (
                 <label key={k} className="a2-choice">
                   <input
@@ -200,8 +200,8 @@ function Editor({
               {badUrl && (
                 <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
                   <span>
-                    쓸 수 없는 주소입니다. https://로 시작하는 주소만 카드가 링크가 됩니다 — 그대로
-                    두면 「준비 중」으로 섭니다.
+                    쓸 수 없는 주소입니다. https://로 시작하는 주소여야 카드에 링크가 연결됩니다 — 그대로
+                    두면 「준비 중」으로 표시됩니다.
                   </span>
                 </p>
               )}
@@ -224,7 +224,7 @@ function Editor({
                   checked={v.shown}
                   onChange={(e) => draft.set("shown", e.target.checked)}
                 />
-                첫 화면에 세웁니다
+                첫 화면에 노출합니다
               </label>
             </FormRow>
           </div>

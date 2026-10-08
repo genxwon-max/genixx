@@ -654,8 +654,8 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
       { id: "c-p-one", text: "정답이 하나로만 성립합니다" },
       { id: "c-p-clear", text: "발문이 한 가지로만 읽힙니다" },
       { id: "c-p-grade", text: "학년 어휘와 문장 길이가 무리 없습니다" },
-      { id: "c-p-explain", text: "해설이 답만이 아니라 까닭까지 짚습니다" },
-      { id: "c-p-fixed", text: "지난 회차에 걸렸던 곳이 고쳐졌습니다" },
+      { id: "c-p-explain", text: "해설이 답만이 아니라 이유까지 설명합니다" },
+      { id: "c-p-fixed", text: "지난 회차에 지적된 부분이 수정되었습니다" },
     ],
     block: [
       { id: "c-b-fact", text: "교과 내용에 사실 오류가 있습니다" },
@@ -666,7 +666,7 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
         text: "오답 보기가 답이 될 수 없을 만큼 뻔하거나 의도가 겹칩니다",
       },
       { id: "c-b-grade", text: "학년에 비해 어휘·문장이 어렵습니다" },
-      { id: "c-b-explain", text: "해설이 답만 말하고 까닭을 말하지 않습니다" },
+      { id: "c-b-explain", text: "해설이 답만 말하고 이유를 말하지 않습니다" },
     ],
   },
   tagging: {
@@ -698,7 +698,7 @@ export const checkReasons: Record<ReviewCheckId, { pass: CheckReason[]; block: C
         text: "성취기준이 문항이 실제로 묻는 것과 다릅니다",
       },
       { id: "t-b-talent", text: "재능 축이 문항이 재는 능력과 다릅니다" },
-      { id: "t-b-subskill", text: "세부 기능이 더 맞는 것으로 따로 있습니다" },
+      { id: "t-b-subskill", text: "더 알맞은 세부 기능이 따로 있습니다" },
       { id: "t-b-level", text: "S단계가 발문의 조작 수준과 어긋납니다" },
       { id: "t-b-spec", text: "형식·배점·b모수가 단계 명세와 다릅니다" },
       {
@@ -995,7 +995,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
           { id: "tagging", ok: true, reason: "t-p-standard", note: "" },
           { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
         ],
-        text: "정답 유일성과 학년 이독성 모두 문항 없습니다. 승인합니다.",
+        text: "정답 유일성과 학년 이독성 모두 문제없습니다. 승인합니다.",
       },
     ],
     comments: [
@@ -1004,7 +1004,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
         by: "이검수",
         role: "reviewer",
         kind: "approve",
-        text: "정답 유일성과 학년 이독성 모두 문항 없습니다. 승인합니다.",
+        text: "정답 유일성과 학년 이독성 모두 문제없습니다. 승인합니다.",
       },
     ],
     updatedAt: "2026-08-09 11:30",
@@ -1170,14 +1170,14 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     talent: "LANG",
     subskill: "LANG-01",
     passage: "",
-    stem: "어떤 친구가 “'밝다'의 반대말은 언제나 '어둡다' 하나뿐이다”라고 말했다. 이 말이 맞는지 판단하고, 그렇게 생각한 까닭을 예를 들어 설명하시오. (힌트: '표정이 밝다', '방이 밝다'처럼 쓰임을 떠올려 보시오.)",
+    stem: "어떤 친구가 “'밝다'의 반대말은 언제나 '어둡다' 하나뿐이다”라고 말했다. 이 말이 맞는지 판단하고, 그렇게 생각한 이유를 예를 들어 설명하시오. (힌트: '표정이 밝다', '방이 밝다'처럼 쓰임을 떠올려 보시오.)",
     choices: ["", "", "", ""],
     distractorIntent: [],
     answer: 0,
     explain:
       "모범답안 예: 항상 하나는 아님. '방이 밝다 ↔ 어둡다'지만 '표정이 밝다 ↔ 어둡다/우울하다'처럼 문맥에 따라 반대말이 달라질 수 있음.",
     rubric:
-      "판단(항상 아님) 1점 + 문맥 예시 제시 1점 + 까닭 설명 1점.\n인정 예: '쓰임에 따라 달라진다', '표정일 때는 우울하다도 된다'\n불인정 예: '어둡다 하나뿐이다', 예시 없이 판단만 쓴 답",
+      "판단(항상 아님) 1점 + 문맥 예시 제시 1점 + 이유 설명 1점.\n인정 예: '쓰임에 따라 달라진다', '표정일 때는 우울하다도 된다'\n불인정 예: '어둡다 하나뿐이다', 예시 없이 판단만 쓴 답",
     guidance:
       "정답형 S4입니다 — 문맥에 따라 반대말이 달라진다는 '언어적으로 참인' 결론이 존재하며 가치판단이 아닙니다. 채점 일치도 ICC≥0.75를 위해 AI 1차 채점 후 휴먼 2인이 검증합니다. 저학년이므로 힌트로 스캐폴딩하되 예시 생성은 학생이 하도록 유지합니다.",
     type: "essay",
@@ -1266,7 +1266,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     talent: "MATH",
     subskill: "MATH-03",
     passage: "",
-    stem: "지호는 “분모가 8인 분수는 분자가 클수록 더 크다”고 말했다. (1) 분모가 8인 분수를 빈칸에 두 개 만들고(□/8과 □/8), 어느 것이 더 큰지 설명하시오. (2) 분모가 8로 같을 때 지호의 말이 항상 맞는지 까닭을 들어 쓰시오.",
+    stem: "지호는 “분모가 8인 분수는 분자가 클수록 더 크다”고 말했다. (1) 분모가 8인 분수를 빈칸에 두 개 만들고(□/8과 □/8), 어느 것이 더 큰지 설명하시오. (2) 분모가 8로 같을 때 지호의 말이 항상 맞는지 이유를 들어 쓰시오.",
     choices: ["", "", "", ""],
     distractorIntent: [],
     answer: 0,
@@ -1338,11 +1338,11 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     unitNo: "02",
     standardCode: "[4국04-02]",
     standardText: "낱말과 낱말의 의미 관계를 파악한다.",
-    tagADetail: "관계가 다른 까닭 판별",
+    tagADetail: "관계가 다른 이유 판별",
     talent: "LANG",
     subskill: "LANG-01",
     passage: "",
-    stem: "'과일 — 사과'와 관계가 같은 짝은 무엇이며, 그렇게 생각한 까닭으로 알맞은 것은?",
+    stem: "'과일 — 사과'와 관계가 같은 짝은 무엇이며, 그렇게 생각한 이유로 알맞은 것은?",
     choices: [
       "'옷 — 바지' — 앞의 말이 뒤의 말을 포함하기 때문",
       "'낮 — 밤' — 둘이 짝을 이루기 때문",
@@ -1359,7 +1359,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     explain:
       "정답 ①. '과일'이 '사과'를 포함하듯 '옷'이 '바지'를 포함합니다. 나머지는 반대·나열·비슷한 말이라 포함이 아닙니다.",
     guidance:
-      "까닭까지 함께 고르게 해 관계의 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
+      "이유까지 함께 고르게 해 관계의 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -1391,7 +1391,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "여름에는 물을 자주 마셔야 한다. 날이 더우면 땀이 많이 나서 몸속 물이 빠르게 줄어든다. 물이 모자라면 쉽게 지치고 어지러울 수 있다. 그래서 목이 마르지 않아도 조금씩 자주 마시는 것이 좋다.",
     stem: "이 문단의 중심 문장은 무엇이며, 나머지 문장은 어떤 구실을 합니까?",
     choices: [
-      "첫 문장 — 나머지는 그 까닭을 밝힌다",
+      "첫 문장 — 나머지는 그 이유를 밝힌다",
       "둘째 문장 — 나머지는 예를 든다",
       "셋째 문장 — 나머지는 반대 경우를 든다",
       "마지막 문장 — 나머지는 차례를 알려 준다",
@@ -1403,7 +1403,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
       "맺음말을 중심 문장으로 보는 오개념",
     ],
     answer: 0,
-    explain: "정답 ①. 첫 문장이 주장이고 나머지 세 문장은 그 까닭을 밝히는 뒷받침 문장입니다.",
+    explain: "정답 ①. 첫 문장이 주장이고 나머지 세 문장은 그 이유를 밝히는 뒷받침 문장입니다.",
     guidance:
       "지문은 네 문장을 넘기지 않습니다. 중심 문장이 문단 첫머리에만 오지 않도록 회차마다 자리를 바꿉니다.",
     type: "choice",
@@ -1472,18 +1472,18 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     subskill: "LANG-03",
     passage:
       "[가] 쉬는 시간에는 교실에서 조용히 쉬는 것이 좋다. 뛰어놀다 다치는 일이 잦기 때문이다.\n[나] 쉬는 시간에는 밖에 나가 몸을 움직이는 것이 좋다. 앉아만 있으면 다음 시간에 더 졸리기 때문이다.",
-    stem: "[가]와 [나] 중 어느 쪽에 더 동의하는지 정하고, 그렇게 생각한 까닭을 두 가지 들어 쓰시오. 반대쪽 글이 든 까닭도 한 가지 짚어 답하시오.",
+    stem: "[가]와 [나] 중 어느 쪽에 더 동의하는지 정하고, 그렇게 생각한 이유를 두 가지 들어 쓰시오. 반대쪽 글이 든 이유도 한 가지 짚어 답하시오.",
     choices: ["", "", "", ""],
     distractorIntent: [],
     answer: 0,
     explain:
-      "어느 쪽을 골라도 됩니다. 고른 쪽의 까닭 두 가지와 반대쪽 까닭에 대한 응답이 모두 성립하는지를 봅니다.",
+      "어느 쪽을 골라도 됩니다. 고른 쪽의 이유 두 가지와 반대쪽 이유에 대한 응답이 모두 성립하는지를 봅니다.",
     guidance:
       "어느 쪽이 옳은지를 채점하지 않습니다. 아이의 태도가 아니라 근거의 성립만 봅니다(진단 윤리 헌장 7조).",
     type: "essay",
     shortAnswers: "",
     rubric:
-      "고른 쪽 밝힘 1점 + 까닭 두 가지 2점(하나면 1점) + 반대쪽 까닭에 대한 응답 1점. 맞춤법·글씨는 감점하지 않습니다.",
+      "고른 쪽 밝힘 1점 + 이유 두 가지 2점(하나면 1점) + 반대쪽 이유에 대한 응답 1점. 맞춤법·글씨는 감점하지 않습니다.",
     assets: [],
     version: 1,
     anchor: false,
@@ -1529,7 +1529,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     answer: 0,
     explain: "정답 ①. 전체를 똑같이 셋으로 나눈 것 중 하나이므로 1/3입니다.",
     guidance:
-      "분수 표기를 고르는 것까지만 묻습니다. 크기를 견주게 하거나 계산을 요구하면 S1에서 이탈합니다.",
+      "분수 표기를 고르는 것까지만 묻습니다. 크기를 비교하게 하거나 계산을 요구하면 S1에서 이탈합니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -1572,7 +1572,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     talent: "MATH",
     subskill: "MATH-01",
     passage: "",
-    stem: "전체를 똑같이 넷으로 나눈 것 중 하나를 1/4이라고 합니다. 그렇게 말할 수 있는 까닭으로 알맞은 것은?",
+    stem: "전체를 똑같이 넷으로 나눈 것 중 하나를 1/4이라고 합니다. 그렇게 말할 수 있는 이유로 알맞은 것은?",
     choices: [
       "나눈 조각의 크기가 모두 같고 그중 하나이기 때문",
       "조각이 모두 네 개이기 때문",
@@ -1588,7 +1588,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     answer: 0,
     explain:
       "정답 ①. 분수는 똑같이 나눈 것 중 몇인지를 나타냅니다. 크기가 다르게 나뉘면 조각이 넷이어도 1/4이 아닙니다.",
-    guidance: "까닭을 고르게 해 등분할 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
+    guidance: "이유를 고르게 해 등분할 원리를 확인합니다. 오답지는 흔한 오개념으로만 만듭니다.",
     type: "choice",
     shortAnswers: "",
     rubric: "",
@@ -1741,7 +1741,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     talent: "NATU",
     subskill: "NATU-02",
     passage: "",
-    stem: "물을 가득 채운 병을 얼렸더니 뚜껑이 밀려 올라왔습니다. 그 까닭으로 알맞은 것은?",
+    stem: "물을 가득 채운 병을 얼렸더니 뚜껑이 밀려 올라왔습니다. 그 이유로 알맞은 것은?",
     choices: [
       "물이 얼면서 부피가 늘었기 때문",
       "물이 얼면서 무게가 늘었기 때문",
@@ -1781,7 +1781,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
           { id: "tagging", ok: true, reason: "t-p-level", note: "" },
           { id: "ethics", ok: true, reason: "e-p-ses", note: "" },
         ],
-        text: "까닭을 묻고 오답이 오개념을 겨냥하여 S2에 맞습니다. 승인합니다.",
+        text: "이유를 묻고 오답이 오개념을 겨냥하여 S2에 맞습니다. 승인합니다.",
       },
     ],
     comments: [],
@@ -1863,7 +1863,7 @@ const SEED_RAW: Partial<ItemDraft>[] = [
     type: "essay",
     shortAnswers: "",
     rubric:
-      "출처 설명 1점 + 확인 방법 설계 1점 + 그 방법이 확인이 되는 까닭 1점.\n인정 예: 「겉면을 닦고 물 높이를 표시해 둔 뒤 다시 본다」, 「빈 컵과 찬물 컵을 나란히 두고 견준다」\n불인정 예: 「새지 않는다」(주장만), 「공기 중의 물이다」(확인 방법 없음)",
+      "출처 설명 1점 + 확인 방법 설계 1점 + 그 방법이 확인이 되는 이유 1점.\n인정 예: 「겉면을 닦고 물 높이를 표시해 둔 뒤 다시 본다」, 「빈 컵과 찬물 컵을 나란히 두고 견준다」\n불인정 예: 「새지 않는다」(주장만), 「공기 중의 물이다」(확인 방법 없음)",
     assets: [],
     version: 1,
     anchor: false,
@@ -3476,7 +3476,7 @@ export function restoreItem(id: string, by: string, role: StaffRoleId, reason = 
     retireReason: undefined,
     comments: [
       ...item.comments,
-      { at: now(), by, role, kind: "note", text: reason ? `다시 씀 — ${reason}` : "다시 씀" },
+      { at: now(), by, role, kind: "note", text: reason ? `사용 재개 — ${reason}` : "사용 재개" },
     ],
   });
   return item;

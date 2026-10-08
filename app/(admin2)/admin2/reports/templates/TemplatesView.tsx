@@ -76,7 +76,7 @@ export default function TemplatesView() {
       },
       {
         key: "slot",
-        head: "자리",
+        head: "항목",
         width: "9rem",
         nowrap: true,
         value: (r) => slotOf(r.slot).label,
@@ -85,7 +85,7 @@ export default function TemplatesView() {
           <span title={slotOf(r.slot).guide} className="inline-flex flex-col">
             <span className="font-semibold text-(--a2-ink)">{slotOf(r.slot).label}</span>
             {/* 운영자가 더한 자리 — 씨앗 자리와 갈라 보여야 지울 수 있는 자리인지 안다 */}
-            {isCustomSlot(r.slot) && <span className="a2-t-xs text-(--a2-accent)">추가한 자리</span>}
+            {isCustomSlot(r.slot) && <span className="a2-t-xs text-(--a2-accent)">추가한 항목</span>}
           </span>
         ),
       },
@@ -96,7 +96,7 @@ export default function TemplatesView() {
         nowrap: true,
         value: (r) => (r.axis ? axisLabel(r.axis) : ""),
         cell: (r) =>
-          r.axis ? <Tag>{axisLabel(r.axis)}</Tag> : <span className="text-(--a2-ink-4)">전 축</span>,
+          r.axis ? <Tag>{axisLabel(r.axis)}</Tag> : <span className="text-(--a2-ink-4)">모든 축</span>,
       },
       {
         key: "band",
@@ -133,6 +133,7 @@ export default function TemplatesView() {
       },
       {
         key: "text",
+        detail: true,
         head: "문구",
         width: "100%",
         clip: true,
@@ -151,13 +152,13 @@ export default function TemplatesView() {
         head: "상태",
         width: "6.5rem",
         nowrap: true,
-        value: (r) => (r.empty ? "빈 칸" : r.edited ? "고침" : "씨앗"),
+        value: (r) => (r.empty ? "빈 칸" : r.edited ? "수정됨" : "기본값"),
         cell: (r) =>
           r.empty ? (
             <Status tone="warn">빈 칸</Status>
           ) : r.edited ? (
             <span title={`${r.editedAt} · ${r.editedBy}`}>
-              <Status tone="info">{isCustomSlot(r.slot) ? "작성" : "고침"}</Status>
+              <Status tone="info">{isCustomSlot(r.slot) ? "작성" : "수정됨"}</Status>
             </span>
           ) : (
             <Status tone="muted">기본 문구</Status>
@@ -180,7 +181,7 @@ export default function TemplatesView() {
         label: "상태",
         options: [
           { value: "empty", label: "빈 칸" },
-          { value: "edited", label: "고친 것" },
+          { value: "edited", label: "수정됨" },
           { value: "seed", label: "기본 문구" },
         ],
         match: (r, v) =>
@@ -188,7 +189,7 @@ export default function TemplatesView() {
       },
       {
         id: "slot",
-        label: "자리",
+        label: "항목",
         options: [...slotOrder, ...custom.map((c) => c.id)].map((s) => ({ value: s, label: slotOf(s).label })),
         match: (r, v) => r.slot === v,
       },
@@ -233,7 +234,7 @@ export default function TemplatesView() {
               </span>
             ))}
             <span className="a2-t-xs text-(--a2-ink-4)">
-              빈 칸은 같은 학년대의 다른 학년, 그다음 초등 3학년 문구로 물러섭니다.
+              빈 칸은 같은 학년대의 다른 학년, 그다음 초등 3학년 문구로 대체됩니다.
             </span>
           </p>
         </Body>
@@ -254,7 +255,7 @@ export default function TemplatesView() {
 
       <SeedNote>
         고친 문구는 이 브라우저에만 저장됩니다(lib/reportAssetStore.ts). 기본 문구는
-        lib/reportAssets.ts의 씨앗입니다. 여기서 무엇을 고쳐도 이미 발행된 리포트는 그대로
+        lib/reportAssets.ts의 기본값입니다. 여기서 무엇을 고쳐도 이미 발행된 리포트는 그대로
         두고 다음 조립부터 적용됩니다.
       </SeedNote>
     </>
@@ -294,7 +295,7 @@ function AddSlotDialog({ onClose }: { onClose: () => void }) {
   const submit = () => {
     const id = addSlot({ label, section, guide, byAxis, byBand }, by);
     if (!id) {
-      setError(label.trim() ? "같은 이름의 자리가 이미 있습니다." : "자리 이름을 적어 주세요.");
+      setError(label.trim() ? "같은 이름의 항목이 이미 있습니다." : "항목 이름을 적어 주세요.");
       return;
     }
     /* 만든 자리의 첫 칸(초등 3학년 — 빈 칸이 물러서는 학년)으로 바로 들어가 문구를 쓴다 */
@@ -322,11 +323,11 @@ function AddSlotDialog({ onClose }: { onClose: () => void }) {
             템플릿 추가
           </h2>
           <p className="mt-1 a2-t-sm text-(--a2-ink-3)">
-            리포트에 새 절을 더합니다. 만들면 학년마다 빈 칸이 생기고, 문구를 채우면 다음 조립부터 붙습니다.
+            리포트에 새 항목을 추가합니다. 만들면 학년마다 빈 칸이 생기고, 문구를 채우면 다음 조립부터 리포트에 들어갑니다.
           </p>
         </div>
         <div className="a2-form">
-          <FormRow label="자리 이름" req>
+          <FormRow label="항목 이름" req>
             <input
               className="a2-input"
               value={label}
@@ -338,15 +339,15 @@ function AddSlotDialog({ onClose }: { onClose: () => void }) {
               }}
             />
           </FormRow>
-          <FormRow label="리포트 절 제목" hint="비우면 자리 이름을 씁니다.">
+          <FormRow label="리포트에 표시할 제목" hint="비우면 항목 이름을 씁니다.">
             <input
               className="a2-input"
               value={section}
-              placeholder={label.trim() || "리포트에 서는 절 이름"}
+              placeholder={label.trim() || "리포트에 표시할 제목"}
               onChange={(e) => setSection(e.target.value)}
             />
           </FormRow>
-          <FormRow label="쓰는 안내" hint="이 자리의 글이 무엇을 말해야 하는지 — 문구를 쓰는 화면에 그대로 섭니다.">
+          <FormRow label="작성 안내" hint="이 항목의 글이 무엇을 말해야 하는지 — 문구를 쓰는 화면에 그대로 표시됩니다.">
             <textarea
               className="a2-textarea"
               rows={2}

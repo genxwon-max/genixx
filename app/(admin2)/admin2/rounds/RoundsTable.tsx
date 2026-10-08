@@ -133,6 +133,7 @@ export default function RoundsTable() {
         /* 0은 「아직 안 정했다」가 아니라 **제한 없음**이다. 대시로 적으면 그 둘이 한
            글자로 겹친다(lib/admin.ts의 target 주석) */
         key: "target",
+        detail: true,
         head: "정원",
         width: "5.5rem",
         num: true,
@@ -145,6 +146,7 @@ export default function RoundsTable() {
            답해야 하는 것은 「이 회차가 얼마인가」 하나다 — 두 값의 차이는 편성 화면에서
            본다. 값을 정렬할 수 있게 실제로 받는 값으로 센다 */
         key: "price",
+        detail: true,
         head: "응시료",
         width: "9rem",
         nowrap: true,
@@ -181,6 +183,7 @@ export default function RoundsTable() {
         /* 판정·발행의 분모는 대상이 아니라 제출이다. 응시하지 않은 사람은 판정할 것이
            없으므로 대상으로 나누면 세 막대가 늘 함께 낮아져 어디가 막혔는지 안 보인다. */
         key: "graded",
+        detail: true,
         head: "판정",
         width: "8rem",
         nowrap: true,
@@ -189,6 +192,7 @@ export default function RoundsTable() {
       },
       {
         key: "published",
+        detail: true,
         head: "발행",
         width: "8rem",
         nowrap: true,

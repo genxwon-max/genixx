@@ -84,7 +84,7 @@ export default function MembersView() {
       { id: "open" as TabId, label: "채점 중", rows: left, empty: "채점할 답안지가 없습니다." },
       {
         id: "done" as TabId,
-        label: "채점 끝",
+        label: "채점 완료",
         rows: sheets.filter((s) => !left.includes(s)),
         empty: "다 채점한 답안지가 없습니다.",
       },
@@ -189,6 +189,7 @@ export default function MembersView() {
       },
       {
         key: "comment",
+        detail: true,
         head: "해설",
         width: "6rem",
         nowrap: true,

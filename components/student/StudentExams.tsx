@@ -41,7 +41,7 @@ export default function StudentExams() {
       {/* 목록이 비었으면 접수 단추는 아래 빈 칸 안에 하나만 둔다 */}
       <Head
         title="내 진단"
-        lead="접수한 진단입니다. 눌러서 들어가면 과목을 응시하고 진행을 봅니다."
+        lead="접수한 진단입니다. 눌러서 들어가면 과목을 응시하고 진행 상황을 볼 수 있습니다."
         right={
           diags.length > 0 ? (
             <Link href="/exam/apply" className={btnQuiet}>
@@ -56,7 +56,7 @@ export default function StudentExams() {
           확인 중입니다…
         </p>
       ) : diags.length === 0 ? (
-        <EmptyList body="진단을 접수하면 이 목록에 한 줄씩 섭니다. 무료 진단은 20문항 한 판으로 바로 볼 수 있습니다." />
+        <EmptyList body="진단을 접수하면 이 목록에 한 줄씩 표시됩니다. 무료 진단은 20문항을 한 번에 바로 응시할 수 있습니다." />
       ) : (
         <ul className={`${cardBox} mt-7 divide-y divide-slate-100 overflow-hidden`}>
           {diags.map((d) => (

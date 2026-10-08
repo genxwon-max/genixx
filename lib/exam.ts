@@ -188,7 +188,7 @@ export type Brief = Material;
  */
 export const levels: { id: Level; name: string; desc: string }[] = [
   { id: "S1", name: "지각", desc: "자료에 적힌 것을 그대로 찾아낸다" },
-  { id: "S2", name: "이해", desc: "왜 그런지 까닭과 관계를 짚는다" },
+  { id: "S2", name: "이해", desc: "왜 그런지 이유와 관계를 파악한다" },
   { id: "S3", name: "생성", desc: "자기 말과 자기 순서로 다시 만든다" },
   { id: "S4", name: "창의", desc: "조건을 바꾸거나 새로 지어 낸다" },
 ];
@@ -320,7 +320,7 @@ export function answerText(q: Question, value: number | string | undefined): str
   const parts = splitBlanks(value, q.blanks.length);
   if (parts.every((p) => !p.trim())) return "";
   return q.blanks
-    .map((b, i) => `${b.label || "답"} : ${blankText(b, parts[i]) || "(비움)"}`)
+    .map((b, i) => `${b.label || "답"} : ${blankText(b, parts[i]) || "(빈칸)"}`)
     .join("\n");
 }
 

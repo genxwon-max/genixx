@@ -26,7 +26,7 @@ export default function JemFooter() {
           </div>
         </div>
 
-        <nav aria-label="사이트 갈래" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
+        <nav aria-label="사이트 메뉴" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
           {menu.map((g) => (
             <div key={g.id}>
               <Link href={g.href} className="jm-small font-bold text-(--j-ink) hover:text-(--j-primary)">

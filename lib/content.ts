@@ -254,7 +254,7 @@ export const blockKinds: { id: BlockKind; label: string }[] = [
   { id: "box", label: "〈보기〉 상자" },
   { id: "video", label: "영상" },
   { id: "audio", label: "음성" },
-  { id: "animation", label: "움직이는 그림" },
+  { id: "animation", label: "애니메이션" },
   { id: "rich", label: "서식 글" },
   { id: "note", label: "알림" },
 ];

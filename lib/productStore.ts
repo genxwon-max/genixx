@@ -135,7 +135,7 @@ const SEED: Product[] = [
       "## 무엇이 들어 있나요",
       "",
       "- 8개 **재능 축**별 해석과 근거",
-      "- 또래 견줌 없이 읽는 **성장 가이드**",
+      "- 또래 비교 없이 읽는 **성장 가이드**",
       "- 다음 회차에 볼 것 한 장",
       "",
       "> 점수로 등수를 매기지 않습니다. 아직 발현되지 않은 영역은 약점이 아니라 그렇게 적습니다.",
@@ -340,7 +340,7 @@ export async function shrinkImage(file: File, maxPx = IMAGE_MAX_PX): Promise<str
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("이 브라우저에서는 이미지를 줄일 수 없습니다.");
+    if (!ctx) throw new Error("이 브라우저에서는 이미지 크기를 줄일 수 없습니다.");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);

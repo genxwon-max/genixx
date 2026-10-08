@@ -56,8 +56,8 @@ export default function FaqView() {
         head: "노출",
         width: "6rem",
         nowrap: true,
-        value: (r) => (r.shown ? "노출" : "내림"),
-        cell: (r) => <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "내림"}</Status>,
+        value: (r) => (r.shown ? "노출" : "숨김"),
+        cell: (r) => <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "숨김"}</Status>,
       },
       {
         key: "home",
@@ -84,7 +84,7 @@ export default function FaqView() {
         label: "노출",
         options: [
           { value: "y", label: "노출" },
-          { value: "n", label: "내림" },
+          { value: "n", label: "숨김" },
         ],
         match: (r, v) => (v === "y" ? r.shown : !r.shown),
       },

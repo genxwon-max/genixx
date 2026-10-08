@@ -170,7 +170,7 @@ export default function DocEditor({
         text:
           `「${file.name}」을 불러왔습니다.` +
           (r.skippedImages > 0
-            ? ` 브라우저가 그리지 못하는 그림 ${r.skippedImages}개(EMF · WMF 등)는 건너뛰었습니다 — PNG · JPG로 넣어 주세요.`
+            ? ` 브라우저가 표시하지 못하는 그림 ${r.skippedImages}개(EMF · WMF 등)는 건너뛰었습니다 — PNG · JPG로 넣어 주세요.`
             : "") +
           " 글꼴 · 크기 · 색은 응시 화면 서식으로 바뀝니다.",
       });
@@ -335,7 +335,7 @@ export default function DocEditor({
               title="※ 알림 넣기"
               on={() => insert(`<aside data-note><p>※ </p></aside><p><br></p>`)}
             />
-            <Btn wide label="( ㄱ )" title="빈칸 표지 넣기 — 응시 화면에서 칸 모양으로 섭니다" on={blank} />
+            <Btn wide label="( ㄱ )" title="빈칸 표시 넣기 — 응시 화면에서 칸 모양으로 표시됩니다" on={blank} />
             {grid.open && (
               <div className="a2-doc-grid" onMouseLeave={() => setGrid((g) => ({ ...g, r: 0, c: 0 }))}>
                 <p className="a2-doc-grid-label">
@@ -375,7 +375,7 @@ export default function DocEditor({
               <Btn wide label="칸 −" title="이 칸 지우기" on={() => tableEdit("col-")} />
               <Btn wide label="표 지우기" title="표 전체 지우기" on={() => tableEdit("del")} />
             </div>
-            <span className="a2-doc-group-name">표 · 첫 줄은 머리</span>
+            <span className="a2-doc-group-name">표 · 첫 줄은 머리글</span>
           </div>
         )}
         {ctx.box && (

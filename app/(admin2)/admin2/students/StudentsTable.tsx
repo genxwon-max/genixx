@@ -73,6 +73,7 @@ const cols: Col<StudentRow>[] = [
   },
   {
     key: "school",
+    detail: true,
     head: "학교",
     width: "11rem",
     clip: true,
@@ -94,6 +95,7 @@ const cols: Col<StudentRow>[] = [
     // 보호자는 이름만으로 동명이인이 갈리지 않아 계정 ID를 뒤에 붙인다.
     // 두 줄로 쌓지 않는다 — 표 한 줄은 32px이고, 쌓는 순간 148줄이 두 배로 길어진다.
     key: "guardian",
+    detail: true,
     head: "보호자",
     width: "10rem",
     nowrap: true,
@@ -109,6 +111,7 @@ const cols: Col<StudentRow>[] = [
   {
     // 코드 문의에서 「이미 본 코드인가」를 가르는 값 — 접속코드 · 계정 상태와 함께 읽는다
     key: "attempts",
+    detail: true,
     head: "응시 누적",
     width: "5rem",
     num: true,
@@ -130,6 +133,7 @@ const cols: Col<StudentRow>[] = [
   },
   {
     key: "joinedAt",
+    detail: true,
     head: "등록일",
     width: "6rem",
     nowrap: true,

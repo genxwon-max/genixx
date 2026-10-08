@@ -136,6 +136,7 @@ export default function ProductsView() {
       },
       {
         key: "price",
+        detail: true,
         head: "정가",
         width: "6.5rem",
         num: true,
@@ -170,6 +171,7 @@ export default function ProductsView() {
         /* 무엇으로 썼고 얼마나 채웠나. 갈래만 적으면 「마크다운인데 비어 있는 상품」이
            채운 것과 같아 보이고, 분량만 적으면 무엇으로 고치러 들어가야 할지 모른다 */
         key: "detail",
+        detail: true,
         head: "상세 내용",
         width: "8rem",
         nowrap: true,
@@ -205,7 +207,8 @@ export default function ProductsView() {
       },
       {
         key: "updatedAt",
-        head: "고친 때",
+        detail: true,
+        head: "수정일",
         width: "8rem",
         nowrap: true,
         hide: "md",

@@ -100,8 +100,8 @@ export type Notice = {
 export type PopupKind = "notice" | "event";
 
 export const popupKinds: { id: PopupKind; label: string; hint: string }[] = [
-  { id: "notice", label: "안내", hint: "「공지사항」 머리띠에 제목·게시일·본문. 점검·중단처럼 읽어야 하는 말." },
-  { id: "event", label: "이벤트", hint: "그림이 판을 꽉 채우고 아래에 누를 단추. 모집·행사처럼 보여 주고 부르는 것." },
+  { id: "notice", label: "안내", hint: "「공지사항」 머리글에 제목·게시일·본문. 점검·중단처럼 읽어야 하는 내용." },
+  { id: "event", label: "이벤트", hint: "그림이 팝업을 꽉 채우고 아래에 누를 버튼. 모집·행사처럼 보여 주고 참여를 권하는 것." },
 ];
 
 /* ───────────────────────── 자주 묻는 질문 ───────────────────────── */

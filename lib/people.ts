@@ -65,6 +65,11 @@ export type Person = {
   works: string[];
   /** 이 사람이 GENIXX에서 실제로 맡는 일 */
   duty: string[];
+  /**
+   * 본인이 올린 사진(data URL). 전문가 회원이 「내 정보」에서 올린 것만 여기 담긴다 —
+   * 참여진 씨앗의 사진은 public/people/{id}.* 에서 찾는다(components/site/PersonAvatar.tsx).
+   */
+  photo?: string;
 };
 
 export const people: Person[] = [
@@ -159,7 +164,7 @@ export const people: Person[] = [
     role: "데이터 사이언티스트",
     group: "ai",
     org: "GENIXX AI Lab",
-    headline: "네 갈래 정보원을 하나의 좌표로 합치는 사람",
+    headline: "네 가지 정보원을 하나의 좌표로 합치는 사람",
     tags: ["멀티모달", "특성 설계", "실험 설계"],
     bio: "지필·SJT·설문·면담 네 정보원을 하나의 재능 좌표로 통합하는 특성 설계를 담당합니다. 심화진단의 음성·행동 시계열 처리도 맡고 있습니다.",
     career: [

@@ -100,6 +100,7 @@ const parentCols: Col<ParentRow>[] = [
   nameCol<ParentRow>(),
   {
     key: "contact",
+    detail: true,
     head: "연락처",
     width: "10rem",
     nowrap: true,
@@ -111,6 +112,7 @@ const parentCols: Col<ParentRow>[] = [
   },
   {
     key: "phone",
+    detail: true,
     head: "전화",
     width: "8rem",
     nowrap: true,
@@ -121,6 +123,7 @@ const parentCols: Col<ParentRow>[] = [
   // 지역: 거르개로 좁히는 칸이라 정렬(=검색)을 달지 않는다
   {
     key: "region",
+    detail: true,
     head: "지역",
     width: "6.5rem",
     nowrap: true,
@@ -156,6 +159,7 @@ const parentCols: Col<ParentRow>[] = [
   },
   {
     key: "lastSeen",
+    detail: true,
     head: "최근 접속",
     width: "6.5rem",
     nowrap: true,
@@ -188,6 +192,7 @@ const teacherCols: Col<TeacherRow>[] = [
   nameCol<TeacherRow>(),
   {
     key: "contact",
+    detail: true,
     head: "연락처",
     width: "10rem",
     nowrap: true,
@@ -206,6 +211,7 @@ const teacherCols: Col<TeacherRow>[] = [
   },
   {
     key: "region",
+    detail: true,
     head: "지역",
     width: "6.5rem",
     nowrap: true,
@@ -214,6 +220,7 @@ const teacherCols: Col<TeacherRow>[] = [
   },
   {
     key: "classes",
+    detail: true,
     head: "학급수",
     width: "4.5rem",
     num: true,
@@ -222,6 +229,7 @@ const teacherCols: Col<TeacherRow>[] = [
   },
   {
     key: "charge",
+    detail: true,
     head: "담당 학생",
     width: "5.5rem",
     num: true,

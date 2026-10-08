@@ -115,7 +115,7 @@ export function WhoNote({ self }: { self: Self }) {
         <>
           <span>
             {self.anonymous ? "로그인하지 않았습니다." : "아직 등록된 학생이 없습니다."} 학생
-            접속코드로 들어오면 이 자리에 내 진단이 뜹니다.
+            접속코드로 들어오면 여기에 내 진단이 뜹니다.
           </span>
           <Link href="/login/student" className="font-semibold text-soft-primary hover:underline">
             학생 코드로 접속

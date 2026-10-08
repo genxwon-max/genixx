@@ -19,7 +19,7 @@
 
 export type PermissionId =
   | "member.read" // 회원 목록 열람
-  | "member.approve" // 교사·기관 가입 승인
+  | "member.approve" // 교사·기관·전문가 가입 승인
   | "student.pii" // 학생 개인정보(생년월일·연락처) 열람
   | "student.code" // 접속코드 발급·회수
   | "round.manage" // 회차 개설·마감
@@ -74,7 +74,7 @@ export const permissionIds: PermissionId[] = [
  */
 export const permissionLabel: Record<PermissionId, string> = {
   "member.read": "회원 목록 열람",
-  "member.approve": "교사·기관 가입 승인",
+  "member.approve": "교사·기관·전문가 가입 승인",
   "student.pii": "학생 개인정보(생년월일·연락처) 열람",
   "student.code": "접속코드 발급·회수",
   "round.manage": "회차 개설·마감",
@@ -463,7 +463,8 @@ export const gradingQueue: GradingCase[] = [
 
 export type Approval = {
   id: string;
-  kind: "teacher" | "org";
+  /** 전문가 신청은 씨앗이 여기 없다 — lib/expertAccounts.ts의 계정이 신청 한 건으로 펴진다 */
+  kind: "teacher" | "org" | "expert";
   name: string;
   org: string;
   detail: string;
@@ -1177,7 +1178,7 @@ export const stubSections: Record<
   psychometrics: {
     id: "ADM-07",
     title: "심리측정 분석",
-    lead: "문항과 척도가 실제로 재고 있는지 통계로 확인합니다.",
+    lead: "문항과 척도가 제대로 측정하고 있는지 통계로 확인합니다.",
     todo: [
       "ADM-07-1 IRT 문항분석 — 변별도 a·난이도 b·추측도 c, Infit/Outfit MNSQ 적합도",
       "ADM-07-2 타당도 — CFA(CFI·RMSEA), 수렴·판별타당도, 학력×재능 직교성 r 모니터",
@@ -1203,7 +1204,7 @@ export const stubSections: Record<
     lead: "크로스 판정 결과에 따라 다음 회차에 어떤 모듈을 배정할지 규칙으로 정합니다.",
     todo: [
       "module_id와 trigger_rule(크로스셀 조건) 정의",
-      "설문판 form assembly를 그대로 재사용 — 문항 조립과 같은 얼개",
+      "설문판 form assembly를 그대로 재사용 — 문항 조립과 같은 구조",
       "규칙이 겹칠 때의 우선순위와, 어떤 규칙도 걸리지 않았을 때의 기본 모듈",
       "규칙을 바꾸기 전에 「지금 응시자에게 어떻게 적용되는지」 시뮬레이션",
     ],
@@ -1211,12 +1212,12 @@ export const stubSections: Record<
   events: {
     id: "ADM-11",
     title: "이벤트 로그",
-    lead: "응시·판정·발행 전 과정을 한 줄기로 추적합니다. events 스키마 통합 조회입니다.",
+    lead: "응시·판정·발행 전 과정을 한 흐름으로 추적합니다. events 스키마 통합 조회입니다.",
     todo: [
       "학생 한 명의 흐름을 시간순으로 — 응시 시작·제출·AI 채점·판정 확정·리포트 발행",
       "consent.granted / consent.withdrawn / interview.coded 같은 도메인 이벤트",
       "이상 징후 — 같은 계정의 짧은 시간 다중 접속, 비정상 제출 간격",
-      "감사 로그(ADM-10-3)와 다른 자리다. 저쪽은 사람의 열람, 여기는 시스템의 사건",
+      "감사 로그(ADM-10-3)와 다른 화면이다. 저쪽은 사람의 열람, 여기는 시스템의 사건",
     ],
   },
   settings: {

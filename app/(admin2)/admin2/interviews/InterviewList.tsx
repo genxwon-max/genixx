@@ -94,6 +94,7 @@ export default function InterviewList({
            서 있어서, 같은 값이 두 칸에 적히면 서로 다른 값처럼 읽힌다. 학년은 번호가
            없어도 그대로 둔다 — 그 줄에 남은 유일한 사람 정보다 */
         key: "seat",
+        detail: true,
         head: "응시번호",
         width: "6.5rem",
         nowrap: true,
@@ -134,6 +135,7 @@ export default function InterviewList({
       },
       {
         key: "why",
+        detail: true,
         head: "사유",
         width: "11rem",
         clip: true,
@@ -146,7 +148,7 @@ export default function InterviewList({
               {top.rank <= 2 ? <Tag accent>{top.label}</Tag> : <Tag>{top.label}</Tag>}
               {r.reasons.length > 1 && (
                 <span className="mt-0.5 block a2-t-xs text-(--a2-ink-3)">
-                  +{r.reasons.length - 1}건 더 걸림
+                  +{r.reasons.length - 1}건 더 있음
                 </span>
               )}
             </span>
@@ -175,7 +177,7 @@ export default function InterviewList({
               <span className="a2-mono">{scheduleText(r)}</span>
               {isOverdue(r, now) && (
                 <span className="ml-1.5">
-                  <Status tone="danger">지남</Status>
+                  <Status tone="danger">일정 지남</Status>
                 </span>
               )}
             </>
@@ -198,6 +200,7 @@ export default function InterviewList({
       },
       {
         key: "mode",
+        detail: true,
         head: "방식",
         width: "4.5rem",
         nowrap: true,
@@ -208,6 +211,7 @@ export default function InterviewList({
       {
         /* 신청 건만 센다. 선발은 우리가 고른 것이라 「며칠 묵었다」가 뜻이 없다 */
         key: "wait",
+        detail: true,
         head: "대기",
         width: "5.5rem",
         num: true,

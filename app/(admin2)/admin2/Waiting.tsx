@@ -26,7 +26,7 @@ export default function Waiting() {
   ];
 
   return (
-    <Panel title="처리 대기" flush meta="사람 손이 필요한 것">
+    <Panel title="처리 대기" flush meta="직접 처리해야 하는 항목">
       <table className="a2-table">
         <tbody>
           {/* 줄을 누르면 그 일이 쌓여 있는 화면으로 간다 — 가는 곳은 이름 칸의 링크다

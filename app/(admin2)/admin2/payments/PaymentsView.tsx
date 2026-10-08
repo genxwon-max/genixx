@@ -429,11 +429,11 @@ export default function PaymentsView() {
 
         <select
           className="a2-select w-auto"
-          aria-label="달"
+          aria-label="월"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
         >
-          <option value="">달 전체</option>
+          <option value="">월 전체</option>
           {monthOpts.map((m) => (
             <option key={m} value={m}>
               {Number(m)}월
@@ -487,7 +487,7 @@ export default function PaymentsView() {
             {sum.refund > 0 ? (
               <>
                 승인 <span className="a2-num text-(--a2-ink-3)">{won(sum.gross)}</span>에서 환불{" "}
-                <span className="a2-num text-(--a2-ink-3)">{won(sum.refund)}</span>을 빼고 남은 돈입니다.
+                <span className="a2-num text-(--a2-ink-3)">{won(sum.refund)}</span>을 뺀 금액입니다.
               </>
             ) : (
               <>
@@ -517,7 +517,7 @@ export default function PaymentsView() {
       <Body>
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* ② 어떻게 흘러왔나 — 이 판만 조회 기간을 타지 않는다(머리 주석) */}
-          <Panel title="달별 순매출" meta="열두 달 전부 · 눌러서 그 달만 보기">
+          <Panel title="월별 순매출" meta="열두 달 전부 · 눌러서 그 달만 보기">
             {MONTH_SERIES.length === 0 ? (
               <p className="a2-t-sm text-(--a2-ink-3)">아직 기록이 없습니다.</p>
             ) : (

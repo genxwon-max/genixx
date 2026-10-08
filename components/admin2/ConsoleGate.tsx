@@ -57,7 +57,7 @@ export default function ConsoleGate({ role, name }: { role: StaffRoleId | null; 
             <h1 className="a2-h">콘솔 화면 권한이 없습니다.</h1>
             <p className="mt-2 a2-t-sm text-(--a2-ink-3)">
               {name} 님은 {roleOf(role).label} 계정으로 들어와 계십니다. 이 콘솔은 슈퍼 관리자와, 슈퍼
-              관리자에게 화면 권한을 받은 운영자만 들어옵니다.
+              관리자에게 화면 권한을 받은 운영자만 들어올 수 있습니다.
             </p>
             <div className="mt-3 flex gap-1.5">
               <Link href="/admin" className="a2-btn a2-btn-primary">
@@ -72,7 +72,7 @@ export default function ConsoleGate({ role, name }: { role: StaffRoleId | null; 
           <form onSubmit={submit} noValidate className="mt-3 a2-panel p-4">
             <h1 className="a2-h">운영자 로그인</h1>
             <p className="mt-1 a2-t-sm text-(--a2-ink-3)">
-              슈퍼 관리자가 발급한 아이디로 들어옵니다. 가입 절차는 없습니다.
+              슈퍼 관리자가 발급한 아이디로 로그인합니다. 가입 절차는 없습니다.
             </p>
 
             <label className="mt-3 block">

@@ -36,7 +36,7 @@ export const examSets: ExamSet[] = [
       {
         id: "kor-1",
         level: "S1",
-        stem: "이 글에서 민서가 매일 아침 창문을 연 까닭으로 가장 알맞은 것은 무엇인가요?",
+        stem: "이 글에서 민서가 매일 아침 창문을 연 이유로 가장 알맞은 것은 무엇인가요?",
         response: {
           kind: "choice",
           choices: [
@@ -86,7 +86,7 @@ export const examSets: ExamSet[] = [
           kind: "essay",
           guide: [
             "민서가 어떤 마음이었을지 한 문장으로 쓰기",
-            "그렇게 생각한 까닭을 지문에서 찾아 쓰기",
+            "그렇게 생각한 이유를 지문에서 찾아 쓰기",
             "친구에게 해 주고 싶은 말을 한두 문장으로 쓰기",
           ],
           placeholder: "예) 민서는 사흘이나 기다렸으니까 …",
@@ -96,7 +96,7 @@ export const examSets: ExamSet[] = [
       {
         id: "kor-10",
         level: "S4",
-        stem: "이 이야기에 새 제목을 붙인다면 무엇이 좋을까요? 제목을 짓고, 그 제목이 어울리는 까닭을 써 보세요.",
+        stem: "이 이야기에 새 제목을 붙인다면 무엇이 좋을까요? 제목을 짓고, 그 제목이 어울리는 이유를 써 보세요.",
         response: {
           kind: "essay",
           guide: ["새 제목을 한 줄로 쓰기", "이야기의 어느 부분에서 그 제목을 떠올렸는지 쓰기"],
@@ -237,7 +237,7 @@ export const examSets: ExamSet[] = [
       {
         id: "kor-9",
         level: "S4",
-        stem: "1학년 학생도 알아볼 수 있도록 이 안내문에 한 줄을 더 넣는다면 무엇을 쓰겠습니까? 그렇게 정한 까닭도 함께 써 보세요.",
+        stem: "1학년 학생도 알아볼 수 있도록 이 안내문에 한 줄을 더 넣는다면 무엇을 쓰겠습니까? 그렇게 정한 이유도 함께 써 보세요.",
         response: {
           kind: "essay",
           guide: [
@@ -439,7 +439,7 @@ export const examSets: ExamSet[] = [
           kind: "essay",
           guide: [
             "어떤 변의 길이를 먼저 더했는지 쓰기",
-            "왜 그렇게 계산했는지 까닭 쓰기",
+            "왜 그렇게 계산했는지 이유 쓰기",
             "마지막에 답을 단위와 함께 쓰기",
           ],
           placeholder: "예) 먼저 가로와 세로를 더하면 …",

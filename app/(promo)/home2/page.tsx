@@ -162,7 +162,7 @@ const contrast = [
   { label: "지금까지", text: "지필 한 번과 단편 설문으로 점수 하나를 냅니다.", on: false },
   {
     label: "GENIXX",
-    text: "네 갈래 표현에 보호자·교사 관찰을 교차하고, 사람이 확정합니다.",
+    text: "네 가지 표현에 보호자·교사 관찰을 교차하고, 사람이 확정합니다.",
     on: true,
   },
 ];
@@ -655,7 +655,7 @@ export default function PromoHome() {
             <SectionHead
               eyebrow="전문가 협진"
               title="리포트를 혼자 읽게 두지 않습니다"
-              lead="결과지를 받고 '그래서 무엇을 해야 하나요'에서 멈추면 진단은 아무 일도 하지 않은 셈입니다. 사람이 붙는 자리를 세 군데 두었습니다."
+              lead="결과지를 받고 '그래서 무엇을 해야 하나요'에서 멈추면 진단은 아무 일도 하지 않은 셈입니다. 전문가가 함께하는 자리를 세 군데 두었습니다."
             />
             <PromoImage
               name="promo-expert"

@@ -74,7 +74,7 @@ export default function ExamInfo() {
       </dl>
 
       {/* 진단 세 갈래 */}
-      <h2 className="mt-12 text-[20px] font-bold tracking-tight text-soft-ink">진단 세 갈래</h2>
+      <h2 className="mt-12 text-[20px] font-bold tracking-tight text-soft-ink">진단 세 가지</h2>
       <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
         가입 전에 1셋트를 풀어 보고, 가입하면 무료 진단, 접수하면 유료 진단으로 이어집니다. 앞
         단계에서 푼 문항은 다음 단계로 이어지니 다시 풀지 않습니다.
@@ -141,7 +141,7 @@ export default function ExamInfo() {
             </li>
             <li>
               · 유료 진단은 한 번에 몰아 보지 않고 과목마다 따로 응시합니다. 제한 시간은
-              과목마다 따로 흐릅니다.
+              과목마다 따로 적용됩니다.
             </li>
             <li>· 답하지 않은 문항이 남아 있어도 제출할 수 있습니다.</li>
             <li>
@@ -153,7 +153,7 @@ export default function ExamInfo() {
             <li>· 제출한 뒤에는 문제마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>
             <li>· 응시를 마치면 학생 설문, 이어서 학부모 설문에 답합니다. 필수는 아닙니다.</li>
             <li>· 설문은 낸 뒤에도 다시 열어 고칠 수 있고, 아직 안 낸 분은 나중에 내도 됩니다.</li>
-            <li>· 중간에 포기하면 그 과목(무료 진단은 한 판 전체)의 응시 기회가 사라집니다.</li>
+            <li>· 중간에 포기하면 그 과목(무료 진단은 전체)의 응시 기회가 사라집니다.</li>
           </ul>
         </section>
         <section className="rounded-[2px] border border-soft-line bg-white p-6">

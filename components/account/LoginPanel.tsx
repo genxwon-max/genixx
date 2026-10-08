@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { mfaRequired, roleHome, signIn, type Role } from "@/lib/authStore";
 import { getRoster } from "@/lib/roster";
+import { findExpertByLogin } from "@/lib/expertAccountStore";
 import { themeOf } from "@/lib/authVariant";
 import AuthTabs, { BackRow } from "./AuthTabs";
 
@@ -81,9 +82,14 @@ export default function LoginPanel({
   const [showPw, setShowPw] = useState(false);
   const [keep, setKeep] = useState(false);
   const [errors, setErrors] = useState<{ id?: string; password?: string }>({});
-  const [pendingMfa, setPendingMfa] = useState<{ role: Role; name: string; email: string } | null>(
-    null,
-  );
+  const [pendingMfa, setPendingMfa] = useState<{
+    role: Role;
+    name: string;
+    email: string;
+    /** 전문가 계정 번호 — 승인 여부와 권한은 그 계정에서 읽는다 */
+    expertId?: string;
+    loginId?: string;
+  } | null>(null);
 
   const routeAfterLogin = (role: Role, approved?: boolean) => {
     if ((role === "teacher" || role === "director") && approved === false) return "/my/pending";
@@ -127,6 +133,22 @@ export default function LoginPanel({
     if (Object.keys(next).length > 0) return;
 
     const local = loginId.toLowerCase();
+
+    // 전문가는 가입한 아이디로 찾는다. 가입한 적 없는 expert 아이디는 시연 계정으로 잇는다
+    // (lib/expertAccountStore.ts의 findExpertByLogin). 승인 전이어도 들인다 — 전문가 홈이
+    // 승인 진행 상태를 보여 주는 자리다.
+    const expert = findExpertByLogin(local);
+    if (expert) {
+      setPendingMfa({
+        role: "expert",
+        name: expert.profile.name || local,
+        email: expert.email || `${local}@genixx.demo`,
+        expertId: expert.id,
+        loginId: local,
+      });
+      return;
+    }
+
     const role: Role = local.startsWith("admin")
       ? "admin"
       : local.startsWith("expert")
@@ -159,6 +181,8 @@ export default function LoginPanel({
             name: pendingMfa.name,
             provider: null,
             email: pendingMfa.email,
+            loginId: pendingMfa.loginId,
+            expertId: pendingMfa.expertId,
             approved: true,
             mfaPassed: true,
           });

@@ -38,9 +38,9 @@ export type AiModel = {
 };
 
 export const modelTiers: Record<ModelTier, { label: string; desc: string }> = {
-  top: { label: "무거움", desc: "판단이 걸린 자리 — 느리고 비쌉니다" },
-  mid: { label: "가운데", desc: "형식이 정해진 글 — 대개 여기서 충분합니다" },
-  fast: { label: "가벼움", desc: "옮겨 적기처럼 판단이 거의 없는 자리" },
+  top: { label: "고성능", desc: "판단이 필요한 작업 — 느리고 비쌉니다" },
+  mid: { label: "표준", desc: "형식이 정해진 글 — 대개 여기서 충분합니다" },
+  fast: { label: "경량", desc: "옮겨 적기처럼 판단이 거의 없는 작업" },
 };
 
 /**
@@ -55,21 +55,21 @@ export const aiModels: AiModel[] = [
     label: "Opus 5",
     vendor: "Anthropic",
     tier: "top",
-    note: "긴 지시를 끝까지 지키고 스스로 되짚습니다. 문항을 짓고 판단하는 자리에 씁니다.",
+    note: "긴 지시를 끝까지 지키고 스스로 검토합니다. 문항을 만들고 판단하는 작업에 씁니다.",
   },
   {
     id: "claude-sonnet-5",
     label: "Sonnet 5",
     vendor: "Anthropic",
     tier: "mid",
-    note: "형식이 정해진 글을 빠르게 냅니다. 해설·소견문처럼 틀이 있는 자리에 씁니다.",
+    note: "형식이 정해진 글을 빠르게 냅니다. 해설·소견문처럼 형식이 있는 작업에 씁니다.",
   },
   {
     id: "claude-haiku-4-5-20251001",
     label: "Haiku 4.5",
     vendor: "Anthropic",
     tier: "fast",
-    note: "가장 빠르고 쌉니다. 전사처럼 판단이 거의 없고 양이 많은 자리에 씁니다.",
+    note: "가장 빠르고 저렴합니다. 전사처럼 판단이 거의 없고 양이 많은 작업에 씁니다.",
   },
 ];
 

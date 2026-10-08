@@ -52,8 +52,8 @@ export default function NoticesView() {
         head: "노출",
         width: "6rem",
         nowrap: true,
-        value: (r) => (r.shown ? "노출" : "내림"),
-        cell: (r) => <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "내림"}</Status>,
+        value: (r) => (r.shown ? "노출" : "숨김"),
+        cell: (r) => <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "숨김"}</Status>,
       },
       {
         /* 띄우는 것과 올려 두는 것은 다른 일이라 칸을 따로 세운다 */
@@ -89,7 +89,7 @@ export default function NoticesView() {
         label: "노출",
         options: [
           { value: "y", label: "노출" },
-          { value: "n", label: "내림" },
+          { value: "n", label: "숨김" },
         ],
         match: (r, v) => (v === "y" ? r.shown : !r.shown),
       },
@@ -97,8 +97,8 @@ export default function NoticesView() {
         id: "popup",
         label: "팝업",
         options: [
-          { value: "y", label: "띄움" },
-          { value: "n", label: "안 띄움" },
+          { value: "y", label: "사용" },
+          { value: "n", label: "사용 안 함" },
         ],
         match: (r, v) => (v === "y" ? r.popup : !r.popup),
       },

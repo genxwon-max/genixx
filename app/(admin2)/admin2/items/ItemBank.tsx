@@ -111,6 +111,7 @@ const COLS: Col<ItemDraft>[] = [
   },
   {
     key: "form",
+    detail: true,
     head: "구성",
     width: "6.5rem",
     nowrap: true,
@@ -120,6 +121,7 @@ const COLS: Col<ItemDraft>[] = [
   },
   {
     key: "type",
+    detail: true,
     head: "유형",
     width: "7rem",
     nowrap: true,
@@ -165,6 +167,7 @@ const COLS: Col<ItemDraft>[] = [
   },
   {
     key: "anchor",
+    detail: true,
     head: "앵커",
     width: "4rem",
     nowrap: true,
@@ -176,6 +179,7 @@ const COLS: Col<ItemDraft>[] = [
   },
   {
     key: "author",
+    detail: true,
     head: "출제자",
     width: "6rem",
     nowrap: true,
@@ -200,6 +204,7 @@ const COLS: Col<ItemDraft>[] = [
   },
   {
     key: "correctRate",
+    detail: true,
     head: "정답률",
     width: "5.5rem",
     num: true,
@@ -245,8 +250,8 @@ const ITEM_CSV: CsvSpec<ItemDraft> = {
     { head: "출처", value: (r) => (r.origin === "ai" ? "AI 초안" : "사람") },
     { head: "출제자", value: (r) => r.authorName },
     { head: "정답률(%)", value: (r) => r.correctRate },
-    { head: "만든 때", value: (r) => r.createdAt },
-    { head: "고친 때", value: (r) => r.updatedAt },
+    { head: "생성일", value: (r) => r.createdAt },
+    { head: "수정일", value: (r) => r.updatedAt },
   ],
 };
 
@@ -314,7 +319,7 @@ export default function ItemBank() {
         id: "conflict" as TabId,
         label: "자가 검수",
         rows: sorted.filter(selfReviewed),
-        empty: "자기가 낸 문항을 자기가 승인한 줄이 없습니다.",
+        empty: "출제자가 자기 문항을 직접 승인한 건이 없습니다.",
       },
     ],
     [sorted],

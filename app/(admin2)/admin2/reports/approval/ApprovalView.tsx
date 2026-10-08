@@ -60,7 +60,7 @@ export default function ApprovalView() {
         label: "기다리는 중",
         rows: rows.filter((r) => r.send === "waiting" && !r.due),
       },
-      { id: "sent" as TabId, label: "보냄", rows: rows.filter((r) => r.send === "sent") },
+      { id: "sent" as TabId, label: "발송 완료", rows: rows.filter((r) => r.send === "sent") },
       { id: "all" as TabId, label: "전체", rows },
     ],
     [rows],
@@ -86,6 +86,7 @@ export default function ApprovalView() {
       },
       {
         key: "id",
+        detail: true,
         head: "리포트",
         width: "8.5rem",
         nowrap: true,
@@ -108,6 +109,7 @@ export default function ApprovalView() {
       },
       {
         key: "assembled",
+        detail: true,
         head: "조립",
         width: "6.5rem",
         nowrap: true,
@@ -143,7 +145,7 @@ export default function ApprovalView() {
         cell: (r) =>
           r.send === "sent" ? (
             <>
-              <Status tone="muted">보냄</Status>
+              <Status tone="muted">발송 완료</Status>
               <span className="mt-0.5 block a2-mono a2-t-xs text-(--a2-ink-3)">{r.sentAt}</span>
             </>
           ) : (
@@ -291,7 +293,7 @@ function Scheduler({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="a2-label">직접</span>
+          <span className="a2-label">직접 입력</span>
           <input
             type="number"
             className="a2-input a2-mono"
@@ -311,7 +313,7 @@ function Scheduler({
 
         <div className="mt-4 flex flex-wrap items-center justify-end gap-1.5">
           <span className="mr-auto a2-t-xs text-(--a2-ink-4)">
-            아직 안 나간 리포트의 예정일이 함께 움직입니다.
+            아직 보내지 않은 리포트의 예정일도 함께 바뀝니다.
           </span>
           <button type="button" className="a2-btn" onClick={onClose}>
             그만두기

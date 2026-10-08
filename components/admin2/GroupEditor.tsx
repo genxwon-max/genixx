@@ -93,7 +93,7 @@ export default function GroupEditor({
                       </option>
                     ))}
                 </select>
-                <span className="a2-t-sm">까지 한 화면에 함께 섭니다</span>
+                <span className="a2-t-sm">까지 한 화면에 함께 표시됩니다</span>
                 <button
                   type="button"
                   className="a2-btn a2-btn-sm a2-btn-danger ml-auto"

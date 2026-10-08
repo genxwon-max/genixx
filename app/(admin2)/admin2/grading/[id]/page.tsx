@@ -1,6 +1,6 @@
 import ScoreBench from "./ScoreBench";
 
-export const metadata = { title: "채점대" };
+export const metadata = { title: "채점 상세" };
 
 /*
  * EXP-04 채점대 — 응답 하나에 루브릭을 댄다.

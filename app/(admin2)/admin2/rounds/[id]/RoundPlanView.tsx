@@ -270,7 +270,7 @@ export default function RoundPlanView({ id }: { id: string }) {
               하나」 하나다. 단계 배분·앵커·남은 승인·확정 여부는 **그 칸을 열면** 바로 위에
               같은 말로 서 있고(FormSlot의 요약 판), 확정이 안 된 칸이 어디인지는 여는
               관문이 막을 때 이름으로 불러 준다. 여기서는 과목 · 문항 · 배점 · 여닫기만 둔다 */}
-          <Panel title="편성판" flush>
+          <Panel title="편성표" flush>
             <div className="a2-form">
               {slots.map((s) => {
                 const on = openKey === s.key;
@@ -391,7 +391,7 @@ export default function RoundPlanView({ id }: { id: string }) {
                 </FormRow>
 
                 {(periodBad.length > 0 || (plan.state !== "draft" && periodMoved)) && (
-                  <FormRow label="짚을 것">
+                  <FormRow label="확인할 점">
                     {periodBad.length > 0 && (
                       <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-danger)" }}>
                         <span>{periodBad.join(" · ")}</span>
@@ -452,12 +452,12 @@ export default function RoundPlanView({ id }: { id: string }) {
                     </span>
                   )}
                   <span className="a2-t-sm font-semibold text-(--a2-ink-2)">
-                    받는 값 {priceText(nextPrice)}
+                    받는 금액 {priceText(nextPrice)}
                   </span>
                 </FormRow>
 
                 {(priceBad.length > 0 || (plan.state !== "draft" && priceMoved)) && (
-                  <FormRow label="짚을 것">
+                  <FormRow label="확인할 점">
                     {priceBad.length > 0 && (
                       <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-danger)" }}>
                         <span>{priceBad.join(" · ")}</span>
@@ -466,8 +466,8 @@ export default function RoundPlanView({ id }: { id: string }) {
                     {plan.state !== "draft" && priceMoved && (
                       <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
                         <span>
-                          이미 {roundStates[plan.state].label}인 회차입니다. 값을 고쳐도 지난 결제는
-                          그대로 남습니다 — 앞으로 접수하는 사람에게만 새 값이 걸립니다.
+                          이미 {roundStates[plan.state].label}인 회차입니다. 금액을 고쳐도 지난 결제는
+                          그대로 남습니다 — 앞으로 접수하는 사람에게만 새 금액이 적용됩니다.
                         </span>
                       </p>
                     )}
@@ -486,15 +486,15 @@ export default function RoundPlanView({ id }: { id: string }) {
 
             {/* ④ 여는 관문 — 값을 고치는 일이 아니라 되돌리기 어려운 동작이라
                 저장 줄에 얹지 않고 제 까닭을 받아 제 단추로 나간다 */}
-            <Panel title="여는 관문" meta={`막음 ${blocks.length} · 확인 ${warns.length}`} flush>
+            <Panel title="회차 열기 전 점검" meta={`차단 ${blocks.length} · 확인 ${warns.length}`} flush>
               <div className="a2-form">
                 {gates.length === 0 ? (
-                  <FormRow label="다음 걸음">
-                    <span className="a2-t-sm text-(--a2-ink-4)">마감된 회차입니다. 더 옮길 상태가 없습니다.</span>
+                  <FormRow label="다음 단계">
+                    <span className="a2-t-sm text-(--a2-ink-4)">마감된 회차입니다. 더 바꿀 상태가 없습니다.</span>
                   </FormRow>
                 ) : (
                   <>
-                    <FormRow label="까닭" req>
+                    <FormRow label="사유" req>
                       <textarea
                         className="a2-textarea"
                         rows={2}
@@ -509,7 +509,7 @@ export default function RoundPlanView({ id }: { id: string }) {
                         막는 것을 목록으로 펴 두었다가 걷었다. 대신 **막힌 단추가 제 까닭을
                         들고 있게** 한다 — 눌리지 않는 단추만 남고 왜인지가 어디에도 없으면
                         고장으로 읽힌다. 머리의 「막음 N」이 몇 건인지는 늘 적는다 */}
-                    <FormRow label="다음 걸음">
+                    <FormRow label="다음 단계">
                       <span className="flex flex-wrap items-center gap-1.5">
                         {gates.map((g) => (
                           <button
@@ -519,11 +519,11 @@ export default function RoundPlanView({ id }: { id: string }) {
                             disabled={g.blocked || gateWhy.trim().length < 10 || dirty}
                             title={
                               dirty
-                                ? "먼저 저장해 주세요 — 관문은 저장된 편성을 봅니다"
+                                ? "먼저 저장해 주세요 — 저장된 편성을 기준으로 점검합니다"
                                 : g.blocked
                                   ? blocks.map((c) => c.text).join(" · ")
                                   : gateWhy.trim().length < 10
-                                    ? "까닭을 열 자 이상 적어 주세요"
+                                    ? "사유를 열 자 이상 적어 주세요"
                                     : undefined
                             }
                             onClick={() => run(g.action, gateWhy.trim())}

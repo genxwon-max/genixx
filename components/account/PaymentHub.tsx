@@ -92,7 +92,7 @@ export default function PaymentHub({
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-soft-line">
         <h1 className="pb-3 text-[24px] font-bold tracking-tight text-soft-ink">결제</h1>
         {view === "hub" && (
-          <nav aria-label="결제 갈래" className="flex gap-5">
+          <nav aria-label="결제 종류" className="flex gap-5">
             {tabs.map((v) => {
               const on = tab === v.id;
               return (

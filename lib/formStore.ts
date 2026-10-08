@@ -155,7 +155,7 @@ const SEED: ExamForm[] = [
         at: "2026-07-24 16:40",
         by: "이검수",
         action: "confirm",
-        text: "S4가 아직 검수 대기라 세 문항으로 갑니다. 이 회차 수학은 위층을 재지 못한다는 것을 판정 회의에 알렸습니다.",
+        text: "S4가 아직 검수 대기라 세 문항으로 갑니다. 이 회차 수학은 상위 단계를 측정하지 못한다는 것을 판정 회의에 알렸습니다.",
       },
     ],
   },
@@ -331,7 +331,7 @@ export function removeFormItem(id: string, itemId: string, by: string, code: str
   patch(
     id,
     { itemIds: form.itemIds.filter((x) => x !== itemId) },
-    { by, action: "edit", text: `${code} 뺌` },
+    { by, action: "edit", text: `${code} 제외` },
   );
 }
 
@@ -456,7 +456,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
   if (missing.length > 0) {
     out.push({
       tone: "warn",
-      text: `${missing.join(" · ")} 단계 문항이 하나도 없습니다. 그 층은 이 검사지로 재지 못합니다.`,
+      text: `${missing.join(" · ")} 단계 문항이 하나도 없습니다. 그 단계는 이 검사지로 측정하지 못합니다.`,
     });
   }
 
@@ -465,7 +465,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
   if (ratio < ANCHOR_RATIO) {
     out.push({
       tone: "warn",
-      text: `앵커가 ${anchors}건(${Math.round(ratio * 100)}%)입니다. ${Math.round(ANCHOR_RATIO * 100)}%를 채워야 회차 간 등화의 기준이 섭니다.`,
+      text: `앵커가 ${anchors}건(${Math.round(ratio * 100)}%)입니다. ${Math.round(ANCHOR_RATIO * 100)}%를 채워야 회차 간 등화의 기준이 마련됩니다.`,
     });
   }
 
@@ -473,7 +473,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
   if (disclosed.length > 0) {
     out.push({
       tone: "warn",
-      text: `밖에 공개된 적이 있는 문항이 ${disclosed.length}건 있습니다 — ${disclosed.map((i) => i.code || i.id).join(", ")}`,
+      text: `외부에 공개된 적이 있는 문항이 ${disclosed.length}건 있습니다 — ${disclosed.map((i) => i.code || i.id).join(", ")}`,
     });
   }
 
@@ -483,7 +483,7 @@ export function checkForm(form: ExamForm, picked: ItemDraft[]): FormFinding[] {
     if (n / picked.length > 0.6) {
       out.push({
         tone: "warn",
-        text: `${talentOf(t as ItemDraft["talent"]).name} 축이 ${n}건으로 치우쳤습니다. 한 축이 6할을 넘으면 다른 축은 재지 못합니다.`,
+        text: `${talentOf(t as ItemDraft["talent"]).name} 축이 ${n}건으로 치우쳤습니다. 한 축이 60%를 넘으면 다른 축은 재지 못합니다.`,
       });
     }
   }

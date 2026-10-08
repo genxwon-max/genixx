@@ -82,7 +82,7 @@ const SEED_LOG: RoundLogEntry[] = [
     at: SEED_AT,
     by: "초기 설정",
     version: 1,
-    reason: "서비스 시작 시 깔린 첫 판입니다",
+    reason: "서비스 시작 시 적용된 기본 설정입니다",
     lines: [],
   },
 ];
@@ -105,7 +105,7 @@ export function configErrors(c: ExamConfig): string[] {
     }
   }
   if (!subjects.some((s) => c.enabled[s.id])) {
-    out.push("과목을 하나도 켜 두지 않았습니다. 볼 것이 없는 회차는 열 수 없습니다.");
+    out.push("과목을 하나도 켜 두지 않았습니다. 응시할 과목이 없는 회차는 열 수 없습니다.");
   }
   if (c.graceMin < 0 || c.graceMin > LIMITS.maxGrace) {
     out.push(`마무리 시간은 0분 이상 ${LIMITS.maxGrace}분 이하입니다.`);
@@ -141,13 +141,13 @@ export function configWarnings(before: ExamConfig, after: ExamConfig, started: n
         `이미 ${started}명이 응시를 시작했습니다. 지금 바꾸면 먼저 본 아이와 나중에 볼 아이의 조건이 달라집니다.`,
       );
       out.push(
-        "이미 시작한 아이의 시계는 줄거나 늘지 않습니다. 시작할 때의 시간이 그 아이 기록에 박혀 있습니다.",
+        "이미 시작한 아이의 제한 시간은 줄거나 늘지 않습니다. 시작할 때의 시간이 그 아이 기록에 저장되어 있습니다.",
       );
     }
     const off = subjects.filter((s) => before.enabled[s.id] && !after.enabled[s.id]);
     if (off.length > 0) {
       out.push(
-        `${off.map((s) => s.short).join("·")} 과목을 끕니다. 이미 그 과목을 제출한 아이의 자료는 남지만, 아직 안 본 아이는 영영 못 보게 됩니다.`,
+        `${off.map((s) => s.short).join("·")} 과목을 끕니다. 이미 그 과목을 제출한 아이의 자료는 남지만, 아직 응시하지 않은 아이는 그 과목을 응시할 수 없게 됩니다.`,
       );
     }
   }
@@ -159,7 +159,7 @@ export function configWarnings(before: ExamConfig, after: ExamConfig, started: n
   for (const s of subjects) {
     const d = after.limits[s.id] - before.limits[s.id];
     if (d < 0) {
-      out.push(`${s.short} 제한 시간을 ${-d}분 줄입니다. 지난 회차와 견줄 때 이 차이를 함께 봐야 합니다.`);
+      out.push(`${s.short} 제한 시간을 ${-d}분 줄입니다. 지난 회차와 비교할 때 이 차이를 함께 봐야 합니다.`);
     }
   }
   return out;

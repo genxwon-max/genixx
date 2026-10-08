@@ -391,7 +391,7 @@ export const pageContent: Record<string, PageContent> = {
   "/legal/operation": {
     id: "PUB-08-6",
     title: "운영정책",
-    lead: "회차 운영·응시 규정·결과 정정·계정 제재처럼, 약관이 정한 원칙을 실제로 어떻게 굴리는지 적어 둔 문서입니다.",
+    lead: "회차 운영·응시 규정·결과 정정·계정 제재처럼, 약관이 정한 원칙을 실제로 어떻게 운영하는지 적어 둔 문서입니다.",
     blocks: [
       {
         kind: "points",

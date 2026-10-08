@@ -119,6 +119,12 @@ export type Counselor = {
   to: string;
   /** 비워 두는 구간 [시작, 끝) — 점심·내부 회의 */
   off: [string, string];
+  /**
+   * 날짜로 덮는 예외 — 상담사가 「상담 일정」(/expert/schedule)의 달력에서 고친다.
+   * closed는 근무 요일인데 쉬는 날, opened는 근무 요일이 아닌데 여는 날이다.
+   */
+  closed?: string[];
+  opened?: string[];
 };
 
 /**
@@ -156,7 +162,7 @@ const SEED: Omit<Counselor, "person">[] = [
   },
   {
     id: "im-doyoon",
-    focus: "판정이 경계선에 선 까닭과 다음 회차에 볼 것을 설명드립니다.",
+    focus: "판정이 경계선에 선 이유와 다음 회차에 볼 것을 설명드립니다.",
     topics: ["report", "career"],
     spans: [60],
     modes: ["video", "phone", "onsite"],
@@ -178,7 +184,7 @@ const SEED: Omit<Counselor, "person">[] = [
   },
   {
     id: "choi-eunbi",
-    focus: "아이가 어떤 문제에서 오래 머물렀는지를 문항 쪽에서 읽어 드립니다.",
+    focus: "아이가 어떤 문제에서 오래 머물렀는지를 문항을 기준으로 설명해 드립니다.",
     topics: ["score", "school"],
     spans: [30, 60],
     modes: ["video", "phone"],
@@ -285,8 +291,20 @@ export function filterCounselors(list: Counselor[], v: CounselQuery): Counselor[
   });
 }
 
-/** 이 상담사가 그 날 자리를 여는가 — 요일만 본다 */
-export const worksOn = (c: Counselor, date: string) => c.days.includes(weekday(date));
+/**
+ * 이 상담사가 그 날 자리를 여는가 — 요일을 보고, 날짜로 적어 둔 예외가 그것을 덮는다.
+ *
+ * 빈자리를 세는 곳(lib/counselStore.ts)이 전부 이 함수를 지나므로, 상담사가 달력에서
+ * 하루를 닫으면 보호자의 달력에서도 그 날이 함께 닫힌다.
+ */
+export function worksOn(
+  c: Pick<Counselor, "days" | "closed" | "opened">,
+  date: string,
+) {
+  if (c.closed?.includes(date)) return false;
+  if (c.opened?.includes(date)) return true;
+  return c.days.includes(weekday(date));
+}
 
 /**
  * 그 날 이 상담사의 30분 칸 전부 — 아직 누가 찼는지는 보지 않는다.
@@ -294,7 +312,7 @@ export const worksOn = (c: Counselor, date: string) => c.days.includes(weekday(d
  * 비우는 구간(off)에 걸치는 칸은 세우지 않는다. 「12:30에 시작해 13:00에 끝나는 면담」은
  * 점심에 걸리지 않지만 12:30~13:30을 비워 두기로 했으면 그 칸도 없는 것이다.
  */
-export function cellsOf(c: Counselor): string[] {
+export function cellsOf(c: Pick<Counselor, "from" | "to" | "off">): string[] {
   const cells: string[] = [];
   const [offFrom, offTo] = [minOf(c.off[0]), minOf(c.off[1])];
   for (let m = minOf(c.from); m + STEP <= minOf(c.to); m += STEP) {

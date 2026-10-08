@@ -289,7 +289,7 @@ export function sendNow(row: SendRow, by: string): boolean {
     {
       by,
       action: "send",
-      text: row.due ? "보낼 때가 되어 보냈습니다" : `예정일(${row.sendOn})보다 먼저 보냈습니다`,
+      text: row.due ? "발송 예정일이 되어 보냈습니다" : `예정일(${row.sendOn})보다 먼저 보냈습니다`,
     },
   );
   return true;

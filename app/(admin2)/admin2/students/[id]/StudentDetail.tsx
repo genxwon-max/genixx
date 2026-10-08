@@ -219,7 +219,7 @@ export default function StudentDetail({ row }: { row: StudentRow }) {
             {issued ? (
               <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-ok)" }}>
                 <span>
-                  새 코드를 냈습니다. 옛 코드는 이제 들어오지 않습니다 — 보호자에게 바뀐 코드를
+                  새 코드를 발급했습니다. 옛 코드는 이제 쓸 수 없습니다 — 보호자에게 바뀐 코드를
                   알려 주세요.
                 </span>
               </p>

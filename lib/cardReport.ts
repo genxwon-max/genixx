@@ -82,7 +82,7 @@ const clip = (s: string, n = 90) => {
   return t.length > n ? `${t.slice(0, n)}…` : t;
 };
 
-const HIGHER_ORDER = ["까닭을", "왜 그런지", "설명하시오", "근거를", "판단하"];
+const HIGHER_ORDER = ["이유를", "까닭을", "왜 그런지", "설명하시오", "근거를", "판단하"];
 
 function blockImages(blocks: Block[] = []) {
   return blocks.flatMap((b) => (b.kind === "images" ? b.images : []));
@@ -142,7 +142,7 @@ export function buildCardReport(item: ItemDraft): CardReport {
     const naked = blockImages(blocks).filter((fig) => !fig.alt.trim()).length;
     if (naked > 0) {
       w.push({
-        text: `지문 그림 ${naked}건에 대체 글이 없습니다. 저시력 · 전맹 학생에게는 그림 없이 풀어야 합니다.`,
+        text: `지문 그림 ${naked}건에 대체 글이 없습니다. 저시력 · 전맹 학생은 그림 없이 풀어야 합니다.`,
         fix: "그림이 있어야 풀리면 대체 글을 넣어 주세요.",
       });
     }
@@ -191,7 +191,7 @@ export function buildCardReport(item: ItemDraft): CardReport {
           key: "ethics",
           label: "윤리 · 편향",
           tier: "ethics",
-          written: w.length ? `걸린 낱말 ${w.length}갈래` : "성 · 지역 · 문화 · 가정 형편 편향 낱말 없음",
+          written: w.length ? `걸린 낱말 ${w.length}종류` : "성 · 지역 · 문화 · 가정 형편 편향 낱말 없음",
         },
         [],
         w,
@@ -238,8 +238,8 @@ function questionSections(
     }
     if ((q.level === "S1" || q.level === "S2") && HIGHER_ORDER.some((x) => q.stem.includes(x))) {
       w.push({
-        text: `${q.level} 발문이 까닭 · 설명을 요구합니다. 한 단계 위의 조작입니다.`,
-        fix: "단계에 맞는 조작을 묻도록 발문을 고치거나 단계를 한 칸 올려 주세요.",
+        text: `${q.level} 발문이 이유 · 설명을 요구합니다. 한 단계 위의 조작입니다.`,
+        fix: "단계에 맞는 조작을 묻도록 발문을 고치거나 단계를 하나 올려 주세요.",
       });
     }
     add("level", "인지단계", "tagging", `${q.level} ${levelSpecs[q.level].name}`, f, w);
@@ -373,7 +373,7 @@ function questionSections(
       if (got < need) f.push({ text: "오답 의도가 적히지 않은 보기가 있습니다.", fix: "오답 보기마다 잡으려는 오개념을 한 줄씩 적어 주세요." });
     } else if (!hasChoices(q.type)) {
       written = q.wrongIntent.trim() ? clip(q.wrongIntent) : "없음";
-      if (!q.wrongIntent.trim()) w.push({ text: "예상 오답을 적지 않았습니다.", fix: "학생이 흔히 틀리는 답과 그 까닭을 적어 주세요." });
+      if (!q.wrongIntent.trim()) w.push({ text: "예상 오답을 적지 않았습니다.", fix: "학생이 흔히 틀리는 답과 그 이유를 적어 주세요." });
     } else {
       written = "OX — 해당 없음";
     }
@@ -407,7 +407,7 @@ function questionSections(
   {
     const f: ReportFinding[] = [];
     if (!q.perspectiveHierarchy.trim()) f.push({ text: "인지 처리 위계 구체가 비어 있습니다.", fix: "풀 때 일어나는 처리를 단계로 적어 주세요." });
-    if (!q.perspectiveAbility.trim()) f.push({ text: "인지 능력 관련 수준이 비어 있습니다.", fix: "해내면 어떤 수준으로 읽는지 적어 주세요." });
+    if (!q.perspectiveAbility.trim()) f.push({ text: "인지 능력 관련 수준이 비어 있습니다.", fix: "이 문항을 풀면 어떤 수준으로 볼 수 있는지 적어 주세요." });
     add(
       "perspective",
       "재능 평가 관점",

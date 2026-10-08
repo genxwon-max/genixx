@@ -206,7 +206,7 @@ export function saveStaffPerms(
   if (wouldLockOut(rows, row.id, next.perms)) {
     return {
       ok: false,
-      why: "운영자 계정·권한 관리를 들고 있는 활성 계정이 이 하나뿐입니다. 다른 계정에 먼저 넘겨 주세요.",
+      why: "운영자 계정·권한 관리 권한이 있는 활성 계정이 이 하나뿐입니다. 다른 계정에 먼저 넘겨 주세요.",
     };
   }
 

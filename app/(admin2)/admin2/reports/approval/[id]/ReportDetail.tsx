@@ -83,7 +83,7 @@ export default function ReportDetail({ id }: { id: string }) {
         back={back}
         actions={
           sent ? (
-            <Status tone="muted">보냄 · {row.sentAt}</Status>
+            <Status tone="muted">발송 완료 · {row.sentAt}</Status>
           ) : (
             <button
               type="button"
@@ -102,7 +102,7 @@ export default function ReportDetail({ id }: { id: string }) {
         {row.banned > 0 && (
           <p className="a2-note" style={{ borderLeftColor: "var(--a2-danger)" }}>
             <span>
-              검토가 필요한 표현이 {row.banned}개 있어 보낼 수 없습니다. 아래 리포트에서 걸린
+              검토가 필요한 표현이 {row.banned}개 있어 보낼 수 없습니다. 아래 리포트에서 해당
               블록을 고쳐 주세요.
             </span>
           </p>
@@ -167,17 +167,17 @@ export default function ReportDetail({ id }: { id: string }) {
                 </ul>
               )}
               <p className="mt-2 a2-t-xs text-(--a2-ink-4)">
-                재지 않은 축 — {unmeasuredAxes.join(" · ")}
+                측정하지 않은 축 — {unmeasuredAxes.join(" · ")}
               </p>
             </div>
           </div>
         </Panel>
 
-        <Panel title="발송" meta={sent ? "보냄" : `조립 +${policy.days}일`}>
+        <Panel title="발송" meta={sent ? "발송 완료" : `조립 +${policy.days}일`}>
           {sent ? (
             <p className="a2-t-sm text-(--a2-ink-2)">
               <span className="a2-mono">{row.sentAt}</span> 에 {row.sentBy} 님이 보냈습니다.
-              보호자 화면이 열려 있습니다.
+              보호자 화면에 공개되어 있습니다.
             </p>
           ) : (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -234,7 +234,7 @@ export default function ReportDetail({ id }: { id: string }) {
           <p className="mt-1 a2-t-xs text-(--a2-ink-4)">
             {sent
               ? "이미 보낸 리포트라 고칠 수 없습니다."
-              : "「리포트 보기」에서 회원이 받는 꼴로 보고, 그 안에서 고칩니다."}
+              : "「리포트 보기」에서 회원이 받는 형태로 보고, 그 안에서 고칩니다."}
           </p>
         </Panel>
 
@@ -297,7 +297,7 @@ export default function ReportDetail({ id }: { id: string }) {
               {row.student} 님에게 리포트를 보냅니다
             </h2>
             <p className="mt-2 a2-t-sm leading-[1.6] text-(--a2-ink-2)">
-              보내는 순간 보호자 화면이 열립니다. 되돌릴 수 없습니다.
+              보내는 순간 보호자 화면에 공개됩니다. 되돌릴 수 없습니다.
             </p>
             {row.cautions > 0 && (
               <p className="a2-note mt-3" style={{ borderLeftColor: "var(--a2-warn)" }}>

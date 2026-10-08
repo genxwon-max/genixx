@@ -156,7 +156,7 @@ export default function ChildNew() {
       <AccHead
         id="ACC-03"
         title="학생 등록"
-        lead="필수 항목 다섯 가지만 있으면 등록됩니다. 선택 항목은 결과를 더 잘 읽기 위한 값이라 나중에 채우셔도 됩니다."
+        lead="필수 항목 다섯 가지만 있으면 등록됩니다. 선택 항목은 결과를 더 잘 해석하기 위한 정보라 나중에 채우셔도 됩니다."
         back={{ href: "/my/children", label: "학생 목록으로" }}
       />
 

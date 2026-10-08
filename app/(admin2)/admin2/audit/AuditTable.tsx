@@ -87,8 +87,8 @@ const cols: Col<AuditRow>[] = [
         {r.reason && (
           <span
             role="img"
-            aria-label="개인정보 열람 — 사유가 기록된 줄"
-            title="개인정보 열람 — 사유가 기록된 줄"
+            aria-label="개인정보 열람 — 사유가 기록된 항목"
+            title="개인정보 열람 — 사유가 기록된 항목"
             className="a2-dot mr-1.5 inline-block align-middle"
             style={{ color: "var(--a2-warn)" }}
           />

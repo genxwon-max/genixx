@@ -90,7 +90,7 @@ function Editor({
               className="a2-btn a2-btn-danger"
               onClick={() => {
                 const ok = window.confirm(
-                  `「${faq.q || faq.id}」 질문을 지웁니다.\n\n안 쓰는 질문이면 지우지 말고 노출을 끄세요 — 그러면 목록에는 남고 사람 눈에만 안 보입니다.\n\n지울까요?`,
+                  `「${faq.q || faq.id}」 질문을 지웁니다.\n\n안 쓰는 질문이면 지우지 말고 노출을 끄세요 — 그러면 목록에는 남고 사용자 화면에만 안 보입니다.\n\n지울까요?`,
                 );
                 if (!ok) return;
                 removeFaq(faq.id);
@@ -158,7 +158,7 @@ function Editor({
                   disabled={!v.shown}
                   onChange={(e) => draft.set("home", e.target.checked)}
                 />
-                홈에도 세웁니다
+                홈에도 노출합니다
               </label>
             </FormRow>
           </div>

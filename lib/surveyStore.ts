@@ -132,9 +132,9 @@ export type SurveyLogEntry = {
 
 export const actionLabel: Record<SurveyAction, string> = {
   publish: "발행",
-  upload: "파일 올림",
-  revert: "이전 판으로 되돌림",
-  discard: "초안 버림",
+  upload: "파일 업로드",
+  revert: "이전 버전으로 되돌림",
+  discard: "초안 삭제",
 };
 
 /**
@@ -214,7 +214,7 @@ const SEED_LOG: SurveyLogEntry[] = surveyDocIds.map((id) => ({
   by: "초기 설정",
   action: "publish" as const,
   version: 1,
-  reason: "서비스 시작 시 깔린 첫 판입니다",
+  reason: "서비스 시작 시 적용된 기본 설정입니다",
   lines: [],
   snapshot: seedForm(...split(id)),
 }));
@@ -575,10 +575,10 @@ export function uploadDraftItems(
     docId: id,
     by,
     action: "upload",
-    reason: `${fileName} — ${mode === "append" ? "기존 문항 뒤에 붙임" : "기존 문항을 바꿈"}`,
+    reason: `${fileName} — ${mode === "append" ? "기존 문항 뒤에 추가" : "기존 문항 교체"}`,
     lines: [
       `${fileName}에서 ${texts.length}건을 읽어 초안에 넣었습니다`,
-      mode === "replace" ? `기존 문항 ${doc.draft.items.length}건을 버렸습니다` : "기존 문항은 그대로 두었습니다",
+      mode === "replace" ? `기존 문항 ${doc.draft.items.length}건을 삭제했습니다` : "기존 문항은 그대로 두었습니다",
       `초안 문항 ${doc.draft.items.length} → ${items.length}`,
     ],
   });
@@ -620,7 +620,7 @@ export function discardDraft(id: SurveyDocId, by: string) {
     docId: id,
     by,
     action: "discard",
-    reason: `발행하지 않은 수정 ${lines.length}곳을 버렸습니다`,
+    reason: `발행하지 않은 수정 ${lines.length}곳을 취소했습니다`,
     lines,
   });
 }
@@ -716,11 +716,11 @@ export function diffForms(before: SurveyForm, after: SurveyForm): string[] {
     if (b.no !== a.no) out.push(`번호 ${b.no || "(빈칸)"} → ${a.no || "(빈칸)"}`);
     if (b.section !== a.section) out.push(`구역 「${cut(b.section, 12)}」 → 「${cut(a.section, 12)}」`);
     /* 역량이 갈리면 점수가 붙는 칸이 갈린다 — 글자 하나 바뀐 것과 같은 무게로 적지 않는다 */
-    if (b.group !== a.group) out.push(`재는 칸 「${cut(b.group, 14)}」 → 「${cut(a.group, 14)}」`);
+    if (b.group !== a.group) out.push(`측정 역량 「${cut(b.group, 14)}」 → 「${cut(a.group, 14)}」`);
     return out;
   });
 
-  rows("고르기", before.choices, after.choices, (c) => c.label, (b, a) => {
+  rows("선택형", before.choices, after.choices, (c) => c.label, (b, a) => {
     const out: string[] = [];
     if (b.label !== a.label) out.push(`「${cut(b.label)}」 → 「${cut(a.label)}」`);
     if (b.options.join("|") !== a.options.join("|")) {
@@ -734,7 +734,7 @@ export function diffForms(before: SurveyForm, after: SurveyForm): string[] {
     if (b.label !== a.label) out.push(`「${cut(b.label)}」 → 「${cut(a.label)}」`);
     if (b.hint !== a.hint) out.push(`도움말 「${cut(b.hint)}」 → 「${cut(a.hint)}」`);
     if (b.placeholder !== a.placeholder) {
-      out.push(`예시글 「${cut(b.placeholder)}」 → 「${cut(a.placeholder)}」`);
+      out.push(`입력 예시 「${cut(b.placeholder)}」 → 「${cut(a.placeholder)}」`);
     }
     return out;
   });
@@ -758,11 +758,11 @@ export function publishWarnings(doc: SurveyDoc, answered: number): string[] {
   const d = doc.draft;
 
   const blank = d.items.filter((i) => !i.text.trim()).length;
-  if (blank > 0) w.push(`빈 문항이 ${blank}건 있습니다. 그대로 나가면 응답자에게 빈 줄로 보입니다.`);
+  if (blank > 0) w.push(`빈 문항이 ${blank}건 있습니다. 그대로 발행하면 응답자에게 빈 줄로 보입니다.`);
   if (d.items.length === 0) w.push("문항이 하나도 없습니다.");
   if (d.items.length !== doc.live.items.length && answered > 0) {
     w.push(
-      `이미 이 설문에 ${answered}건이 들어와 있습니다. 문항 수가 달라지면 두 판의 응답을 나란히 비교할 수 없습니다.`,
+      `이미 이 설문에 ${answered}건이 들어와 있습니다. 문항 수가 달라지면 두 버전의 응답을 나란히 비교할 수 없습니다.`,
     );
   }
   const dup = d.items.map((i) => i.text.trim()).filter(Boolean);
@@ -772,14 +772,14 @@ export function publishWarnings(doc: SurveyDoc, answered: number): string[] {
      셈법이 「역량마다 연결된 2문항의 평균」이라, 이것만은 발행 전에 반드시 보여야 한다. */
   const noGroup = d.items.filter((i) => i.text.trim() && !i.group.trim()).length;
   if (noGroup > 0) {
-    w.push(`재는 칸(역량)이 비어 있는 문항이 ${noGroup}건 있습니다. 그 답은 역량 점수에 들어가지 않습니다.`);
+    w.push(`측정 역량이 비어 있는 문항이 ${noGroup}건 있습니다. 그 답은 역량 점수에 들어가지 않습니다.`);
   }
 
   const emptyChoice = d.choices.filter((c) => c.options.filter((o) => o.trim()).length === 0).length;
-  if (emptyChoice > 0) w.push(`보기가 하나도 없는 고르기 묶음이 ${emptyChoice}건 있습니다.`);
+  if (emptyChoice > 0) w.push(`보기가 하나도 없는 선택형 문항이 ${emptyChoice}건 있습니다.`);
 
   const blankOpen = d.opens.filter((o) => !o.label.trim()).length;
-  if (blankOpen > 0) w.push(`질문이 비어 있는 서술 칸이 ${blankOpen}건 있습니다.`);
+  if (blankOpen > 0) w.push(`질문이 비어 있는 서술형 문항이 ${blankOpen}건 있습니다.`);
 
   return w;
 }
@@ -823,7 +823,7 @@ export function parseSurveyFile(name: string, text: string): ParsedUpload {
         ? data
         : ((data as { items?: unknown }).items as unknown[] | undefined);
       if (!Array.isArray(raw)) {
-        return { items: [], skipped: 0, error: "문항 목록을 찾지 못했습니다. 글 목록이거나 items 칸이 있어야 합니다." };
+        return { items: [], skipped: 0, error: "문항 목록을 찾지 못했습니다. 문자열 목록이거나 items 항목이 있어야 합니다." };
       }
       const items = raw
         .map((v) => (typeof v === "string" ? v : ((v as { text?: string })?.text ?? "")))

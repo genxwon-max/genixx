@@ -162,7 +162,7 @@ function Desk({ job, back }: { job: AiJob; back: React.ReactNode }) {
               disabled={bad}
               onClick={() => setRun(makeRun(job, steps, subject))}
             >
-              예시로 돌려보기
+              예시로 실행해 보기
             </button>
             {subject === null && (
               <button type="button" className="a2-btn a2-btn-primary" onClick={add}>
@@ -373,10 +373,10 @@ function StepCard({
             빠진 필수가 있을 때만 요약 줄이 붉어진다 — 접힌 채로도 무엇이 잘못됐는지 보인다 */}
         <details className="a2-note" style={{ borderLeftColor: gone.length > 0 ? "var(--a2-danger)" : "var(--a2-line-2)" }}>
           <summary className="cursor-pointer select-none">
-            자리표 {job.vars.length}개
+            변수 {job.vars.length}개
             {must.length > 0 && <> · 필수 {must.length}개</>}
             {gone.length > 0 && (
-              <b className="text-(--a2-danger)"> — {gone.map((v) => v.key).join(" ")} 빠짐</b>
+              <b className="text-(--a2-danger)"> — {gone.map((v) => v.key).join(" ")} 누락</b>
             )}
           </summary>
           <ul className="mt-2 grid gap-1">
@@ -397,7 +397,7 @@ function StepCard({
                       className="shrink-0"
                       style={{ color: on ? "var(--a2-ok)" : "var(--a2-danger)" }}
                     >
-                      필수{on ? "" : " · 빠짐"}
+                      필수{on ? "" : " · 누락"}
                     </span>
                   )}
                   <span className="min-w-0 text-(--a2-ink-3)">{v.desc}</span>
@@ -424,7 +424,7 @@ function StepCard({
             </span>
           ))}
           <button type="button" className="a2-btn a2-btn-sm" onClick={() => pick.current?.click()}>
-            파일 붙이기
+            파일 첨부
           </button>
           <input
             ref={pick}
@@ -489,7 +489,7 @@ function SubjectCard({
             rows={Math.min(12, Math.max(3, text.split("\n").length + 1))}
             value={text}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={`${subject} 문항에만 붙일 것`}
+            placeholder={`${subject} 문항에만 추가할 내용`}
             aria-label={`${at + 1}번 AI ${subject} 요구사항`}
           />
         </label>
@@ -607,14 +607,14 @@ function RunPanel({
           <li key={i} className="grid gap-2 p-3 lg:grid-cols-2">
             <div>
               <p className="a2-label">
-                {i + 1}. {l.name} — 들어간 것
+                {i + 1}. {l.name} — 입력
               </p>
               <pre className="mt-1 max-h-72 overflow-auto rounded-(--a2-radius) border border-(--a2-line) bg-(--a2-raised) p-2.5 a2-t-xs leading-[1.7] whitespace-pre-wrap text-(--a2-ink-2)">
                 {l.input}
               </pre>
             </div>
             <div>
-              <p className="a2-label">나온 것</p>
+              <p className="a2-label">출력</p>
               <pre className="mt-1 max-h-72 overflow-auto rounded-(--a2-radius) border border-(--a2-accent-line) bg-(--a2-accent-soft) p-2.5 a2-t-xs leading-[1.7] whitespace-pre-wrap text-(--a2-ink)">
                 {l.output}
               </pre>

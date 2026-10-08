@@ -168,7 +168,7 @@ export default function ReportPanel({
 
         {/* 밑줄 세 갈래가 무엇이었는지 — 화면에서 본 색과 같은 색으로 다시 적는다 */}
         <section className="mt-6 rounded-xl bg-slate-50 px-4 py-4">
-          <p className="type-tag text-slate-500">밑줄의 갈래</p>
+          <p className="type-tag text-slate-500">밑줄의 종류</p>
           <ul className="mt-2.5 space-y-2">
             {(Object.keys(markKinds) as MarkKind[]).map((k) => (
               <li key={k} className="type-caption flex flex-wrap items-center gap-x-2 gap-y-1">

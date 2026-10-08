@@ -169,3 +169,27 @@ export function StudentArt({ className = "", accent = "#365eef" }: Props) {
     </svg>
   );
 }
+
+/** 전문가 — 문항지를 든 사람과 확인 표시 */
+export function ExpertArt({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="문항지를 검토하는 전문가">
+      <ellipse cx="100" cy="126" rx="70" ry="7" fill={accent} opacity="0.1" />
+
+      {/* 문항지 */}
+      <rect x="96" y="30" width="62" height="82" rx="7" fill="#fff" stroke={accent} strokeWidth="3" />
+      <path d="M108 50h38M108 64h38M108 78h24" stroke={accent} strokeWidth="3" strokeLinecap="round" opacity="0.45" />
+      {/* 확인 표시 */}
+      <circle cx="150" cy="104" r="15" fill="#4fc08d" />
+      <path d="M143 104l5 5 9-10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+
+      {/* 사람 */}
+      <circle cx="62" cy="62" r="15" fill="#fbd7bf" />
+      <path d="M49 58a13 13 0 0 1 26 0c-5-6-21-6-26 0Z" fill="#3f3d56" />
+      <path d="M38 124v-20a24 24 0 0 1 48 0v20Z" fill={accent} />
+      {/* 펜을 든 손 */}
+      <path d="M82 100l18-12" stroke="#fbd7bf" strokeWidth="7" strokeLinecap="round" />
+      <path d="M98 90l12-14" stroke="#f7b23b" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}

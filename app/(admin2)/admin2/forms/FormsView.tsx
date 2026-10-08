@@ -62,7 +62,7 @@ type Row = {
   rank: 0 | 1 | 2;
 };
 
-const PLAN_LABEL = { 0: "비어 있음", 1: "짜는 중", 2: "전부 확정" } as const;
+const PLAN_LABEL = { 0: "비어 있음", 1: "편성 중", 2: "전부 확정" } as const;
 
 /**
  * 과목 한 칸 — 꼬리표 하나가 검사지 한 벌이다.
@@ -193,6 +193,7 @@ export default function FormsView() {
         /* 학년은 회차마다 하나다(roundPlanStore의 band). 과목처럼 여럿 눕지 않으므로
            제 칸에 세운다 — 같은 과목이라도 학년이 다르면 다른 검사지다 */
         key: "band",
+        detail: true,
         head: "학년",
         width: "5rem",
         nowrap: true,
@@ -231,6 +232,7 @@ export default function FormsView() {
       },
       {
         key: "anchors",
+        detail: true,
         head: "앵커",
         width: "4rem",
         num: true,
@@ -240,6 +242,7 @@ export default function FormsView() {
       },
       {
         key: "points",
+        detail: true,
         head: "배점",
         width: "4.5rem",
         num: true,

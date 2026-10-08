@@ -26,6 +26,18 @@ import { WEEK_KO } from "@/lib/calendar";
 
 /** 사진 자리 — 사진이 없는 동안은 성을 뗀 이름 모노그램 */
 function Photo({ c, size = 72 }: { c: Counselor; size?: number }) {
+  /* 전문가 회원이 「내 정보」에서 올린 사진이 있으면 그것을 쓴다 */
+  if (c.person.photo) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={c.person.photo}
+        alt=""
+        style={{ width: size, height: size }}
+        className="shrink-0 rounded-[14px] object-cover"
+      />
+    );
+  }
   return (
     <span
       aria-hidden
@@ -195,10 +207,10 @@ export function CounselorDetail({ c, onClose }: { c: Counselor; onClose: () => v
 
         <Block title="면담 안내">
           <li>
-            길이 · 값 — {c.spans.map((v) => feeText(v, fees, c)).join(" · ")}
+            길이 · 요금 — {c.spans.map((v) => feeText(v, fees, c)).join(" · ")}
             {c.spans.length === 1 && `(${spanLabel(c.spans[0])} 면담만 받습니다)`}
           </li>
-          <li>맡는 물음 — {c.topics.map((v) => counselTopics[v]).join(" · ")}</li>
+          <li>상담 주제 — {c.topics.map((v) => counselTopics[v]).join(" · ")}</li>
           <li>
             방식 — {c.modes.map((m) => counselModes[m]).join(" · ")}
           </li>

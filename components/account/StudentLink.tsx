@@ -91,7 +91,7 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
             <div>
               <p className="text-[16px] font-bold">기관코드 또는 진단코드 입력</p>
               <p className={`mt-1.5 text-[13px] leading-[1.7] ${t.muted}`}>
-                학교·학원에서 코드를 받으셨다면 넣어 주세요. 그 기관의 회차에 이어지고, 기관
+                학교·학원에서 코드를 받으셨다면 넣어 주세요. 그 기관의 회차에 연결되고, 기관
                 화면에는 「학생 본인 가입 완료」로 표시됩니다. 없으셔도 무료 진단은 그대로 응시할
                 수 있습니다.
               </p>
@@ -160,11 +160,11 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
           {/* 만 19세 미만 안내 */}
           <div className={`${t.cardSoft} p-5`}>
             <p className="text-[14px] font-bold">
-              만 {MAJORITY_AGE}세 미만이면 결제만 따로 봅니다
+              만 {MAJORITY_AGE}세 미만이면 결제는 기준이 다릅니다
             </p>
             <p className={`mt-1.5 text-[13px] leading-[1.7] ${t.muted}`}>
               개인정보 동의의 기준은 만 {CONSENT_AGE}세, 계약·결제의 기준은 만 {MAJORITY_AGE}세로
-              서로 다른 선입니다.
+              서로 다른 기준입니다.
             </p>
             <ul className="mt-3 flex flex-col gap-1.5">
               {minorFeatureMatrix.map((f) => (

@@ -115,7 +115,7 @@ export default function ProductForm({ edit }: { edit?: Product }) {
         const url = await shrinkImage(file);
         if (dataUrlBytes(url) > IMAGE_MAX_BYTES) {
           setImageError(
-            `${file.name}은(는) 줄이고도 너무 큽니다. 더 작은 그림으로 올려 주세요.`,
+            `${file.name}은(는) 용량을 줄여도 너무 큽니다. 더 작은 이미지로 올려 주세요.`,
           );
           continue;
         }
@@ -150,7 +150,7 @@ export default function ProductForm({ edit }: { edit?: Product }) {
     if (form.sellsFrom && form.sellsTo && form.sellsTo < form.sellsFrom)
       bad.push("판매 종료일이 시작일보다 앞섭니다.");
     if (form.state === "selling" && !form.thumb)
-      bad.push("판매중으로 열려면 대표 이미지가 있어야 합니다.");
+      bad.push("판매중으로 바꾸려면 대표 이미지가 있어야 합니다.");
     if (bad.length > 0) return setErrors(bad);
 
     /* HTML은 담기 전에 한 번 걸러 둔다. 파는 화면에서 그릴 때도 다시 소독하지만,
@@ -435,7 +435,7 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                     disabled={busy}
                     onClick={() => detailRef.current?.click()}
                   >
-                    {busy ? "줄이는 중…" : "이미지 추가"}
+                    {busy ? "이미지 압축 중…" : "이미지 추가"}
                   </button>
                 </>
               )}
@@ -464,7 +464,7 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                         disabled={busy}
                         onClick={() => detailRef.current?.click()}
                       >
-                        {busy ? "줄이는 중…" : "그림 넣기"}
+                        {busy ? "이미지 압축 중…" : "이미지 넣기"}
                       </button>
                     )}
                     <button
@@ -487,7 +487,7 @@ export default function ProductForm({ edit }: { edit?: Product }) {
                 <div className="w-full">
                   <p className="a2-label mb-1">미리보기</p>
                   {previewHtml.trim() === "" ? (
-                    <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 채운 것이 없습니다.</p>
+                    <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 입력한 내용이 없습니다.</p>
                   ) : (
                     <div
                       className="a2-preview a2-prose"
@@ -566,7 +566,7 @@ export default function ProductForm({ edit }: { edit?: Product }) {
         </div>
 
         {errors.length > 0 && (
-          <Panel title="채우지 못한 칸" className="mt-3">
+          <Panel title="입력이 필요한 항목" className="mt-3">
             <ul className="flex flex-col gap-1">
               {errors.map((e) => (
                 <li key={e} className="a2-t-sm" style={{ color: "var(--a2-danger)" }}>

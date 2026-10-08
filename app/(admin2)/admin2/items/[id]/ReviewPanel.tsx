@@ -77,7 +77,7 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
     .filter(Boolean)
     .join("\n");
 
-  const lockNote = open ? undefined : "AI 검수를 먼저 돌려야 승인 · 반려할 수 있습니다";
+  const lockNote = open ? undefined : "AI 검수를 먼저 실행해야 승인 · 반려할 수 있습니다";
 
   return (
     <Panel
@@ -121,7 +121,7 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
                 title={aiAuditable(item) ? undefined : `AI 검수는 한 문항에 ${AI_AUDIT_MAX}번까지입니다 — 검수자가 바로 봅니다`}
                 onClick={() => runAiAudit([item.id])}
               >
-                AI 검수 돌리기
+                AI 검수 실행
               </button>
             )}
           </span>
@@ -145,7 +145,7 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
         ) : (
           <p className="mt-1 a2-hint">
             {aiAuditable(item)
-              ? "AI 검수를 돌리면 문항 카드 항목마다 판정한 보고서가 나옵니다. 보고서를 보고 승인 · 반려합니다."
+              ? "AI 검수를 실행하면 문항 카드 항목마다 판정한 보고서가 나옵니다. 보고서를 보고 승인 · 반려합니다."
               : `AI 검수를 ${AI_AUDIT_MAX}번 모두 썼습니다. 검수자가 문항을 보고 바로 판단합니다.`}
           </p>
         )}
@@ -173,7 +173,7 @@ export default function ReviewPanel({ item }: { item: ItemDraft }) {
                             ? { borderStyle: "dashed", borderColor: "var(--a2-danger)" }
                             : undefined
                       }
-                      title={`${reportStatusLabel[s.status]} — ${s.findings.map((f) => f.text).join(" ") || "걸린 것 없음"}`}
+                      title={`${reportStatusLabel[s.status]} — ${s.findings.map((f) => f.text).join(" ") || "지적 사항 없음"}`}
                       onClick={() => setParts((p) => (on ? p.filter((x) => x !== s.key) : [...p, s.key]))}
                     >
                       {sectionName(s)}

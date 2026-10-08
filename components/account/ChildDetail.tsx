@@ -229,7 +229,7 @@ export default function ChildDetail({ id }: { id: string }) {
           남은 <b className="tabular-nums">{left}</b>매 · 지금까지 {wallet.used.length}회 접수
         </p>
         <p className="mt-1 text-[13px] text-soft-muted">
-          진단 한 벌(회차 × 학년)에 한 매를 씁니다. 과목마다 드는 것이 아닙니다.
+          진단 한 건(회차 × 학년)에 한 매를 씁니다. 과목마다 드는 것이 아닙니다.
         </p>
       </section>
 
@@ -238,7 +238,7 @@ export default function ChildDetail({ id }: { id: string }) {
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-6 pt-6">
           <p className="text-[15px] font-black text-soft-ink">진단 진행 상황</p>
           <p className="text-[13px] text-soft-muted">
-            {rows.length > 0 ? `진단 ${rows.length}건 · 최근 시기가 위` : "진단마다 한 줄씩 섭니다"}
+            {rows.length > 0 ? `진단 ${rows.length}건 · 최신순` : "진단마다 한 줄씩 표시됩니다"}
           </p>
         </div>
 
@@ -274,7 +274,7 @@ export default function ChildDetail({ id }: { id: string }) {
                     <p className="text-[14px] font-bold text-soft-ink">아직 접수한 진단이 없습니다</p>
                     <p className="mt-1.5 text-[13px] text-soft-muted">
                       진단을 접수하면 진단마다 한 줄씩 이름(연도 · 분기 · 학년)과 과목별 진행이
-                      섭니다.
+                      표시됩니다.
                     </p>
                   </td>
                 </tr>
@@ -391,7 +391,7 @@ export default function ChildDetail({ id }: { id: string }) {
 
       {extras.length > 0 && (
         <section className={`${card} mt-4 overflow-hidden`}>
-          <p className="px-6 pt-6 text-[15px] font-black text-soft-ink">결과를 읽을 때 쓰는 값</p>
+          <p className="px-6 pt-6 text-[15px] font-black text-soft-ink">결과 해석에 쓰는 정보</p>
           <p className="mt-1.5 px-6 text-[13px] leading-relaxed text-soft-muted">
             등록할 때 적어 주신 선택 항목입니다. 점수를 매기는 데는 쓰지 않고, 결과를 해석할
             때만 씁니다.
@@ -442,7 +442,7 @@ export default function ChildDetail({ id }: { id: string }) {
                   <b className="text-soft-ink">
                     {finalMissing.map((k) => surveyMeta[k].label).join(" · ")}
                   </b>
-                  . 이대로 제출해도 되지만, 설문이 있으면 해석이 더 촘촘해집니다.
+                  . 이대로 제출해도 되지만, 설문이 있으면 해석이 더 자세해집니다.
                 </>
               )}
             </>
