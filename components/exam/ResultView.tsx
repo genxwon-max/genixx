@@ -308,7 +308,7 @@ export default function ResultView({
           note="AI 1차 분석 결과를 교육전문가가 검토해 확정한 코멘트입니다."
           right={
             <span className="rounded border border-soft-line bg-slate-50 px-3 py-1.5 text-[12px] text-soft-muted">
-              반영 정보원 {1 + doneSurveys.length}종
+              반영 자료 {1 + doneSurveys.length}종
             </span>
           }
         >
@@ -383,7 +383,7 @@ function ReportLinks({ studentId, reg }: { studentId: string; reg: RegRef | null
     {
       edition: "full" as const,
       desc: "영역별 근거 · 대표 문항 답안 리뷰 · 학습 성향 · 학생용 성장 지도 · 3개월 로드맵 · 전문가 총평",
-      price: unlocked ? "받음" : `${editions.full.price} → 파일럿 무료`,
+      price: unlocked ? "받기 완료" : `${editions.full.price} → 파일럿 무료`,
       cta: unlocked ? "정밀본 열기" : "정밀본 받기",
     },
   ];

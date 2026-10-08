@@ -24,6 +24,8 @@ export type Session = {
   loginId?: string;
   /** 학생 세션일 때 명부상의 학생 ID */
   studentId?: string;
+  /** 전문가 세션일 때 전문가 계정 번호 (lib/expertAccounts.ts) — 승인 여부와 권한은 그 계정에서 읽는다 */
+  expertId?: string;
   /** 학부모가 학생 화면으로 들어온 경우 true (설문만 수행) */
   asGuardian?: boolean;
   /** 교사·기관 계정의 소속 승인 완료 여부. 승인 전에는 학생 데이터 접근 차단 (ACC-01-4) */

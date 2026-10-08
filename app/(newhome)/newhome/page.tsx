@@ -67,7 +67,7 @@ const sources = [
 const hitl = [
   {
     t: "AI · 1차 분석",
-    d: "답안을 채점하고, 서술형에 드러난 생각에 갈래를 붙입니다(이 갈래 붙이기를 코딩이라고 합니다). 붙인 갈래마다 스스로 얼마나 확신하는지까지 적어 사람에게 넘깁니다. 여기까지가 AI의 몫입니다.",
+    d: "답안을 채점하고, 서술형에 드러난 생각에 유형을 붙입니다(이렇게 유형을 붙이는 일을 코딩이라고 합니다). 붙인 유형마다 스스로 얼마나 확신하는지까지 적어 사람에게 넘깁니다. 여기까지가 AI의 몫입니다.",
     ai: true,
   },
   {
@@ -144,7 +144,7 @@ export default function NewHomePage() {
             <h2 className="type-h2 font-black text-brand-950">어떤 문항이 나오나요</h2>
             <p className="type-lead mt-3 max-w-2xl text-slate-600">
               세 과목을 하루에 몰아 보지 않고 과목마다 따로 응시합니다. 자료 하나에 묻는 깊이가 다른
-              문항을 여러 개 매달아, 같은 글을 읽고도 어디까지 갈 수 있는지를 봅니다.
+              문항을 여러 개 붙여, 같은 글을 읽고도 어디까지 갈 수 있는지를 봅니다.
             </p>
           </Rise>
 
@@ -163,7 +163,7 @@ export default function NewHomePage() {
           <Rise delay={120} className="mt-4 overflow-hidden rounded-xl border border-brand-100">
             <div className="border-b border-brand-100 bg-brand-50/70 px-5 py-3">
               <p className="type-h4 font-black text-brand-900">
-                자료 하나를 네 겹으로 묻습니다 — 이 진단의 뼈대입니다
+                자료 하나를 네 단계로 묻습니다 — 이 진단의 기본 구조입니다
               </p>
             </div>
             <ul className="grid sm:grid-cols-2 lg:grid-cols-4">
@@ -197,7 +197,7 @@ export default function NewHomePage() {
           <Rise>
             <h2 className="type-h2 font-black text-brand-950">어떻게 분석하나요</h2>
             <p className="type-lead mt-3 max-w-2xl text-slate-600">
-              한 자리에서 본 것만으로 판정하지 않습니다. 아이를 보는 창 넷을 서로 맞대어 보고, AI가
+              한 자리에서 본 것만으로 판정하지 않습니다. 아이를 보는 네 가지 창을 서로 비교해 보고, AI가
               먼저 정리한 뒤 판정은 사람이 확정합니다.
             </p>
           </Rise>

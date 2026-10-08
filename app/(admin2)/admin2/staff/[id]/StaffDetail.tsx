@@ -232,7 +232,7 @@ function Desk({ row, back }: { row: StaffRow; back: React.ReactNode }) {
           disabled={locked}
           note={
             err ??
-            (locked ? "운영자 계정·권한 관리를 든 활성 계정이 이 하나뿐입니다." : undefined)
+            (locked ? "운영자 계정·권한 관리 권한을 가진 활성 계정이 이 하나뿐입니다." : undefined)
           }
         />
       </Body>
@@ -265,13 +265,13 @@ function ScreenAccessPanel({ row, by }: { row: StaffRow; by: string }) {
     >
       <div className="a2-form">
         <FormRow
-          label="화면 묶음"
+          label="화면 권한 그룹"
           hint={
             isSuper
               ? "슈퍼 관리자는 언제나 모든 화면을 봅니다."
               : current
                 ? `고른 화면 ${current.screens.length}개만 콘솔 메뉴에 보입니다.`
-                : "묶음이 없으면 이 콘솔에 들어오지 못합니다."
+                : "그룹이 없으면 이 콘솔에 들어오지 못합니다."
           }
         >
           <select

@@ -39,7 +39,7 @@ export default function Admin2AuditPage() {
             거르개로 만들지 않았다 — 로그의 사유는 표준 문구를 고른 뒤 사건마다 덧붙여
             적히므로 목록과 글자가 정확히 일치하지 않는다. 그대로 거르개에 세우면 골라도
             0줄이 나오는 선택지가 생긴다. */}
-        <Panel title="표준 열람 사유" meta="사유 칸에 적히기 전 고르는 값" className="mt-3">
+        <Panel title="표준 열람 사유" meta="사유를 적기 전에 고르는 값" className="mt-3">
           <div className="flex flex-wrap gap-1.5">
             {accessReasons.map((r) => (
               <Tag key={r}>{r}</Tag>
@@ -47,12 +47,12 @@ export default function Admin2AuditPage() {
           </div>
           <p className="mt-2 a2-t-xs text-(--a2-ink-4)">
             학생 개인정보를 열 때 이 중 하나를 고른 뒤 사건별 내용을 덧붙입니다. 사유 없이는 열람 자체가 진행되지
-            않으므로, 위 표에 사유가 빈 줄은 개인정보에 닿지 않은 동작입니다.
+            않으므로, 위 표에 사유가 빈 항목은 개인정보와 관련 없는 동작입니다.
           </p>
           {/* 표 위 도구 줄에 적어 두었던 약속을 여기로 옮겼다. 도구 줄은 조건을 고르는
               자리라 읽는 문장이 서면 묻히고, 이 판은 「이 화면의 규칙」을 적는 자리다 */}
           <p className="mt-1.5 a2-t-xs text-(--a2-ink-4)">
-            기록은 추가만 됩니다. 이 콘솔에는 로그를 고치거나 지우는 길이 없습니다.
+            기록은 추가만 됩니다. 이 콘솔에는 로그를 수정하거나 삭제하는 기능이 없습니다.
           </p>
         </Panel>
       </Body>

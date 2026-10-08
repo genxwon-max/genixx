@@ -103,7 +103,7 @@ export default function PostTable({
 
         {shown.length === 0 ? (
           <p className="type-body border-b border-brand-100 py-16 text-center text-slate-500">
-            {q ? "찾는 글이 없습니다. 다른 낱말로 검색해 보세요." : empty}
+            {q ? "찾는 글이 없습니다. 다른 단어로 검색해 보세요." : empty}
           </p>
         ) : (
           <ul>

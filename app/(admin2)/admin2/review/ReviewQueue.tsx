@@ -118,7 +118,7 @@ export default function ReviewQueue() {
         id: "rejected" as TabId,
         label: stateLabel.rejected,
         rows: judgedRows.filter((i) => i.state === "rejected"),
-        empty: "돌려보낸 문항이 없습니다.",
+        empty: "반려한 문항이 없습니다.",
       },
     ],
     [waiting, judgedRows],
@@ -183,6 +183,7 @@ export default function ReviewQueue() {
       },
       {
         key: "grade",
+        detail: true,
         head: "학년",
         width: "4.5rem",
         nowrap: true,
@@ -205,6 +206,7 @@ export default function ReviewQueue() {
       },
       {
         key: "form",
+        detail: true,
         head: "구성",
         width: "6.5rem",
         nowrap: true,
@@ -214,6 +216,7 @@ export default function ReviewQueue() {
       },
       {
         key: "type",
+        detail: true,
         head: "유형",
         width: "7rem",
         nowrap: true,
@@ -234,6 +237,7 @@ export default function ReviewQueue() {
       },
       {
         key: "author",
+        detail: true,
         head: "출제자",
         width: "6rem",
         nowrap: true,
@@ -245,6 +249,7 @@ export default function ReviewQueue() {
         /* AI 초안은 검수자가 그런 줄 알고 봐야 한다. 특히 태깅 — 축은 사람이 고르고
            문항은 생성되므로 둘이 어긋날 수 있고, 그것을 잡는 자리가 2차 태깅이다 */
         key: "origin",
+        detail: true,
         head: "출처",
         width: "5rem",
         nowrap: true,
@@ -296,6 +301,7 @@ export default function ReviewQueue() {
       {
         /* AI 검수는 한 문항에 두 번까지다 — 몇 번 썼는지가 늘 보여야 두 번째를 아껴 쓴다 */
         key: "aiCount",
+        detail: true,
         head: "AI 횟수",
         width: "5rem",
         nowrap: true,
@@ -313,7 +319,7 @@ export default function ReviewQueue() {
       },
       {
         key: "updatedAt",
-        head: "넘어온 때",
+        head: "제출 일시",
         width: "8rem",
         nowrap: true,
         value: (r) => r.updatedAt,
@@ -367,7 +373,7 @@ export default function ReviewQueue() {
             title={
               queue.length === 0
                 ? "AI 검수를 기다리는 문항이 없습니다"
-                : `AI 검수는 한 문항에 ${AI_AUDIT_MAX}번까지 돌릴 수 있습니다`
+                : `AI 검수는 한 문항에 ${AI_AUDIT_MAX}번까지 실행할 수 있습니다`
             }
             onClick={audit}
           >

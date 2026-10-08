@@ -117,9 +117,9 @@ export type InterviewAction = "accept" | "decline" | "schedule" | "move" | "clea
 export const interviewActions: Record<InterviewAction, string> = {
   accept: "대상 확정",
   decline: "반려",
-  schedule: "일정 잡음",
-  move: "일정 옮김",
-  clear: "일정 지움",
+  schedule: "일정 등록",
+  move: "일정 변경",
+  clear: "일정 취소",
 };
 
 export type InterviewLog = { at: string; by: string; action: InterviewAction; text: string };
@@ -981,7 +981,7 @@ export function clearSchedule(row: Interview, by: string, why: string): boolean 
     {
       by,
       action: "clear",
-      text: `${row.date ?? row.rawAt ?? "일정"} ${row.start ?? ""} 지움 — ${why.trim()}`,
+      text: `${row.date ?? row.rawAt ?? "일정"} ${row.start ?? ""} 취소 — ${why.trim()}`,
     },
   );
   if (row.hasCase) unscheduleInterview(row.id, by, why.trim());
@@ -1019,6 +1019,6 @@ export function undoDecline(row: Interview, by: string) {
   patch(
     row.id,
     { reqState: "applied", declineWhy: "" },
-    { by, action: "accept", text: "반려를 물러 신청 접수로 되돌렸습니다" },
+    { by, action: "accept", text: "반려를 취소하고 신청 접수로 되돌렸습니다" },
   );
 }

@@ -112,7 +112,7 @@ function Desk({
                 onClick={() => {
                   if (
                     !window.confirm(
-                      `「${slot.label}」 자리를 지웁니다.\n학년마다 쓴 문구와 조립 규칙이 함께 사라집니다. 이미 발행된 리포트는 그대로입니다.\n\n지울까요?`,
+                      `「${slot.label}」 항목을 지웁니다.\n학년마다 쓴 문구와 조립 규칙이 함께 사라집니다. 이미 발행된 리포트는 그대로입니다.\n\n지울까요?`,
                     )
                   )
                     return;
@@ -120,7 +120,7 @@ function Desk({
                   removeSlot(row.slot);
                 }}
               >
-                이 자리 지우기
+                이 항목 지우기
               </button>
             )}
           </>
@@ -134,7 +134,7 @@ function Desk({
               <Tag accent>{gradeLabel(row.grade)}</Tag>
             </FormRow>
             <FormRow label="재능 축">
-              {axisName ? <Tag>{axisName}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">전 축</span>}
+              {axisName ? <Tag>{axisName}</Tag> : <span className="a2-t-sm text-(--a2-ink-3)">모든 축</span>}
             </FormRow>
             <FormRow label="발현 밴드">
               {row.band ? (
@@ -150,7 +150,7 @@ function Desk({
                 <Status tone="warn">빈 칸</Status>
               ) : row.edited ? (
                 <>
-                  <Status tone="info">고침</Status>
+                  <Status tone="info">수정됨</Status>
                   <span className="a2-mono a2-t-xs text-(--a2-ink-4)">
                     {row.editedAt} · {row.editedBy}
                   </span>
@@ -159,11 +159,11 @@ function Desk({
                 <Status tone="muted">기본 문구</Status>
               )}
             </FormRow>
-            <FormRow label="이 자리의 규칙">
+            <FormRow label="이 항목의 규칙">
               {slot.guide ? (
                 <span className="a2-t-sm text-(--a2-ink-2)">{slot.guide}</span>
               ) : (
-                <span className="a2-t-sm text-(--a2-ink-4)">자리를 만들 때 적어 둔 안내가 없습니다.</span>
+                <span className="a2-t-sm text-(--a2-ink-4)">항목을 만들 때 적어 둔 안내가 없습니다.</span>
               )}
             </FormRow>
           </div>
@@ -185,13 +185,13 @@ function Desk({
                 className="a2-textarea"
                 rows={6}
                 value={v.text}
-                placeholder="이 자리에 나갈 문장을 적어 주세요."
+                placeholder="여기에 나갈 문장을 적어 주세요."
                 onChange={(e) => draft.set("text", e.target.value)}
               />
             </FormRow>
 
             {(findings.length > 0 || empty) && (
-              <FormRow label="짚을 것">
+              <FormRow label="확인할 점">
                 <span className="grid w-full gap-1">
                   {empty && (
                     <span className="a2-note" style={{ borderLeftColor: "var(--a2-danger)" }}>
@@ -218,7 +218,7 @@ function Desk({
         </Panel>
 
         {row.history.length > 0 && (
-          <Panel title="고쳐 온 자취" meta={`${row.history.length}벌`} flush>
+          <Panel title="수정 이력" meta={`${row.history.length}건`} flush>
             <ul className="divide-y divide-(--a2-line)">
               {row.history.map((h, i) => (
                 <li key={`${h.at}-${i}`} className="p-3">
@@ -240,7 +240,7 @@ function Desk({
         disabled={blocked || empty}
         note={
           blocked
-            ? "막는 표현이 들어 있어 저장할 수 없습니다 — 헌장 7조."
+            ? "금지 표현이 들어 있어 저장할 수 없습니다 — 헌장 7조."
             : draft.dirty
               ? "저장하면 다음에 조립되는 리포트부터 이 문구가 나갑니다."
               : row.empty

@@ -72,7 +72,7 @@ export default function ClipsView() {
       },
       {
         key: "kind",
-        head: "갈래",
+        head: "분류",
         width: "7rem",
         nowrap: true,
         value: (r) => clipKindLabel[r.kind],
@@ -100,6 +100,7 @@ export default function ClipsView() {
       },
       {
         key: "length",
+        detail: true,
         head: "길이",
         width: "5rem",
         nowrap: true,
@@ -110,6 +111,7 @@ export default function ClipsView() {
         /* 주소가 있는지와 그것이 유튜브인지를 한 칸에 적는다 — 미리보기 그림이 서는지가
            그 둘에 달려 있고, 「걸었는데 안 보인다」는 물음이 늘 여기서 갈린다 */
         key: "url",
+        detail: true,
         head: "주소",
         width: "9rem",
         nowrap: true,
@@ -122,7 +124,7 @@ export default function ClipsView() {
               rel="noreferrer"
               className="a2-t-sm text-(--a2-accent) hover:underline"
             >
-              {youtubeId(r.url) ? "유튜브" : "바깥 주소"}
+              {youtubeId(r.url) ? "유튜브" : "외부 주소"}
             </a>
           ) : (
             <Status tone="warn">준비 중</Status>
@@ -133,7 +135,7 @@ export default function ClipsView() {
         head: "노출",
         width: "7rem",
         nowrap: true,
-        value: (r) => (r.shown ? "노출" : "내림"),
+        value: (r) => (r.shown ? "노출" : "숨김"),
         cell: (r) => (
           <span className="flex items-center gap-2">
             <Switch
@@ -141,7 +143,7 @@ export default function ClipsView() {
               label={`${r.title || r.id} 노출`}
               onChange={(on) => setClipShown(r.id, on)}
             />
-            <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "내림"}</Status>
+            <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "숨김"}</Status>
           </span>
         ),
       },
@@ -153,7 +155,7 @@ export default function ClipsView() {
     () => [
       {
         id: "kind",
-        label: "갈래",
+        label: "분류",
         options: clipKinds.map((k) => ({ value: k, label: clipKindLabel[k] })),
         match: (r, v) => r.kind === v,
       },
@@ -162,7 +164,7 @@ export default function ClipsView() {
         label: "노출",
         options: [
           { value: "y", label: "노출" },
-          { value: "n", label: "내림" },
+          { value: "n", label: "숨김" },
         ],
         match: (r, v) => (v === "y" ? r.shown : !r.shown),
       },
@@ -170,7 +172,7 @@ export default function ClipsView() {
         id: "url",
         label: "주소",
         options: [
-          { value: "y", label: "걸었음" },
+          { value: "y", label: "등록됨" },
           { value: "n", label: "준비 중" },
         ],
         match: (r, v) => (v === "y" ? !!r.url : !r.url),
@@ -195,7 +197,7 @@ export default function ClipsView() {
       <Body>
         <Panel
           title="영상"
-          meta={`${rows.length}칸 · 노출 ${shown}칸${waiting > 0 ? ` · 주소 없음 ${waiting}칸` : ""}`}
+          meta={`${rows.length}개 · 노출 ${shown}개${waiting > 0 ? ` · 주소 없음 ${waiting}개` : ""}`}
           flush
         >
           <DataTable
@@ -206,7 +208,7 @@ export default function ClipsView() {
             rowLink
             searchHint="제목 · 설명"
             showCount={false}
-            empty="아직 걸어 둔 영상이 없습니다."
+            empty="아직 등록한 영상이 없습니다."
           />
         </Panel>
       </Body>

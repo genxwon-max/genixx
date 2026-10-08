@@ -254,7 +254,7 @@ export default function AccountActions({
 
       {gone ? (
         <p className="a2-note mt-2" style={{ borderLeftColor: "var(--a2-danger)" }}>
-          <span>삭제 처리되어 탈퇴 상태입니다. 되돌릴 수 없고, 이 화면에서 더 고칠 수 있는 칸도 없습니다.</span>
+          <span>삭제 처리되어 탈퇴 상태입니다. 되돌릴 수 없고, 이 화면에서 더 수정할 수 있는 항목도 없습니다.</span>
         </p>
       ) : (
         <>

@@ -51,7 +51,7 @@ export default function StudentSurveys() {
 
       <Head
         title="내 설문"
-        lead="정답이 있는 검사가 아닙니다. 평소 내 모습을 그대로 고르면 됩니다. 우리 집과 선생님 설문이 함께 채워질수록 결과 해석이 촘촘해집니다."
+        lead="정답이 있는 검사가 아닙니다. 평소 내 모습을 그대로 고르면 됩니다. 우리 집과 선생님 설문이 함께 채워질수록 결과 해석이 더 정확해집니다."
         right={
           <button type="button" onClick={open} className={btnGo}>
             {mine ? "내 설문 다시 열기" : "내 설문 작성하기"} →
@@ -61,7 +61,7 @@ export default function StudentSurveys() {
 
       <div className={`mt-7 overflow-x-auto ${cardBox}`}>
         <table className="w-full min-w-[620px] border-collapse">
-          <caption className="sr-only">설문 셋의 제출 현황</caption>
+          <caption className="sr-only">설문 세 가지의 제출 현황</caption>
           <colgroup>
             <col className="w-[24%]" />
             <col className="w-[16%]" />
@@ -72,7 +72,7 @@ export default function StudentSurveys() {
             <tr>
               <th className={listTh}>설문</th>
               <th className={listTh}>내는 사람</th>
-              <th className={listTh}>언제 내는가</th>
+              <th className={listTh}>제출 시기</th>
               <th className={listTh}>상태</th>
             </tr>
           </thead>
@@ -139,7 +139,7 @@ export default function StudentSurveys() {
       <p className="mt-5 text-[13px] leading-[1.8] text-soft-muted">
         부모님 설문은 <b className="font-semibold text-soft-ink">문자 보내기</b>로 링크를 보내면
         부모님이 자기 휴대전화에서 바로 쓰실 수 있습니다. 내가 대신 낼 수는 없습니다 — 같은
-        사람이 셋을 채우면 서로 맞춰 보는 뜻이 없어지기 때문입니다. 선생님 설문은 연락처를 아는
+        사람이 세 설문을 모두 쓰면 서로 비교해 보는 의미가 없어지기 때문입니다. 선생님 설문은 연락처를 아는
         보호자 화면에서 보냅니다. 최종 제출은{" "}
         <Link href="/student/exams" className="font-semibold text-soft-primary hover:underline">
           내 진단

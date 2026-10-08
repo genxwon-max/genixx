@@ -126,9 +126,9 @@ export const reflectionReasons: Record<"blank" | "choice" | "essay", ReflectionR
     { id: "c6", text: "다 읽지 못하고 골랐어요" },
   ],
   essay: [
-    { id: "e1", text: "자료에서 까닭을 찾아 그대로 썼어요" },
+    { id: "e1", text: "자료에서 이유를 찾아 그대로 썼어요" },
     { id: "e2", text: "배운 것을 떠올려 내 말로 썼어요" },
-    { id: "e3", text: "내 생각을 먼저 정하고 까닭을 붙였어요" },
+    { id: "e3", text: "내 생각을 먼저 정하고 이유를 붙였어요" },
     { id: "e4", text: "무슨 말인지는 알겠는데 쓰기가 어려웠어요" },
     { id: "e5", text: "생각나는 대로 일단 썼어요" },
     { id: "e6", text: "시간이 모자라서 다 쓰지 못했어요" },

@@ -72,7 +72,7 @@ export default function CounselorsView() {
       },
       {
         key: "topics",
-        head: "맡는 물음",
+        head: "담당 상담 주제",
         width: "13rem",
         clip: true,
         value: (r) => r.topics.map((t) => counselTopics[t]).join(" · "),
@@ -88,7 +88,8 @@ export default function CounselorsView() {
            따로 매긴 값이 없으면 기본값을 그대로 적는다(괄호 없이) — 어느 쪽이 기본값인지는
            위 판에 이미 서 있고, 줄마다 「기본」을 붙이면 표가 그 글자로 덮인다 */
         key: "fee",
-        head: "길이 · 값",
+        detail: true,
+        head: "길이 · 비용",
         width: "13rem",
         nowrap: true,
         value: (r) => r.spans.map((s) => r.fees?.[s] ?? fees[s]).join(" "),
@@ -107,6 +108,7 @@ export default function CounselorsView() {
       },
       {
         key: "modes",
+        detail: true,
         head: "방식",
         width: "8rem",
         nowrap: true,
@@ -116,6 +118,7 @@ export default function CounselorsView() {
       },
       {
         key: "days",
+        detail: true,
         head: "근무",
         width: "13rem",
         nowrap: true,
@@ -130,7 +133,7 @@ export default function CounselorsView() {
         head: "노출",
         width: "7rem",
         nowrap: true,
-        value: (r) => (r.shown ? "노출" : "내림"),
+        value: (r) => (r.shown ? "노출" : "숨김"),
         cell: (r) => (
           <span className="flex items-center gap-2">
             <Switch
@@ -138,7 +141,7 @@ export default function CounselorsView() {
               label={`${nameOf(r) || r.id} 노출`}
               onChange={(on) => setCounselorShown(r.id, on)}
             />
-            <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "내림"}</Status>
+            <Status tone={r.shown ? "ok" : "muted"}>{r.shown ? "노출" : "숨김"}</Status>
           </span>
         ),
       },
@@ -153,7 +156,7 @@ export default function CounselorsView() {
         label: "노출",
         options: [
           { value: "y", label: "노출" },
-          { value: "n", label: "내림" },
+          { value: "n", label: "숨김" },
         ],
         match: (r, val) => (val === "y" ? r.shown : !r.shown),
       },
@@ -165,7 +168,7 @@ export default function CounselorsView() {
       },
       {
         id: "topic",
-        label: "물음",
+        label: "상담 주제",
         options: (Object.keys(counselTopics) as (keyof typeof counselTopics)[]).map((t) => ({
           value: t,
           label: counselTopics[t],

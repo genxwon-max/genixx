@@ -43,7 +43,7 @@ export default function StudentPayments({
       <GateNote
         title="결제를 열 수 없습니다"
         head="명부에서 내 이름을 찾지 못했습니다"
-        body="응시권은 학생 한 사람 앞으로 발급됩니다. 접속코드로 다시 들어오면 이 자리에서 결제할 수 있습니다."
+        body="응시권은 학생 한 사람 앞으로 발급됩니다. 접속코드로 다시 들어오면 여기에서 결제할 수 있습니다."
       />
     );
   }
@@ -52,7 +52,7 @@ export default function StudentPayments({
     return (
       <GateNote
         title="결제는 보호자가 합니다"
-        head="여기는 내 자리가 아닙니다"
+        head="내가 이용할 수 없는 화면입니다"
         body="만 14세 미만은 응시권을 직접 결제할 수 없습니다. 돈이 드는 일은 법정대리인이 정하도록 법이 정해 두었기 때문입니다. 보호자에게 말하면 보호자 화면에서 결제할 수 있습니다."
       />
     );

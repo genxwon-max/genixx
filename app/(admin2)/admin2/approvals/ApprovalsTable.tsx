@@ -25,7 +25,7 @@ import { Status, Tag } from "@/components/admin2/ui";
  * 없을 때도 빈칸으로 두지 않는다 — 비어 있으면 점검을 통과한 건지 안 돌린 건지 모른다.
  */
 
-const kindLabel = { teacher: "교사", org: "기관" } as const;
+const kindLabel = { teacher: "교사", org: "기관", expert: "전문가" } as const;
 
 export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; empty: string }) {
   const cols = useMemo<Col<ApprovalRow>[]>(
@@ -46,7 +46,7 @@ export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; e
       {
         key: "kind",
         head: "종류",
-        width: "4rem",
+        width: "4.5rem",
         nowrap: true,
         value: (a) => kindLabel[a.kind],
         cell: (a) => <Tag>{kindLabel[a.kind]}</Tag>,
@@ -61,17 +61,20 @@ export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; e
       },
       {
         key: "org",
+        detail: true,
         head: "소속",
         clip: true,
-        value: (a) => a.org,
+        /* 전문가 가입은 소속을 받지 않는다 — 빈칸 대신 줄표를 적는다 */
+        value: (a) => a.org || "—",
         cell: (a) => (
-          <span title={a.org} className="text-(--a2-ink-2)">
-            {a.org}
+          <span title={a.org || undefined} className="text-(--a2-ink-2)">
+            {a.org || "—"}
           </span>
         ),
       },
       {
         key: "warning",
+        detail: true,
         head: "자동 점검",
         width: "6rem",
         nowrap: true,
@@ -116,6 +119,7 @@ export default function ApprovalsTable({ rows, empty }: { rows: ApprovalRow[]; e
         id: "kind",
         label: "종류",
         options: [
+          { value: "expert", label: kindLabel.expert },
           { value: "teacher", label: kindLabel.teacher },
           { value: "org", label: kindLabel.org },
         ],

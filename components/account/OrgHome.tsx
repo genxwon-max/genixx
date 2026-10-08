@@ -302,7 +302,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
           {/* 학생별 진척 */}
           <section className="mt-7">
             <SectionTitle note="과목 제출 수만 표시합니다. 답안과 결과는 보호자 동의 없이는 열리지 않습니다.">
-              학생별 진척
+              학생별 진행 상황
             </SectionTitle>
             <ul className={`${t.card} divide-y ${divide} overflow-hidden`}>
               {rows.map((r) => (
@@ -360,7 +360,7 @@ export default function OrgHome({ variant = 2 }: { variant?: Variant }) {
 
       {/* 기관 승인이 뜻하는 것 */}
       <section className={`${t.cardSoft} mt-8 p-5`}>
-        <h2 className="text-[16px] font-bold">운영진의 기관 승인이 확인한 것</h2>
+        <h2 className="text-[16px] font-bold">운영진이 기관 승인 때 확인한 내용</h2>
         <div className="mt-3 grid gap-5 sm:grid-cols-2">
           <ul className="flex flex-col gap-1.5">
             {orgApprovalMeans.yes.map((y) => (

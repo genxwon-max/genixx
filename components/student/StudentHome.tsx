@@ -101,8 +101,8 @@ export default function StudentHome() {
             )}
             {self.hydrated && !latest && (
               <p className="mt-2 text-[13px] leading-[1.75] text-soft-muted">
-                진단 접수에서 분기와 학년을 고르면 이 자리에 내 진단이 뜹니다. 무료 진단은
-                20문항 한 판으로 바로 볼 수 있습니다.
+                진단 접수에서 분기와 학년을 고르면 여기에 내 진단이 뜹니다. 무료 진단은
+                20문항을 한 번에 바로 응시할 수 있습니다.
               </p>
             )}
           </div>
@@ -115,7 +115,7 @@ export default function StudentHome() {
       {/* ── 내 진행 ── */}
       <section className="mt-8">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <h2 className="text-[17px] font-bold tracking-tight text-soft-ink">내 진행</h2>
+          <h2 className="text-[17px] font-bold tracking-tight text-soft-ink">내 진행 상황</h2>
           {tone && (
             <span className={`inline-flex items-center gap-1.5 text-[13px] font-semibold ${tone.text}`}>
               <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
@@ -146,8 +146,8 @@ export default function StudentHome() {
 
         {!self.student && self.hydrated && (
           <p className={`${cardBox} mt-3 p-6 text-center text-[13px] leading-[1.8] text-soft-muted`}>
-            명부에 아직 이름이 없어 진행을 셀 수 없습니다. 접속코드로 들어오면 과목별 상태가
-            이 자리에 뜹니다.
+            명부에 아직 이름이 없어 진행 상황을 확인할 수 없습니다. 접속코드로 들어오면 과목별 상태가
+            여기에 뜹니다.
           </p>
         )}
       </section>

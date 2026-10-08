@@ -223,8 +223,8 @@ function Editor({ sheet, back }: { sheet: Sheet; back: React.ReactNode }) {
 
   const tabs = [
     { id: "all" as TabId, label: "전체", rows: paper },
-    { id: "wrong" as TabId, label: "틀림", rows: paper.filter((a) => a.answered && a.correct === false) },
-    { id: "blank" as TabId, label: "못 냄", rows: paper.filter((a) => !a.answered) },
+    { id: "wrong" as TabId, label: "오답", rows: paper.filter((a) => a.answered && a.correct === false) },
+    { id: "blank" as TabId, label: "미응답", rows: paper.filter((a) => !a.answered) },
     { id: "essay" as TabId, label: "서술형", rows: paper.filter((a) => a.q.type === "essay") },
   ];
   const shown = (tabs.find((t) => t.id === tab) ?? tabs[0]).rows;
@@ -262,7 +262,7 @@ function Editor({ sheet, back }: { sheet: Sheet; back: React.ReactNode }) {
                 {pt(paperGot + taskGot)} / {paperMax}
               </span>
               <span className="a2-t-sm text-(--a2-ink-3)">
-                {paper.length + sheet.tasks.length}문항 · 틀림 {wrongs} · 못 냄 {blanks}
+                {paper.length + sheet.tasks.length}문항 · 오답 {wrongs} · 미응답 {blanks}
               </span>
             </FormRow>
           </div>
@@ -324,7 +324,7 @@ function PaperQuestion({
       meta={`${q.level} ${examLevelOf(q.level).name} · ${q.type === "essay" ? "서술형" : "객관식"}`}
       actions={
         !row.answered ? (
-          <Status tone="warn">못 냄</Status>
+          <Status tone="warn">미응답</Status>
         ) : row.correct === true ? (
           <Status tone="ok">정답</Status>
         ) : row.correct === false ? (
@@ -348,7 +348,7 @@ function PaperQuestion({
             <span className="a2-t-sm whitespace-pre-line leading-[1.7] text-(--a2-ink)">{q.stem}</span>
           </FormRow>
 
-          <FormRow label="낸 답">
+          <FormRow label="제출한 답">
             {q.type === "choice" ? (
               <span className="grid w-full gap-1">
                 {(q.choices ?? []).map((c, i) => {
@@ -365,7 +365,7 @@ function PaperQuestion({
                     >
                       <span className="a2-num shrink-0">{i + 1}</span>
                       <span className="min-w-0">{c}</span>
-                      {on && <span className="shrink-0 a2-t-xs">← 고름</span>}
+                      {on && <span className="shrink-0 a2-t-xs">← 선택</span>}
                       {right && (
                         <span className="shrink-0 a2-t-xs" style={{ color: "var(--a2-ok)" }}>
                           정답
@@ -417,7 +417,7 @@ function PaperQuestion({
             />
             {now !== base && (
               <span className="a2-t-xs font-semibold" style={{ color: "var(--a2-accent)" }}>
-                손봄 {pt(base)} → {pt(now)}
+                수정 {pt(base)} → {pt(now)}
               </span>
             )}
           </FormRow>
@@ -468,7 +468,7 @@ function TaskQuestion({
           <FormRow label="문제">
             <span className="a2-t-sm text-(--a2-ink)">{task.stem}</span>
           </FormRow>
-          <FormRow label="낸 답">
+          <FormRow label="제출한 답">
             <span className="a2-t-sm whitespace-pre-wrap leading-[1.7] text-(--a2-ink)">
               {task.answer}
             </span>
@@ -492,7 +492,7 @@ function TaskQuestion({
             />
             {now !== base && (
               <span className="a2-t-xs font-semibold" style={{ color: "var(--a2-accent)" }}>
-                손봄 {pt(base)} → {pt(now)}
+                수정 {pt(base)} → {pt(now)}
               </span>
             )}
           </FormRow>
@@ -507,7 +507,7 @@ function TaskQuestion({
             />
             {task.markedAt && (
               <span className="a2-t-xs text-(--a2-ink-4)">
-                마지막 손봄 <span className="a2-mono">{task.markedAt}</span> · {task.markedBy}
+                마지막 수정 <span className="a2-mono">{task.markedAt}</span> · {task.markedBy}
               </span>
             )}
           </FormRow>

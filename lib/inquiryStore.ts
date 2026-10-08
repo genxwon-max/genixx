@@ -34,7 +34,7 @@ import { blankRich, canonRich, richIsEmpty, richOf, type RichText } from "./cont
 export type InquiryAction = "take" | "answer" | "reopen";
 
 export const inquiryActions: Record<InquiryAction, string> = {
-  take: "맡음",
+  take: "담당 지정",
   answer: "답변",
   reopen: "다시 열기",
 };

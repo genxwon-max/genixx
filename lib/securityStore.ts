@@ -35,17 +35,17 @@ export type GuardSpec = {
 export const guards: GuardSpec[] = [
   {
     id: "copy",
-    label: "글 복사 · 끌기 막기",
+    label: "글 복사 · 드래그 막기",
     blocks: "지문·발문·보기를 마우스로 끌어 선택하거나 Ctrl+C로 복사하는 것",
     cannot: "스크린샷, 다른 기기로 찍기, 손으로 옮겨 적기",
     cost: "글자를 짚어 가며 읽는 습관이 있는 학생은 읽기가 불편해집니다",
   },
   {
     id: "contextmenu",
-    label: "오른쪽 단추 막기",
-    blocks: "오른쪽 단추 메뉴의 「이미지 저장」·「복사」",
+    label: "마우스 오른쪽 버튼 막기",
+    blocks: "마우스 오른쪽 버튼 메뉴의 「이미지 저장」·「복사」",
     cannot: "브라우저 메뉴·개발자 도구·확장 프로그램으로 같은 일을 하는 것",
-    cost: "보조기술이 오른쪽 단추 메뉴를 쓰는 경우 방해가 됩니다",
+    cost: "보조기술이 마우스 오른쪽 버튼 메뉴를 쓰는 경우 방해가 됩니다",
   },
   {
     id: "watermark",

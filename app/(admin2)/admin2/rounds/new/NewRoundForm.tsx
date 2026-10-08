@@ -69,7 +69,7 @@ export default function NewRoundForm() {
 
   const save = () => {
     const bad: string[] = [];
-    if (!label.trim()) bad.push("회차 이름을 적어 주세요. 목록과 리포트에 그대로 나갑니다.");
+    if (!label.trim()) bad.push("회차 이름을 적어 주세요. 목록과 리포트에 그대로 표시됩니다.");
     /* 기간은 편성 화면과 **같은 잣대**로 본다(checkPeriod). 여기서만 따로 재면
        만들 때는 통과한 기간이 편성 화면에서 막히는 날이 온다 */
     bad.push(...checkPeriod({ opensOn, opensAt, closesOn, closesAt }));

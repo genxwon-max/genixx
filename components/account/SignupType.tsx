@@ -15,20 +15,21 @@ import {
 import { patchSignupDraft } from "@/lib/signupStore";
 import { themeOf } from "@/lib/authVariant";
 import AuthTabs, { BackRow } from "./AuthTabs";
-import { ArrowBadge, OrgArt, PersonalArt, StudentArt } from "./AuthArt";
+import { ArrowBadge, ExpertArt, PersonalArt, StudentArt } from "./AuthArt";
 
 /**
  * ACC-01-1 회원유형 선택 → 가입 수단 선택.
  *
  * 화면 순서 —
- *   ① 갈래     (개인 / 기관)
+ *   ① 갈래     (개인 / 전문가)
  *   ② 역할     (개인이면 → 만 14세 이상 학생 / 학부모·법정대리인)
  *   ③ 가입 수단 (카카오·네이버·구글·아이디)
  *
- * 예전에는 학생·학부모·기관을 첫 화면에 나란히 세웠다. 사람은 자기 역할을 들고
- * 들어오지 "개인"이라는 분류를 들고 들어오지 않는다는 이유였는데, 기관 담당자와 개인
- * 회원은 받는 화면도 권한도 정산도 통째로 다르다. 큰 갈림길을 먼저 묻고 나면 개인
- * 쪽에는 학생과 학부모의 차이만 남아, 두 카드에 설명을 제대로 실을 수 있다.
+ * 둘째 갈래는 한동안 「기관」이었고, 지금은 **전문가**다. 문항을 내고 검토하고 면담을
+ * 맡는 사람이 스스로 가입을 신청하면, 운영진이 가입 승인(ADM-02-2)에서 맡을 일을 정해
+ * 계정을 연다. 전문가와 개인 회원은 받는 화면도 권한도 통째로 다르므로 큰 갈림길을 먼저
+ * 묻는다 — 그러고 나면 개인 쪽에는 학생과 학부모의 차이만 남아, 두 카드에 설명을 제대로
+ * 실을 수 있다. 기관 담당자 유형은 교사처럼 입구에서 묻지 않는다(lib/account.ts).
  *
  * **두 개인 갈래는 그 뒤로 같은 길을 간다.** 학생에게만 있던 연령 확인 단계는 없앴다.
  * 「만 14세 이상 학생」이라고 적힌 카드를 고르는 것이 곧 본인의 신고이고, 실제 판정은
@@ -36,10 +37,10 @@ import { ArrowBadge, OrgArt, PersonalArt, StudentArt } from "./AuthArt";
  * 아무렇게나 적을 수 있는 숫자였고, 본인확인기관이 확인해 준 값이 언제나 그보다 낫다.
  *
  * **세 단계 모두 고를 것만 세운다.** 갈림길에는 카드만, 가입 수단 화면에는 단추와
- * 되돌아갈 길만 둔다. 만 14세 미만 안내·법정대리인 자격·기관 승인 대기 같은 이야기를
+ * 되돌아갈 길만 둔다. 만 14세 미만 안내·법정대리인 자격·전문가 승인 대기 같은 이야기를
  * 여기 쌓아 두면 무엇을 고르는 자리인지가 흐려진다. 그 셋은 모두 **고른 뒤에 실제로
  * 걸리는 곳**에서 다시 말한다 — 연령 판정과 법정대리인 경로는 /signup/join의 휴대폰
- * 본인인증이, 기관 승인 대기는 가입 직후 도착하는 /my/pending이 맡는다.
+ * 본인인증이, 전문가 승인 대기는 가입 직후 도착하는 /expert가 맡는다.
  *
  * 세 단계가 **같은 껍데기를 쓴다.** 되돌아가기 줄은 첫 단계에서도 빈 줄로 자리를
  * 지키므로, 단계를 넘어가도 제목과 카드가 제자리에 그대로 있다. 위아래 여백을 넉넉히
@@ -77,17 +78,17 @@ const methods: { id: string; label: string; tone: "kakao" | "naver" | "plain" }[
 
 type Card = { title: string; desc: string; art: React.ReactNode };
 
-/** ① 첫 갈림길 — 개인 / 기관 */
+/** ① 첫 갈림길 — 개인 / 전문가 */
 const bucketCards: Record<SignupBucketId, Card> = {
   personal: {
     title: "개인 회원으로 가입",
     desc: "학생 본인 또는 학부모·법정대리인 계정입니다",
     art: <PersonalArt className="h-28 w-full" accent={ACCENT} />,
   },
-  org: {
-    title: "기관 회원으로 가입",
-    desc: "학교·학원·교육청 단위로 학생을 등록하고 운영합니다",
-    art: <OrgArt className="h-28 w-full" accent={ACCENT} />,
+  expert: {
+    title: "전문가 회원으로 가입",
+    desc: "문항 출제·검토와 결과 해석 면담을 맡습니다. 운영진 승인 뒤에 권한이 열립니다",
+    art: <ExpertArt className="h-28 w-full" accent={ACCENT} />,
   },
 };
 
@@ -149,11 +150,11 @@ export default function SignupType({
     setStage("method");
   };
 
-  /** ① 개인 / 기관. 기관은 역할이 하나뿐이라 곧바로 가입 수단으로 넘어간다 */
+  /** ① 개인 / 전문가. 전문가는 역할이 하나뿐이라 곧바로 가입 수단으로 넘어간다 */
   const pickBucket = (id: SignupBucketId) => {
     setBucket(id);
-    if (id === "org") {
-      pick("org");
+    if (id === "expert") {
+      pick("expert");
       return;
     }
     setPicked(null);
@@ -174,9 +175,9 @@ export default function SignupType({
     router.push("/signup/join");
   };
 
-  /** 기관은 역할 단계를 지나오지 않았으므로 첫 갈림길로 돌아간다 */
+  /** 전문가는 역할 단계를 지나오지 않았으므로 첫 갈림길로 돌아간다 */
   const back = () => {
-    if (stage === "method") setStage(bucket === "org" ? "bucket" : "person");
+    if (stage === "method") setStage(bucket === "expert" ? "bucket" : "person");
     else setStage("bucket");
   };
 
@@ -190,7 +191,7 @@ export default function SignupType({
           card: personCards[id],
           onClick: () => pick(id),
         }))
-      : (["personal", "org"] as SignupBucketId[]).map((id) => ({
+      : (["personal", "expert"] as SignupBucketId[]).map((id) => ({
           key: id as string,
           card: bucketCards[id],
           onClick: () => pickBucket(id),

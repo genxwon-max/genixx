@@ -109,7 +109,7 @@ export const SENSITIVE: {
 ];
 
 /** S1·S2가 요구하면 단계 오류가 되는 말 */
-const HIGHER_ORDER = ["까닭을", "왜 그런지", "설명하시오", "근거를", "판단하"];
+const HIGHER_ORDER = ["이유를", "까닭을", "왜 그런지", "설명하시오", "근거를", "판단하"];
 
 const has = (text: string, word: string) => text.includes(word);
 
@@ -308,8 +308,8 @@ export function auditItem(item: ItemDraft): AuditResult {
   if ((item.level === "S1" || item.level === "S2") && HIGHER_ORDER.some((w) => has(item.stem, w))) {
     tagging.push({
       tone: "warn",
-      text: `${item.level} 발문이 까닭·설명을 요구합니다. 한 단계 위 조작이라 단계가 어긋날 수 있습니다.`,
-      fix: "단계에 맞는 조작을 묻도록 발문을 고치거나, 단계를 한 칸 올려 주세요.",
+      text: `${item.level} 발문이 이유·설명을 요구합니다. 한 단계 위 조작이라 단계가 어긋날 수 있습니다.`,
+      fix: "단계에 맞는 조작을 묻도록 발문을 고치거나, 단계를 하나 올려 주세요.",
       code: "grade",
       reason: "t-b-level",
     });

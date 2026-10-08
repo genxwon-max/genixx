@@ -529,7 +529,7 @@ function Pager({
   );
 
   return (
-    <nav aria-label="쪽 넘김" className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
+    <nav aria-label="페이지 이동" className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
       {step("처음", 1, page === 1)}
       {step("이전", page - 1, page === 1)}
       {nums.map((n) => (

@@ -769,7 +769,7 @@ export function openChecks(roundId: string, slots: PlanSlot[], plans: Plans): Pl
   if (built.length === 0) {
     out.push({
       tone: "block",
-      text: "편성한 검사지가 하나도 없습니다. 적어도 한 칸은 짜야 회차를 열 수 있습니다.",
+      text: "편성한 검사지가 하나도 없습니다. 적어도 한 칸은 편성해야 회차를 열 수 있습니다.",
     });
   }
 
@@ -777,7 +777,7 @@ export function openChecks(roundId: string, slots: PlanSlot[], plans: Plans): Pl
   if (unconfirmed.length > 0) {
     out.push({
       tone: "block",
-      text: `아직 확정하지 않은 검사지가 ${unconfirmed.length}벌 있습니다 — ${unconfirmed
+      text: `아직 확정하지 않은 검사지가 ${unconfirmed.length}개 있습니다 — ${unconfirmed
         .map((s) => s.short)
         .join(" · ")}`,
     });

@@ -159,7 +159,7 @@ export const consentRouteInfo: Record<
       "만 14세 이상이면 학생 본인이 개인정보 수집·이용에 동의하고, 본인 이름으로 계정을 만들 수 있습니다.",
     extra: [
       "법정대리인 동의는 받지 않습니다. 보호자는 결제와 결과 열람 주체로만 남습니다.",
-      "보호자가 등록해 두신 경우에는 학생에게 가입 초대를 보내고, 학생이 본인 동의로 계정을 연 뒤 두 계정을 잇습니다.",
+      "보호자가 등록해 두신 경우에는 학생에게 가입 초대를 보내고, 학생이 본인 동의로 계정을 연 뒤 두 계정을 연결합니다.",
       "만 19세 미만이면 여전히 미성년자입니다. 유료 결제·정기구독은 학부모 계정에서 진행하거나 법정대리인 동의를 따로 받습니다(민법 제5조).",
     ],
   },
@@ -260,7 +260,7 @@ export const consentStages: ConsentStage[] = [
    교사는 가입 입구에 두지 않는다. 교사 계정은 기관 담당자가 소속을 만든 뒤 초대하는
    쪽이 맞아서, 유형 자체는 남기되 여기서는 묻지 않는다. */
 
-export type SignupTypeId = "student" | "parent" | "teacher" | "org";
+export type SignupTypeId = "student" | "parent" | "teacher" | "org" | "expert";
 
 export type SignupType = {
   id: SignupTypeId;
@@ -319,10 +319,26 @@ export const signupTypes: SignupType[] = [
     tone: "border-amber-300 bg-amber-50 text-amber-800",
     badge: "승인 필요",
   },
+  {
+    id: "expert",
+    label: "전문가",
+    tagline: "문항 출제·검토, 진단, 결과 해석 면담을 맡습니다",
+    detail:
+      "가입을 신청하면 운영진이 소속과 경력을 확인한 뒤 맡을 일(출제자 · 검토자 · 진단 위원 · 상담사)을 정해 계정을 엽니다. 승인 전에는 내 정보만 채울 수 있고 학생 자료는 보이지 않습니다.",
+    next: "/expert",
+    needsApproval: true,
+    tone: "border-violet-300 bg-violet-50 text-violet-800",
+    badge: "승인 필요",
+  },
 ];
 
-/** 가입 첫 화면의 두 갈래. 기관을 고르면 곧바로 「기관 담당자」로 이어진다. */
-export type SignupBucketId = "personal" | "org";
+/**
+ * 가입 첫 화면의 두 갈래. 전문가를 고르면 곧바로 「전문가」로 이어진다.
+ *
+ * 둘째 갈래는 한동안 「기관」이었다. 기관 담당자 유형(org)은 이미 만들어진 계정과 기관
+ * 화면(/org)이 쓰고 있어 그대로 두되, 교사와 마찬가지로 가입 입구에서는 묻지 않는다.
+ */
+export type SignupBucketId = "personal" | "expert";
 
 /** 개인 갈래 안에서 다시 갈리는 두 역할. 교사는 기관이 초대하므로 여기 없다. */
 export type PersonalRoleId = Extract<SignupTypeId, "student" | "parent">;
@@ -336,7 +352,7 @@ export function isPersonalRole(id: SignupTypeId): id is PersonalRoleId {
 /** 역할만 알고 있을 때 그것이 어느 갈래에서 나왔는지 되짚는다 (뒤로 가기·딥링크용) */
 export function bucketOf(id: SignupTypeId | null | undefined): SignupBucketId | null {
   if (!id) return null;
-  return isPersonalRole(id) ? "personal" : "org";
+  return isPersonalRole(id) ? "personal" : "expert";
 }
 
 export function signupTypeOf(id: SignupTypeId | null | undefined) {
@@ -430,7 +446,7 @@ export type GuardianConsentInfo = {
 export const guardianConsentInfo: Record<GuardianConsentStatus, GuardianConsentInfo> = {
   temp: {
     label: "임시등록",
-    meaning: "응시코드만 만들어 둔 상태입니다. 학생 정보는 최소한만 들고 있습니다.",
+    meaning: "응시코드만 만들어 둔 상태입니다. 학생 정보는 최소한만 보관합니다.",
     orgCan: ["동의 요청 발송", "임시등록 취소"],
     canSit: false,
     tone: "text-slate-500",
@@ -581,7 +597,7 @@ export const purposeConsents: PurposeConsent[] = [
       },
       {
         h: "제2조 (회원의 구성)",
-        p: "회원은 학생 회원, 학부모·법정대리인 회원, 교사 회원, 기관 회원으로 구분합니다. 만 14세 이상의 학생은 본인의 동의로 학생 회원에 가입할 수 있습니다. 만 14세 미만의 학생은 단독으로 가입을 완료할 수 없으며, 법정대리인의 동의가 확인된 때에 학생 프로필이 활성화됩니다.",
+        p: "회원은 학생 회원, 학부모·법정대리인 회원, 교사 회원, 기관 회원, 전문가 회원으로 구분합니다. 만 14세 이상의 학생은 본인의 동의로 학생 회원에 가입할 수 있습니다. 만 14세 미만의 학생은 단독으로 가입을 완료할 수 없으며, 법정대리인의 동의가 확인된 때에 학생 프로필이 활성화됩니다.",
       },
       {
         h: "제2조의2 (미성년 회원의 계약)",

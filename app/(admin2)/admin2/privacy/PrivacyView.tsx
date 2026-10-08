@@ -135,6 +135,7 @@ export default function PrivacyView() {
       },
       {
         key: "consents",
+        detail: true,
         head: "동의",
         width: "100%",
         value: (v) =>
@@ -260,7 +261,7 @@ export default function PrivacyView() {
           <p className="a2-label">파기 대기</p>
           <p className="mt-1 a2-metric text-(--a2-ink)">{n(c.queued)}</p>
           <p className="mt-0.5 a2-t-xs text-(--a2-ink-4)">
-            도래 {n(c.queuedExpired)} · 철회 {n(c.queuedWithdrawn)}
+            만료 {n(c.queuedExpired)} · 철회 {n(c.queuedWithdrawn)}
           </p>
         </Link>
       </div>

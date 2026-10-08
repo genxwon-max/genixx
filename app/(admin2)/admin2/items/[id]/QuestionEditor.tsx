@@ -176,7 +176,7 @@ export function QuestionList({
                     {summary ? (
                       <span title={summary}>{summary}</span>
                     ) : (
-                      <span className="text-(--a2-ink-4)">아직 안 씀</span>
+                      <span className="text-(--a2-ink-4)">미작성</span>
                     )}
                   </td>
                   <td className="a2-nowrap">
@@ -401,7 +401,7 @@ export function QuestionClassRows({
         hint={
           outOfRange ? (
             <Danger>
-              {talent.name} 축은 {q.level}을 낼 수 없습니다 — 인지단계를 다시 고르세요.
+              {talent.name} 축은 {q.level}을 출제할 수 없습니다 — 인지단계를 다시 고르세요.
             </Danger>
           ) : undefined
         }

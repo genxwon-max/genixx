@@ -15,6 +15,7 @@ import { patchSignupDraft, useSignupDraft } from "@/lib/signupStore";
 import { useHydrated } from "@/lib/examStore";
 import { signIn } from "@/lib/authStore";
 import { addStudents } from "@/lib/roster";
+import { applyExpert, expertLoginTaken } from "@/lib/expertAccountStore";
 import { themeOf } from "@/lib/authVariant";
 
 /**
@@ -26,8 +27,12 @@ import { themeOf } from "@/lib/authVariant";
  *   간편 가입 — 이메일(읽기 전용) · 이름 · 휴대폰 본인인증 · 약관
  *   아이디 가입 — 아이디 · 비밀번호 · 비밀번호 확인 · 이름 · 휴대폰 본인인증 · 약관
  *
- * 역할(학생·학부모·기관 담당자)은 묻지 않는다. 앞 화면(/signup/type)에서 이미 골랐다.
+ * 역할(학생·학부모·전문가)은 묻지 않는다. 앞 화면(/signup/type)에서 이미 골랐다.
  * 그 자리에 **휴대폰 본인인증**이 들어간다.
+ *
+ * 전문가도 같은 칸을 쓴다. 소속 · 전문 분야 · 희망 직무는 묻지 않는다 — 무슨 일을 맡길지는
+ * 운영진이 가입 승인에서 정하고(lib/expertAccountStore.ts의 decideExpert), 소속과 연혁은
+ * 가입한 뒤 본인이 「내 정보」에서 채운다.
  *
  * 본인인증은 **NICE아이디 휴대폰본인확인**으로 넘긴다. 주민등록번호는 우리 화면을
  * 지나가지 않고, 인증이 끝나면 확인된 휴대폰 번호와 생년월일만 돌려받아 저장한다
@@ -38,7 +43,7 @@ import { themeOf } from "@/lib/authVariant";
  *   · 학생이 만 14세 미만이면 **단독 가입을 여기서 멈추고** 법정대리인 동의 경로로 잇는다.
  *     "가입 불가"가 아니다. 앞 화면의 연령 확인을 지나왔더라도, 본인확인이 돌려준 값이
  *     최종 판정이므로 여기서 한 번 더 본다.
- *   · 학부모·법정대리인과 기관 담당자는 성년(만 19세)이어야 한다. 법정대리인 동의를 할
+ *   · 학부모·법정대리인과 전문가는 성년(만 19세)이어야 한다. 법정대리인 동의를 할
  *     사람이 미성년자일 수는 없기 때문이다.
  *
  * ⚠ 비밀번호는 화면 상태에만 두고 어디에도 저장하지 않는다 (인증 서버가 없는 시안이다).
@@ -222,10 +227,11 @@ export default function SignupFlow() {
   const nameOk = name.trim().length >= 2;
 
   const isStudent = draft.type === "student";
+  const isExpert = draft.type === "expert";
   const age = pass ? ageFromBirth(pass.birth) : null;
   /** 학생이 만 14세 미만 — 단독으로 가입을 끝낼 수 없다 */
   const needsGuardian = isStudent && age !== null && age < CONSENT_AGE;
-  /** 학부모·기관은 성년이어야 한다 */
+  /** 학부모·전문가는 성년이어야 한다 */
   const needsAdult = !isStudent && age !== null && age < MAJORITY_AGE;
   /** 만 14세 이상이지만 아직 미성년 — 가입은 되고 결제만 갈린다 */
   const minorContract = isStudent && age !== null && age >= CONSENT_AGE && age < MAJORITY_AGE;
@@ -238,7 +244,10 @@ export default function SignupFlow() {
 
   const idAvailable = idStatus === "ok";
   const ready =
-    (social || (idOk && idAvailable && pwOk && pw2Ok)) && nameOk && phoneVerified && termsOk;
+    (social || (idOk && idAvailable && pwOk && pw2Ok)) &&
+    nameOk &&
+    phoneVerified &&
+    termsOk;
 
   const toggle = (id: string) =>
     setAgreed((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -278,6 +287,31 @@ export default function SignupFlow() {
         loginId: social ? undefined : loginId,
         studentId: created.id,
         approved: true,
+      });
+      router.push(type.next);
+      return;
+    }
+
+    // 전문가는 신청을 접수하고 자기 자리(/expert)로 보낸다. 승인 전이라 거기에는 승인
+    // 진행 상태와 「내 정보」만 선다 — 승인과 권한은 세션이 아니라 계정에서 읽으므로,
+    // 운영진이 승인하면 다시 로그인하지 않아도 화면이 열린다.
+    if (isExpert) {
+      const account = applyExpert({
+        loginId: social ? "" : loginId,
+        provider: draft.provider,
+        email: draft.email,
+        phone: pass.phone,
+        name,
+      });
+      signIn({
+        role: "expert",
+        name: name.trim(),
+        provider: draft.provider,
+        email: draft.email || undefined,
+        loginId: social ? undefined : loginId,
+        expertId: account.id,
+        approved: false,
+        mfaPassed: true,
       });
       router.push(type.next);
       return;
@@ -363,7 +397,11 @@ export default function SignupFlow() {
                     <button
                       type="button"
                       disabled={!idOk}
-                      onClick={() => setIdStatus(takenIds.includes(loginId) ? "taken" : "ok")}
+                      onClick={() =>
+                        setIdStatus(
+                          takenIds.includes(loginId) || expertLoginTaken(loginId) ? "taken" : "ok",
+                        )
+                      }
                       className={`${t.btnQuiet} shrink-0 disabled:cursor-not-allowed disabled:opacity-40`}
                     >
                       중복 확인
@@ -532,14 +570,15 @@ export default function SignupFlow() {
                 </div>
               )}
 
-              {/* 학부모·기관 담당자가 미성년으로 확인된 경우 */}
+              {/* 학부모·전문가가 미성년으로 확인된 경우 */}
               {passState === "done" && pass && needsAdult && (
                 <div className="flex flex-col items-start gap-2">
                   <p className="text-[14px] font-bold">
                     {type.label} 계정은 성년만 만들 수 있습니다
                   </p>
                   <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-                    법정대리인 동의와 기관 운영은 만 {MAJORITY_AGE}세 이상이어야 할 수 있습니다.
+                    {isExpert ? "전문가 활동은" : "법정대리인 동의는"} 만 {MAJORITY_AGE}세 이상이어야 할 수
+                    있습니다.
                     학생 본인이시라면 학생으로 가입해 주세요.
                   </p>
                   <Link href="/signup/type" className={`${t.btnQuiet} mt-2`}>

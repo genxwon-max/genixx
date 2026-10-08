@@ -136,7 +136,7 @@ function Editor({
   if (v.modes.length === 0) bad.push("만나는 방식을 하나 이상 골라 주세요.");
   if (v.days.length === 0) bad.push("면담을 받는 요일을 하나 이상 골라 주세요.");
   if (v.from >= v.to) bad.push("근무 마감이 시작보다 앞이거나 같습니다.");
-  if (v.off[0] >= v.off[1]) bad.push("비우는 구간의 끝이 시작보다 앞이거나 같습니다.");
+  if (v.off[0] >= v.off[1]) bad.push("상담 제외 시간의 끝이 시작보다 앞이거나 같습니다.");
 
   const save = () => {
     if (bad.length > 0) return false;
@@ -186,7 +186,7 @@ function Editor({
                 /* 지운 상담사에게 잡혀 있던 면담은 이름을 잃는다. 내려 두는 길이 따로
                    있으므로 여기까지 오는 것은 잘못 등록한 줄을 걷어 낼 때다 */
                 const ok = window.confirm(
-                  `「${name || row.id}」 상담사를 지웁니다.\n\n면담을 더 받지 않으려면 지우지 말고 노출을 끄세요 — 그러면 새 예약은 안 들어오고 이미 잡힌 면담은 이름을 그대로 찾습니다.\n\n지울까요?`,
+                  `「${name || row.id}」 상담사를 지웁니다.\n\n면담을 더 받지 않으려면 지우지 말고 노출을 끄세요 — 그러면 새 예약은 안 들어오고 이미 잡힌 면담에는 이름이 그대로 표시됩니다.\n\n지울까요?`,
                 );
                 if (!ok) return;
                 removeCounselor(row.id);
@@ -201,7 +201,7 @@ function Editor({
 
       <Body className="flex flex-col gap-3">
         {/* ── ① 사람 ── */}
-        <Panel title="사람" meta={row.id} flush>
+        <Panel title="기본 정보" meta={row.id} flush>
           <div className="a2-form">
             <FormRow label="이름" req={!person}>
               <input
@@ -298,7 +298,7 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="맡는 물음" req>
+            <FormRow label="담당 상담 주제" req>
               {topicList.map((t) => (
                 <label key={t} className="a2-choice">
                   <input
@@ -326,7 +326,7 @@ function Editor({
 
             {/* 값은 고른 길이에만 물어본다 — 받지 않는 길이의 값을 받아 두면 그 값이 어디에도
                 안 쓰이는 채로 남고, 뒤에 그 길이를 열었을 때 잊고 있던 값이 튀어나온다 */}
-            <FormRow label="면담 값">
+            <FormRow label="면담 비용">
               {v.spans.length === 0 ? (
                 <span className="a2-t-sm text-(--a2-ink-4)">—</span>
               ) : (
@@ -338,7 +338,7 @@ function Editor({
                         className="a2-input a2-num"
                         style={{ maxWidth: "9.5rem" }}
                         inputMode="numeric"
-                        aria-label={`${spanLabel(s)} 면담 값`}
+                        aria-label={`${spanLabel(s)} 면담 비용`}
                         value={v.fees[s] != null ? v.fees[s]!.toLocaleString("ko-KR") : ""}
                         onChange={(e) => {
                           const digits = e.target.value.replace(/[^0-9]/g, "");
@@ -380,7 +380,7 @@ function Editor({
                   checked={v.shown}
                   onChange={(e) => draft.set("shown", e.target.checked)}
                 />
-                보호자·학생 화면의 목록에 세웁니다
+                보호자·학생 화면의 목록에 노출합니다
               </label>
             </FormRow>
           </div>
@@ -409,7 +409,7 @@ function Editor({
               ))}
             </FormRow>
 
-            <FormRow label="여는 시간" req>
+            <FormRow label="근무 시간" req>
               <input
                 type="time"
                 step={1800}
@@ -431,13 +431,13 @@ function Editor({
               />
             </FormRow>
 
-            <FormRow label="비우는 구간">
+            <FormRow label="상담 제외 시간">
               <input
                 type="time"
                 step={1800}
                 className="a2-input a2-mono"
                 style={{ maxWidth: "8rem" }}
-                aria-label="비우는 구간 시작"
+                aria-label="상담 제외 시간 시작"
                 value={v.off[0]}
                 onChange={(e) => draft.set("off", [e.target.value, v.off[1]])}
               />
@@ -447,7 +447,7 @@ function Editor({
                 step={1800}
                 className="a2-input a2-mono"
                 style={{ maxWidth: "8rem" }}
-                aria-label="비우는 구간 끝"
+                aria-label="상담 제외 시간 끝"
                 value={v.off[1]}
                 onChange={(e) => draft.set("off", [v.off[0], e.target.value])}
               />
@@ -456,7 +456,7 @@ function Editor({
         </Panel>
 
         {bad.length > 0 && (
-          <Panel title="짚을 것">
+          <Panel title="확인할 점">
             <ul className="flex flex-col gap-1">
               {bad.map((e) => (
                 <li key={e} className="a2-t-sm" style={{ color: "var(--a2-danger)" }}>

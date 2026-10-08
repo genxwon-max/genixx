@@ -26,8 +26,8 @@ type Shape = "write" | "short" | "options" | "template" | "draw";
 
 const shapes: { id: Shape; label: string }[] = [
   { id: "write", label: "글로 쓰기" },
-  { id: "short", label: "짧은 값" },
-  { id: "options", label: "고르기" },
+  { id: "short", label: "단답형" },
+  { id: "options", label: "선택형" },
   { id: "template", label: "문장 속 괄호" },
   { id: "draw", label: "그리기" },
 ];
@@ -128,7 +128,7 @@ export default function AnswerEditor({
 
       {response.kind === "essay" && (
         <>
-          <Line label="자리표시 글">
+          <Line label="입력 예시">
             <input
               className="a2-input"
               value={response.placeholder ?? ""}
@@ -143,7 +143,7 @@ export default function AnswerEditor({
               rows={2}
               value={(response.guide ?? []).join("\n")}
               disabled={disabled}
-              placeholder={"한 줄에 하나 — 답 칸 위 「이렇게 써 보세요」에 번호를 달아 섭니다"}
+              placeholder={"한 줄에 하나 — 답 칸 위 「이렇게 써 보세요」에 번호를 달아 표시됩니다"}
               onChange={(e) =>
                 emit({
                   ...response,
@@ -259,7 +259,7 @@ function BlanksFields({
           disabled={disabled}
           onClick={() => onChange([...blanks, { label: "" }], [...answers, ""])}
         >
-          + 칸 더하기
+          + 칸 추가
         </button>
         <button
           type="button"
@@ -269,7 +269,7 @@ function BlanksFields({
             marks.length === 0
               ? "지문에 ( ㄱ ) 같은 빈칸이 없습니다"
               : missing.length === 0
-                ? "지문의 빈칸이 이미 모두 칸으로 있습니다"
+                ? "지문의 빈칸이 이미 모두 답 칸으로 추가되어 있습니다"
                 : undefined
           }
           onClick={() =>
@@ -370,7 +370,7 @@ function BlankRow({
             className="a2-input"
             value={b.label}
             disabled={disabled}
-            placeholder="( ㄱ ) · 차이점 · 방위각 — 비우면 이름 없이 괄호만 섭니다"
+            placeholder="( ㄱ ) · 차이점 · 방위각 — 비우면 이름 없이 괄호만 표시됩니다"
             onChange={(e) => onChange({ ...b, label: e.target.value })}
           />
         </Line>
@@ -416,12 +416,12 @@ function BlankRow({
                   onChange={(e) => onChange({ ...b, suffix: e.target.value || undefined })}
                 />
               </Line>
-              <Line label="자리표시">
+              <Line label="입력 예시">
                 <input
                   className="a2-input"
                   value={b.placeholder ?? ""}
                   disabled={disabled}
-                  placeholder="0.0 · 숫자 · 낱말"
+                  placeholder="0.0 · 숫자 · 단어"
                   onChange={(e) => onChange({ ...b, placeholder: e.target.value || undefined })}
                 />
               </Line>
@@ -445,7 +445,7 @@ function BlankRow({
         )}
 
         {shape === "options" && (
-          <Line label="고를 것 · 정답">
+          <Line label="선택지 · 정답">
             <div className="a2-body-flush">
               {(b.options ?? []).map((o, i) => (
                 <div
@@ -481,7 +481,7 @@ function BlankRow({
                     type="button"
                     className="a2-btn a2-btn-sm mr-2"
                     disabled={disabled || (b.options?.length ?? 0) <= 2}
-                    aria-label={`${i + 1}번 고를 것 빼기`}
+                    aria-label={`${i + 1}번 선택지 삭제`}
                     onClick={() =>
                       onChange(
                         { ...b, options: b.options!.filter((_, n) => n !== i) },
@@ -500,7 +500,7 @@ function BlankRow({
                   disabled={disabled}
                   onClick={() => onChange({ ...b, options: [...(b.options ?? []), ""] })}
                 >
-                  고를 것 더하기
+                  선택지 추가
                 </button>
               </div>
             </div>
@@ -519,7 +519,7 @@ function BlankRow({
               />
             </Line>
             <span className="a2-hint">
-              {"{}"} 자리마다 괄호 칸이 섭니다 — 지금 {slots}개
+              {"{}"} 자리마다 괄호 칸이 표시됩니다 — 지금 {slots}개
             </span>
             {slots > 0 && (
               <Line label="괄호마다 정답">
@@ -699,7 +699,7 @@ function MatchFields({
           disabled={disabled}
           onClick={() => onChange({ ...r, [key]: [...r[key], { text: "" }] })}
         >
-          항목 더하기
+          항목 추가
         </button>
       </div>
     </div>
@@ -711,8 +711,8 @@ function MatchFields({
         {side("right", "오른쪽")}
       </div>
       <span className="a2-hint">
-        응시 화면에서는 왼쪽 점과 오른쪽 점을 선으로 잇습니다. 항목에 사진을 넣는 칸은 다음에
-        붙습니다.
+        응시 화면에서는 왼쪽 점과 오른쪽 점을 선으로 잇습니다. 항목에 사진을 넣는 기능은 추후
+        추가됩니다.
       </span>
     </>
   );

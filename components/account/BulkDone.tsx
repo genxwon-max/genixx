@@ -54,7 +54,7 @@ export default function BulkDone() {
         <div className={`${t.card} p-10 text-center`}>
           <p className="text-[15px] font-bold text-soft-ink">방금 등록한 학생이 없습니다</p>
           <p className="mx-auto mt-2 max-w-md text-[13px] leading-[1.75] text-soft-muted">
-            명단을 등록하면 이 자리에 아이마다 접속코드가 섭니다. 이미 등록한 아이의 코드는 학생
+            명단을 등록하면 여기에 아이마다 접속코드가 표시됩니다. 이미 등록한 아이의 코드는 학생
             목록에서 볼 수 있습니다.
           </p>
           <div className="mx-auto mt-6 grid max-w-[24rem] gap-2.5 sm:grid-cols-2">

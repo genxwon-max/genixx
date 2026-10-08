@@ -301,7 +301,7 @@ function customRule(s: CustomSlot, k: number): Rule {
   return {
     id: `R-${s.id}`,
     label: s.label,
-    desc: s.guide || "운영자가 해석 템플릿 화면에서 더한 자리",
+    desc: s.guide || "운영자가 해석 템플릿 화면에서 추가한 항목",
     slot: s.id,
     cond: s.byAxis ? { kind: "topAxis" } : { kind: "always" },
     order: 100 + k * 10,

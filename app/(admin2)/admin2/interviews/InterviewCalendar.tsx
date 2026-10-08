@@ -154,7 +154,7 @@ export default function InterviewCalendar({
         <div className="grid gap-3 xl:grid-cols-[1fr_19rem]">
           <Panel flush className="min-w-0">
             <div className="a2-toolbar">
-              <span className="a2-label a2-query-label">보는 단위</span>
+              <span className="a2-label a2-query-label">보기 단위</span>
               <button
                 type="button"
                 className={`a2-btn a2-btn-sm ${view === "month" ? "a2-btn-primary" : ""}`}
@@ -279,7 +279,7 @@ export default function InterviewCalendar({
                   <p className="a2-t-sm text-(--a2-ink-3)">이 날에는 잡힌 면담이 없습니다.</p>
                   <p className="a2-note">
                     <span>
-                      면담은 이 그림에서 만들지 않습니다. 면담 신청에서 대상을 골라 날짜를 잡습니다.
+                      면담은 이 달력에서 만들지 않습니다. 면담 신청에서 대상을 골라 날짜를 잡습니다.
                     </span>
                   </p>
                 </div>
@@ -332,7 +332,7 @@ export default function InterviewCalendar({
       </Body>
 
       <SeedNote>
-        이 달력이 아는 것은 이 콘솔에 잡힌 면담뿐입니다. 면담원의 회의·출장·휴가는 여기
+        이 달력에는 이 콘솔에 잡힌 면담만 표시됩니다. 면담원의 회의·출장·휴가는 여기
         없습니다(lib/interviewStore.ts). 사람 데이터는 전부 화면 설계를 위한 예시입니다.
       </SeedNote>
     </>

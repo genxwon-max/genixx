@@ -41,7 +41,7 @@ export type StripBlock = {
 export default function DayStrip({
   blocks,
   free = [],
-  empty = "이 날에는 잡힌 면담이 없습니다.",
+  empty = "이 날에는 예약된 면담이 없습니다.",
   times = true,
 }: {
   blocks: StripBlock[];
@@ -95,7 +95,7 @@ export default function DayStrip({
 
       {outside.length > 0 && (
         <p className="a2-t-xs text-(--a2-ink-4)">
-          띠 밖에 {outside.length}건 — {outside.map((b) => b.label).join(" · ")}
+          표시 시간대 밖에 {outside.length}건 — {outside.map((b) => b.label).join(" · ")}
         </p>
       )}
 
@@ -103,14 +103,14 @@ export default function DayStrip({
 
       {times && blocks.length > 0 && (
         <p className="a2-t-xs text-(--a2-ink-3)">
-          잡힌 자리 <span className="a2-mono">{blocks.map((b) => b.label).join(" · ")}</span>
+          예약된 시간 <span className="a2-mono">{blocks.map((b) => b.label).join(" · ")}</span>
         </p>
       )}
 
       {free.length > 0 && (
         <p className="a2-t-xs text-(--a2-ink-3)">
-          빈 자리 <span className="a2-mono">{free.slice(0, 8).join(" · ")}</span>
-          {free.length > 8 && ` 외 ${free.length - 8}곳`}
+          빈 시간 <span className="a2-mono">{free.slice(0, 8).join(" · ")}</span>
+          {free.length > 8 && ` 외 ${free.length - 8}개`}
         </p>
       )}
     </div>

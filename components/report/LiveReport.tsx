@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSession } from "@/lib/authStore";
-import { buildLiveReport, editions, type Edition } from "@/lib/diagReport";
+import { buildLiveReport, editions, sampleReport, type Edition } from "@/lib/diagReport";
 import { SUBJECT_IDS, type SubjectId } from "@/lib/exam";
 import { parseRegId, useExamRecord, useHydrated } from "@/lib/examStore";
 import { decideType, scoreAxes, scoreSubject } from "@/lib/result";
@@ -22,6 +22,10 @@ import SummaryPages from "./SummaryPages";
  * 누구의 보고서인지는 결과 화면(ResultView)과 같은 규칙으로 정한다. 학생은 자기 것, 보호자·
  * 기관은 ?student= 로 받되 내 명부에 있는 아이일 때만 연다. 발행(EXP-08) 전이면 열지 않는다
  * — 결과 화면이 열리지 않는 아이의 보고서가 새 창에서만 열리면 그 약속이 거짓이 된다.
+ *
+ * 전문가(상담사)는 면담을 신청한 학생의 보고서를 여기서 연다(/expert/clients). 정밀본을
+ * 「받기」 없이 편다 — 받는 것은 보호자의 일이고, 상담사는 면담 전에 전문을 읽어야 한다.
+ * ?sample=1 은 시연 계정의 예시 신청에 붙는 예시 보고서다(lib/expertAccounts.ts의 demoClients).
  */
 export default function LiveReport({ edition }: { edition: Edition }) {
   const hydrated = useHydrated();
@@ -45,6 +49,24 @@ export default function LiveReport({ edition }: { edition: Edition }) {
       <Notice action={<Link href="/login">로그인</Link>}>
         로그인한 뒤에 보고서를 열 수 있습니다.
       </Notice>
+    );
+  }
+  const staff = session.role === "expert" || session.role === "admin";
+  if (staff && params.get("sample")) {
+    return (
+      <ReportViewer
+        edition={edition}
+        name={sampleReport.student.name}
+        printable
+        notice={
+          <>
+            <b>예시 보고서</b> · 시연용 면담 신청에 붙인 보고서입니다. 이름·점수·문구가 모두
+            예시입니다.
+          </>
+        }
+      >
+        {edition === "summary" ? <SummaryPages r={sampleReport} /> : <FullPages r={sampleReport} />}
+      </ReportViewer>
     );
   }
   if (!record.finalized || !report || report.state !== "published") {
@@ -72,7 +94,7 @@ export default function LiveReport({ edition }: { edition: Edition }) {
     typeDesc: type?.summary,
   });
 
-  const lockedFull = edition === "full" && !unlocked;
+  const lockedFull = edition === "full" && !unlocked && !staff;
 
   return (
     <ReportViewer

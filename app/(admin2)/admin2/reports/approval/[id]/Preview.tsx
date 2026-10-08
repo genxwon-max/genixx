@@ -93,7 +93,7 @@ export default function Preview({
               {edit ? "리포트 고치기" : "회원이 받는 리포트"}
             </h2>
             <span className="truncate a2-t-xs text-(--a2-ink-4)">
-              {edit ? "고친 글이 그대로 나갑니다" : sent ? "이미 보냈습니다" : "읽기만 합니다"}
+              {edit ? "고친 글이 그대로 나갑니다" : sent ? "이미 보냈습니다" : "읽기 전용입니다"}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -209,7 +209,7 @@ export default function Preview({
             <div className="mt-5 grid gap-1.5 border-t border-(--a2-line) pt-4">
               <input
                 className="a2-input"
-                placeholder="고친 까닭 — 다섯 자 이상"
+                placeholder="수정 사유 — 5자 이상"
                 value={why}
                 onChange={(e) => setWhy(e.target.value)}
               />

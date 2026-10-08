@@ -34,9 +34,9 @@ export const detailModes: { id: DetailMode; label: string; hint: string }[] = [
   {
     id: "html",
     label: "HTML",
-    hint: "짜 둔 마크업을 그대로 붙입니다. 허용하지 않는 태그와 속성은 저장할 때 걷어 냅니다.",
+    hint: "미리 작성한 마크업을 그대로 붙여 넣습니다. 허용하지 않는 태그와 속성은 저장할 때 제거합니다.",
   },
-  { id: "text", label: "일반 텍스트", hint: "꾸밈 없이 줄만 나눕니다. 빈 줄이 문단을 가릅니다." },
+  { id: "text", label: "일반 텍스트", hint: "꾸밈 없이 줄만 나눕니다. 빈 줄로 문단을 나눕니다." },
 ];
 
 export function detailModeLabel(mode: DetailMode) {

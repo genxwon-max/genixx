@@ -215,7 +215,7 @@ export default function StatusTable({
           { t: "성명", v: student?.name ?? session?.name ?? "-" },
           { t: "학년", v: student?.grade ?? "초등 4학년" },
           { t: "접속코드", v: student ? formatCode(student.code) : "-" },
-          { t: "응시 갈래", v: tierOf(record.tier).label },
+          { t: "응시 유형", v: tierOf(record.tier).label },
           {
             /* 무료 진단은 과목이 아니라 시험 하나라, 센 것도 문항이어야 한다 */
             t: isFree ? "응답 문항" : "제출 과목",
@@ -360,7 +360,7 @@ export default function StatusTable({
 
       {/* 표 2 — 설문 */}
       <section className="mt-9">
-        <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 학부모 설문은 한 벌이며 어머니·아버지 중 한 분이 대표로 답하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
+        <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 학부모 설문은 1부이며 어머니·아버지 중 한 분이 대표로 답하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
           설문 제출 현황
         </SectionTitle>
 

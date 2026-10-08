@@ -84,7 +84,7 @@ export default function PurgeView() {
       },
       {
         key: "reason",
-        head: "까닭",
+        head: "사유",
         width: "8rem",
         nowrap: true,
         value: (v) => (v.purgeReason ? purgeReasonLabel[v.purgeReason] : ""),
@@ -117,14 +117,15 @@ export default function PurgeView() {
         /* 완료한 줄만 채워지는 칸이다 — 대기 줄에서는 비워 두고, 회원마다의 이력은
            줄을 눌러 들어가는 상세가 답한다 */
         key: "mark",
-        head: "실행자 · 적어 둔 까닭",
+        detail: true,
+        head: "실행자 · 적어 둔 사유",
         width: "100%",
         value: (v) => `${v.purgedBy ?? ""} ${v.purgedWhy ?? ""}`,
         cell: (v) =>
           v.purge === "done" ? (
             <span className="inline-flex flex-col">
               <span className="a2-t-sm text-(--a2-ink-2)">{v.purgedBy}</span>
-              <span className="a2-t-xs text-(--a2-ink-4)">{v.purgedWhy || "적어 둔 까닭이 없습니다."}</span>
+              <span className="a2-t-xs text-(--a2-ink-4)">{v.purgedWhy || "적어 둔 사유가 없습니다."}</span>
             </span>
           ) : (
             dash
@@ -147,10 +148,10 @@ export default function PurgeView() {
       },
       {
         id: "reason",
-        label: "까닭",
+        label: "사유",
         options: [
           { value: "withdrawn", label: "철회 요청" },
-          { value: "expired", label: "보관기간 도래" },
+          { value: "expired", label: "보관기간 만료" },
         ],
         match: (v, x) => v.purgeReason === x,
       },
@@ -226,7 +227,7 @@ export default function PurgeView() {
           meta={
             schedOpen
               ? undefined
-              : `자동 파기 ${auto ? "켜짐" : "꺼짐"} · 철회 ${n(c.queuedWithdrawn)}건 · 도래 ${n(c.queuedExpired)}건`
+              : `자동 파기 ${auto ? "켜짐" : "꺼짐"} · 철회 ${n(c.queuedWithdrawn)}건 · 만료 ${n(c.queuedExpired)}건`
           }
           actions={
             <button
@@ -236,7 +237,7 @@ export default function PurgeView() {
               aria-controls="purge-scheduler"
               onClick={() => setSchedOpen((v) => !v)}
             >
-              {schedOpen ? "접기" : "펴기"}
+              {schedOpen ? "접기" : "펼치기"}
             </button>
           }
           flush
@@ -251,7 +252,7 @@ export default function PurgeView() {
                     checked={auto}
                     onChange={() => setAutoPurge(true)}
                   />
-                  보관기간이 지나면 큐에 세웁니다
+                  보관기간이 지나면 파기 대기에 올립니다
                 </label>
                 <label className="a2-choice">
                   <input
@@ -260,12 +261,12 @@ export default function PurgeView() {
                     checked={!auto}
                     onChange={() => setAutoPurge(false)}
                   />
-                  세우지 않습니다
+                  올리지 않습니다
                 </label>
               </span>
             </FormRow>
 
-            <FormRow label="까닭" req>
+            <FormRow label="사유" req>
               <textarea
                 className="a2-textarea"
                 rows={2}
@@ -285,7 +286,7 @@ export default function PurgeView() {
                     c.queuedWithdrawn === 0
                       ? "철회 요청이 없습니다"
                       : short
-                        ? "까닭을 다섯 자 이상 적어 주세요"
+                        ? "사유를 다섯 자 이상 적어 주세요"
                         : undefined
                   }
                   onClick={() => run("withdrawn")}
@@ -298,14 +299,14 @@ export default function PurgeView() {
                   disabled={c.queuedExpired === 0 || short}
                   title={
                     c.queuedExpired === 0
-                      ? "도래한 것이 없습니다"
+                      ? "보관기간이 만료된 건이 없습니다"
                       : short
-                        ? "까닭을 다섯 자 이상 적어 주세요"
+                        ? "사유를 다섯 자 이상 적어 주세요"
                         : undefined
                   }
                   onClick={() => run("expired")}
                 >
-                  도래 {n(c.queuedExpired)}건 파기
+                  만료 {n(c.queuedExpired)}건 파기
                 </button>
               </span>
             </FormRow>

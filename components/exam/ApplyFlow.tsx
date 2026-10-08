@@ -58,7 +58,7 @@ export function applyAction(
   }
   /* 같은 시기의 평가는 하나만 — 한 시기에 두 학년을 볼 까닭이 없다(lib/ticketStore.ts) */
   if (used) {
-    return { kind: "blocked", label: `${evalName(round.id, used.track, round.label)} 접수함` };
+    return { kind: "blocked", label: `${evalName(round.id, used.track, round.label)} 접수 완료` };
   }
   if (round.subjects.length === 0) return { kind: "blocked", label: "준비 중인 진단입니다" };
   /* 보호자는 설문만 한다. 응시권을 쓰는 것은 시험을 보는 학생이다 */

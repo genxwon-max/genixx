@@ -171,10 +171,10 @@ function Desk({ row }: { row: Interview }) {
               className="a2-btn"
               onClick={() => {
                 undoDecline(row, by);
-                setDone("반려를 물렀습니다. 다시 대상 목록에 섭니다.");
+                setDone("반려를 취소했습니다. 다시 대상 목록에 표시됩니다.");
               }}
             >
-              반려 무르기
+              반려 취소
             </button>
           )}
           {row.state === "applied" && (
@@ -229,8 +229,8 @@ function Desk({ row }: { row: Interview }) {
             <div className="grid gap-2">
               <p className="a2-t-sm text-(--a2-ink-2)">
                 {ask === "decline"
-                  ? "반려한 까닭은 신청자에게 그대로 나갑니다. 무엇 때문에 받지 않는지 적어 주세요."
-                  : "이미 알린 일정입니다. 「왜 없어졌나」에 답할 수 있게 까닭을 적어 주세요. 지우면 상태가 선발됨으로 돌아갑니다."}
+                  ? "반려한 사유는 신청자에게 그대로 나갑니다. 무엇 때문에 받지 않는지 적어 주세요."
+                  : "이미 알린 일정입니다. 「왜 없어졌나」에 답할 수 있게 사유를 적어 주세요. 지우면 상태가 선발됨으로 돌아갑니다."}
               </p>
               <textarea
                 className="a2-textarea"
@@ -246,7 +246,7 @@ function Desk({ row }: { row: Interview }) {
               />
               <div className="flex flex-wrap items-center justify-end gap-1.5">
                 <span className="mr-auto a2-t-xs text-(--a2-ink-4)">
-                  {ok ? "" : `까닭을 ${min}자 이상 적어 주세요.`}
+                  {ok ? "" : `사유를 ${min}자 이상 적어 주세요.`}
                 </span>
                 <button type="button" className="a2-btn" onClick={() => setAsk(null)}>
                   그만두기
@@ -309,11 +309,11 @@ function Desk({ row }: { row: Interview }) {
               </span>
             </Row>
             {row.rawAt && (
-              <Row label="옛 일정">
+              <Row label="이전 일정">
                 <p className="a2-note w-full">
                   <span>
                     전문가 콘솔에 「{row.rawAt}」로 적혀 있었습니다. 날짜로 읽히지 않아 달력에
-                    세우지 못합니다 — 아래에 날짜와 시각으로 다시 적어 주세요.
+                    표시하지 못합니다 — 아래에 날짜와 시각으로 다시 적어 주세요.
                   </span>
                 </p>
               </Row>
@@ -335,14 +335,14 @@ function Desk({ row }: { row: Interview }) {
               <Row label="메일">
                 <span className="a2-mono">{row.request.applicant.mail}</span>
               </Row>
-              <Row label="신청 통로">{channels[row.request.channel]}</Row>
+              <Row label="신청 경로">{channels[row.request.channel]}</Row>
               <Row label="신청 일시">
                 <span className="a2-mono">{row.request.appliedAt}</span>
                 <span className="a2-t-sm text-(--a2-ink-3)">
                   {diffDays(row.request.appliedAt.slice(0, 10), today())}일 지남
                 </span>
               </Row>
-              <Row label="신청 글">
+              <Row label="신청 내용">
                 <div className="a2-preview w-full a2-t-sm leading-[1.7] text-(--a2-ink-2)">
                   {row.request.want}
                 </div>

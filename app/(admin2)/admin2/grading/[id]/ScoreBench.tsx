@@ -147,8 +147,8 @@ function Bench({ task, rest }: { task: ScoreTask; rest: ScoreTask[] }) {
               <div className="a2-form">
                 <FormRow label="가린 것">
                   <span className="a2-t-sm text-(--a2-ink-2)">
-                    1차 채점자의 값과 AI 판정을 가려 두었습니다. 두 사람이 따로 매겨야 일치도가
-                    무언가를 잽니다.
+                    1차 채점자의 값과 AI 판정을 가려 두었습니다. 두 사람이 따로 채점해야 일치도가
+                    의미가 있습니다.
                   </span>
                 </FormRow>
               </div>
@@ -210,7 +210,7 @@ function Bench({ task, rest }: { task: ScoreTask; rest: ScoreTask[] }) {
                     rows={2}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="AI와 다르게 본 까닭을 적어 두면 다음 회차에 무엇을 고칠지가 남습니다."
+                    placeholder="AI와 다르게 본 사유를 적어 두면 다음 회차에 무엇을 고칠지가 남습니다."
                   />
                 </FormRow>
               )}
@@ -231,7 +231,7 @@ function Bench({ task, rest }: { task: ScoreTask; rest: ScoreTask[] }) {
                       <span className="a2-mono">{task.human.at}</span> · {task.human.by}
                     </span>
                     <span className="a2-t-xs text-(--a2-ink-4)">
-                      {task.human.level === task.aiLevel ? "AI와 같음" : "AI에서 바꿈"}
+                      {task.human.level === task.aiLevel ? "AI와 같음" : "AI와 다름"}
                     </span>
                     {task.human.note && (
                       <span className="a2-t-sm w-full text-(--a2-ink-2)">{task.human.note}</span>
@@ -258,14 +258,14 @@ function Bench({ task, rest }: { task: ScoreTask; rest: ScoreTask[] }) {
                             : "var(--a2-danger)",
                       }}
                     >
-                      {task.second.level === task.human?.level ? "1차와 같음" : "1차와 갈림"}
+                      {task.second.level === task.human?.level ? "1차와 같음" : "1차와 다름"}
                     </span>
                   </FormRow>
                 )}
                 {task.double && !task.second && (
                   <FormRow label="2차">
                     <span className="a2-t-sm text-(--a2-ink-4)">
-                      이중 채점 표본입니다. 두 번째 사람이 아직 매기지 않았습니다.
+                      이중 채점 표본입니다. 두 번째 채점자가 아직 채점하지 않았습니다.
                     </span>
                   </FormRow>
                 )}
@@ -283,9 +283,9 @@ function Bench({ task, rest }: { task: ScoreTask; rest: ScoreTask[] }) {
             !level && dirty
               ? "루브릭에서 하나를 골라야 저장할 수 있습니다."
               : second
-                ? "1차와 따로 매기는 자리입니다. 저장하면 두 값이 나란히 남습니다."
+                ? "1차와 따로 채점하는 화면입니다. 저장하면 두 값이 나란히 남습니다."
                 : done && !dirty
-                  ? "확정한 응답입니다. 다시 매기면 기록에 남습니다."
+                  ? "확정한 응답입니다. 다시 채점하면 기록에 남습니다."
                   : undefined
           }
         />

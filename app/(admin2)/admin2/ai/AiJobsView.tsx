@@ -26,6 +26,7 @@ export default function AiJobsView() {
     () => [
       {
         key: "code",
+        detail: true,
         head: "화면 ID",
         width: "6rem",
         nowrap: true,
@@ -60,7 +61,8 @@ export default function AiJobsView() {
       },
       {
         key: "where",
-        head: "도는 화면",
+        detail: true,
+        head: "실행되는 화면",
         width: "11rem",
         nowrap: true,
         hide: "lg",
@@ -76,6 +78,7 @@ export default function AiJobsView() {
       },
       {
         key: "models",
+        detail: true,
         head: "모델",
         width: "8.5rem",
         nowrap: true,
@@ -84,6 +87,7 @@ export default function AiJobsView() {
       },
       {
         key: "subjects",
+        detail: true,
         head: "과목 요구사항",
         width: "8.5rem",
         nowrap: true,
@@ -112,7 +116,7 @@ export default function AiJobsView() {
         rowLink
         search={false}
         showCount={false}
-        empty="AI가 도는 자리가 없습니다."
+        empty="AI가 실행되는 화면이 없습니다."
       />
     </>
   );
@@ -126,7 +130,7 @@ function JobCount({ job, hydrated }: { job: AiJob; hydrated: boolean }) {
     <span className="inline-flex items-baseline gap-1.5">
       <span className="a2-num font-semibold">{n(stat.steps)}</span>
       {stat.files > 0 && <span className="a2-t-xs text-(--a2-ink-4)">📎{n(stat.files)}</span>}
-      {stat.edited && <Status tone="info">고침</Status>}
+      {stat.edited && <Status tone="info">수정됨</Status>}
     </span>
   );
 }

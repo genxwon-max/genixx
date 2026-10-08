@@ -559,7 +559,7 @@ function OpenSection({
     <>
       {groupBySection(opens).map(([section, rows]) => (
         <div key={section || "-"} className="space-y-3">
-          <SectionHead title={section} hint="점수로 세지 않습니다. 비워 두어도 제출됩니다." />
+          <SectionHead title={section} hint="점수에 반영되지 않습니다. 비워 두어도 제출됩니다." />
           {rows.map((o) => {
             const value = texts[o.id] ?? "";
             return (

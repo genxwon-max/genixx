@@ -91,6 +91,7 @@ const waitHours = (r: InquiryRow) => {
 const COLS: Col<InquiryRow>[] = [
   {
     key: "id",
+    detail: true,
     head: "문의 ID",
     width: "8rem",
     nowrap: true,
@@ -103,6 +104,7 @@ const COLS: Col<InquiryRow>[] = [
     // 채널: 거르개가 따로 있어 value(=정렬·검색)를 달지 않는다. 「기관」을 검색창에 치면
     // 기관 도입 전부가 끌려 나와 제목 검색이 묻힌다
     key: "channel",
+    detail: true,
     head: "채널",
     width: "6rem",
     nowrap: true,

@@ -70,6 +70,7 @@ export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: stri
         // 지역·담당자는 좁아지면 접는다. 담당자가 먼저 접히는 것은, 좁은 화면에서
         // 훑는 값은 대개 지역이고 담당자는 한 곳을 정한 뒤에 찾는 값이라서다
         key: "region",
+        detail: true,
         head: "지역",
         width: "7rem",
         nowrap: true,
@@ -79,6 +80,7 @@ export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: stri
       },
       {
         key: "manager",
+        detail: true,
         head: "담당자",
         width: "5rem",
         nowrap: true,
@@ -107,6 +109,7 @@ export default function OrgsTable({ rows, empty }: { rows: OrgRow[]; empty: stri
       {
         // ISO 날짜라 문자열 정렬이 곧 날짜 정렬이다. 오름차순이 곧 만료 임박 순
         key: "until",
+        detail: true,
         head: "만료일",
         width: "6.5rem",
         nowrap: true,

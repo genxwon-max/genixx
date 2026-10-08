@@ -140,8 +140,8 @@ function Now({ diag }: { diag: Diag }) {
         return [
           "아직 응시 기간이 아닙니다",
           reg.info
-            ? `${md(reg.info.opensOn)}에 응시가 시작되면 이 자리에 과목이 열립니다.`
-            : "응시 기간이 시작되면 이 자리에 과목이 열립니다.",
+            ? `${md(reg.info.opensOn)}에 응시가 시작되면 여기에 과목이 열립니다.`
+            : "응시 기간이 시작되면 여기에 과목이 열립니다.",
         ];
       case "ready":
         return [
@@ -158,7 +158,7 @@ function Now({ diag }: { diag: Diag }) {
       case "submitted":
         return [
           free ? `${a.total}문항을 모두 냈습니다` : "과목을 모두 냈습니다",
-          "아래 판 맨 끝에서 최종 제출하면 결과 분석이 시작됩니다.",
+          "아래 맨 끝에서 최종 제출하면 결과 분석이 시작됩니다.",
         ];
       case "reviewing":
         return [

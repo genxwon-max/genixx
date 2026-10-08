@@ -163,7 +163,7 @@ export function StudentResultDetail({ round, track }: { round: string; track: Tr
           </p>
           <p className="mx-auto mt-2 max-w-md text-[13px] leading-[1.75] text-soft-muted">
             {reviewing
-              ? "최종 제출을 마쳤습니다. 전문가가 확인해 발행하면 이 자리에 결과지가 뜹니다."
+              ? "최종 제출을 마쳤습니다. 전문가가 확인해 발행하면 여기에 결과지가 뜹니다."
               : diag.stage === "closed"
                 ? "기간 안에 최종 제출하지 않아 결과가 나오지 않습니다."
                 : "과목을 모두 내고 최종 제출하면, 전문가 확인을 거쳐 결과가 나옵니다."}

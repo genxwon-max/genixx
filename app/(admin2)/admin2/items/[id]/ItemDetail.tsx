@@ -328,7 +328,7 @@ export default function ItemDetail({ id }: { id: string }) {
           적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
       <FormRow label="문항 ID">
         <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
-          {view.code || "저장하면 매겨집니다"}
+          {view.code || "저장하면 부여됩니다"}
         </span>
       </FormRow>
 
@@ -376,7 +376,7 @@ export default function ItemDetail({ id }: { id: string }) {
               <p className="a2-note m-4 mb-0">
                 <span>
                   문항 ID · 학년 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은
-                  세트의 다른 문항에도 그대로 걸립니다. 그 아래는 이 문항만의 값입니다.
+                  세트의 다른 문항에도 그대로 적용됩니다. 그 아래는 이 문항만의 값입니다.
                 </span>
               </p>
               <div className="a2-form a2-form-lg a2-card mt-4">
@@ -492,7 +492,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   if (next) router.push(`/admin2/items/${next.id}`);
                 }}
               >
-                새 판으로 고치기
+                새 버전으로 수정
               </button>
             )}
           </>
@@ -804,7 +804,7 @@ export default function ItemDetail({ id }: { id: string }) {
           {view.state === "approved" && (
             <Panel title="앵커" flush>
               <div className="a2-form a2-form-lg">
-                <FormRow label="까닭" req>
+                <FormRow label="사유" req>
                   <GrowTextarea
                     className="a2-textarea a2-textarea-lg"
                     rows={3}
@@ -819,7 +819,7 @@ export default function ItemDetail({ id }: { id: string }) {
                       disabled={reason.trim().length < 5 || !!view.disclosed}
                       title={
                         view.disclosed
-                          ? "밖에 공개된 적이 있는 문항은 앵커가 될 수 없습니다"
+                          ? "외부에 공개된 적이 있는 문항은 앵커가 될 수 없습니다"
                           : undefined
                       }
                       onClick={() => {

@@ -120,7 +120,7 @@ export default function RulesView() {
                     <th style={{ width: "5.5rem" }}>번호</th>
                     <th>규칙</th>
                     <th style={{ width: "17rem" }}>조건</th>
-                    <th style={{ width: "6rem" }}>켬</th>
+                    <th style={{ width: "6rem" }}>사용</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,7 +153,7 @@ export default function RulesView() {
                               checked={r.on}
                               onChange={(e) => saveRule(r.id, { on: e.target.checked }, by)}
                             />
-                            {r.on ? "켬" : "끔"}
+                            {r.on ? "켜짐" : "꺼짐"}
                           </label>
                         )}
                       </td>
@@ -266,7 +266,7 @@ export default function RulesView() {
 
           <Panel title="조립 결과" meta={`블록 ${blocks.length}개`} flush>
             {blocks.length === 0 ? (
-              <p className="p-3 a2-t-sm text-(--a2-ink-3)">걸리는 규칙이 없습니다.</p>
+              <p className="p-3 a2-t-sm text-(--a2-ink-3)">해당하는 규칙이 없습니다.</p>
             ) : (
               <ul className="divide-y divide-(--a2-line)">
                 {blocks.map((b) => (
@@ -385,7 +385,7 @@ function CrossPanel({ here, by }: { here: CrossKey; by: string }) {
       <span className="flex flex-wrap items-center gap-1.5">
         <span className="a2-t-sm font-semibold text-(--a2-ink)">{c.label}</span>
         {c.id === here && <Tag accent>표본</Tag>}
-        {!c.on && <Status tone="muted">끔</Status>}
+        {!c.on && <Status tone="muted">꺼짐</Status>}
       </span>
       <span className="a2-t-xs text-(--a2-ink-3)">{c.desc}</span>
     </button>
@@ -441,7 +441,7 @@ function CrossPanel({ here, by }: { here: CrossKey; by: string }) {
                     checked={cell.on}
                     onChange={(e) => saveCross(cell.id, { on: e.target.checked }, by)}
                   />
-                  {cell.on ? "켬" : "끔"}
+                  {cell.on ? "켜짐" : "꺼짐"}
                 </label>
               </FormRow>
               <FormRow label="리포트 문구">

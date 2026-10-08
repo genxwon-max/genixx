@@ -234,7 +234,7 @@ export function checkFlow(job: AiJob, steps: FlowStep[]): FlowFinding[] {
   if (size > MAX_FLOW_BYTES) {
     out.push({
       stepId: null,
-      text: "붙인 파일이 너무 큽니다. 큰 파일을 덜어 내고 저장해 주세요.",
+      text: "첨부한 파일이 너무 큽니다. 큰 파일을 빼고 저장해 주세요.",
     });
   }
   return out;

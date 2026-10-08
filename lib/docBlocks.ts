@@ -45,7 +45,7 @@ const ATOM_LABEL: Partial<Record<Block["kind"], string>> = {
   audio: "음성",
   animation: "애니메이션",
   images: "표시가 있는 사진",
-  table: "두 줄 머리 표",
+  table: "머리글이 두 줄인 표",
 };
 
 export function blocksToHtml(blocks: Block[]): { html: string; atoms: Block[] } {
@@ -58,7 +58,7 @@ export function blocksToHtml(blocks: Block[]): { html: string; atoms: Block[] } 
           "caption" in b && typeof b.caption === "string" && b.caption ? ` — ${esc(b.caption)}` : "";
         return `<div data-atom="${atoms.length - 1}" contenteditable="false">${
           ATOM_LABEL[b.kind] ?? b.kind
-        }${cap} · 이 조각은 블록 편집에서 고칩니다</div>`;
+        }${cap} · 이 부분은 블록 편집에서 수정합니다</div>`;
       }
       switch (b.kind) {
         case "text":

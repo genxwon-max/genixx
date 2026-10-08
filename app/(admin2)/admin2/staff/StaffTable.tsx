@@ -36,6 +36,7 @@ import { type StaffRow } from "@/lib/staffPermStore";
 const cols: Col<StaffRow>[] = [
   {
     key: "id",
+    detail: true,
     head: "계정 ID",
     width: "5.5rem",
     nowrap: true,
@@ -82,7 +83,7 @@ const cols: Col<StaffRow>[] = [
         <span className="a2-num a2-t-xs text-(--a2-ink-4)">{r.perms.length}</span>
         {r.edited && (
           <span className="a2-t-xs font-bold" style={{ color: "var(--a2-warn)" }}>
-            고침
+            수정됨
           </span>
         )}
       </span>
@@ -90,6 +91,7 @@ const cols: Col<StaffRow>[] = [
   },
   {
     key: "team",
+    detail: true,
     head: "팀",
     width: "6.5rem",
     nowrap: true,
@@ -102,15 +104,16 @@ const cols: Col<StaffRow>[] = [
      끈 계정만 경고 점을 들고 서 있게 둔다 */
   {
     key: "mfa",
+    detail: true,
     head: "2단계 인증",
     width: "6rem",
     nowrap: true,
-    value: (r) => (r.mfa ? "켬" : "끔"),
+    value: (r) => (r.mfa ? "켜짐" : "꺼짐"),
     cell: (r) =>
       r.mfa ? (
-        <span className="a2-t-sm text-(--a2-ink-4)">켬</span>
+        <span className="a2-t-sm text-(--a2-ink-4)">켜짐</span>
       ) : (
-        <Status tone="warn">끔</Status>
+        <Status tone="warn">꺼짐</Status>
       ),
   },
   {
@@ -132,6 +135,7 @@ const cols: Col<StaffRow>[] = [
   },
   {
     key: "joinedAt",
+    detail: true,
     head: "가입일",
     width: "6rem",
     nowrap: true,

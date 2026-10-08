@@ -554,7 +554,7 @@ export default function StudentRegistrar({
       {/* 명부 */}
       <section className="mt-9">
         <SectionTitle
-          note="만 14세 이상 학생은 접속코드와 생년월일만으로 바로 응시합니다. 만 14세 미만은 법정대리인 동의가 확인되어야 응시가 열립니다. 보호자의 연락처는 끝 네 자리만 표시하며, 본인확인 결과값과 동의 증빙 원본은 기관 화면에 싣지 않습니다."
+          note="만 14세 이상 학생은 접속코드와 생년월일만으로 바로 응시합니다. 만 14세 미만은 법정대리인 동의가 확인되어야 응시가 열립니다. 보호자의 연락처는 끝 네 자리만 표시하며, 본인확인 결과값과 동의 증빙 원본은 기관 화면에 표시하지 않습니다."
           right={
             mine.length > 0 ? (
               <button
@@ -840,7 +840,7 @@ export default function StudentRegistrar({
               </ul>
             </div>
             <div>
-              <p className="text-[14px] font-bold text-soft-ink">기관 화면에 싣지 않는 항목</p>
+              <p className="text-[14px] font-bold text-soft-ink">기관 화면에 보이지 않는 항목</p>
               <ul className="mt-3 space-y-1.5">
                 {orgHiddenStudentFields.map((f) => (
                   <li key={f} className="text-[13px] leading-relaxed text-soft-muted">
@@ -860,7 +860,7 @@ export default function StudentRegistrar({
         없습니다.</b>
         {isDirector
           ? " 지도교사 관찰 설문은 위 명부에서 학생별로 바로 입력할 수 있습니다."
-          : " 학부모 설문은 위 목록에서 학생별로 한 벌씩 입력합니다."}
+          : " 학부모 설문은 위 목록에서 학생별로 1부씩 입력합니다."}
       </p>
 
       {showPrompt && (

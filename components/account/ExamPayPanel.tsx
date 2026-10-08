@@ -496,11 +496,11 @@ export default function ExamPayPanel({
             ) : !track ? (
               <p className={`${card} px-5 py-10 text-center text-[13px] leading-[1.8] text-soft-muted`}>
                 {!selfId
-                  ? `${chosen[0]?.name ?? "고른"} 학생의 학년${chosen[0]?.grade ? `(${chosen[0].grade})` : ""}에 열린 진단이 아직 없습니다. 이전 걸음에서 학생을 다시 고르거나 다른 상품을 골라 주세요.`
+                  ? `${chosen[0]?.name ?? "고른"} 학생의 학년${chosen[0]?.grade ? `(${chosen[0].grade})` : ""}에 열린 진단이 아직 없습니다. 이전 단계에서 학생을 다시 고르거나 다른 상품을 골라 주세요.`
                   : !hydrated
                     ? "확인 중입니다…"
                     : mine.length === 0
-                      ? "명부에서 내 이름을 찾지 못해 진단을 세울 수 없습니다. 접속코드로 다시 들어와 주세요."
+                      ? "명부에서 내 이름을 찾지 못해 진단을 불러올 수 없습니다. 접속코드로 다시 들어와 주세요."
                       : "내 학년에 열린 진단이 아직 없습니다. 학년이 비어 있거나 틀렸으면 나를 등록한 보호자·선생님께 말해 주세요."}
               </p>
             ) : (
@@ -581,7 +581,7 @@ export default function ExamPayPanel({
 
                 {found.length === 0 ? (
                   <p className={`${card} px-5 py-10 text-center text-[13px] text-soft-muted`}>
-                    이 조건에 열린 진단이 없습니다. 다른 분기나 연도를 보아 주세요.
+                    이 조건에 열린 진단이 없습니다. 다른 분기나 연도를 선택해 주세요.
                   </p>
                 ) : (
                   <ul className={`${card} divide-y divide-slate-100`}>
@@ -730,7 +730,7 @@ export default function ExamPayPanel({
                 k={selfId ? "응시자" : "학생"}
                 v={payable.length > 0 ? payable.map((s) => s.name).join(" · ") : "—"}
               />
-              <Line k="한 사람 몫" v={orderWon(unit)} />
+              <Line k="1인 금액" v={orderWon(unit)} />
               <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
                 <dt className="font-semibold text-soft-ink">최종 결제금액</dt>
                 <dd className="text-[17px] font-bold tabular-nums text-soft-ink">
@@ -830,7 +830,7 @@ export function PayDone({
       <section className={`${card} px-5 py-14 text-center`}>
         <p className="text-[15px] font-bold text-soft-ink">아직 결제한 내역이 없습니다</p>
         <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
-          결제를 마치면 이 자리에 주문 내용이 섭니다.
+          결제를 마치면 여기에 주문 내용이 표시됩니다.
         </p>
         <Link href={base} className={`${t.btnAction} mt-5`}>
           결제하러 가기

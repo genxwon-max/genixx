@@ -21,7 +21,7 @@ export default function EdFooter() {
         </span>
 
         <nav
-          aria-label="사이트 갈래"
+          aria-label="사이트 메뉴"
           className="mt-10 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-5"
         >
           {menu.map((g) => (

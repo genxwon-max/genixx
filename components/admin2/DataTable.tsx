@@ -57,6 +57,14 @@ export type Col<T> = {
   clip?: boolean;
   /** 좁은 화면에서 접는다 */
   hide?: "sm" | "md" | "lg";
+  /**
+   * 목록에는 그리지 않는 칸 — 상세 화면에서 보는 값이다.
+   *
+   * 목록은 「어느 건을 열지」 고르는 자리라 필수 칸만 세운다. 그래도 지우지 않고 남겨 두는
+   * 까닭은 **검색과 CSV**가 이 칸의 value를 읽기 때문이다 — 칸을 통째로 지우면 전화번호나
+   * 소속으로 찾던 사람이 더는 찾지 못하고, 내려받은 파일에서도 그 열이 사라진다.
+   */
+  detail?: boolean;
   /** 검색에 쓰는 글자. 사람이 화면에서 보는 그대로 적는다. 없으면 검색에 안 걸린다 */
   value?: (row: T) => string | number;
   /** 세우는 순서. 없으면 value로 세운다. 둘 다 없으면 정렬 화살표를 달지 않는다 */
@@ -160,7 +168,7 @@ export default function DataTable<T>({
   selection,
   rowLink = false,
   csv,
-  empty = "조건에 맞는 줄이 없습니다.",
+  empty = "조건에 맞는 항목이 없습니다.",
 }: {
   rows: T[];
   cols: Col<T>[];
@@ -288,6 +296,9 @@ export default function DataTable<T>({
     setPage(0);
   };
 
+  /** 표에 실제로 그리는 칸 — detail 칸은 뺀다(검색 · CSV는 cols 전부를 읽는다) */
+  const listed = useMemo(() => cols.filter((c) => !c.detail), [cols]);
+
   const exportCsv = () => {
     if (!csv) return;
     const spec =
@@ -348,7 +359,7 @@ export default function DataTable<T>({
 
           {(active || dirty) && (
             <button type="button" onClick={clear} className="a2-btn a2-btn-sm">
-              조건 지우기
+              조건 초기화
             </button>
           )}
 
@@ -364,7 +375,7 @@ export default function DataTable<T>({
               {shown.length !== rows.length && (
                 <span> / 전체 {rows.length.toLocaleString("ko-KR")}</span>
               )}
-              줄
+              건
             </span>
           )}
 
@@ -372,7 +383,7 @@ export default function DataTable<T>({
               고장으로 읽는다 */}
           {dirty && (
             <span className="a2-t-xs" style={{ color: "var(--a2-warn)" }}>
-              고친 조건은 검색을 눌러야 걸립니다
+              바꾼 조건은 검색을 눌러야 적용됩니다
             </span>
           )}
 
@@ -384,7 +395,7 @@ export default function DataTable<T>({
                   type="button"
                   className="a2-btn a2-btn-sm"
                   disabled={shown.length === 0}
-                  title={`지금 조건의 결과 ${shown.length.toLocaleString("ko-KR")}줄을 CSV로 내려받습니다`}
+                  title={`지금 조건의 결과 ${shown.length.toLocaleString("ko-KR")}건을 CSV로 내려받습니다`}
                   onClick={exportCsv}
                 >
                   CSV 다운로드
@@ -398,7 +409,7 @@ export default function DataTable<T>({
       {/* 세로로는 자르지 않는다. 한동안 calc(100vh - N)으로 상한을 두었는데, 화면마다
           표 위에 서는 것이 달라 N을 화면별로 넘겨야 했고 그러고도 25줄이 다 안 보였다.
           가로로만 밀리고, 그것도 표가 상자보다 넓을 때만이다(TableBox) */}
-      <TableBox label={`${searchHint} 결과 ${shown.length}줄`}>
+      <TableBox label={`${searchHint} 결과 ${shown.length}건`}>
         <table className="a2-table">
           <thead>
             <tr>
@@ -413,14 +424,14 @@ export default function DataTable<T>({
                       if (el) el.indeterminate = !pageAllOn && pageSomeOn;
                     }}
                     onChange={() => selection.onToggleMany(pageKeys, !pageAllOn)}
-                    aria-label="이 쪽에 보이는 줄 전부 고르기"
+                    aria-label="이 페이지의 항목 모두 선택"
                   />
                 </th>
               )}
               <th scope="col" className="a2-th-num" style={{ width: "3.5rem" }}>
                 No
               </th>
-              {cols.map((c) => {
+              {listed.map((c) => {
                 const on = sortKey === c.key;
                 return (
                   <th
@@ -471,7 +482,7 @@ export default function DataTable<T>({
                       type="checkbox"
                       checked={chosenSet.has(getKey(r))}
                       onChange={() => selection.onToggle(getKey(r))}
-                      aria-label={`${selection.labelOf?.(r) ?? getKey(r)} 고르기`}
+                      aria-label={`${selection.labelOf?.(r) ?? getKey(r)} 선택`}
                     />
                   </td>
                 )}
@@ -481,7 +492,7 @@ export default function DataTable<T>({
                 <td className="a2-td-num a2-nowrap a2-t-sm text-(--a2-ink-3)">
                   {shown.length - (at * pageSize + i)}
                 </td>
-                {cols.map((c) => (
+                {listed.map((c) => (
                   <td
                     key={c.key}
                     style={c.width ? { width: c.width } : undefined}
@@ -496,7 +507,7 @@ export default function DataTable<T>({
             ))}
             {slice.length === 0 && (
               <tr>
-                <td colSpan={cols.length + 1 + (selection ? 1 : 0)} className="text-center text-(--a2-ink-4)">
+                <td colSpan={listed.length + 1 + (selection ? 1 : 0)} className="text-center text-(--a2-ink-4)">
                   <span className="block py-10">{empty}</span>
                 </td>
               </tr>
@@ -510,7 +521,7 @@ export default function DataTable<T>({
             setPage에 함수를 넘기지 않고 at을 기준으로 셈한다. page에는 마지막 쪽보다 큰
             수가 남아 있을 수 있고(거르개를 걸어 쪽 수가 줄어든 뒤), 그때 p-1은 화면에
             보이는 쪽의 앞 쪽이 아니다. */}
-        <nav aria-label="쪽 넘김" className="flex flex-wrap items-center gap-0.5">
+        <nav aria-label="페이지 이동" className="flex flex-wrap items-center gap-0.5">
           <button type="button" onClick={() => setPage(0)} disabled={at === 0} className="a2-page">
             [처음]
           </button>
@@ -523,7 +534,7 @@ export default function DataTable<T>({
               type="button"
               onClick={() => setPage(n)}
               aria-current={n === at ? "page" : undefined}
-              aria-label={`${n + 1}쪽`}
+              aria-label={`${n + 1}페이지`}
               className="a2-page a2-page-no"
             >
               {n + 1}
@@ -555,7 +566,7 @@ export default function DataTable<T>({
             / <span className="a2-num">{shown.length.toLocaleString("ko-KR")}</span>
           </span>
           <label className="inline-flex items-center gap-1.5">
-            <span className="a2-label">쪽당</span>
+            <span className="a2-label">페이지당</span>
             <select
               value={pageSize}
               onChange={(e) => {

@@ -71,7 +71,7 @@ export default function CounselPayPanel({
                 {blurb[span].lead}
               </p>
               <p className="mt-auto pt-3 text-[12.5px] text-soft-muted">
-                이 길이를 받는 전문가 <b className="text-soft-ink">{who}명</b>
+                이 길이로 면담하는 전문가 <b className="text-soft-ink">{who}명</b>
               </p>
               <Link
                 href={`${zone}/interviews?span=${span}`}

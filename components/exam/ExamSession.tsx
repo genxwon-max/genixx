@@ -1029,7 +1029,7 @@ function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
           {blank
             ? "왜 풀지 못했는지 알려 주세요"
             : picked !== null
-              ? `${picked + 1}번을 고른 까닭을 알려 주세요`
+              ? `${picked + 1}번을 고른 이유를 알려 주세요`
               : "왜 그렇게 썼는지 알려 주세요"}
         </p>
         <span
@@ -1172,7 +1172,7 @@ function ReflectAskDialog({ onDo, onLater }: { onDo: () => void; onLater: () => 
         {pressed ? (
           <>
             <h2 id="reflect-title" className="mt-3 text-[20px] font-black leading-[1.45] text-exam-text">
-              해석을 남기지 않으면 진단이 얕아집니다
+              해석을 남기지 않으면 진단이 덜 정확해집니다
             </h2>
             <div className="mt-4 space-y-3 border-t border-exam-line pt-4 text-[13px] leading-[1.85] text-exam-muted">
               <p>
@@ -2161,7 +2161,7 @@ function BlankFields({
             <li key={i}>
               <div
                 role="group"
-                aria-label={b.label || "문장 속 칸"}
+                aria-label={b.label || "문장 속 빈칸"}
                 className="flex flex-wrap items-center gap-x-2 gap-y-2 text-[14px] font-bold text-exam-text"
               >
                 {label(":")}

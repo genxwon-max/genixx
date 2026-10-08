@@ -65,7 +65,7 @@ export default function PlanPicker({
     const held = pickedOf?.(subject, grade) ?? 0;
     if (held > 0) {
       const ok = window.confirm(
-        `${subject}에는 이미 ${held}문항이 담겨 있습니다.\n\n빼도 담아 둔 검사지는 지우지 않습니다 — 다시 넣으면 그대로 돌아옵니다. 이번 회차에서만 내보내지 않습니다.\n\n뺄까요?`,
+        `${subject}에는 이미 ${held}문항이 담겨 있습니다.\n\n빼도 담아 둔 검사지는 지우지 않습니다 — 다시 넣으면 그대로 돌아옵니다. 이번 회차에서만 출제하지 않습니다.\n\n뺄까요?`,
       );
       if (!ok) return;
     }

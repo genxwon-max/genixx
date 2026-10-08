@@ -165,7 +165,7 @@ export default function ChildList() {
         <div className={`${card} p-10 text-center`}>
           <p className="text-[16px] font-black text-soft-ink">아직 등록된 학생이 없습니다</p>
           <p className="mt-2.5 text-[14px] leading-relaxed text-soft-muted">
-            이름과 생년월일만 있으면 등록됩니다. 생년월일에 따라 누가 동의해야 하는지 폼에서
+            이름과 생년월일만 있으면 등록됩니다. 생년월일에 따라 누가 동의해야 하는지 입력 화면에서
             바로 안내해 드립니다.
           </p>
           <Link href="/my/children/new" className={`${btnPrimary} mt-6`}>
@@ -210,7 +210,7 @@ export default function ChildList() {
                 }}
               >
                 <SelectTrigger
-                  aria-label="진행 상태로 거르기"
+                  aria-label="진행 상태 필터"
                   className="flex-1 rounded-full bg-white sm:w-40 sm:flex-none"
                 >
                   <SelectValue />
@@ -291,7 +291,7 @@ export default function ChildList() {
                         )
                       }
                       disabled={shown.length === 0}
-                      label="이 쪽의 학생 모두 선택"
+                      label="이 페이지의 학생 모두 선택"
                     />
                   </th>
                   <th className={listTh}>이름</th>
@@ -459,7 +459,7 @@ function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (p: n
   const step = `${rowShape} min-w-11`;
 
   return (
-    <nav aria-label="쪽 넘김" className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+    <nav aria-label="페이지 이동" className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
       <Button
         variant="outline"
         onClick={() => onGo(page - 1)}

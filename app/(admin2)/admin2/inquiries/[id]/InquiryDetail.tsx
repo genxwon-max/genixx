@@ -121,12 +121,12 @@ function Desk({ row, back }: { row: Inquiry; back: React.ReactNode }) {
           <div className="a2-form a2-form-lg">
             {answered ? (
               <>
-                <FormRow label="보낸 때">
+                <FormRow label="보낸 시각">
                   <span className="a2-mono a2-t-sm text-(--a2-ink-2)">{row.answeredAt}</span>
                   <span className="a2-t-sm text-(--a2-ink-2)">{row.answeredBy}</span>
                 </FormRow>
 
-                <FormRow label="보낸 답">
+                <FormRow label="보낸 답변">
                   <p className="w-full whitespace-pre-line a2-t-sm leading-[1.7] text-(--a2-ink-2)">
                     {row.answer.body}
                   </p>
@@ -134,13 +134,13 @@ function Desk({ row, back }: { row: Inquiry; back: React.ReactNode }) {
 
                 {/* 보낸 답을 그 자리에서 덮어쓰지 않는다. 다시 여는 까닭이 기록에 남아야
                     「왜 답이 두 번 나갔나」에 답할 수 있다 */}
-                <FormRow label="다시 여는 까닭" req>
+                <FormRow label="다시 여는 사유" req>
                   <textarea
                     className="a2-textarea a2-textarea-lg"
                     rows={2}
                     value={why}
                     onChange={(e) => setWhy(e.target.value)}
-                    placeholder="예: 되물음이 들어와 답을 고쳐 보냅니다"
+                    placeholder="예: 추가 질문이 들어와 답변을 수정해 보냅니다"
                   />
                   <span className="flex w-full">
                     <button
@@ -158,13 +158,13 @@ function Desk({ row, back }: { row: Inquiry; back: React.ReactNode }) {
                 </FormRow>
               </>
             ) : (
-              <FormRow label="보낼 글" req>
+              <FormRow label="보낼 답변" req>
                 <BodyEditor
                   name={`answer-mode-${row.id}`}
                   value={draft.value.answer}
                   disabled={false}
                   rows={9}
-                  placeholder="묻는 사람이 그대로 받는 글입니다. 무엇을 확인했고 무엇을 해 드릴지 적습니다."
+                  placeholder="문의한 분이 그대로 받는 글입니다. 무엇을 확인했고 무엇을 해 드릴지 적습니다."
                   onChange={(patch) => draft.set("answer", { ...draft.value.answer, ...patch })}
                 />
               </FormRow>

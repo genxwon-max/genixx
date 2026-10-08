@@ -424,7 +424,7 @@ function ChildrenSection({ variant }: { variant: Variant }) {
         <div className={`${t.card} p-8 text-center`}>
           <p className="text-[17px] font-bold">아직 등록된 학생이 없습니다</p>
           <p className={`mt-2.5 text-[14px] leading-[1.7] ${t.muted}`}>
-            이름과 생년월일만 있으면 등록됩니다. 동의는 같은 폼 안에서 받습니다.
+            이름과 생년월일만 있으면 등록됩니다. 동의는 같은 화면에서 받습니다.
           </p>
           <Link href="/my/children/new" className={`${t.btnPrimary} mx-auto mt-6 max-w-xs`}>
             학생 등록 시작하기
@@ -479,7 +479,7 @@ function ChildrenSection({ variant }: { variant: Variant }) {
       <div className={`${t.cardSoft} mt-4 p-5`}>
         <p className="text-[14px] font-bold">코드를 다시 발급하면 예전 코드는 즉시 막힙니다</p>
         <p className={`mt-1.5 text-[13px] leading-[1.7] ${t.muted}`}>
-          응시 중인 아이의 코드를 바꾸면 그 자리에서 튕겨 나옵니다. 응시가 끝난 뒤에 바꾸시는 편이
+          응시 중인 아이의 코드를 바꾸면 응시 화면에서 바로 로그아웃됩니다. 응시가 끝난 뒤에 바꾸시는 편이
           안전합니다.
         </p>
       </div>
@@ -549,7 +549,7 @@ function ConsentSection({ variant, onWithdraw }: { variant: Variant; onWithdraw:
         </ul>
         <div className={`border-t px-5 py-4 sm:px-6 ${rule}`}>
           <p className={`text-[13px] leading-[1.7] ${t.muted}`}>
-            필수 항목은 끌 수 없습니다. 거두시려면 「회원 탈퇴」를 이용해 주세요.
+            필수 항목은 끌 수 없습니다. 철회하시려면 「회원 탈퇴」를 이용해 주세요.
           </p>
         </div>
       </section>
@@ -701,7 +701,7 @@ function MembersSection({ variant }: { variant: Variant }) {
       <div className={`${t.cardSoft} mt-4 p-5`}>
         <p className="text-[14px] font-bold">교사가 볼 수 있는 범위</p>
         <p className={`mt-1.5 text-[13px] leading-[1.7] ${t.muted}`}>
-          교사는 담당 학급의 응시 진척과 관찰 설문만 봅니다. 답안과 결과 리포트는 보호자가 동의한
+          교사는 담당 학급의 응시 진행 상황과 관찰 설문만 봅니다. 답안과 결과 리포트는 보호자가 동의한
           범위 밖이라 열리지 않습니다.
         </p>
       </div>
@@ -939,7 +939,7 @@ function WithdrawSection({ variant }: { variant: Variant }) {
       <Head
         variant={variant}
         title="자료 파기 요청"
-        lead="동의를 거두고 아이 자료를 지웁니다. 이유를 적지 않으셔도 됩니다."
+        lead="동의를 철회하고 아이 자료를 지웁니다. 이유를 적지 않으셔도 됩니다."
       />
 
       <section className={`${t.card} overflow-hidden`}>
@@ -986,7 +986,7 @@ function WithdrawSection({ variant }: { variant: Variant }) {
           <div className="mt-3 flex flex-col gap-2">
             {(
               [
-                ["optional", "선택 동의만 철회", "연구·마케팅 동의를 거두고 그 목적의 자료만 지웁니다."],
+                ["optional", "선택 동의만 철회", "연구·마케팅 동의를 철회하고 그 목적의 자료만 지웁니다."],
                 ["all", "모든 자료 파기", "답안·설문·녹취·리포트를 모두 지웁니다. 되살릴 수 없습니다."],
               ] as const
             ).map(([id, label, desc]) => (

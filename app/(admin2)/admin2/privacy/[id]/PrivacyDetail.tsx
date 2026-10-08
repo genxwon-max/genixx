@@ -143,15 +143,15 @@ export default function PrivacyDetail({ id }: { id: string }) {
                       시각
                     </th>
                     <th scope="col" style={{ width: "10rem" }}>
-                      갈래
+                      분류
                     </th>
                     <th scope="col" style={{ width: "6rem" }}>
                       결과
                     </th>
                     <th scope="col" style={{ width: "8rem" }}>
-                      누가
+                      처리자
                     </th>
-                    <th scope="col">경로 · 까닭</th>
+                    <th scope="col">경로 · 사유</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,12 +205,12 @@ export default function PrivacyDetail({ id }: { id: string }) {
                 label="파기"
                 hint={
                   row.purge === "queued"
-                    ? "지우는 것은 파기 스케줄러에서 누릅니다 — 되돌릴 수 없는 일이라 한 자리에서만 실행합니다."
+                    ? "파기는 파기 스케줄러에서 실행합니다 — 되돌릴 수 없는 작업이라 한 곳에서만 실행합니다."
                     : undefined
                 }
               >
                 {row.purge === "none" ? (
-                  <span className="a2-t-sm text-(--a2-ink-4)">파기할 까닭이 없습니다.</span>
+                  <span className="a2-t-sm text-(--a2-ink-4)">파기할 사유가 없습니다.</span>
                 ) : (
                   <>
                     <Status tone={row.purge === "done" ? "muted" : "warn"}>
@@ -233,20 +233,20 @@ export default function PrivacyDetail({ id }: { id: string }) {
               </FormRow>
 
               {row.purge === "done" && (
-                <FormRow label="파기 까닭">
+                <FormRow label="파기 사유">
                   <span className="a2-t-sm text-(--a2-ink-2)">
-                    {row.purgedWhy || "적어 둔 까닭이 없습니다."}
+                    {row.purgedWhy || "적어 둔 사유가 없습니다."}
                   </span>
                 </FormRow>
               )}
 
               <FormRow label="파기 범위">
                 <span className="a2-t-sm text-(--a2-ink-2)">
-                  계정 · 응답 · 설문 · 리포트. 통계에 들어간 값은 사람을 알아볼 수 없는 꼴로만 남습니다.
+                  계정 · 응답 · 설문 · 리포트. 통계에 들어간 값은 사람을 알아볼 수 없는 형태로만 남습니다.
                 </span>
                 {/* 지운 뒤에 이 화면이 텅 비면 「했다는 것」을 못 보인다 */}
                 <span className="a2-t-xs text-(--a2-ink-4) w-full">
-                  동의와 파기 기록은 지우지 않습니다 — 언제 무엇을 지웠는지 대야 할 자리가 남습니다.
+                  동의와 파기 기록은 지우지 않습니다 — 언제 무엇을 지웠는지 증명할 근거로 남겨 둡니다.
                 </span>
               </FormRow>
             </div>

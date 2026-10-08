@@ -60,6 +60,7 @@ import { ageFromBirth, isMinorForContract } from "@/lib/account";
 import { progressOf } from "@/lib/progress";
 import { useRoster, type Student } from "@/lib/roster";
 import { useSession } from "@/lib/authStore";
+import { caseStatusLabel, statusOf, useCounselCases } from "@/lib/counselCaseStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
 import SectionTitle from "@/components/exam/SectionTitle";
 import { CheckIcon } from "@/components/Icons";
@@ -211,6 +212,8 @@ export default function InterviewBooking({
   const pickable = useCounselors();
   const everyone = useAllCounselors();
   const fees = useCounselFees();
+  /* 상담사가 신청을 어떻게 받았는가(수락 · 거절 · 완료) — 목록의 상태 칸이 함께 적는다 */
+  const cases = useCounselCases();
 
   const zone: CounselZone = selfId ? "/student" : "/my";
   const draft = useCounselDraft(zone);
@@ -467,15 +470,21 @@ export default function InterviewBooking({
                           {paid ? orderWon(paid.unit) : "—"}
                         </td>
                         <td className={listTd}>
-                          {b.state === "canceled" ? (
+                          {statusOf(b, cases) === "declined" ? (
+                            <span className="text-slate-400">상담사 사정으로 취소 · 환불</span>
+                          ) : b.state === "canceled" ? (
                             <span className="text-slate-400">취소됨</span>
+                          ) : statusOf(b, cases) === "ongoing" || statusOf(b, cases) === "done" ? (
+                            <span className="font-semibold text-soft-ink">
+                              {caseStatusLabel[statusOf(b, cases)]}
+                            </span>
                           ) : (
                             <button
                               type="button"
                               onClick={() => setCanceling(b)}
                               className="font-semibold text-soft-primary hover:underline"
                             >
-                              예약 취소
+                              {statusOf(b, cases) === "confirmed" ? "확정 · " : ""}예약 취소
                             </button>
                           )}
                         </td>
@@ -587,7 +596,7 @@ function CounselorStep({
   return (
     <section>
       <SectionTitle
-        note="무엇을 물으러 오셨는지로 좁히실 수 있습니다."
+        note="상담하고 싶은 내용에 맞춰 조건을 좁히실 수 있습니다."
         right={
           isFiltered(query) && (
             <button
@@ -598,7 +607,7 @@ function CounselorStep({
               }}
               className="text-[13px] font-semibold text-soft-primary hover:underline"
             >
-              조건 지우기
+              조건 초기화
             </button>
           )
         }
@@ -645,7 +654,7 @@ function CounselorStep({
               </Chip>
             ))}
           </Row>
-          <Row label="길이">
+          <Row label="면담 시간">
             {([30, 60] as Span[]).map((v) => (
               <Chip
                 key={v}
@@ -1010,6 +1019,8 @@ function PayStep({
 }) {
   const t = themeOf(variant);
   const router = useRouter();
+  /* 누가 신청했는지를 예약에 함께 박는다 — 상담사 화면(/expert/clients)이 그 이름을 읽는다 */
+  const booker = useSession();
   const [mode, setMode] = useState<CounselMode>(counselor.modes[0]);
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<OrderMethod>("card");
@@ -1042,6 +1053,8 @@ function PayStep({
         span,
         mode,
         note: note.trim(),
+        bookerName: selfId ? student.name : (booker?.name ?? student.guardianName),
+        bookerRole: selfId ? "student" : "parent",
       },
       starts,
     );
@@ -1270,7 +1283,7 @@ function DoneStep({
       <section className={`${card} px-5 py-14 text-center`}>
         <p className="text-[15px] font-bold text-soft-ink">아직 신청한 면담이 없습니다</p>
         <p className="mt-2 text-[13px] leading-[1.7] text-soft-muted">
-          전문가와 시간을 고르고 결제하면 이 자리에 신청 내용이 섭니다.
+          전문가와 시간을 고르고 결제하면 여기에 신청 내용이 표시됩니다.
         </p>
         <Link href={`${zone}/interviews`} className={`${t.btnAction} mt-5`}>
           면담 신청하기

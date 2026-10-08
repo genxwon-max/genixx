@@ -120,7 +120,7 @@ function Editor({
                 /* 되돌릴 수 없는 일이라 한 번 묻는다. 내려 두는 길이 따로 있으므로
                    여기까지 오는 것은 잘못 만든 것을 걷어 낼 때다 */
                 const ok = window.confirm(
-                  `「${notice.title || notice.id}」 공지를 지웁니다.\n\n내려 두려면 지우지 말고 노출을 끄세요 — 그러면 목록에는 남고 사람 눈에만 안 보입니다.\n\n지울까요?`,
+                  `「${notice.title || notice.id}」 공지를 지웁니다.\n\n숨겨 두려면 지우지 말고 노출을 끄세요 — 그러면 목록에는 남고 사용자에게만 보이지 않습니다.\n\n지울까요?`,
                 );
                 if (!ok) return;
                 removeNotice(notice.id);
@@ -164,7 +164,7 @@ function Editor({
                     draft.patch({ shown: e.target.checked, popup: e.target.checked && v.popup });
                   }}
                 />
-                사람에게 보입니다
+                사용자에게 보입니다
               </label>
               <label className="a2-choice">
                 <input
@@ -179,7 +179,7 @@ function Editor({
             {/* 띄우는 것은 올려 두는 것과 다른 일이라 줄을 따로 세운다 */}
             <FormRow
               label="팝업"
-              hint="모르고 지나가면 곤란한 것만 띄웁니다. 공지마다 띄우면 사람이 판을 닫는 손버릇부터 익히고, 정작 띄워야 할 때 그것도 같이 닫힙니다."
+              hint="꼭 알아야 하는 공지만 팝업으로 띄웁니다. 공지마다 띄우면 사용자가 습관처럼 팝업을 닫게 되어, 정작 중요한 공지도 읽지 않고 닫습니다."
             >
               <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
                 <label className="a2-choice">
@@ -199,12 +199,12 @@ function Editor({
                     disabled={!v.shown}
                     onChange={() => draft.set("popup", true)}
                   />
-                  사이트를 열면 판으로 띄웁니다
+                  사이트를 열면 팝업으로 띄웁니다
                 </label>
               </span>
               {!v.shown && (
                 <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
-                  <span>내려 둔 공지는 띄울 수 없습니다. 먼저 노출을 켜 주세요.</span>
+                  <span>노출을 끈 공지는 띄울 수 없습니다. 먼저 노출을 켜 주세요.</span>
                 </p>
               )}
             </FormRow>
@@ -212,8 +212,8 @@ function Editor({
             {/* 띄우기로 한 뒤에야 「어떤 틀로」가 물어볼 만한 말이 된다 */}
             {v.popup && (
               <FormRow
-                label="판 차림"
-                hint="점검 안내는 읽혀야 하고 행사 안내는 눌려야 합니다. 이벤트 틀은 머리띠를 걷고 그림을 판 끝까지 채운 뒤 아래에 단추를 세웁니다."
+                label="팝업 형태"
+                hint="점검 안내는 읽혀야 하고 행사 안내는 눌려야 합니다. 이벤트 형태는 제목 줄 없이 이미지를 팝업 전체에 채우고 아래에 버튼을 둡니다."
               >
                 <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
                   {popupKinds.map((k) => (
@@ -237,8 +237,8 @@ function Editor({
             {/* 단추는 이벤트 틀에만 선다 — 안내 판에서 눌러야 할 것은 「닫기」 하나다 */}
             {v.popup && v.popupKind === "event" && (
               <FormRow
-                label="단추"
-                hint="비워 두면 단추를 세우지 않습니다. 우리 화면은 /로 시작하는 주소(/service/pricing), 바깥은 https://로 적습니다."
+                label="버튼"
+                hint="비워 두면 버튼을 표시하지 않습니다. 사이트 안 화면은 /로 시작하는 주소(/service/pricing), 외부 사이트는 https://로 적습니다."
               >
                 <span className="flex w-full flex-wrap items-center gap-2">
                   <input
@@ -259,8 +259,8 @@ function Editor({
                 {badLink && (
                   <p className="a2-note w-full" style={{ borderLeftColor: "var(--a2-warn)" }}>
                     <span>
-                      쓸 수 없는 주소입니다. /로 시작하는 우리 화면 주소나 https://로 시작하는 바깥 주소만
-                      단추가 됩니다 — 그대로 두면 단추 없이 뜹니다.
+                      쓸 수 없는 주소입니다. /로 시작하는 사이트 안 화면 주소나 https://로 시작하는 외부 주소만
+                      버튼이 됩니다 — 그대로 두면 버튼 없이 표시됩니다.
                     </span>
                   </p>
                 )}
@@ -273,7 +273,7 @@ function Editor({
                 value={v.body}
                 disabled={false}
                 rows={8}
-                placeholder="공지에 담을 말을 적습니다."
+                placeholder="공지 내용을 적습니다."
                 onChange={(patch) => draft.set("body", { ...v.body, ...patch })}
               />
             </FormRow>

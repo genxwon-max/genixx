@@ -241,7 +241,7 @@ export default function SlotForm({
             hint={
               v.interviewerId
                 ? undefined
-                : "면담원을 고르면 그 사람의 하루가 펴지고 빈 자리가 적힙니다."
+                : "면담원을 고르면 그 사람의 하루 일정과 빈 시간이 표시됩니다."
             }
           >
             <DayStrip blocks={strip} free={free} empty="이 날에는 다른 면담이 없습니다." />
@@ -249,7 +249,7 @@ export default function SlotForm({
 
           {moved && (
             <FormRow
-              label="옮기는 까닭"
+              label="일정 변경 사유"
               hint="이미 알린 일정입니다. 무엇 때문에 옮겼는지가 기록에 남습니다."
             >
               <input
@@ -275,7 +275,7 @@ export default function SlotForm({
           </FormRow>
 
           {checks.length > 0 && (
-            <FormRow label="짚을 것">
+            <FormRow label="확인할 점">
               <span className="grid w-full gap-1">
                 {checks.map((c, i) => (
                   <span
@@ -310,7 +310,7 @@ export default function SlotForm({
             : blocks.length === 1
               ? blocks[0].text
               : blocks.length > 1
-                ? `채워야 할 칸이 ${blocks.length}곳 있습니다. 위 「짚을 것」을 봐 주세요.`
+                ? `채워야 할 항목이 ${blocks.length}곳 있습니다. 위 「확인할 점」을 봐 주세요.`
                 : row.state === "applied"
                   ? "저장하면 이 신청을 면담 대상으로 확정합니다."
                   : undefined

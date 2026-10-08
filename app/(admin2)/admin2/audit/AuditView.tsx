@@ -38,7 +38,7 @@ export default function AuditView() {
         id: "rest" as TabId,
         label: "그 외",
         rows: auditLog.filter((l) => l.reason === null),
-        empty: "개인정보에 닿지 않은 기록이 없습니다.",
+        empty: "개인정보와 관련 없는 기록이 없습니다.",
       },
     ],
     [],

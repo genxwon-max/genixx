@@ -204,7 +204,7 @@ export default function BodyEditor({
           disabled={disabled || busy}
           onClick={() => fileRef.current?.click()}
         >
-          {busy ? "줄이는 중…" : mode === "images" ? "그림 추가" : "그림 넣기"}
+          {busy ? "이미지 압축 중…" : mode === "images" ? "그림 추가" : "그림 넣기"}
         </button>
         {mode !== "images" && (
           <button
@@ -221,7 +221,7 @@ export default function BodyEditor({
       {preview && mode !== "images" && (
         <div className={flush ? "a2-cell-pad w-full" : "mt-2 w-full"}>
           {html.trim() === "" ? (
-            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 채운 것이 없습니다.</p>
+            <p className="a2-preview a2-t-sm text-(--a2-ink-4)">아직 입력한 내용이 없습니다.</p>
           ) : (
             /* 소독을 거친 값만 넣는다 — renderDetail 안에서 sanitizeHtml을 지난다 */
             <div className="a2-preview a2-prose" dangerouslySetInnerHTML={{ __html: html }} />

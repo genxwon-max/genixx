@@ -378,7 +378,7 @@ export async function importDocument(file: File): Promise<ImportResult> {
     throw new Error("옛 워드 형식(.doc)은 읽지 못합니다. 워드에서 .docx로 저장해 올려 주세요.");
   }
   if (typeof DecompressionStream === "undefined") {
-    throw new Error("이 브라우저는 문서 파일을 풀 수 없습니다. 최신 크롬 · 엣지 · 사파리에서 열어 주세요.");
+    throw new Error("이 브라우저는 문서 파일을 읽을 수 없습니다. 최신 크롬 · 엣지 · 사파리에서 열어 주세요.");
   }
   const zip = new Zip(await file.arrayBuffer());
   if (zip.has("word/document.xml")) return importDocx(zip);

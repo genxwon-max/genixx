@@ -54,6 +54,8 @@ export type CounselorProfile = {
   tags: string[];
   career: string[];
   duty: string[];
+  /** 전문가 회원이 올린 사진(data URL) — 관리자 폼에는 칸이 없고, 본인의 「내 정보」가 채운다 */
+  photo?: string;
 };
 
 export type CounselorRow = CounselorProfile & {
@@ -70,6 +72,9 @@ export type CounselorRow = CounselorProfile & {
   from: string;
   to: string;
   off: [string, string];
+  /** 날짜로 덮는 예외 — 쉬는 날 · 따로 여는 날 (lib/counselors.ts의 worksOn) */
+  closed?: string[];
+  opened?: string[];
   /** 보호자·학생 화면의 목록에 세우는가 */
   shown: boolean;
 };
@@ -148,6 +153,7 @@ export function resolveCounselor(row: CounselorRow): Counselor | null {
     /* 연구 실적은 이 화면에서 받지 않는다 — 면담을 고르는 데 쓰이지 않는 칸이다 */
     works: p?.works ?? [],
     duty: pickList(row.duty, p?.duty),
+    photo: row.photo || undefined,
   };
 
   return {
@@ -162,6 +168,8 @@ export function resolveCounselor(row: CounselorRow): Counselor | null {
     from: row.from,
     to: row.to,
     off: row.off,
+    closed: row.closed,
+    opened: row.opened,
   };
 }
 
@@ -280,6 +288,9 @@ export const useAllCounselors = (): Counselor[] => useSnapshot().list;
 
 /** 새로 고를 수 있는 상담사 — 내려 둔 사람은 빠진다 */
 export const useCounselors = (): Counselor[] => useSnapshot().shown;
+
+/** 훅 밖에서 읽는 날것 — 전문가 계정이 제 줄을 찾아 고칠 때(lib/expertAccountStore.ts) */
+export const getCounselorRows = (): CounselorRow[] => read().rows;
 
 /** 훅 밖에서 읽는다 — 예약을 저장하기 직전에 상담사를 다시 확인하는 자리(counselStore) */
 export const getCounselors = (): Counselor[] => read().list;

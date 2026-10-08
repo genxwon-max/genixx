@@ -196,7 +196,7 @@ export default function Admin2Settings() {
          * 이름만 있는 것은 이름만 있는 대로 목록으로 세워 둔다 — 붙일 때 무엇을 채워야
          * 하는지가 곧 이 목록이다.
          */}
-        <Panel className="mt-3" title="아직 값이 없는 자리" meta={stub.id}>
+        <Panel className="mt-3" title="아직 값이 없는 항목" meta={stub.id}>
           <ul className="space-y-1 a2-t-sm text-(--a2-ink-2)">
             {stub.todo.map((t) => (
               <li key={t} className="flex gap-2">
@@ -209,7 +209,7 @@ export default function Admin2Settings() {
 
 </Body>
       <SeedNote>
-        회차·건수는 화면 설계를 위한 예시입니다(lib/admin.ts). 임계값과 기관 정보는 실제로 코드에 걸려 있는 값이며,
+        회차·건수는 화면 설계를 위한 예시입니다(lib/admin.ts). 임계값과 기관 정보는 실제로 코드에 설정된 값이며,
         고치려면 해당 파일을 바꿔 배포해야 합니다.
       </SeedNote>
     </>

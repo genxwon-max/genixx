@@ -354,7 +354,7 @@ export default function Home5() {
         <div className="jm-wrap">
           <Reveal className="mx-auto max-w-[34rem] text-center">
             <p className="jm-eyebrow">진행 방법</p>
-            <h2 className="jm-h2 mt-4">세 걸음이면 돼요.</h2>
+            <h2 className="jm-h2 mt-4">세 단계면 돼요.</h2>
             <p className="jm-lead mt-4 text-(--j-ink-2)">
               보호자 계정에 아이를 등록하면 8자리 접속코드가 나와요. 아이는 그 코드와 생년월일로 들어가요.
             </p>

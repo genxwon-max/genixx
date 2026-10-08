@@ -194,7 +194,7 @@ export default function OrgDetail({ row }: { row: OrgRow }) {
             </div>
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Field label="쓴 자리" value={used} readOnly />
+              <Field label="사용한 응시권" value={used} readOnly />
               <Field
                 label="배정 응시권"
                 type="number"
@@ -225,7 +225,7 @@ export default function OrgDetail({ row }: { row: OrgRow }) {
           onCancel={info.reset}
           note={
             info.dirty && info.value.seats < used
-              ? `배정은 쓴 자리 ${n(used)}석까지만 내려갑니다.`
+              ? `배정은 사용한 응시권 ${n(used)}석까지만 줄일 수 있습니다.`
               : undefined
           }
         />
