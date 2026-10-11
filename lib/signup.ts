@@ -258,32 +258,11 @@ export const consents: Consent[] = [
   },
 ];
 
-export const socialProviders = [
-  {
-    id: "kakao",
-    label: "카카오로 시작하기",
-    className: "bg-[#FEE500] text-[#191600] hover:brightness-95",
-    mark: "K",
-    markClass: "bg-[#191600] text-[#FEE500]",
-    primary: true,
-  },
-  {
-    id: "naver",
-    label: "네이버로 시작하기",
-    className: "bg-[#03C75A] text-white hover:brightness-95",
-    mark: "N",
-    markClass: "bg-white/20 text-white",
-    primary: true,
-  },
-  {
-    id: "google",
-    label: "구글로 시작하기",
-    className: "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-    mark: "G",
-    markClass: "bg-slate-100 text-slate-700",
-    primary: false,
-  },
-] as const;
+/**
+ * 간편 로그인 제공자. 버튼의 색 · 로고 · 문구는 여기 두지 않는다 — 각 회사가 정해 둔
+ * 양식이라 components/account/SocialButton.tsx 한 곳에서만 그린다.
+ */
+export const socialProviders = [{ id: "kakao" }, { id: "naver" }, { id: "google" }] as const;
 
 export type ProviderId = (typeof socialProviders)[number]["id"];
 

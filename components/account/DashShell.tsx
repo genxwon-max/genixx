@@ -6,9 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { roleLabel, signOut, useSession, type Role } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
 import { useRoster } from "@/lib/roster";
-import type { ExpertAccount } from "@/lib/expertAccounts";
-import { useExpertAccount } from "@/lib/expertAccountStore";
-import { expertWorks, worksOf } from "@/lib/expertConsole";
 import { ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
 import { useSelf } from "@/components/student/self";
@@ -26,7 +23,8 @@ import { useSelf } from "@/components/student/self";
  * 화면이 없는 것(ORG-02-1 학급 구성 · ORG-05 집단 리포트)은 넣지 않았다. 눌러서 아무
  * 데도 가지 않는 메뉴를 세우는 것보다 없는 편이 낫다.
  *
- * 레일은 넷이다 — 학부모(/my) · 학생(/student) · 기관(/org) · 전문가(/expert). 학부모와 학생은 **주소로**
+ * 레일은 셋이다 — 학부모(/my) · 학생(/student) · 기관(/org). 전문가의 화면은 여기가 아니라
+ * 운영 콘솔(/admin2)에 있다(lib/expertConsole.ts). 학부모와 학생은 **주소로**
  * 가른다(menuFor). 한 주소에서 역할만 보고 갈랐을 때는 같은 화면이 두 사람 것이 되어,
  * 학생 쪽을 고치면 보호자 쪽이 함께 흔들렸다.
  *
@@ -104,7 +102,7 @@ function Icon({ children }: { children: React.ReactNode }) {
 }
 
 /** 학부모(P) — 정의서 5·6·7장에서 P 권한 P0 화면 */
-const parentMenu: Item[] = [
+export const parentMenu: Item[] = [
   { href: "/my", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
   { href: "/exam/result", label: "결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/my/children", label: "학생", sid: "ACC-03", icon: <Icon>{ic.child}</Icon> },
@@ -128,7 +126,7 @@ const parentMenu: Item[] = [
  * 누르면 응시 창이 뜬다. 「진단 결과」도 목록에서 진단을 골라 결과지로 들어간다.
  * 접수(/exam/apply)와 정답·해설만 아직 응시 존에 남아 있다.
  */
-const studentMenu: Item[] = [
+export const studentMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
   { href: "/student/exams", label: "내 진단", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
   { href: "/student/results", label: "진단 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
@@ -151,7 +149,7 @@ const studentMenu: Item[] = [
  *
  * 차례는 보호자 레일과 같게 둔다 — 결제 · 설문 · 면담. 하려는 일의 차례가 곧 메뉴 차례다.
  */
-const studentTeenMenu: Item[] = [
+export const studentTeenMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
   { href: "/student/exams", label: "내 진단", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
   { href: "/student/results", label: "진단 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
@@ -179,41 +177,6 @@ const pendingMenu: Item[] = [
   { href: "/my/pending", label: "승인 대기", sid: "ACC-01-4", icon: <Icon>{ic.home}</Icon> },
   { href: "/mypage", label: "설정", sid: "ACC-04", icon: <Icon>{ic.settings}</Icon> },
 ];
-
-/**
- * 전문가(E) — 가입 승인에서 받은 권한에 따라 레일이 달라진다.
- *
- * 「상담 일정」과 「상담 관리」는 상담사 권한을 받은 사람에게만 선다. 권한 없는 사람에게 세워 두면 눌러
- * 봐야 「상담사 권한이 없습니다」만 나온다. 승인 전에는 홈(승인 진행 상태)과 내 정보만
- * 남는다 — 프로필은 승인을 기다리는 동안에도 채워 둘 수 있다.
- */
-function expertMenuFor(account: ExpertAccount | null): Item[] {
-  const approved = account?.state === "approved";
-  return [
-    {
-      href: "/expert",
-      label: approved ? "홈" : "승인 대기",
-      sid: "EXP-01",
-      icon: <Icon>{ic.home}</Icon>,
-    },
-    /* 출제 · 검토 · 채점은 운영 콘솔의 작업 화면으로 건너간다(/expert/work/…가 다리다) */
-    ...worksOf(account)
-      .filter((w) => w !== "counsel")
-      .map((w) => ({
-      href: `/expert/work/${w}`,
-      label: expertWorks[w].label,
-      sid: "EXP-03",
-      icon: <Icon>{ic.paper}</Icon>,
-    })),
-    ...(approved && account.duties.includes("counselor")
-      ? [
-          { href: "/expert/schedule", label: "상담 일정", sid: "EXP-06-4", icon: <Icon>{ic.roster}</Icon> },
-          { href: "/expert/clients", label: "상담 관리", sid: "EXP-06-3", icon: <Icon>{ic.talk}</Icon> },
-        ]
-      : []),
-    { href: "/expert/profile", label: "내 정보", sid: "EXP-02", icon: <Icon>{ic.me}</Icon> },
-  ];
-}
 
 /** 학생 대시보드인가 — 주소가 정한다 */
 export function isStudentZone(pathname: string) {
@@ -365,13 +328,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
      세션의 studentId만 보므로, 보호자가 아이 화면을 확인하러 들어왔을 때 비어 있다 —
      그 자리에서 레일과 본문이 서로 다른 아이를 말하지 않게 한 곳에서 읽는다. */
   const asStudent = useSelf();
-  /* 전문가의 승인 여부와 권한은 세션이 아니라 **계정**에서 읽는다 — 운영진이 승인하는
-     순간 레일이 열려야 하고, 권한을 거두면 그 자리에서 닫혀야 한다 */
-  const isExpert = !isStudent && session?.role === "expert";
-  const expert = useExpertAccount(isExpert ? session?.expertId : null);
-  const menu = isExpert
-    ? expertMenuFor(expert)
-    : menuFor(session?.role, approved, pathname, asStudent.teen);
+  const menu = menuFor(session?.role, approved, pathname, asStudent.teen);
   const current = activeHref(menu, pathname);
   const isOrg = !isStudent && (session?.role === "director" || session?.role === "teacher");
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
@@ -379,11 +336,7 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
      어긋났을 때(개명·오타 수정) 화면에 뜨는 것은 명부 쪽이어야 한다 */
   const self = session?.studentId ? roster.find((s) => s.id === session.studentId) : undefined;
   const name =
-    (isStudent
-      ? (self?.name ?? session?.name)
-      : isExpert
-        ? expert?.profile.name || session?.name
-        : session?.name) ?? (isStudent ? "학생" : "회원");
+    (isStudent ? (self?.name ?? session?.name) : session?.name) ?? (isStudent ? "학생" : "회원");
 
   return (
     <div className="flex min-h-full bg-[#f4f6fb] text-soft-ink">
@@ -433,13 +386,13 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
                 (self?.grade || self?.school) && (
                   <Chip k="학년" v={hydrated ? (self?.grade ?? self?.school ?? "—") : "—"} />
                 )
-              ) : isExpert ? null : (
+              ) : (
                 <Chip k="등록 학생" v={`${hydrated ? mine.length : 0}명`} />
               )}
               <UserMenu
                 name={name}
                 role={isStudent ? "student" : session?.role}
-                myHref={isStudent ? "/student/account" : isExpert ? "/expert/profile" : "/mypage"}
+                myHref={isStudent ? "/student/account" : "/mypage"}
               />
             </div>
           </div>

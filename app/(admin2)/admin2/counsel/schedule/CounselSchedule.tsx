@@ -16,7 +16,7 @@ import { canonRow, saveCounselor, useCounselorRow, type CounselorRow } from "@/l
 import { LEAD_DAYS, WINDOW_DAYS } from "@/lib/counselStore";
 import { LeaveDialog, PageSaveBar, useEditDraft, useUnsavedGuard } from "@/components/admin2/EditGuard";
 import { Body, FormRow, PageHead, Panel } from "@/components/admin2/ui";
-import { isDead, useMyBookings, type ClientBooking } from "@/components/expert/me";
+import { isDead, useMyBookings, type ClientBooking } from "../me";
 import { NotCounselor, useConsoleCounselor } from "../shared";
 
 /**

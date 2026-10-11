@@ -22,12 +22,20 @@ function HeaderActions({
   onNavigate,
   /** 모바일 메뉴에서는 세로로 쌓이므로 글자 링크도 폭을 채운다 */
   stacked,
+  forced,
 }: {
   onNavigate?: () => void;
   stacked?: boolean;
+  forced?: HeaderAs;
 }) {
   const session = useSession();
-  const home = session ? roleHome[session.role] : null;
+  const home = forced
+    ? forced === "member"
+      ? "/my"
+      : null
+    : session
+      ? roleHome[session.role]
+      : null;
   const quiet = `type-h4 rounded-lg px-3.5 py-2 font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700 ${
     stacked ? "w-full text-center" : ""
   }`;
@@ -93,7 +101,13 @@ function SteadyLabel({ text }: { text: string }) {
 /** 메뉴 칸과 드롭다운 칸이 같이 쓰는 폭 — 둘이 어긋나면 줄이 안 맞는다 */
 const navCell = "min-w-[5.25rem] shrink-0";
 
-export default function Header() {
+/**
+ * 머리글을 로그인 상태와 상관없이 한쪽으로 굳힌다 — 디자인 보기(/design)만 쓴다.
+ * 같은 주소가 누가 여느냐에 따라 달라지면 비회원 화면과 회원 화면을 주소로 넘길 수 없다.
+ */
+export type HeaderAs = "guest" | "member";
+
+export default function Header({ forced }: { forced?: HeaderAs }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -163,7 +177,7 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 xl:flex">
-          <HeaderActions />
+          <HeaderActions forced={forced} />
         </div>
 
         <button
@@ -227,7 +241,7 @@ export default function Header() {
               ))}
             </div>
             <div aria-hidden className="invisible flex h-0 shrink-0 items-center gap-2 overflow-hidden">
-              <HeaderActions />
+              <HeaderActions forced={forced} />
             </div>
           </div>
         </div>
@@ -277,7 +291,7 @@ export default function Header() {
             })}
 
             <div className="mt-4 flex flex-col gap-2 pb-6">
-              <HeaderActions stacked onNavigate={() => setOpen(false)} />
+              <HeaderActions stacked forced={forced} onNavigate={() => setOpen(false)} />
             </div>
           </nav>
         </div>

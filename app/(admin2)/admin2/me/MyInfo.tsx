@@ -18,8 +18,7 @@ import { Body, DescList, FormRow, PageHead, Panel, Tag } from "@/components/admi
  * 콘솔 로그인은 「누구로 들어왔나」 한 줄뿐이라(lib/adminStore.ts), 그 아이디로 사람을 다시
  * 찾는다 — ex.로 시작하면 전문가 계정이고(lib/expertConsole.ts), 아니면 운영자 계정이다.
  *
- * 전문가의 프로필은 회원 자리의 「내 정보」(/expert/profile)와 **같은 값**을 고친다. 저장소가
- * 하나라(lib/expertAccountStore.ts) 어느 쪽에서 고쳐도 다른 쪽에 그대로 보인다.
+ * 전문가의 프로필은 여기서만 고친다(lib/expertAccountStore.ts).
  */
 
 const lines = (v: string[]) => v.join("\n");
@@ -115,14 +114,7 @@ function ExpertInfo({ account }: { account: ExpertAccount }) {
 
   return (
     <>
-      <PageHead
-        title="내 정보"
-        actions={
-          <Link href="/expert" className="a2-btn">
-            전문가 홈
-          </Link>
-        }
-      />
+      <PageHead title="내 정보" />
 
       <Body className="flex flex-col gap-3">
         <Panel title="계정" meta={account.id}>

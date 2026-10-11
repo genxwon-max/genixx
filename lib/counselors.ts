@@ -120,7 +120,7 @@ export type Counselor = {
   /** 비워 두는 구간 [시작, 끝) — 점심·내부 회의 */
   off: [string, string];
   /**
-   * 날짜로 덮는 예외 — 상담사가 「상담 일정」(/expert/schedule)의 달력에서 고친다.
+   * 날짜로 덮는 예외 — 상담사가 「상담 일정」(/admin2/counsel/schedule)의 달력에서 고친다.
    * closed는 근무 요일인데 쉬는 날, opened는 근무 요일이 아닌데 여는 날이다.
    */
   closed?: string[];

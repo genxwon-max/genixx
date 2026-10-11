@@ -23,7 +23,7 @@ import SummaryPages from "./SummaryPages";
  * 기관은 ?student= 로 받되 내 명부에 있는 아이일 때만 연다. 발행(EXP-08) 전이면 열지 않는다
  * — 결과 화면이 열리지 않는 아이의 보고서가 새 창에서만 열리면 그 약속이 거짓이 된다.
  *
- * 전문가(상담사)는 면담을 신청한 학생의 보고서를 여기서 연다(/expert/clients). 정밀본을
+ * 전문가(상담사)는 면담을 신청한 학생의 보고서를 여기서 연다(/admin2/counsel). 정밀본을
  * 「받기」 없이 편다 — 받는 것은 보호자의 일이고, 상담사는 면담 전에 전문을 읽어야 한다.
  * ?sample=1 은 시연 계정의 예시 신청에 붙는 예시 보고서다(lib/expertAccounts.ts의 demoClients).
  */

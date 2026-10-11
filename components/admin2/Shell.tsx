@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { admin2Nav, findAdmin2 } from "@/lib/admin2";
 import { roleOf } from "@/lib/admin";
@@ -14,7 +14,15 @@ import {
   useAdminPrefs,
 } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
-import { isExpertConsoleLogin } from "@/lib/expertConsole";
+import { signOut, useSession } from "@/lib/authStore";
+import { useExpertAccounts } from "@/lib/expertAccountStore";
+import {
+  consoleLoginOf,
+  enterExpertConsole,
+  expertWorkAt,
+  expertWorks,
+  isExpertConsoleLogin,
+} from "@/lib/expertConsole";
 import { useItems } from "@/lib/itemStore";
 import { scoreDone, useExpert } from "@/lib/expertStore";
 import { useInterviewDesk } from "@/lib/interviewStore";
@@ -27,6 +35,7 @@ import {
   visibleScreens,
 } from "@/lib/screenAccessStore";
 import ConsoleGate from "./ConsoleGate";
+import ExpertWaiting from "./ExpertWaiting";
 import Palette from "./Palette";
 
 /**
@@ -148,11 +157,60 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const here = findAdmin2(pathname);
 
+  /* ── 전문가 ──
+     전문가의 화면은 모두 이 콘솔에 있다(lib/expertConsole.ts). 사이트에서 전문가로 로그인한
+     사람이 콘솔 로그인 없이 오면 그 계정으로 들인다. 로그인 · 가입 직후에는 그쪽에서 이미
+     들여보내므로, 여기는 주소를 직접 치거나 사이트 머리글에서 건너온 경우를 받는다. */
+  const router = useRouter();
+  const session = useSession();
+  const experts = useExpertAccounts();
+  const expertAccount = asExpert
+    ? (experts.find((a) => consoleLoginOf(a) === prefs.loginId) ?? null)
+    : null;
+  const sessionExpert =
+    session?.role === "expert" ? (experts.find((a) => a.id === session.expertId) ?? null) : null;
+  const hasScreens = isSuper || !!roleFor(access, prefs.loginId);
+  const firstHref = nav[0]?.items[0]?.href;
+  const expertRole = asExpert ? expertWorkAt(pathname) : null;
+  useEffect(() => {
+    if (!hydrated || pathname.startsWith("/admin2/as/")) return;
+    if (!prefs.loginId) {
+      if (sessionExpert) router.replace(enterExpertConsole(sessionExpert));
+      return;
+    }
+    if (!asExpert || !hasScreens) return;
+    /* 대시보드는 전문가의 화면이 아니다 — 받은 권한의 첫 화면이 전문가의 첫 화면이다.
+       승인을 기다리던 사람도 승인이 나면 이 길로 옮겨 간다 */
+    if (pathname === "/admin2" && firstHref) {
+      router.replace(firstHref);
+      return;
+    }
+    /* 역할은 보고 있는 화면이 정한다 — 출제 화면에서는 출제자, 검수 화면에서는 검수자 */
+    if (expertRole && expertWorks[expertRole].role !== prefs.role) {
+      patchAdminPrefs({ role: expertWorks[expertRole].role });
+    }
+  }, [hydrated, pathname, prefs.loginId, prefs.role, sessionExpert, asExpert, hasScreens, firstHref, expertRole, router]);
+
+  /* 전문가는 사이트 로그인과 콘솔 로그인이 한 몸이다 — 하나만 지우면 위의 길로 다시 들어온다 */
+  const leave = () => {
+    if (asExpert) {
+      signOut();
+      adminSignOut();
+      router.replace("/login");
+      return;
+    }
+    adminSignOut();
+  };
+
   // 저장된 로그인 상태는 브라우저에만 있어서, 하이드레이션 전에는 판단하지 않는다
   if (!hydrated) return <div className="min-h-screen bg-(--a2-bg)" />;
   /* 권한별로 보기(/admin2/as/…)는 문보다 먼저 선다 — 그 주소가 곧 들어가는 길이다 */
   if (pathname.startsWith("/admin2/as/")) return <>{children}</>;
-  if (!prefs.loginId || (!isSuper && !roleFor(access, prefs.loginId))) {
+  /* 승인 전이거나 권한이 없는 전문가 — 메뉴 대신 가입 승인 진행 상태를 세운다 */
+  if (asExpert && !hasScreens) {
+    return <ExpertWaiting account={expertAccount} name={prefs.staffName} onSignOut={leave} />;
+  }
+  if (!prefs.loginId || !hasScreens) {
     return <ConsoleGate role={prefs.loginId ? prefs.role : null} name={prefs.staffName} />;
   }
   /* 미리보기 중에도 화면 권한 화면은 연다 — 거기서 미리보기를 끝내고 묶음을 고친다 */
@@ -333,13 +391,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <span className="a2-mono">{prefs.loginId}</span>
                 </span>
               </Link>
-              {/* 전문가 계정으로 건너온 사람은 돌아갈 곳이 전문가 홈이다(lib/expertConsole.ts) */}
-              {isExpertConsoleLogin(prefs.loginId) && (
-                <Link href="/expert" className="a2-btn a2-btn-sm a2-btn-dark">
-                  전문가 홈
-                </Link>
-              )}
-              <button type="button" onClick={adminSignOut} className="a2-btn a2-btn-sm a2-btn-dark">
+              <button type="button" onClick={leave} className="a2-btn a2-btn-sm a2-btn-dark">
                 로그아웃
               </button>
             </div>

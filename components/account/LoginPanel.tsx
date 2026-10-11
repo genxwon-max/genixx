@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { mfaRequired, roleHome, signIn, type Role } from "@/lib/authStore";
 import { getRoster } from "@/lib/roster";
-import { findExpertByLogin } from "@/lib/expertAccountStore";
+import { findExpertByLogin, getExpertAccounts } from "@/lib/expertAccountStore";
+import { enterExpertConsole } from "@/lib/expertConsole";
 import { themeOf } from "@/lib/authVariant";
 import AuthTabs, { BackRow } from "./AuthTabs";
+import SocialButton, { plainStackButton } from "./SocialButton";
 
 /** 가입 때 만든 아이디 규칙과 같다 (components/account/SignupFlow.tsx) */
 const idRe = /^[a-z][a-z0-9_]{3,19}$/;
@@ -21,6 +23,7 @@ const t = themeOf(2);
  * 로그인 수단을 네 개 버튼으로 세운다 — 카카오 · 네이버 · 구글 · 아이디.
  * 간편 로그인은 각 제공자 화면에서 동의를 받고 돌아오므로 우리 쪽에 동의 단계를
  * 두지 않는다. 아이디 로그인만 아이디·비밀번호가 필요해서 눌렀을 때 펼친다.
+ * 간편 로그인 세 버튼은 각 회사가 정해 둔 양식이다(components/account/SocialButton.tsx).
  *
  * 펼쳤다 접었다 하는 화면이라 **되돌아가기 줄이 늘 같은 자리를 차지한다.** 버튼이
  * 없을 때도 빈 줄로 남겨 두어야 「아이디로 로그인」을 눌렀을 때 아래 내용이 밀리지
@@ -135,8 +138,8 @@ export default function LoginPanel({
     const local = loginId.toLowerCase();
 
     // 전문가는 가입한 아이디로 찾는다. 가입한 적 없는 expert 아이디는 시연 계정으로 잇는다
-    // (lib/expertAccountStore.ts의 findExpertByLogin). 승인 전이어도 들인다 — 전문가 홈이
-    // 승인 진행 상태를 보여 주는 자리다.
+    // (lib/expertAccountStore.ts의 findExpertByLogin). 승인 전이어도 들인다 — 운영 콘솔이
+    // 그 사람에게는 승인 진행 상태를 보여 준다.
     const expert = findExpertByLogin(local);
     if (expert) {
       setPendingMfa({
@@ -186,7 +189,11 @@ export default function LoginPanel({
             approved: true,
             mfaPassed: true,
           });
-          router.push(roleHome[pendingMfa.role]);
+          /* 전문가의 화면은 운영 콘솔에 있다 — 받은 권한으로 콘솔에 들인다 */
+          const expert = pendingMfa.expertId
+            ? getExpertAccounts().find((a) => a.id === pendingMfa.expertId)
+            : null;
+          router.push(expert ? enterExpertConsole(expert) : roleHome[pendingMfa.role]);
         }}
       />
     );
@@ -212,27 +219,16 @@ export default function LoginPanel({
                   <p className={t.lead}>가입 시 선택한 방법으로 로그인해 주세요.</p>
 
                   <div className="flex flex-col gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => social("카카오")}
-                      className={`${t.btnSocial} bg-[#FEE500] text-[#191600]`}
-                    >
-                      카카오 로그인
-                      <span className="rounded-full bg-black/12 px-2 py-0.5 text-[12px] font-semibold">
+                    {/* 「최근 사용」은 버튼 밖에 붙인다 — 카카오 버튼 안에는 심볼과 레이블만 둘 수 있다 */}
+                    <div className="relative">
+                      <SocialButton provider="kakao" onClick={() => social("카카오")} />
+                      <span className="pointer-events-none absolute -top-2.5 right-3 rounded-full bg-soft-ink px-2 py-0.5 text-[11px] font-semibold leading-[1.5] text-white">
                         최근 사용
                       </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => social("네이버")}
-                      className={`${t.btnSocial} bg-[#03C75A] text-white`}
-                    >
-                      네이버 로그인
-                    </button>
-                    <button type="button" onClick={() => social("구글")} className={t.btnNeutral}>
-                      구글 로그인
-                    </button>
-                    <button type="button" onClick={() => setById(true)} className={t.btnNeutral}>
+                    </div>
+                    <SocialButton provider="naver" onClick={() => social("네이버")} />
+                    <SocialButton provider="google" onClick={() => social("구글")} />
+                    <button type="button" onClick={() => setById(true)} className={plainStackButton}>
                       아이디로 로그인
                     </button>
                   </div>
