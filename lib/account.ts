@@ -324,8 +324,8 @@ export const signupTypes: SignupType[] = [
     label: "전문가",
     tagline: "문항 출제·검토, 진단, 결과 해석 면담을 맡습니다",
     detail:
-      "가입을 신청하면 운영진이 소속과 경력을 확인한 뒤 맡을 일(출제자 · 검토자 · 진단 위원 · 상담사)을 정해 계정을 엽니다. 승인 전에는 내 정보만 채울 수 있고 학생 자료는 보이지 않습니다.",
-    next: "/expert",
+      "가입을 신청하면 운영진이 소속과 경력을 확인한 뒤 맡을 일(출제자 · 검토자 · 진단 위원 · 상담사)을 정해 계정을 엽니다. 승인 전에는 승인 진행 상태만 보이고 학생 자료는 보이지 않습니다.",
+    next: "/admin2",
     needsApproval: true,
     tone: "border-violet-300 bg-violet-50 text-violet-800",
     badge: "승인 필요",

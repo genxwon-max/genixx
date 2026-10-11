@@ -17,6 +17,7 @@ import {
   type ConsentStageId,
 } from "@/lib/account";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import { SocialMark, type SocialProvider } from "./SocialButton";
 
 /**
  * ACC-05 마이페이지 — 학부모 · 기관 공용 계정 허브.
@@ -176,10 +177,11 @@ const demoInquiries: Record<Audience, { at: string; title: string; state: string
   ],
 };
 
-const socialProviders = [
-  { id: "카카오", dot: "#FEE500" },
-  { id: "네이버", dot: "#03C75A" },
-  { id: "구글", dot: "#EA4335" },
+/** 연결할 수 있는 간편 로그인 — 표식은 각 회사의 로고를 쓴다 (SocialButton.tsx) */
+const socialProviders: { id: string; provider: SocialProvider }[] = [
+  { id: "카카오", provider: "kakao" },
+  { id: "네이버", provider: "naver" },
+  { id: "구글", provider: "google" },
 ];
 
 /* ───────────────────────── 조각 ───────────────────────── */
@@ -357,11 +359,7 @@ function ProfileSection({
                 key={p.id}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6"
               >
-                <span
-                  aria-hidden
-                  className="h-7 w-7 shrink-0 rounded-full border border-black/10"
-                  style={{ background: p.dot }}
-                />
+                <SocialMark provider={p.provider} round />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold">{p.id}</span>
                   <span className={`mt-0.5 block text-[12.5px] ${t.muted}`}>

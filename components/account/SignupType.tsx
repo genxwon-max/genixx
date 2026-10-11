@@ -16,6 +16,7 @@ import { patchSignupDraft } from "@/lib/signupStore";
 import { themeOf } from "@/lib/authVariant";
 import AuthTabs, { BackRow } from "./AuthTabs";
 import { ArrowBadge, ExpertArt, PersonalArt, StudentArt } from "./AuthArt";
+import SocialButton, { plainStackButton, type SocialProvider } from "./SocialButton";
 
 /**
  * ACC-01-1 회원유형 선택 → 가입 수단 선택.
@@ -40,7 +41,7 @@ import { ArrowBadge, ExpertArt, PersonalArt, StudentArt } from "./AuthArt";
  * 되돌아갈 길만 둔다. 만 14세 미만 안내·법정대리인 자격·전문가 승인 대기 같은 이야기를
  * 여기 쌓아 두면 무엇을 고르는 자리인지가 흐려진다. 그 셋은 모두 **고른 뒤에 실제로
  * 걸리는 곳**에서 다시 말한다 — 연령 판정과 법정대리인 경로는 /signup/join의 휴대폰
- * 본인인증이, 전문가 승인 대기는 가입 직후 도착하는 /expert가 맡는다.
+ * 본인인증이, 전문가 승인 대기는 가입 직후 도착하는 운영 콘솔(/admin2)이 맡는다.
  *
  * 세 단계가 **같은 껍데기를 쓴다.** 되돌아가기 줄은 첫 단계에서도 빈 줄로 자리를
  * 지키므로, 단계를 넘어가도 제목과 카드가 제자리에 그대로 있다. 위아래 여백을 넉넉히
@@ -69,11 +70,14 @@ function ro(word: string) {
 
 export type Stage = "bucket" | "person" | "method";
 
-const methods: { id: string; label: string; tone: "kakao" | "naver" | "plain" }[] = [
-  { id: "카카오", label: "카카오로 회원가입", tone: "kakao" },
-  { id: "네이버", label: "네이버로 회원가입", tone: "naver" },
-  { id: "구글", label: "구글로 회원가입", tone: "plain" },
-  { id: "", label: "아이디로 회원가입", tone: "plain" },
+/**
+ * 간편 가입 세 곳 — 버튼 모양과 문구는 각 회사가 정해 둔 양식을 따른다
+ * (components/account/SocialButton.tsx). id는 가입 초안에 적는 제공자 이름이다.
+ */
+const socialMethods: { id: string; provider: SocialProvider }[] = [
+  { id: "카카오", provider: "kakao" },
+  { id: "네이버", provider: "naver" },
+  { id: "구글", provider: "google" },
 ];
 
 type Card = { title: string; desc: string; art: React.ReactNode };
@@ -223,22 +227,17 @@ export default function SignupType({
 
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2.5">
-                  {methods.map((m) => (
-                    <button
-                      key={m.label}
-                      type="button"
+                  {socialMethods.map((m) => (
+                    <SocialButton
+                      key={m.provider}
+                      provider={m.provider}
+                      intent="signup"
                       onClick={() => start(m.id)}
-                      className={
-                        m.tone === "kakao"
-                          ? `${t.btnSocial} bg-[#FEE500] text-[#191600]`
-                          : m.tone === "naver"
-                            ? `${t.btnSocial} bg-[#03C75A] text-white`
-                            : t.btnNeutral
-                      }
-                    >
-                      {m.label}
-                    </button>
+                    />
                   ))}
+                  <button type="button" onClick={() => start("")} className={plainStackButton}>
+                    아이디로 회원가입
+                  </button>
                 </div>
 
                 {/* 가입 수단 바로 아래. 이미 계정이 있는 사람이 여기까지 와서

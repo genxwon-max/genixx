@@ -16,7 +16,9 @@ import { useHydrated } from "@/lib/examStore";
 import { signIn } from "@/lib/authStore";
 import { addStudents } from "@/lib/roster";
 import { applyExpert, expertLoginTaken } from "@/lib/expertAccountStore";
+import { enterExpertConsole } from "@/lib/expertConsole";
 import { themeOf } from "@/lib/authVariant";
+import { SocialMark, socialProviderOf } from "./SocialButton";
 
 /**
  * ACC-01 회원가입 정보 입력 — 둥글둥글(시안 2). 한 장짜리 화면이다.
@@ -67,13 +69,6 @@ const passDemo: { key: "adult" | "teen" | "child"; label: string; result: PassRe
   { key: "teen", label: "만 16세", result: { birth: "20090820", phone: "01055556666" } },
   { key: "child", label: "만 13세", result: { birth: "20130320", phone: "01098761234" } },
 ];
-
-/** 간편 가입 제공자 표식 */
-const providerMark: Record<string, { bg: string; fg: string; ch: string }> = {
-  카카오: { bg: "bg-[#FEE500]", fg: "text-[#191600]", ch: "K" },
-  네이버: { bg: "bg-[#03C75A]", fg: "text-white", ch: "N" },
-  구글: { bg: "bg-white ring-1 ring-slate-200", fg: "text-[#4285F4]", ch: "G" },
-};
 
 /* ── 조각 ── */
 
@@ -217,7 +212,8 @@ export default function SignupFlow() {
   }
 
   const type = signupTypeOf(draft.type);
-  const mark = draft.provider ? providerMark[draft.provider] : null;
+  /** 간편 가입이면 이메일 칸 끝에 어느 계정인지 표식을 단다 */
+  const mark = socialProviderOf(draft.provider);
 
   /* ── 통과 조건 ── */
   const idOk = idRe.test(loginId);
@@ -292,9 +288,9 @@ export default function SignupFlow() {
       return;
     }
 
-    // 전문가는 신청을 접수하고 자기 자리(/expert)로 보낸다. 승인 전이라 거기에는 승인
-    // 진행 상태와 「내 정보」만 선다 — 승인과 권한은 세션이 아니라 계정에서 읽으므로,
-    // 운영진이 승인하면 다시 로그인하지 않아도 화면이 열린다.
+    // 전문가는 신청을 접수하고 운영 콘솔(/admin2)로 보낸다. 승인 전이라 거기에는 승인
+    // 진행 상태만 선다 — 승인과 권한은 세션이 아니라 계정에서 읽으므로, 운영진이 승인하면
+    // 다시 로그인하지 않아도 화면이 열린다.
     if (isExpert) {
       const account = applyExpert({
         loginId: social ? "" : loginId,
@@ -313,7 +309,7 @@ export default function SignupFlow() {
         approved: false,
         mfaPassed: true,
       });
-      router.push(type.next);
+      router.push(enterExpertConsole(account));
       return;
     }
 
@@ -355,12 +351,10 @@ export default function SignupFlow() {
                     className={`${t.field} bg-slate-50 pr-12 text-slate-500`}
                   />
                   {mark && (
-                    <span
-                      aria-hidden
-                      className={`absolute right-3.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] text-[13px] font-black ${mark.bg} ${mark.fg}`}
-                    >
-                      {mark.ch}
-                    </span>
+                    <SocialMark
+                      provider={mark}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                    />
                   )}
                 </div>
               </Row>

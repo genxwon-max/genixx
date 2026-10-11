@@ -55,7 +55,7 @@ export type Booking = {
   /** 보호자가 미리 적어 보내는 궁금한 점 */
   note: string;
   /**
-   * 신청한 사람 — 상담사 화면(/expert/clients)이 「누가 신청했는가」를 적는 데 쓴다.
+   * 신청한 사람 — 상담사 화면(/admin2/counsel)이 「누가 신청했는가」를 적는 데 쓴다.
    * 옛 줄에는 없어서, 없으면 명부의 보호자 이름으로 대신 읽는다.
    */
   bookerName?: string;

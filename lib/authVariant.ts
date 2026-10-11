@@ -37,8 +37,6 @@ export type AuthTheme = {
   /** 버튼 */
   btnPrimary: string;
   btnNeutral: string;
-  /** 소셜 버튼 공통(색은 제공자별로 따로 붙인다) */
-  btnSocial: string;
   /** 본문 안에 끼워 넣는 작은 버튼 — 폭이 글자에 맞춰 줄어든다 */
   btnQuiet: string;
   /** 제목 옆에 세우는 주 액션 버튼. btnPrimary와 달리 폭을 채우지 않는다 */
@@ -83,8 +81,6 @@ const v1: AuthTheme = {
     "flex h-[3.375rem] w-full items-center justify-center rounded bg-acc-primary text-[16px] font-bold text-white transition-colors hover:bg-acc-primary-dark disabled:cursor-not-allowed disabled:bg-acc-field",
   btnNeutral:
     "flex h-[3.375rem] w-full items-center justify-center rounded border border-acc-field bg-white text-[16px] font-semibold text-acc-body transition-colors hover:bg-acc-panel",
-  btnSocial:
-    "flex h-[3.375rem] w-full items-center justify-center gap-2.5 rounded text-[16px] font-bold transition hover:brightness-95",
   btnQuiet:
     "inline-flex h-[3rem] shrink-0 items-center justify-center rounded border border-acc-field bg-white px-5 text-[15px] font-semibold text-acc-body transition-colors hover:bg-acc-panel",
   btnAction:
@@ -128,8 +124,6 @@ const v2: AuthTheme = {
     "flex h-[3.25rem] w-full items-center justify-center rounded-full bg-soft-primary text-[16px] font-semibold text-white transition-colors hover:bg-soft-primary-dark disabled:cursor-not-allowed disabled:bg-soft-line disabled:text-white",
   btnNeutral:
     "flex h-[3.25rem] w-full items-center justify-center rounded-full border border-soft-line bg-white text-[16px] font-medium text-soft-ink transition-colors hover:bg-slate-50",
-  btnSocial:
-    "flex h-[3.25rem] w-full items-center justify-center gap-2.5 rounded-full text-[16px] font-semibold transition hover:brightness-95",
   btnQuiet:
     "inline-flex h-[3rem] shrink-0 items-center justify-center rounded-full border border-soft-line bg-white px-5 text-[15px] font-medium text-soft-ink transition-colors hover:bg-slate-50",
   btnAction:

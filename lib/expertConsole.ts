@@ -10,22 +10,24 @@ import {
 } from "./screenAccessStore";
 
 /**
- * 전문가 계정 → 운영 콘솔(/admin2)의 작업 화면.
+ * 전문가 계정 → 운영 콘솔(/admin2).
  *
- * 문항 출제 · 문항 검수 · 진단 채점은 콘솔에만 있다. 전문가에게 그 화면을 전문가 자리
- * (/expert)에 한 벌 더 짓지 않고, **받은 권한만큼만 콘솔을 열어 준다** — 같은 일을 두
- * 화면이 하면 한쪽에서 고친 규칙(자가 검수 차단 · 검수 체크리스트)이 다른 쪽에 없다.
+ * 전문가의 화면은 모두 콘솔에 있다 — 문항 출제 · 문항 검수 · 진단 채점 · 내 상담 · 내 정보.
+ * 전문가 자리를 따로 두지 않고 **받은 권한만큼만 콘솔을 열어 준다**. 같은 일을 두 화면이
+ * 하면 한쪽에서 고친 규칙(자가 검수 차단 · 검수 체크리스트)이 다른 쪽에 없다.
  *
  * 콘솔은 「누구로 들어왔나」(lib/adminStore.ts)와 「어느 화면을 보나」(lib/screenAccessStore.ts)
  * 둘로 문을 지킨다. 그래서 다리도 둘을 놓는다 —
  *   · 전문가 계정에서 콘솔 아이디(ex.…)와 역할을 지어 들여보내고
  *   · 권한 조합마다 화면 권한 그룹(「전문가 · 출제자」 …)을 만들어 그 아이디에 붙인다.
  * 화면 권한이 붙은 계정은 받은 화면만 보이므로(Shell), 회원 · 결제 · 설정은 열리지 않는다.
+ * 승인 전이거나 권한이 없는 계정은 화면 권한이 붙지 않고, 콘솔은 그 사람에게 가입 승인
+ * 진행 상태만 보여 준다(components/admin2/ExpertWaiting.tsx).
  *
- * ── 역할은 들어가는 화면이 정한다 ──
- * 콘솔의 역할은 하나뿐인데 전문가는 출제와 검토를 함께 받을 수 있다. 출제 화면으로 들어가면
- * 출제자, 검수 화면으로 들어가면 검수자로 들인다 — 그래야 「자기가 낸 문항을 자기가
- * 검수하지 못한다」는 규칙(lib/admin.ts의 maySelfReview)이 전문가에게도 그대로 걸린다.
+ * ── 역할은 보고 있는 화면이 정한다 ──
+ * 콘솔의 역할은 하나뿐인데 전문가는 출제와 검토를 함께 받을 수 있다. 출제 화면에서는
+ * 출제자, 검수 화면에서는 검수자다(껍데기가 화면을 옮길 때 맞춘다) — 그래야 「자기가 낸
+ * 문항을 자기가 검수하지 못한다」는 규칙(lib/admin.ts의 maySelfReview)이 전문가에게도 걸린다.
  *
  * ⚠ 콘솔 로그인은 브라우저에 하나뿐이라, 같은 브라우저에서 운영자로 들어와 있었다면 그
  *   자리를 전문가가 차지한다(시안의 한계 — 서버 세션이 붙으면 계정마다 따로 선다).
@@ -108,17 +110,31 @@ export function syncExpertConsole(account: ExpertAccount) {
   assignScreenRole(loginId, role.id);
 }
 
+/** 이 주소가 어느 작업의 화면인가 — 껍데기가 전문가의 역할을 화면에 맞출 때 쓴다 */
+export function expertWorkAt(pathname: string): ExpertWork | null {
+  const all = Object.keys(expertWorks) as ExpertWork[];
+  return (
+    all.find((w) => {
+      const href = expertWorks[w].href;
+      return pathname === href || pathname.startsWith(`${href}/`);
+    }) ?? null
+  );
+}
+
 /**
- * 전문가를 콘솔의 작업 화면으로 들인다. 갈 주소를 돌려주고, 권한이 없으면 null이다.
+ * 전문가를 콘솔에 들이고 갈 주소를 돌려준다.
+ *
+ * 받은 권한의 첫 화면으로 보낸다. 승인 전이거나 권한이 없어도 들인다 — 콘솔이 그 사람에게는
+ * 가입 승인 진행 상태를 세운다.
  */
-export function enterExpertConsole(account: ExpertAccount, work: ExpertWork): string | null {
-  if (!worksOf(account).includes(work)) return null;
+export function enterExpertConsole(account: ExpertAccount): string {
   syncExpertConsole(account);
+  const first = worksOf(account)[0];
   adminSignIn({
     loginId: consoleLoginOf(account),
     staffName: account.profile.name,
-    role: expertWorks[work].role,
+    role: first ? expertWorks[first].role : "author",
     temp: false,
   });
-  return expertWorks[work].href;
+  return first ? expertWorks[first].href : "/admin2";
 }

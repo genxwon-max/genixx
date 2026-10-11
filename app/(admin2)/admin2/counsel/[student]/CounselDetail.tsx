@@ -23,7 +23,7 @@ import {
   useClient,
   type ClientBooking,
   type ClientStudent,
-} from "@/components/expert/me";
+} from "../me";
 import { useDiags } from "@/components/student/diag";
 import { caseTone, NotCounselor, useConsoleCounselor } from "../shared";
 
@@ -38,7 +38,7 @@ import { caseTone, NotCounselor, useConsoleCounselor } from "../shared";
  * ── 걸음마다 열리는 정보가 다르다 ──
  * 신청 단계에는 수락할지 정하는 데 필요한 것(학교 · 학년 · 상담 목적)만 보이고, 수락한 뒤에
  * 생년월일 · 보호자 · 진단 보고서가 열린다. 보호자 연락처는 가려 두고, 「연락처 보기」를
- * 누르면 펴지며 열람 기록이 남는다. 전문가 자리(/expert/clients)와 같은 규칙이다.
+ * 누르면 펴지며 열람 기록이 남는다.
  */
 
 const declineReasons = [

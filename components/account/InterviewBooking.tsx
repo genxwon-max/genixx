@@ -1019,7 +1019,7 @@ function PayStep({
 }) {
   const t = themeOf(variant);
   const router = useRouter();
-  /* 누가 신청했는지를 예약에 함께 박는다 — 상담사 화면(/expert/clients)이 그 이름을 읽는다 */
+  /* 누가 신청했는지를 예약에 함께 박는다 — 상담사 화면(/admin2/counsel)이 그 이름을 읽는다 */
   const booker = useSession();
   const [mode, setMode] = useState<CounselMode>(counselor.modes[0]);
   const [note, setNote] = useState("");

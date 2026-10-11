@@ -7,7 +7,7 @@ import { caseStatusLabel, type CaseStatus } from "@/lib/counselCaseStore";
 import { counselModes, spanLabel } from "@/lib/counselors";
 import DataTable, { type Col } from "@/components/admin2/DataTable";
 import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
-import { bookerText, dayLabel, isDead, useMyBookings, type ClientBooking } from "@/components/expert/me";
+import { bookerText, dayLabel, isDead, useMyBookings, type ClientBooking } from "./me";
 import { caseTone, NotCounselor, useConsoleCounselor } from "./shared";
 
 /**

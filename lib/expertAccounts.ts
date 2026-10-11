@@ -136,7 +136,7 @@ function profileOf(personId: string): ExpertProfile {
 /** 시연용 전문가 계정 — 아이디가 expert로 시작하면 이 계정으로 들어온다(LoginPanel) */
 export const DEMO_EXPERT_ID = "EX-2609-001";
 
-/** 권한 하나만 받은 시연 계정 — 권한마다 화면이 어떻게 다른지 주소로 갈라 본다(/expert/as/…) */
+/** 권한 하나만 받은 시연 계정 — 권한마다 화면이 어떻게 다른지 주소로 갈라 본다(/admin2/as/…) */
 const dutyDemo = (
   no: string,
   personId: string,
@@ -295,19 +295,19 @@ export const demoClients: DemoClient[] = demoPlan.flatMap((plan, i) => {
 
 /* ───────────────────────── 권한별로 보기 ─────────────────────────
    디자인을 볼 때 권한마다 로그인 · 승인을 되풀이하지 않도록, 주소 하나가 그 권한의 시연
-   계정으로 들여보낸다(/expert/as/author …). 「승인 전」도 한 자리로 둔다. */
+   계정으로 들여보낸다(/admin2/as/author …). 「승인 전」도 한 자리로 둔다. */
 
 export type ExpertPreview = "pending" | ExpertDuty;
 
 export const expertPreviews: { id: ExpertPreview; label: string; accountId: string; note: string }[] = [
-  { id: "pending", label: "승인 전", accountId: "EX-2610-002", note: "가입 승인을 기다리는 화면 · 내 정보" },
-  { id: "author", label: "출제자", accountId: "EX-2609-002", note: "홈 · 문항 출제 · 내 정보" },
-  { id: "reviewer", label: "검토자", accountId: "EX-2609-003", note: "홈 · 문항 검토 · 내 정보" },
-  { id: "grader", label: "진단 위원", accountId: "EX-2609-004", note: "홈 · 진단 채점 · 내 정보" },
+  { id: "pending", label: "승인 전", accountId: "EX-2610-002", note: "가입 승인을 기다리는 화면" },
+  { id: "author", label: "출제자", accountId: "EX-2609-002", note: "문항 출제 · 내 정보" },
+  { id: "reviewer", label: "검토자", accountId: "EX-2609-003", note: "문항 검토 · 내 정보" },
+  { id: "grader", label: "진단 위원", accountId: "EX-2609-004", note: "진단 채점 · 내 정보" },
   {
     id: "counselor",
     label: "상담사",
     accountId: DEMO_EXPERT_ID,
-    note: "홈 · 상담 일정 · 상담 관리 · 내 정보 (예시 신청 4건)",
+    note: "내 상담 · 내 상담 일정 · 내 정보 (예시 신청 4건)",
   },
 ];

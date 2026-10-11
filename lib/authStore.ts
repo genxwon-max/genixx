@@ -103,6 +103,7 @@ export const roleHome: Record<Role, string> = {
   student: "/student",
   // 교사도 기관 대시보드로 보낸다. 관찰 설문은 팝업 전용 화면이라 착지점이 될 수 없다.
   teacher: "/org",
-  expert: "/expert",
+  // 전문가의 화면은 모두 운영 콘솔에 있다(lib/expertConsole.ts)
+  expert: "/admin2",
   admin: "/admin",
 };
