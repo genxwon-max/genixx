@@ -3,8 +3,8 @@
  *
  * 여기 모은 것은 WBS에는 있는데 화면이 없던 것들이다. 실제 화면과 달리 **저장소를 읽지 않는다.**
  * 로그인했는지, 무엇을 눌렀는지에 따라 모양이 바뀌면 같은 주소가 사람마다 다른 화면이 되어
- * 디자인을 주소로 넘길 수 없다. 그래서 비회원 · 회원, 팝업이 열린 화면 · 닫힌 화면을 주소로
- * 가르고, 화면에 보이는 값은 전부 그 화면 파일에 적어 둔다.
+ * 디자인을 주소로 넘길 수 없다. 그래서 로그인 전 · 로그인 후, 팝업이 열린 화면 · 닫힌 화면을
+ * 주소로 가르고, 화면에 보이는 값은 전부 그 화면 파일에 적어 둔다.
  *
  * 단추는 대부분 눌러도 아무 일도 일어나지 않는다. 팝업을 여닫는 단추와 다음 상태로 가는
  * 단추만 그 상태의 주소로 이어 두었다.
@@ -46,7 +46,13 @@ export type DesignState = {
   /** 화면 주소 뒤에 붙는 꼬리. 빈 값이면 화면 주소 그대로다 */
   slug: string;
   name: string;
-  /** 누구의 화면인가 — 비회원 · 회원처럼 사람에 따라 갈리는 화면에만 적는다 */
+  /**
+   * 누구의 화면인가 — 목록의 「구분」 칸에 적힌다. 사람에 따라 갈리는 화면에만 적는다.
+   *
+   * **사람의 종류로 적는다** — 사용자 · 학생 · 보호자 · 전문가 · 최상위 관리자. 「비회원」이라고는
+   * 적지 않는다(2026-10-12 요청). 같은 화면이 로그인 전과 후에 다르면 「사용자 · 로그인 전」처럼
+   * 종류 뒤에 덧붙이고, 전문가로 가입하는 화면은 「전문가」다.
+   */
   who?: string;
   /** 팝업이 열린 상태 */
   popup?: boolean;
@@ -76,15 +82,15 @@ export const designScreens: DesignScreen[] = [
     real: "/signup/type → /signup/join",
     base: "/signup/expert",
     states: [
-      { slug: "", name: "회원 유형 선택", who: "비회원", note: "개인 / 전문가" },
-      { slug: "method", name: "가입 수단 선택", who: "비회원" },
-      { slug: "join", name: "정보 입력 · 빈 양식", who: "비회원", note: "아이디 가입" },
-      { slug: "join/pass", name: "정보 입력 · 휴대폰 본인인증 진행 중", who: "비회원" },
-      { slug: "join/terms", name: "정보 입력 · 약관 전문 펼침", who: "비회원" },
-      { slug: "join/filled", name: "정보 입력 · 입력 완료", who: "비회원" },
-      { slug: "join/error", name: "정보 입력 · 입력 오류", who: "비회원" },
-      { slug: "join/minor", name: "정보 입력 · 성년이 아님", who: "비회원", note: "본인인증 결과 미성년" },
-      { slug: "join/social", name: "정보 입력 · 간편 가입", who: "비회원", note: "카카오 · 네이버 · 구글" },
+      { slug: "", name: "회원 유형 선택", who: "전문가", note: "개인 / 전문가" },
+      { slug: "method", name: "가입 수단 선택", who: "전문가" },
+      { slug: "join", name: "정보 입력 · 빈 양식", who: "전문가", note: "아이디 가입" },
+      { slug: "join/pass", name: "정보 입력 · 휴대폰 본인인증 진행 중", who: "전문가" },
+      { slug: "join/terms", name: "정보 입력 · 약관 전문 펼침", who: "전문가" },
+      { slug: "join/filled", name: "정보 입력 · 입력 완료", who: "전문가" },
+      { slug: "join/error", name: "정보 입력 · 입력 오류", who: "전문가" },
+      { slug: "join/minor", name: "정보 입력 · 성년이 아님", who: "전문가", note: "본인인증 결과 미성년" },
+      { slug: "join/social", name: "정보 입력 · 간편 가입", who: "전문가", note: "카카오 · 네이버 · 구글" },
     ],
   },
   {
@@ -95,9 +101,9 @@ export const designScreens: DesignScreen[] = [
     real: "/admin2 (승인 전 전문가)",
     base: "/admin2/waiting",
     states: [
-      { slug: "", name: "승인을 기다리는 중", who: "전문가 회원", note: "가입 직후 도착하는 화면" },
-      { slug: "rejected", name: "가입 신청 반려", who: "전문가 회원" },
-      { slug: "no-duty", name: "받은 권한 없음", who: "전문가 회원", note: "승인 뒤 권한을 모두 거둔 계정" },
+      { slug: "", name: "승인을 기다리는 중", who: "전문가", note: "가입 직후 도착하는 화면" },
+      { slug: "rejected", name: "가입 신청 반려", who: "전문가" },
+      { slug: "no-duty", name: "받은 권한 없음", who: "전문가", note: "승인 뒤 권한을 모두 거둔 계정" },
     ],
   },
   {
@@ -129,10 +135,10 @@ export const designScreens: DesignScreen[] = [
     real: "/admin2 (로그인 전)",
     base: "/admin2/login",
     states: [
-      { slug: "", name: "로그인", who: "로그인 전" },
-      { slug: "error", name: "아이디 · 비밀번호 틀림", who: "로그인 전" },
-      { slug: "locked", name: "로그인 잠김", who: "로그인 전", note: "5번 틀린 뒤" },
-      { slug: "mfa", name: "2단계 인증", who: "로그인 전" },
+      { slug: "", name: "로그인", who: "최상위 관리자" },
+      { slug: "error", name: "아이디 · 비밀번호 틀림", who: "최상위 관리자" },
+      { slug: "locked", name: "로그인 잠김", who: "최상위 관리자", note: "5번 틀린 뒤" },
+      { slug: "mfa", name: "2단계 인증", who: "최상위 관리자" },
     ],
   },
   {
@@ -151,11 +157,11 @@ export const designScreens: DesignScreen[] = [
       { slug: "password/done", name: "비밀번호 변경 완료", who: "최상위 관리자" },
       { slug: "mfa", name: "2단계 인증 다시 설정 창", who: "최상위 관리자", popup: true },
       { slug: "find", name: "화면 찾기 창 · 「내 정보」를 찾은 모습", who: "최상위 관리자", popup: true, note: "메뉴 그룹 밖에 있는 「내 정보」도 화면 찾기에 나온다" },
-      { slug: "author", name: "출제자로 로그인", who: "전문가 회원", note: "왼쪽 메뉴에 문항 출제 · 문항 은행 · 내 정보" },
-      { slug: "reviewer", name: "검토자로 로그인", who: "전문가 회원", note: "왼쪽 메뉴에 문항 검수 · 문항 은행 · 내 정보" },
-      { slug: "grader", name: "진단 위원으로 로그인", who: "전문가 회원", note: "왼쪽 메뉴에 진단 채점 · 회원 채점 · 내 정보" },
-      { slug: "counselor", name: "상담사로 로그인", who: "전문가 회원", note: "왼쪽 메뉴에 내 상담 · 내 상담 일정 · 내 정보 · 프로필이 상담사 카드에 표시된다" },
-      { slug: "expert", name: "권한을 둘 받은 계정으로 로그인", who: "전문가 회원", note: "출제자 · 상담사 권한을 함께 받은 계정" },
+      { slug: "author", name: "출제자로 로그인", who: "전문가", note: "왼쪽 메뉴에 문항 출제 · 문항 은행 · 내 정보" },
+      { slug: "reviewer", name: "검토자로 로그인", who: "전문가", note: "왼쪽 메뉴에 문항 검수 · 문항 은행 · 내 정보" },
+      { slug: "grader", name: "진단 위원으로 로그인", who: "전문가", note: "왼쪽 메뉴에 진단 채점 · 회원 채점 · 내 정보" },
+      { slug: "counselor", name: "상담사로 로그인", who: "전문가", note: "왼쪽 메뉴에 내 상담 · 내 상담 일정 · 내 정보 · 프로필이 상담사 카드에 표시된다" },
+      { slug: "expert", name: "권한을 둘 받은 계정으로 로그인", who: "전문가", note: "출제자 · 상담사 권한을 함께 받은 계정" },
     ],
   },
   {
@@ -302,13 +308,13 @@ export const designScreens: DesignScreen[] = [
     real: "/experts · /experts/[id]",
     base: "/experts",
     states: [
-      { slug: "", name: "목록", who: "비회원" },
-      { slug: "member", name: "목록", who: "회원" },
-      { slug: "empty", name: "목록 · 소개할 전문가 없음", who: "비회원" },
-      { slug: "kim-jiwon", name: "상세", who: "비회원" },
-      { slug: "member/kim-jiwon", name: "상세", who: "회원" },
-      { slug: "kim-jiwon/login", name: "로그인 안내 창", who: "비회원", popup: true },
-      { slug: "member/kim-jiwon/no-report", name: "진단 결과 필요 안내 창", who: "회원", popup: true },
+      { slug: "", name: "목록", who: "사용자 · 로그인 전" },
+      { slug: "member", name: "목록", who: "사용자 · 로그인 후" },
+      { slug: "empty", name: "목록 · 소개할 전문가 없음", who: "사용자 · 로그인 전" },
+      { slug: "kim-jiwon", name: "상세", who: "사용자 · 로그인 전" },
+      { slug: "member/kim-jiwon", name: "상세", who: "사용자 · 로그인 후" },
+      { slug: "kim-jiwon/login", name: "로그인 안내 창", who: "사용자 · 로그인 전", popup: true },
+      { slug: "member/kim-jiwon/no-report", name: "진단 결과 필요 안내 창", who: "사용자 · 로그인 후", popup: true },
     ],
   },
   /* ── 진단 응시 — 응시 존의 첫 화면. 머리의 네 탭이 없어진 뒤의 모습이다 ── */
@@ -320,14 +326,14 @@ export const designScreens: DesignScreen[] = [
     real: "/exam",
     base: "/exam",
     states: [
-      { slug: "", name: "진단 목록", who: "비회원", note: "줄마다 「무료로 풀어보기」 · 머리가 한 줄이다" },
-      { slug: "card", name: "진단 목록 · 카드로 보기", who: "비회원" },
-      { slug: "empty", name: "진단 목록 · 찾는 진단 없음", who: "비회원" },
-      { slug: "student", name: "내 진단으로 넘어가는 중", who: "회원 · 학생", note: "학생은 자기 대시보드로 보낸다" },
-      { slug: "parent", name: "응시는 학생 계정에서", who: "회원 · 보호자" },
+      { slug: "", name: "진단 목록", who: "사용자 · 로그인 전", note: "줄마다 「무료로 풀어보기」 · 머리가 한 줄이다" },
+      { slug: "card", name: "진단 목록 · 카드로 보기", who: "사용자 · 로그인 전" },
+      { slug: "empty", name: "진단 목록 · 찾는 진단 없음", who: "사용자 · 로그인 전" },
+      { slug: "student", name: "내 진단으로 넘어가는 중", who: "학생", note: "학생은 자기 대시보드로 보낸다" },
+      { slug: "parent", name: "응시는 학생 계정에서", who: "보호자" },
     ],
   },
-  /* ── 진단 응시 — 머리의 「나가기」 (비회원 · 회원 무료 · 회원 유료) ── */
+  /* ── 진단 응시 — 머리의 「나가기」 (가입 전 셋트 · 무료 진단 · 유료 진단) ── */
   {
     id: "exam-trial",
     zone: "exam",
@@ -336,9 +342,9 @@ export const designScreens: DesignScreen[] = [
     real: "/exam/session/trial/[회차]/[학년]",
     base: "/exam/session/trial",
     states: [
-      { slug: "", name: "응시 중", who: "비회원", note: "머리 오른쪽 끝의 「나가기」" },
-      { slug: "exit", name: "나가기 확인 창", who: "비회원", popup: true },
-      { slug: "left", name: "나간 뒤 · 표지로 돌아옴", who: "비회원", note: "답은 창을 닫기 전까지 남는다" },
+      { slug: "", name: "응시 중", who: "사용자 · 로그인 전", note: "머리 오른쪽 끝의 「나가기」" },
+      { slug: "exit", name: "나가기 확인 창", who: "사용자 · 로그인 전", popup: true },
+      { slug: "left", name: "나간 뒤 · 표지로 돌아옴", who: "사용자 · 로그인 전", note: "답은 창을 닫기 전까지 남는다" },
     ],
   },
   {
@@ -349,10 +355,10 @@ export const designScreens: DesignScreen[] = [
     real: "/exam/session/free",
     base: "/exam/session/free",
     states: [
-      { slug: "", name: "응시 중", who: "회원 · 무료", note: "머리 오른쪽 끝의 「나가기」" },
-      { slug: "exit", name: "나가기 확인 창", who: "회원 · 무료", popup: true },
-      { slug: "left", name: "나간 뒤 · 남은 기회 있음", who: "회원 · 무료" },
-      { slug: "left/none", name: "나간 뒤 · 남은 기회 없음", who: "회원 · 무료" },
+      { slug: "", name: "응시 중", who: "학생 · 무료", note: "머리 오른쪽 끝의 「나가기」" },
+      { slug: "exit", name: "나가기 확인 창", who: "학생 · 무료", popup: true },
+      { slug: "left", name: "나간 뒤 · 남은 기회 있음", who: "학생 · 무료" },
+      { slug: "left/none", name: "나간 뒤 · 남은 기회 없음", who: "학생 · 무료" },
     ],
   },
   {
@@ -363,10 +369,10 @@ export const designScreens: DesignScreen[] = [
     real: "/exam/session/paid/[과목]",
     base: "/exam/session/paid",
     states: [
-      { slug: "", name: "응시 중", who: "회원 · 유료", note: "머리 오른쪽 끝의 「나가기」" },
-      { slug: "exit", name: "나가기 확인 창", who: "회원 · 유료", popup: true },
-      { slug: "left", name: "나간 뒤 · 남은 기회 있음", who: "회원 · 유료" },
-      { slug: "left/none", name: "나간 뒤 · 남은 기회 없음", who: "회원 · 유료" },
+      { slug: "", name: "응시 중", who: "학생 · 유료", note: "머리 오른쪽 끝의 「나가기」" },
+      { slug: "exit", name: "나가기 확인 창", who: "학생 · 유료", popup: true },
+      { slug: "left", name: "나간 뒤 · 남은 기회 있음", who: "학생 · 유료" },
+      { slug: "left/none", name: "나간 뒤 · 남은 기회 없음", who: "학생 · 유료" },
     ],
   },
   /* ── 진단 응시 — 함께 읽는 자료가 없는 독립 문항. 왼쪽 자료 칸 없이 문항만 가운데에 선다 ── */
@@ -378,10 +384,10 @@ export const designScreens: DesignScreen[] = [
     real: "/exam/session/paid/[과목]",
     base: "/exam/session/match",
     states: [
-      { slug: "", name: "잇기 전", who: "회원 · 유료", note: "왼쪽 자료 칸이 없다 · 왼쪽 2개와 오른쪽 5개 · 직접 이어 보는 화면은 /exam/session/design/match" },
-      { slug: "picked", name: "왼쪽 항목을 고른 뒤", who: "회원 · 유료", note: "이을 오른쪽 항목을 누르면 선이 이어진다" },
-      { slug: "doing", name: "잇는 중", who: "회원 · 유료", note: "선 3개 · 왼쪽 한 항목에 선 여럿" },
-      { slug: "done", name: "모두 이은 뒤", who: "회원 · 유료", note: "문항 이동판과 「응답」 수에 답한 문항으로 표시된다" },
+      { slug: "", name: "잇기 전", who: "학생 · 유료", note: "왼쪽 자료 칸이 없다 · 왼쪽 2개와 오른쪽 5개 · 직접 이어 보는 화면은 /exam/session/design/match" },
+      { slug: "picked", name: "왼쪽 항목을 고른 뒤", who: "학생 · 유료", note: "이을 오른쪽 항목을 누르면 선이 이어진다" },
+      { slug: "doing", name: "잇는 중", who: "학생 · 유료", note: "선 3개 · 왼쪽 한 항목에 선 여럿" },
+      { slug: "done", name: "모두 이은 뒤", who: "학생 · 유료", note: "문항 이동판과 「응답」 수에 답한 문항으로 표시된다" },
     ],
   },
 
@@ -790,15 +796,15 @@ export const designScreens: DesignScreen[] = [
     real: "/exam/info",
     base: "/exam/info",
     states: [
-      { slug: "", name: "점검 전", who: "회원" },
-      { slug: "guest", name: "점검 전", who: "비회원" },
-      { slug: "mic/asking", name: "마이크 사용 허용을 기다리는 중", who: "회원" },
-      { slug: "mic/listening", name: "말하는 중 · 소리 확인", who: "회원" },
-      { slug: "mic/ok", name: "점검 통과", who: "회원", note: "받아 적은 글이 보인다" },
-      { slug: "mic/denied", name: "마이크 사용이 막혀 있음", who: "회원" },
-      { slug: "mic/none", name: "마이크를 찾지 못함", who: "회원" },
-      { slug: "mic/quiet", name: "소리가 들리지 않음", who: "회원" },
-      { slug: "mic/unsupported", name: "음성 입력을 쓸 수 없는 브라우저", who: "회원" },
+      { slug: "", name: "점검 전", who: "사용자 · 로그인 후" },
+      { slug: "guest", name: "점검 전", who: "사용자 · 로그인 전" },
+      { slug: "mic/asking", name: "마이크 사용 허용을 기다리는 중", who: "사용자 · 로그인 후" },
+      { slug: "mic/listening", name: "말하는 중 · 소리 확인", who: "사용자 · 로그인 후" },
+      { slug: "mic/ok", name: "점검 통과", who: "사용자 · 로그인 후", note: "받아 적은 글이 보인다" },
+      { slug: "mic/denied", name: "마이크 사용이 막혀 있음", who: "사용자 · 로그인 후" },
+      { slug: "mic/none", name: "마이크를 찾지 못함", who: "사용자 · 로그인 후" },
+      { slug: "mic/quiet", name: "소리가 들리지 않음", who: "사용자 · 로그인 후" },
+      { slug: "mic/unsupported", name: "음성 입력을 쓸 수 없는 브라우저", who: "사용자 · 로그인 후" },
     ],
   },
   {

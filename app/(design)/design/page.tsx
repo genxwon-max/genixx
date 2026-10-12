@@ -21,8 +21,8 @@ export default function DesignIndexPage() {
     <main className="mx-auto w-full max-w-[72rem] px-5 py-10 text-slate-900 sm:px-8">
       <h1 className="text-[26px] font-bold tracking-tight">디자인 화면 목록</h1>
       <p className="mt-2.5 max-w-3xl text-[14px] leading-[1.8] text-slate-600">
-        화면마다, 상태마다 주소를 따로 두었습니다. 비회원 · 회원처럼 보는 사람에 따라 달라지는 화면과
-        팝업이 열린 화면 · 닫힌 화면도 주소가 다릅니다. 화면의 값은 모두 예시로 적어 둔 것이고,
+        화면마다, 상태마다 주소를 따로 두었습니다. 로그인 전 · 로그인 후처럼 보는 사람에 따라 달라지는
+        화면과 팝업이 열린 화면 · 닫힌 화면도 주소가 다릅니다. 화면의 값은 모두 예시로 적어 둔 것이고,
         단추는 다른 상태로 넘어가는 것만 눌립니다.
       </p>
       <p className="mt-1.5 text-[13px] text-slate-500">
