@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { admin2Nav } from "@/lib/admin2";
 import { designLinks } from "@/lib/designScreens";
+import { personById } from "@/lib/people";
+import Palette from "@/components/admin2/Palette";
 import { Body, DescList, FormRow, PageHead, Panel, Status, Tag } from "@/components/admin2/ui";
 import ConsoleFrame, { ConsoleDialog, type ConsoleMe as Me } from "../ConsoleFrame";
 
 /**
  * 내 정보 (실제 주소 /admin2/me) — 디자인.
  *
- * 콘솔 상단 바의 이름을 누르면 오는 자리다. 들어온 사람에 따라 두 가지로 갈린다.
+ * 왼쪽 메뉴 맨 아래의 「내 정보」(또는 상단 바의 이름)를 누르면 오는 자리다. 어느 권한으로
+ * 들어와도 메뉴의 같은 자리에 있고, 들어온 사람에 따라 화면이 두 가지로 갈린다.
  *
  * ── 최상위 관리자 ──
  * 가입으로 만든 계정이 아니라 서비스를 열 때 DB에 넣어 둔 계정이다. 그래서 아이디와 역할은
@@ -19,8 +24,16 @@ import ConsoleFrame, { ConsoleDialog, type ConsoleMe as Me } from "../ConsoleFra
  * 보안」 · 「최근 로그인」 세 판과 창 두 개(비밀번호 변경 · 2단계 인증)가 여기서 새로 정하는 것이다.
  *
  * ── 전문가 회원 ──
- * 가입 승인에서 받은 권한과, 보호자에게 보이는 프로필(사진 · 직함 · 연혁 · 소개)을 고친다.
- * 프로필 칸은 실제 화면(app/(admin2)/admin2/me/MyInfo.tsx)과 같고, 「로그인 보안」만 더했다.
+ * 가입 승인에서 받은 권한과, 프로필(사진 · 직함 · 연혁 · 소개)을 고친다. 프로필 칸은 실제
+ * 화면(app/(admin2)/admin2/me/MyInfo.tsx)과 같고, 「로그인 보안」만 더했다.
+ *
+ * 권한마다 주소를 따로 두었다 — 출제자 · 검토자 · 진단 위원 · 상담사, 그리고 권한을 둘 받은
+ * 계정. 화면의 칸은 같고 다른 것은 셋이다: 왼쪽 메뉴에 보이는 화면, 계정 판의 권한, 그리고
+ * 상담사 권한이 있을 때만 붙는 「보호자가 보는 상담사 카드에 표시됩니다」.
+ *
+ * ── 화면 찾기 ──
+ * 「내 정보」는 메뉴 그룹 밖에 있어 화면 찾기 창(⌘K)에 없었다. 이제 「내 계정 · 내 정보」 한 줄로
+ * 찾힌다(…/find). 창은 실제 조각(components/admin2/Palette.tsx)이다.
  */
 
 const to = designLinks("console-me");
@@ -50,7 +63,8 @@ function SaveBar({ dirty }: { dirty: boolean }) {
 }
 
 export default function ConsoleMe({ state }: { state: string }) {
-  if (state === "expert") return <ExpertMe />;
+  const expert = experts[state];
+  if (expert) return <ExpertMe who={expert} />;
   return <SuperMe slug={state} />;
 }
 
@@ -64,7 +78,11 @@ const logins = [
   { at: "2026-10-09 09:10", ip: "121.134.20.18", where: "서울", agent: "Chrome · Windows", ok: true },
 ];
 
+/** 최상위 관리자가 여는 화면 — 전문가만 쓰는 화면(내 상담 …)은 화면 찾기에도 나오지 않는다 */
+const superScreens = admin2Nav.flatMap((g) => g.items.filter((it) => !it.expertOnly).map((it) => it.href));
+
 function SuperMe({ slug }: { slug: string }) {
+  const router = useRouter();
   const first = slug === "first";
   const editing = slug === "edit";
   const changed = slug === "password/done";
@@ -360,41 +378,163 @@ function SuperMe({ slug }: { slug: string }) {
           </p>
         </ConsoleDialog>
       )}
+
+      {/* 화면 찾기 창 — 「내 정보」를 찾은 모습. 줄을 골라도 실제 화면으로 넘어가지 않는다 */}
+      {slug === "find" && (
+        <Palette
+          screens={superScreens}
+          startQuery="내 정보"
+          onClose={() => router.push(to())}
+          onPick={() => {}}
+        />
+      )}
     </ConsoleFrame>
   );
 }
 
 /* ───────────────────────── 전문가 회원 ───────────────────────── */
 
-const expert: Me = { name: "한지수", role: "전문가 · 출제자 · 상담사", loginId: "ex.jisu_han" };
+type Expert = {
+  /** 상단 바에 적는 사람 */
+  me: Me;
+  /** 가입 신청 번호이자 계정 번호 */
+  id: string;
+  loginId: string;
+  approvedAt: string;
+  duties: string[];
+  /** 받은 권한으로 왼쪽 메뉴에 보이는 화면 */
+  screens: string[];
+  profile: {
+    role: string;
+    org: string;
+    tags: string;
+    headline: string;
+    career: string[];
+    bio: string;
+  };
+  /** 비밀번호를 마지막으로 바꾼 날 */
+  passwordAt: string;
+  phone: string;
+};
 
-/** 출제자 · 상담사 권한으로 열리는 화면 */
-const expertScreens = ["/admin2/authoring", "/admin2/items", "/admin2/counsel", "/admin2/counsel/schedule"];
+/** 권한 하나에 열리는 화면 — 실제 콘솔과 같다(lib/expertConsole.ts의 expertWorks) */
+const SCREENS = {
+  author: ["/admin2/authoring", "/admin2/items"],
+  reviewer: ["/admin2/review", "/admin2/items"],
+  grader: ["/admin2/grading", "/admin2/grading/members"],
+  counselor: ["/admin2/counsel", "/admin2/counsel/schedule"],
+};
 
-function ExpertMe() {
+/** 참여진 예시(lib/people.ts)에서 프로필 칸을 채운다 — 실제 콘솔의 시연 계정과 같은 사람이다 */
+function profileOf(personId: string): Expert["profile"] {
+  const p = personById(personId);
+  return {
+    role: p?.role ?? "",
+    org: p?.org ?? "",
+    tags: (p?.tags ?? []).join(", "),
+    headline: p?.headline ?? "",
+    career: p?.career ?? [],
+    bio: p?.bio ?? "",
+  };
+}
+
+/** 주소의 꼬리 → 그 권한으로 들어온 사람. 권한 하나짜리 넷과, 권한을 둘 받은 계정 하나 */
+const experts: Record<string, Expert> = {
+  author: {
+    me: { name: "최은비", role: "전문가 · 출제자", loginId: "ex.expert_author" },
+    id: "EX-2609-002",
+    loginId: "expert_author",
+    approvedAt: "2026-09-19 09:30",
+    duties: ["출제자"],
+    screens: SCREENS.author,
+    profile: profileOf("choi-eunbi"),
+    passwordAt: "2026-09-18",
+    phone: "010-****-6620",
+  },
+  reviewer: {
+    me: { name: "윤대현", role: "전문가 · 검토자", loginId: "ex.expert_reviewer" },
+    id: "EX-2609-003",
+    loginId: "expert_reviewer",
+    approvedAt: "2026-09-19 09:30",
+    duties: ["검토자"],
+    screens: SCREENS.reviewer,
+    profile: profileOf("yoon-daehyun"),
+    passwordAt: "2026-09-18",
+    phone: "010-****-1147",
+  },
+  grader: {
+    me: { name: "서민정", role: "전문가 · 진단 위원", loginId: "ex.expert_grader" },
+    id: "EX-2609-004",
+    loginId: "expert_grader",
+    approvedAt: "2026-09-19 09:30",
+    duties: ["진단 위원"],
+    screens: SCREENS.grader,
+    profile: profileOf("seo-minjeong"),
+    passwordAt: "2026-09-18",
+    phone: "010-****-3058",
+  },
+  counselor: {
+    me: { name: "김지원", role: "전문가 · 상담사", loginId: "ex.expert_kim" },
+    id: "EX-2609-001",
+    loginId: "expert_kim",
+    approvedAt: "2026-09-19 09:30",
+    duties: ["상담사"],
+    screens: SCREENS.counselor,
+    profile: profileOf("kim-jiwon"),
+    passwordAt: "2026-09-18",
+    phone: "010-****-6789",
+  },
+  /* 권한을 둘 받은 계정 — 가입 승인 디자인에서 승인한 그 신청이다(./Approvals.tsx) */
+  expert: {
+    me: { name: "한지수", role: "전문가 · 출제자 · 상담사", loginId: "ex.jisu_han" },
+    id: "EX-2610-004",
+    loginId: "jisu_han",
+    approvedAt: "2026-10-12 10:05",
+    duties: ["출제자", "상담사"],
+    screens: [...SCREENS.author, ...SCREENS.counselor],
+    profile: {
+      role: "초등 수학 문항 개발위원",
+      org: "한국창의영재교육원",
+      tags: "초등 수학, 문항 개발, 결과 해석",
+      headline: "아이가 어디에서 막혔는지를 문항을 놓고 함께 짚어 드립니다.",
+      career: ["교육학 석사 (수학교육 전공)", "초등학교 교사 11년", "영재학급 수학 담당 5년"],
+      bio: "교실에서 아이들을 가르치며 수학 문항을 만들어 왔습니다. 점수보다 풀이 과정에서 드러나는 생각의 길을 읽어 드립니다.",
+    },
+    passwordAt: "2026-10-11",
+    phone: "010-****-2291",
+  },
+};
+
+function ExpertMe({ who }: { who: Expert }) {
+  const p = who.profile;
+  const counselor = who.duties.includes("상담사");
+  /* 이 사람의 내 정보 주소 — 왼쪽 메뉴의 「내 정보」가 제 화면을 가리킨다 */
+  const slug = Object.keys(experts).find((k) => experts[k] === who) ?? "expert";
+
   return (
-    <ConsoleFrame at="/admin2/me" crumb="내 정보" me={expert} only={expertScreens}>
+    <ConsoleFrame at="/admin2/me" crumb="내 정보" me={who.me} meHref={to(slug)} only={who.screens}>
       <PageHead title="내 정보" />
 
       <Body className="flex flex-col gap-3">
-        <Panel title="계정" meta="EX-2610-004">
+        <Panel title="계정" meta={who.id}>
           <DescList
             rows={[
               {
                 k: "가입 수단",
                 v: (
                   <>
-                    아이디 가입 · <span className="a2-mono">jisu_han</span>
+                    아이디 가입 · <span className="a2-mono">{who.loginId}</span>
                   </>
                 ),
               },
-              { k: "가입 승인", v: "승인됨 · 2026-10-12 10:05" },
+              { k: "가입 승인", v: `승인됨 · ${who.approvedAt}` },
               {
                 k: "권한",
                 v: (
                   <span className="flex flex-wrap gap-2">
-                    <Tag>출제자</Tag>
-                    <Tag>상담사</Tag>
+                    {who.duties.map((d) => (
+                      <Tag key={d}>{d}</Tag>
+                    ))}
                   </span>
                 ),
               },
@@ -403,12 +543,16 @@ function ExpertMe() {
           <p className="a2-hint mt-2">권한은 운영진이 가입 승인에서 정합니다. 받은 권한의 화면만 왼쪽 메뉴에 보입니다.</p>
         </Panel>
 
-        <Panel title="프로필" meta="보호자가 보는 상담사 카드에 그대로 표시됩니다" flush>
+        <Panel
+          title="프로필"
+          meta={counselor ? "보호자가 보는 상담사 카드에 그대로 표시됩니다" : undefined}
+          flush
+        >
           <div className="a2-form">
             <FormRow label="사진" hint="정사각형으로 잘려 등록됩니다.">
               <span className="flex flex-wrap items-center gap-2.5">
                 <span className="flex h-14 w-14 items-center justify-center rounded-(--a2-radius) border border-(--a2-line) bg-(--a2-bg) a2-t-sm font-bold text-(--a2-ink-3)">
-                  한
+                  {who.me.name.slice(0, 1)}
                 </span>
                 <button type="button" className="a2-btn">
                   사진 올리기
@@ -416,45 +560,31 @@ function ExpertMe() {
               </span>
             </FormRow>
             <FormRow label="이름" req>
-              <input aria-label="이름" className="a2-input" style={{ maxWidth: "14rem" }} defaultValue="한지수" />
+              <input aria-label="이름" className="a2-input" style={{ maxWidth: "14rem" }} defaultValue={who.me.name} />
             </FormRow>
             <FormRow label="직함">
               <input
                 aria-label="직함"
                 className="a2-input"
                 style={{ maxWidth: "22rem" }}
-                defaultValue="초등 수학 문항 개발위원"
+                defaultValue={p.role}
                 placeholder="예) 교육과정 자문위원"
               />
             </FormRow>
             <FormRow label="소속">
-              <input aria-label="소속" className="a2-input" style={{ maxWidth: "22rem" }} defaultValue="한국창의영재교육원" />
+              <input aria-label="소속" className="a2-input" style={{ maxWidth: "22rem" }} defaultValue={p.org} />
             </FormRow>
             <FormRow label="전문 분야" hint="여럿이면 쉼표로 나눠 적습니다.">
-              <input aria-label="전문 분야" className="a2-input" defaultValue="초등 수학, 문항 개발, 결과 해석" />
+              <input aria-label="전문 분야" className="a2-input" defaultValue={p.tags} />
             </FormRow>
             <FormRow label="한 줄 소개">
-              <input
-                aria-label="한 줄 소개"
-                className="a2-input"
-                defaultValue="아이가 어디에서 막혔는지를 문항을 놓고 함께 짚어 드립니다."
-              />
+              <input aria-label="한 줄 소개" className="a2-input" defaultValue={p.headline} />
             </FormRow>
             <FormRow label="연혁" hint="한 줄에 하나씩 적습니다.">
-              <textarea
-                aria-label="연혁"
-                className="a2-textarea"
-                rows={4}
-                defaultValue={"교육학 석사 (수학교육 전공)\n초등학교 교사 11년\n영재학급 수학 담당 5년"}
-              />
+              <textarea aria-label="연혁" className="a2-textarea" rows={4} defaultValue={p.career.join("\n")} />
             </FormRow>
             <FormRow label="소개 내용">
-              <textarea
-                aria-label="소개 내용"
-                className="a2-textarea"
-                rows={4}
-                defaultValue="교실에서 아이들을 가르치며 수학 문항을 만들어 왔습니다. 점수보다 풀이 과정에서 드러나는 생각의 길을 읽어 드립니다."
-              />
+              <textarea aria-label="소개 내용" className="a2-textarea" rows={4} defaultValue={p.bio} />
             </FormRow>
           </div>
         </Panel>
@@ -463,7 +593,7 @@ function ExpertMe() {
           <div className="a2-form">
             <FormRow label="비밀번호">
               <span className="a2-t-sm text-(--a2-ink-2)">
-                마지막 변경 <span className="a2-mono text-(--a2-ink)">2026-10-11</span> (가입한 날)
+                마지막 변경 <span className="a2-mono text-(--a2-ink)">{who.passwordAt}</span> (가입한 날)
               </span>
               <button type="button" className="a2-btn">
                 비밀번호 변경
@@ -471,7 +601,7 @@ function ExpertMe() {
             </FormRow>
             <FormRow label="2단계 인증" hint="전문가 회원은 로그인할 때마다 2단계 인증을 거칩니다.">
               <Status tone="ok">사용 중</Status>
-              <span className="a2-t-sm text-(--a2-ink-2)">문자 · 010-****-2291</span>
+              <span className="a2-t-sm text-(--a2-ink-2)">문자 · {who.phone}</span>
             </FormRow>
           </div>
         </Panel>

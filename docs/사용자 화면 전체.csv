@@ -78,7 +78,7 @@
 진단 — 회원(유료),결제 (보호자),https://genixx-theta.vercel.app/my/payments,보호자가 열려 있는 진단을 골라 아이 앞으로 결제·접수. (PAY-03)
 진단 — 회원(유료),"결제 (학생, 만 14세 이상)",https://genixx-theta.vercel.app/student/payments,만 14세 이상 학생이 자기 응시권을 직접 결제. (PAY-03 학생)
 진단 — 회원(유료),내 진단 · 진단 상세,https://genixx-theta.vercel.app/student/exams/2026-3/e4,"접수한 진단의 과목별 응시 현황(문항 수 · 제한 시간 · 진행 상태 · 진단 시작), 설문 제출 현황, 최종 제출. 과목의 「진단 시작」을 누르면 응시 창이 따로 뜸. (ASM-01)"
-진단 — 회원(유료),유료 진단 응시 (과목별),https://genixx-theta.vercel.app/exam/session/paid/science,"과목마다 따로 들어감. 편성 국어 10 · 수학 20 · 과학 20(합 50), 과목당 40분. 별도 창·전체화면, 왼쪽 보기 자료 · 가운데 문항 · 오른쪽 문항 이동판, 남은 시간·나가기."
+진단 — 회원(유료),유료 진단 응시 (과목별),https://genixx-theta.vercel.app/exam/session/paid/science,"과목마다 따로 들어감. 편성 국어 10 · 수학 20 · 과학 20(합 50), 과목당 40분. 별도 창·전체화면, 왼쪽 보기 자료 · 가운데 문항 · 오른쪽 문항 이동판, 남은 시간·나가기. 함께 읽는 자료가 없는 독립 문항은 왼쪽 칸 없이 문항만 가운데에 나옴. 답하는 방식은 보기 고르기 · 괄호 칸 · 긴 글 · 사진 올리기 · 선 잇기(두 항목을 차례로 누르거나 점에서 점으로 끌어서 이음)."
 진단 — 회원(유료),(구) 응시 주소,https://genixx-theta.vercel.app/exam/session/science,갈래가 주소에 적히기 전의 주소. 남은 링크·즐겨찾기를 /exam/session/paid/[과목]으로 넘김.
 진단 — 회원(유료),정답과 해설,https://genixx-theta.vercel.app/student/answers/2026-3/e4,"최종 제출한 진단의 과목별 정오표(정답 · 부분 정답 · 오답 · 미응답 · 채점 중). 전문가 채점이 끝난 문항은 점수와 해설이 함께 보임. 「답안 풀이 보기」 창에서 응시 화면과 같은 모양으로 문항 · 내가 쓴 답 · 정답 · 서술형 예시 답을 봄. 정오표 내려받기(PDF · CSV) · 인쇄 · 맞춤 학습. (ASM-01)"
 진단 — 회원(유료),진단 결과,https://genixx-theta.vercel.app/student/results,접수한 진단의 결과 발행 상태 목록. 발행된 진단은 결과지(/student/results/2026-3/e4)로 들어감. (RPT-01)

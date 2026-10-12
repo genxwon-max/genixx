@@ -22,22 +22,31 @@ export default function Palette({
   onClose,
   /** 화면 권한으로 좁혀진 화면들 — null이면 전부(lib/screenAccessStore.ts) */
   screens = null,
+  startQuery = "",
+  onPick,
 }: {
   onClose: () => void;
   screens?: string[] | null;
+  /** 처음부터 적혀 있는 찾는 말 — 디자인 보기가 찾은 모습을 주소로 굳힐 때만 넘긴다 */
+  startQuery?: string;
+  /** 고른 화면으로 가는 일을 밖에서 맡는다 — 디자인 보기는 실제 화면으로 넘어가지 않는다 */
+  onPick?: (href: string) => void;
 }) {
   const router = useRouter();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(startQuery);
   const [at, setAt] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   const flat = useMemo(
-    () =>
-      admin2Nav
+    () => [
+      ...admin2Nav
         .flatMap((g) => g.items.map((it) => ({ ...it, group: g.label })))
         .filter((it) => !screens || screens.includes(it.href)),
+      /* 내 정보는 메뉴 그룹 밖에 있고 화면 권한과 상관없이 누구에게나 열린다 */
+      { code: "ADM-00", label: "내 정보", href: "/admin2/me", group: "내 계정" },
+    ],
     [screens],
   );
   const hits = useMemo(() => {
@@ -65,7 +74,8 @@ export default function Palette({
 
   const go = (href: string) => {
     onClose();
-    router.push(href);
+    if (onPick) onPick(href);
+    else router.push(href);
   };
 
   return (

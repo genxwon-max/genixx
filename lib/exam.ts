@@ -1,17 +1,19 @@
 // 문항 본문은 분량이 커서 따로 뒀다. 여기는 얼개와 셈만 둔다.
 import {
   isGroup,
+  materialIsEmpty,
   type Blank,
   type Block,
   type ContentQuestion,
   type ContentSet,
   type Level,
+  type MatchItem,
   type Material,
   type Response,
 } from "./content";
 import { examSets } from "./examQuestions";
 
-export type { Blank, Block, Figure, Level, Material, Table } from "./content";
+export type { Blank, Block, Figure, Level, MatchItem, Material, Table } from "./content";
 
 /** 평가에 싣는 세트 — 공통 얼개(lib/content.ts)에 과목을 붙인 것 */
 export type ExamSet = ContentSet & { subject: SubjectId };
@@ -67,7 +69,15 @@ function answerFields(
   r: Response,
 ): Pick<
   Question,
-  "type" | "choices" | "answer" | "blanks" | "guide" | "placeholder" | "minLength" | "upload"
+  | "type"
+  | "choices"
+  | "answer"
+  | "blanks"
+  | "guide"
+  | "placeholder"
+  | "minLength"
+  | "upload"
+  | "match"
 > {
   switch (r.kind) {
     case "choice":
@@ -81,9 +91,19 @@ function answerFields(
          녹음 제출 화면은 두지 않는다. 말로 답하는 것은 긴 글 칸의 음성 입력이 받아 적는다 */
       return r.media === "image" ? { type: "essay", upload: "image" } : { type: "essay" };
     case "match":
-      /* 선 잇기 화면은 아직 없다 — 그리기 전까지는 긴 글 칸으로 받는다 */
-      return { type: "essay" };
+      /* 선 잇기 — 이은 선들을 문자열로 굳혀 긴 글과 같은 자리에 담는다(joinPairs) */
+      return { type: "essay", match: matchOf(r) };
   }
+}
+
+/** 출제한 선 잇기를 응시 화면이 읽는 꼴로 — 정답에서 「한 항목에 선 여럿」을 읽어 둔다 */
+function matchOf(r: Extract<Response, { kind: "match" }>): Match {
+  const pairs = tidyPairs(
+    r.pairs.filter(([l, k]) => l >= 0 && l < r.left.length && k >= 0 && k < r.right.length),
+  );
+  const twice = (side: 0 | 1) =>
+    pairs.some((p, i) => pairs.some((o, k) => k !== i && o[side] === p[side]));
+  return { left: r.left, right: r.right, pairs, many: { left: twice(0), right: twice(1) } };
 }
 
 /**
@@ -186,6 +206,16 @@ export const SUBJECT_IDS = subjects.map((s) => s.id);
 export type Brief = Material;
 
 /**
+ * 독립 문항인가 — 함께 읽는 자료 없이 문항만 있는 것.
+ *
+ * 세트 문항은 왼쪽에 자료를 두고 오른쪽에서 문제를 넘긴다. 자료가 없는 문항을 그 틀에 그대로
+ * 두면 왼쪽에 빈 상자만 남는다. 그래서 자료가 없으면 왼쪽 칸을 걷고 문항을 가운데 한 칸에
+ * 둔다(components/exam/ExamSession.tsx의 BriefPanel · ScreenColumn). 자료가 딸린 독립 문항은
+ * 세트와 같은 두 칸이고, 머리에 번호 범위([1~4])만 붙지 않는다(setRange).
+ */
+export const standsAlone = (brief: Brief) => materialIsEmpty(brief);
+
+/**
  * S위계 — 무엇이 적혀 있는가(S1)에서 왜 그런가(S2), 어떻게 할 것인가(S3),
  * 다르게 하면 어떤가(S4)로 묻는 층위를 올린다. 응시 화면의 문항 이동판이 이 단위로
  * 묶이고, 리포트도 같은 축으로 읽는다.
@@ -265,6 +295,13 @@ export type Question = {
    * (lib/answerMedia.ts), 답 자리에는 그 열쇠만 적는다(joinUpload).
    */
   upload?: "image";
+  /**
+   * 선 잇기 — 왼쪽 항목과 오른쪽 항목을 선으로 잇는다.
+   *
+   * 있으면 긴 글 칸 대신 두 줄의 항목과 그 사이에 선을 긋는 칸을 연다
+   * (components/exam/MatchAnswer.tsx). 답 자리에는 이은 선들을 적는다(joinPairs).
+   */
+  match?: Match;
   /** 채점 기준 — 학생 화면에는 내보이지 않는다 */
   scoring?: string[];
   /** 만점 — 채점 기준이 정한 값. 없으면 pointsOf가 유형을 보고 정한다 */
@@ -347,6 +384,111 @@ export function splitUpload(value: number | string | undefined): UploadAnswer | 
   }
 }
 
+/* ───────────────────────── 선 잇기 ───────────────────────── */
+
+/** 선 하나 — [왼쪽 항목의 차례, 오른쪽 항목의 차례], 둘 다 0부터 */
+export type Pair = [number, number];
+
+/**
+ * 선 잇기 문항의 항목과 정답.
+ *
+ * 선은 왼쪽 항목 하나와 오른쪽 항목 하나를 잇는다. 한 항목에 선을 몇 개까지 받는지는 문항마다
+ * 다르고, **정답에서 읽는다**(many) —
+ *
+ *   3개와 3개를 하나씩 맞추는 문항     양쪽 모두 선 하나. 이미 이은 항목을 다른 항목에 이으면
+ *                                      선이 옮겨 간다
+ *   2개에 5개를 나누어 잇는 문항       왼쪽 항목은 선 여럿, 오른쪽 항목은 선 하나
+ *
+ * 정답에 선이 둘 이상 닿는 항목이 있는 쪽만 여럿을 받는다. 학생에게 알려지는 것은 「이 문항은
+ * 한 항목에 여러 개를 이을 수 있다」까지다 — 어느 항목이 몇 개인지는 화면에 나오지 않는다.
+ */
+export type Match = {
+  left: MatchItem[];
+  right: MatchItem[];
+  /** 정답인 선 — 학생 화면에는 내보이지 않는다 */
+  pairs: Pair[];
+  /** 그쪽 항목 하나에 선을 여럿 이을 수 있는가 */
+  many: { left: boolean; right: boolean };
+};
+
+/** 선들을 왼쪽 · 오른쪽 차례로 늘어놓고 겹친 것을 걷는다 */
+function tidyPairs(pairs: Pair[]): Pair[] {
+  const seen = new Set<string>();
+  return pairs
+    .filter(([l, r]) => {
+      const key = `${l}-${r}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+}
+
+/** 이은 선을 저장용 문자열로 */
+export function joinPairs(pairs: Pair[]) {
+  return JSON.stringify({ match: tidyPairs(pairs) });
+}
+
+/** 저장된 답에서 이은 선을 읽는다 — 항목 수를 벗어난 선은 버린다 */
+export function splitPairs(value: number | string | undefined, m: Match): Pair[] {
+  if (typeof value !== "string" || !value) return [];
+  try {
+    const v = JSON.parse(value) as { match?: unknown };
+    if (!Array.isArray(v.match)) return [];
+    return tidyPairs(
+      v.match.filter(
+        (p): p is Pair =>
+          Array.isArray(p) &&
+          p.length === 2 &&
+          Number.isInteger(p[0]) &&
+          Number.isInteger(p[1]) &&
+          p[0] >= 0 &&
+          p[0] < m.left.length &&
+          p[1] >= 0 &&
+          p[1] < m.right.length,
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 선을 하나 잇는다.
+ *
+ * 선을 하나만 받는 쪽의 항목에 이미 선이 있으면 그 선을 걷고 새 선을 둔다 — 잘못 이은 것을
+ * 지우지 않고 다시 이어서 고칠 수 있다.
+ */
+export function connectPair(m: Match, pairs: Pair[], [l, r]: Pair): Pair[] {
+  return tidyPairs([
+    ...pairs.filter((p) => (m.many.left || p[0] !== l) && (m.many.right || p[1] !== r)),
+    [l, r],
+  ]);
+}
+
+/** 두 묶음의 선이 같은가 — 차례는 보지 않는다 */
+export function samePairs(a: Pair[], b: Pair[]) {
+  const x = tidyPairs(a);
+  const y = tidyPairs(b);
+  return x.length === y.length && x.every((p, i) => p[0] === y[i][0] && p[1] === y[i][1]);
+}
+
+const MATCH_RIGHT = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ";
+
+/** 항목의 이름 — 왼쪽은 (1) · (2), 오른쪽은 ㄱ · ㄴ. 출제 화면의 선 잇기 칸과 같은 이름이다 */
+export const matchLeftName = (i: number) => `(${i + 1})`;
+export const matchRightName = (i: number) => MATCH_RIGHT[i % MATCH_RIGHT.length];
+
+/** 이은 선을 글로 — 「(1) - ㄱ · ㄷ / (2) - ㄴ」. 정오표와 채점 자료가 쓴다 */
+export function pairsText(m: Match, pairs: Pair[]): string {
+  return m.left
+    .map((_, l) => {
+      const to = pairs.filter((p) => p[0] === l).map((p) => matchRightName(p[1]));
+      return `${matchLeftName(l)} - ${to.length > 0 ? to.join(" · ") : "없음"}`;
+    })
+    .join(" / ");
+}
+
 /**
  * 서술형 답을 사람이 읽는 글로 — 칸이 있으면 「차이점: … / 공통점: …」처럼 줄마다 편다.
  * 해설 · 해석 화면처럼 쓴 답을 그대로 보여 주는 자리에서 쓴다.
@@ -355,6 +497,10 @@ export function answerText(q: Question, value: number | string | undefined): str
   if (typeof value !== "string") return "";
   if (q.upload) {
     return splitUpload(value) ? "사진을 제출했습니다." : "";
+  }
+  if (q.match) {
+    const mine = splitPairs(value, q.match);
+    return mine.length > 0 ? pairsText(q.match, mine) : "";
   }
   if (!q.blanks) return value.trim();
   const parts = splitBlanks(value, q.blanks.length);
@@ -375,9 +521,10 @@ export function answerText(q: Question, value: number | string | undefined): str
  *   empty    미응답 — 답하지 않았다. 정오표에서는 오답과 같이 ✕로 적는다
  *   pending  채점 중 — 기계로 맞춰 볼 수 없어 전문가가 채점한다
  *
- * 기계로 맞춰 보는 것은 객관식과, 칸마다 허용 답(accept)이 적힌 괄호 칸 문항뿐이다.
+ * 기계로 맞춰 보는 것은 객관식과 선 잇기, 칸마다 허용 답(accept)이 적힌 괄호 칸 문항이다.
  * 한 칸이라도 허용 답이 없으면 그 문항은 통째로 전문가에게 넘긴다 — 반만 맞춰 보고
- * ○ · ✕를 붙이면 부분점수 문항의 정오가 틀어진다.
+ * ○ · ✕를 붙이면 부분점수 문항의 정오가 틀어진다. 선 잇기는 정답인 선을 빠짐없이, 다른 선
+ * 없이 이었을 때만 정답이다.
  */
 export type Mark = "right" | "partial" | "wrong" | "empty" | "pending";
 
@@ -400,7 +547,7 @@ const plain = (s: string) => s.replace(/\s+/g, "").toLowerCase();
 
 /** 기계로 맞춰 볼 수 있는 문항인가 */
 export function autoGraded(q: Question) {
-  if (q.type === "choice") return true;
+  if (q.type === "choice" || q.match) return true;
   return !!q.blanks?.length && q.blanks.every((b) => b.optional || b.accept?.length);
 }
 
@@ -408,6 +555,11 @@ export function markOf(q: Question, value: number | string | undefined): Mark {
   if (q.type === "choice") {
     if (typeof value !== "number") return "empty";
     return value === q.answer ? "right" : "wrong";
+  }
+  if (q.match) {
+    const mine = splitPairs(value, q.match);
+    if (mine.length === 0) return "empty";
+    return samePairs(mine, q.match.pairs) ? "right" : "wrong";
   }
   if (!autoGraded(q)) return "pending";
   const parts = splitBlanks(value, q.blanks!.length);
@@ -424,7 +576,7 @@ export function markOf(q: Question, value: number | string | undefined): Mark {
  * 문항의 만점.
  *
  * 채점 기준이 값을 정해 둔 문항(「총 3점」)은 그 값을 쓴다. 적혀 있지 않으면 기계로 채점하는
- * 문항(객관식 · 단답형)은 1점, 전문가가 채점하는 문항(서술형 · 논술형 · 사진)은 2점이다 —
+ * 문항(객관식 · 단답형 · 선 잇기)은 1점, 전문가가 채점하는 문항(서술형 · 논술형 · 사진)은 2점이다 —
  * 채점 루브릭의 세 칸(완전 2 · 부분 1 · 오답 0)과 같은 만점이다.
  */
 export function pointsOf(q: Question): number {
@@ -435,6 +587,7 @@ export function pointsOf(q: Question): number {
 export function unanswered(q: Question, value: number | string | undefined): boolean {
   if (q.type === "choice") return typeof value !== "number";
   if (q.upload) return splitUpload(value) === null;
+  if (q.match) return splitPairs(value, q.match).length === 0;
   if (q.blanks) return splitBlanks(value, q.blanks.length).every((p) => !p.trim());
   return typeof value !== "string" || !value.trim();
 }
@@ -471,6 +624,7 @@ export const circled = (i: number) => String.fromCharCode(0x2460 + i);
 /** 정오표의 「정답」 칸 — 기계 채점 문항만 값이 있다 */
 export function keyText(q: Question): string {
   if (q.type === "choice") return circled(q.answer!);
+  if (q.match) return pairsText(q.match, q.match.pairs);
   if (!autoGraded(q)) return "";
   return q
     .blanks!.map((b) => (b.optional ? "" : (b.accept![0] ?? "") + (b.suffix ?? "")))
@@ -483,6 +637,7 @@ export function keyText(q: Question): string {
  */
 export function shortAnswer(q: Question, value: number | string | undefined): string {
   if (q.type === "choice") return typeof value === "number" ? circled(value) : "";
+  if (q.match) return answerText(q, value);
   if (!autoGraded(q)) return "";
   const parts = splitBlanks(value, q.blanks!.length);
   if (parts.every((p) => !p.trim())) return "";
@@ -495,16 +650,18 @@ export function shortAnswer(q: Question, value: number | string | undefined): st
  * 문항 유형 — 정오표와 내려받는 파일이 적는 이름.
  *
  *   객관식  보기에서 고른다
+ *   선 잇기  왼쪽 항목과 오른쪽 항목을 선으로 잇는다 — 기계로 채점한다
  *   단답형  칸마다 정해진 답이 있어 기계로 채점한다
  *   서술형  칸마다 한두 문장을 쓴다 — 전문가가 채점한다
  *   논술형  긴 글 칸 하나에 쓴다 — 전문가가 채점한다
  *   사진    종이에 쓰거나 그린 것을 찍어 올린다 — 전문가가 채점한다
  */
-export type AnswerKind = "객관식" | "단답형" | "서술형" | "논술형" | "사진";
+export type AnswerKind = "객관식" | "선 잇기" | "단답형" | "서술형" | "논술형" | "사진";
 
 export function answerKind(q: Question): AnswerKind {
   if (q.type === "choice") return "객관식";
   if (q.upload) return "사진";
+  if (q.match) return "선 잇기";
   if (!q.blanks) return "논술형";
   return autoGraded(q) ? "단답형" : "서술형";
 }
@@ -528,7 +685,7 @@ export type AnswerPart = {
  * 보여 준다. 글 한 줄로 이어 붙인 answerText로는 그림을 놓을 자리가 없어 따로 둔다.
  */
 export function answerParts(q: Question, value: number | string | undefined): AnswerPart[] {
-  if (typeof value !== "string" || q.type === "choice" || q.upload) return [];
+  if (typeof value !== "string" || q.type === "choice" || q.upload || q.match) return [];
   if (!q.blanks) {
     return value.trim() ? [{ label: "", text: value.trim(), optional: false }] : [];
   }

@@ -19,7 +19,9 @@ import {
   SLOT,
   slotValues,
   splitBlanks,
+  splitPairs,
   splitUpload,
+  standsAlone,
   subjectOf,
   type Blank,
   type Block,
@@ -59,6 +61,7 @@ import { useWallet } from "@/lib/ticketStore";
 import ExamCover from "./ExamCover";
 import { ItemWatermark, watermarkOf } from "./ExamWatermark";
 import { addSpoken, DictateBar, DictateButton, ImageAnswer, ListenClip } from "./AnswerMedia";
+import MatchAnswer, { type MatchPick } from "./MatchAnswer";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import { ArrowRight, CheckIcon } from "@/components/Icons";
 import { btnDanger, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
@@ -67,11 +70,16 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-/** 응답으로 인정되는지 — 객관식은 선택, 괄호 칸은 모든 칸, 서술형은 최소 글자 수 */
+/**
+ * 응답으로 인정되는지 — 객관식은 선택, 괄호 칸은 모든 칸, 서술형은 최소 글자 수.
+ * 선 잇기는 이어야 할 만큼의 선을 이었을 때다. 다섯을 이어야 하는 문항에 선 하나만 긋고
+ * 넘어간 것을 「답한 문항」으로 세면, 제출 전에 남은 문항을 알려 주는 셈이 틀어진다.
+ */
 export function isAnswered(q: Question, value: number | string | undefined) {
   if (value === undefined) return false;
   if (q.type === "choice") return typeof value === "number";
   if (q.upload) return splitUpload(value) !== null;
+  if (q.match) return splitPairs(value, q.match).length >= q.match.pairs.length;
   if (q.blanks) {
     const values = splitBlanks(value, q.blanks.length);
     return q.blanks.every((b, i) => blankFilled(b, values[i]));
@@ -1444,6 +1452,9 @@ export function WithBlanks({ text, compact = false }: { text: string; compact?: 
  * 응시와 해석 두 화면이 같은 것을 그리고, 세트면 문제 여럿이 이 하나를 나눠 읽는다.
  * 시험지처럼 지시문을 위에 두고 본문과 사진을 테두리 상자 안에 담는다 — 문제를
  * 넘겨도 이 상자는 그대로 있다.
+ *
+ * ── 자료가 없는 독립 문항에서는 그리지 않는다 ──
+ * 빈 상자를 왼쪽에 남겨 두지 않는다. 이 칸이 빠진 자리는 문항 칸이 차지한다(ScreenColumn).
  */
 export function BriefPanel({
   brief,
@@ -1458,6 +1469,7 @@ export function BriefPanel({
    */
   watermark?: string;
 }) {
+  if (standsAlone(brief)) return null;
   return (
     <section className="font-myeongjo order-2 border-b border-exam-line bg-exam-panel px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
       {/* 시험지처럼 「[1~4] 다음 … 답하시오.」 한 줄로 연다 — 자료 이름표 · 제목 · 안내 문구는
@@ -1898,6 +1910,11 @@ export function numbersText(order: Question[], screen: Question[]) {
  * 가운데 칸 — 세트 차례 줄 아래에 이 화면의 문제(보통 하나, 묶음이면 여럿)를 세운다.
  * 묶음 머리 자료(groupBrief)가 있으면 문제들 위에 먼저 둔다.
  * 응시와 셋트가 같은 틀을 쓰고, 문제를 어떻게 그릴지는 부르는 쪽이 정한다.
+ *
+ * ── 독립 문항은 가운데 한 칸 ──
+ * 함께 읽는 자료가 없으면 왼쪽 자료 칸이 없다(BriefPanel). 이 칸이 그 자리까지 차지하고
+ * (자료 · 문제 두 칸), 문항은 그 가운데에 읽기 좋은 폭으로 둔다 — 두 칸 폭에 그대로 펴면
+ * 발문 한 줄이 화면 끝에서 끝까지 늘어진다.
  */
 export function ScreenColumn({
   order,
@@ -1912,25 +1929,31 @@ export function ScreenColumn({
   watermark?: string;
 }) {
   const groupBrief = screen[0].groupBrief;
+  const alone = standsAlone(screen[0].brief);
   return (
     /* key — 화면이 바뀌면 칸을 새로 세워 스크롤이 맨 위에서 시작한다 */
-    <div key={screen[0].id} className="order-3 lg:order-2 lg:overflow-y-auto">
-      {groupBrief && (
-        <section className="font-myeongjo border-b border-exam-line px-6 pt-7 pb-6 lg:px-10">
-          {/* 묶음 머리도 굵은 글씨는 번호에만 — 「[1~4] 다음을 읽고 물음에 답하시오.」 */}
-          <p className="text-[15px] leading-[1.7] text-exam-text">
-            <span className="mr-1.5 font-bold tabular-nums">
-              {numbersText(order, screen).replace("문항 ", "[")}]
-            </span>
-            {groupBrief.lead ?? "다음을 읽고 물음에 답하시오."}
-          </p>
-          <div className="relative isolate mt-4 border border-exam-text/70 px-3 py-4 xl:px-5 xl:py-5">
-            <BriefBody brief={groupBrief} />
-            {watermark && <ItemWatermark text={watermark} />}
-          </div>
-        </section>
-      )}
-      <div className="divide-y divide-exam-line">{screen.map(renderQuestion)}</div>
+    <div
+      key={screen[0].id}
+      className={`order-3 lg:order-2 lg:overflow-y-auto ${alone ? "lg:col-span-2" : ""}`}
+    >
+      <div className={alone ? "mx-auto w-full max-w-[56rem]" : undefined}>
+        {groupBrief && (
+          <section className="font-myeongjo border-b border-exam-line px-6 pt-7 pb-6 lg:px-10">
+            {/* 묶음 머리도 굵은 글씨는 번호에만 — 「[1~4] 다음을 읽고 물음에 답하시오.」 */}
+            <p className="text-[15px] leading-[1.7] text-exam-text">
+              <span className="mr-1.5 font-bold tabular-nums">
+                {numbersText(order, screen).replace("문항 ", "[")}]
+              </span>
+              {groupBrief.lead ?? "다음을 읽고 물음에 답하시오."}
+            </p>
+            <div className="relative isolate mt-4 border border-exam-text/70 px-3 py-4 xl:px-5 xl:py-5">
+              <BriefBody brief={groupBrief} />
+              {watermark && <ItemWatermark text={watermark} />}
+            </div>
+          </section>
+        )}
+        <div className="divide-y divide-exam-line">{screen.map(renderQuestion)}</div>
+      </div>
     </div>
   );
 }
@@ -1940,9 +1963,9 @@ export function ScreenColumn({
 /**
  * 발문 · 보기 · 답 쓰는 칸.
  *
- * 답 쓰는 칸은 넷 중 하나다 — 객관식 보기, 괄호 칸(시험지의 「○ 차이점 : (    )」),
- * 긴 글 칸, 사진을 올리는 칸. 글로 쓰는 칸(짧은 칸 · 쓰는 칸 · 긴 글 칸)에는 음성 입력이
- * 붙는다 — 말한 것을 글로 받아 적어 그 칸에 잇는다.
+ * 답 쓰는 칸은 다섯 중 하나다 — 객관식 보기, 선 잇기(./MatchAnswer.tsx), 괄호 칸(시험지의
+ * 「○ 차이점 : (    )」), 긴 글 칸, 사진을 올리는 칸. 글로 쓰는 칸(짧은 칸 · 쓰는 칸 · 긴 글
+ * 칸)에는 음성 입력이 붙는다 — 말한 것을 글로 받아 적어 그 칸에 잇는다.
  */
 export function QuestionBody({
   q,
@@ -1951,6 +1974,7 @@ export function QuestionBody({
   onAnswer,
   watermark,
   graded,
+  matchPick,
 }: {
   q: Question;
   /** 학생에게 보이는 문제 번호 — 푸는 차례로 매긴다 */
@@ -1966,9 +1990,15 @@ export function QuestionBody({
    *
    * 문항은 응시 때 모양 그대로 두고 셋만 달라진다. 번호 위에 정오 딱지(정답 · 오답 · 미응답 ·
    * 채점 중)가 붙고, 객관식은 정답 보기를 짚고, 답을 고치는 손잡이(음성 입력 · 사진 바꾸기)는
-   * 걷는다. 긴 글은 칸 안에서 스크롤하지 않고 쓴 만큼 모두 편다.
+   * 걷는다. 긴 글은 칸 안에서 스크롤하지 않고 쓴 만큼 모두 편다. 선 잇기는 낸 선을 정답과
+   * 견주어 색으로 가르고 잇지 않은 정답을 점선으로 더한다.
    */
   graded?: Mark;
+  /**
+   * 선 잇기에서 고른 항목 — 디자인 보기가 「항목을 고른 상태」를 주소로 굳힐 때만 넘긴다
+   * (null이면 아무것도 고르지 않은 채). 응시 화면은 넘기지 않는다.
+   */
+  matchPick?: MatchPick | null;
 }) {
   const review = graded !== undefined;
   return (
@@ -1996,6 +2026,15 @@ export function QuestionBody({
           value={typeof value === "number" ? value : undefined}
           onPick={onAnswer}
           answer={review ? q.answer : undefined}
+        />
+      ) : q.match ? (
+        <MatchAnswer
+          match={q.match}
+          value={value}
+          onAnswer={onAnswer}
+          readOnly={review}
+          answer={review ? q.match.pairs : undefined}
+          pick={matchPick}
         />
       ) : q.upload === "image" ? (
         <ImageAnswer value={value} onAnswer={onAnswer} readOnly={review} />
@@ -2196,6 +2235,7 @@ function GradeTag({ mark }: { mark: Mark }) {
 /** 문제 머리의 유형 이름 */
 function kindLabel(q: Question) {
   if (q.type === "choice") return "객관식";
+  if (q.match) return "선 잇기";
   if (q.blanks?.every((b) => b.options)) return "연결형";
   return "서술형";
 }

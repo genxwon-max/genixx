@@ -6,14 +6,18 @@ import {
   SUBJECT_IDS,
   examOrderOf,
   freeOrder,
+  joinBlanks,
+  joinPairs,
   screensOf,
   subjectOf,
   subjects,
   tierCount,
   tierQuestions,
+  type Pair,
   type Question,
 } from "@/lib/exam";
 import { evalName } from "@/lib/examCatalog";
+import { matchBank, matchQuestion } from "@/lib/examDesign";
 import { designLinks } from "@/lib/designScreens";
 import { ArrowRight } from "@/components/Icons";
 import {
@@ -27,6 +31,7 @@ import {
   setRange,
 } from "@/components/exam/ExamSession";
 import { ExitDialog, TrialStart } from "@/components/exam/TrialSession";
+import type { MatchPick } from "@/components/exam/MatchAnswer";
 import { watermarkOf } from "@/components/exam/ExamWatermark";
 import { btnGhost, btnPrimary } from "@/components/exam/ui";
 import ExamFrame from "../ExamFrame";
@@ -46,6 +51,8 @@ import ExamFrame from "../ExamFrame";
  * 자료 · 문항 · 문항 이동판과 확인 창, 나간 뒤의 화면은 모두 실제 응시 화면의 조각이다
  * (components/exam/ExamSession.tsx · TrialSession.tsx). 문항은 문항 은행의 것을 그대로 세우고,
  * 답과 남은 시간만 여기 적어 두었다.
+ *
+ * 파일 끝의 ExamMatch는 자료가 없는 **독립 문항**(선 잇기)의 응시 화면이다.
  */
 
 /** 예시로 굳힌 진단 — 2026학년도 4분기 · 초등 4학년 (학생 대시보드 디자인의 「지금 응시 중인 진단」과 같다) */
@@ -81,6 +88,7 @@ function Sheet({
   grouped = false,
   footnote,
   lastLabel,
+  matchPick = null,
 }: {
   /** 번호를 매기는 차례 */
   order: Question[];
@@ -96,6 +104,8 @@ function Sheet({
   footnote?: string;
   /** 마지막 화면의 단추 이름 — 「제출하기」 · 「셋트 마치기」 */
   lastLabel: string;
+  /** 선 잇기에서 고른 항목 — 주소가 정한다. 없으면 아무것도 고르지 않은 채로 둔다 */
+  matchPick?: MatchPick | null;
 }) {
   const screen = screens[at];
   const question = screen[0];
@@ -118,6 +128,7 @@ function Sheet({
               value={answers[q.id]}
               onAnswer={noop}
               watermark={watermark}
+              matchPick={matchPick}
             />
           )}
         />
@@ -314,6 +325,94 @@ export function ExamPaid({ state }: { state: string }) {
           onConfirm={() => router.push(to("left"))}
         />
       )}
+    </ExamFrame>
+  );
+}
+
+/* ───────────────────────── 독립 문항 · 선 잇기 ───────────────────────── */
+
+/**
+ * 독립 문항 (실제 주소 /exam/session/paid/[과목]) — 함께 읽는 자료가 없는 문항의 응시 화면.
+ *
+ * 세트 문항은 왼쪽에 자료, 가운데에 문제를 둔다. 자료가 없는 독립 문항은 왼쪽 칸이 없고 문항이
+ * 그 자리까지 차지한다 — 오른쪽 문항 이동판과 머리, 하단 바는 그대로다. 여기서는 과학 시험지의
+ * 첫 세트(문항 1~4) 다음에 독립 문항 하나를 5번으로 끼워 넣었다(lib/examDesign.ts의 matchBank —
+ * 정답과 해설 · 회원 채점 디자인의 선 잇기 화면도 같은 시험지를 쓴다).
+ *
+ * 문항은 선 잇기다. 왼쪽 2개 · 오른쪽 5개이고, 오른쪽 다섯을 왼쪽 둘에 나누어 잇는다(왼쪽 한
+ * 항목에 선 여럿 — 붙는 물체 둘, 붙지 않는 물체 셋). 화면의 조각은 실제 응시 화면의 것 그대로이고(components/exam/MatchAnswer.tsx),
+ * 이은 선과 고른 항목만 주소마다 적어 두었다. 직접 이어 보는 화면은 /exam/session/design/match다.
+ */
+
+const MATCH_SUBJECT = "science" as const;
+const matchMeta = subjectOf(MATCH_SUBJECT)!;
+/** 선 잇기 문항이 든 과학 시험지 — 첫 세트(문항 1~4) 다음의 5번이 독립 문항이다 */
+const matchOrder = tierQuestions("paid", MATCH_SUBJECT, null, matchBank);
+const matchScreens = screensOf(MATCH_SUBJECT, matchBank)
+  .map((sc) => sc.filter((q) => matchOrder.includes(q)))
+  .filter((sc) => sc.length > 0);
+/** 독립 문항이 선 화면의 차례 */
+const matchAt = matchScreens.findIndex((sc) => sc.includes(matchQuestion));
+/** 31분 42초가 남았다 */
+const MATCH_REMAIN = 31 * 60 + 42;
+
+/** 앞 세트의 네 문항은 이미 답했다 — 칸마다 쓰는 문항이라 예시 답을 적어 둔다 */
+const matchBefore: Record<string, number | string> = Object.fromEntries(
+  matchOrder
+    .slice(0, matchOrder.indexOf(matchQuestion))
+    .map((q) => [q.id, joinBlanks(q.sampleAnswer ?? [])]),
+);
+
+/** 상태마다 이어 둔 선과 고른 항목 — [왼쪽, 오른쪽] 차례(0부터) */
+const matchStates: Record<string, { lines: Pair[]; pick: MatchPick | null }> = {
+  "": { lines: [], pick: null },
+  picked: { lines: [], pick: { side: "left", index: 0 } },
+  doing: {
+    lines: [
+      [0, 0],
+      [1, 1],
+      [1, 3],
+    ],
+    pick: null,
+  },
+  done: {
+    lines: [
+      [0, 0],
+      [0, 2],
+      [1, 1],
+      [1, 3],
+      [1, 4],
+    ],
+    pick: null,
+  },
+};
+
+export function ExamMatch({ state }: { state: string }) {
+  const paid = designLinks("exam-paid");
+  const { lines, pick } = matchStates[state] ?? matchStates[""];
+
+  return (
+    <ExamFrame
+      name={NAME}
+      subject={matchMeta.name}
+      clock={{ remain: MATCH_REMAIN, limitMin: matchMeta.limitMin }}
+      exitHref={paid("exit")}
+    >
+      <Sheet
+        /* 고른 항목이 주소에 따라 달라진다 — 주소가 바뀌면 문항을 새로 그린다 */
+        key={state}
+        order={matchOrder}
+        open={matchOrder}
+        padList={matchOrder}
+        screens={matchScreens}
+        at={matchAt}
+        answers={{
+          ...matchBefore,
+          ...(lines.length > 0 ? { [matchQuestion.id]: joinPairs(lines) } : {}),
+        }}
+        lastLabel="제출하기"
+        matchPick={pick}
+      />
     </ExamFrame>
   );
 }

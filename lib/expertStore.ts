@@ -1628,6 +1628,13 @@ export function sheetsOf(scores: ScoreTask[]): Sheet[] {
   return out;
 }
 
+/**
+ * 씨앗 답안지 — 저장소를 읽지 않는 목록.
+ * 「채점이 끝난 답안지」 씨앗(lib/gradedSeed.ts)이 이 목록에서 고른다. 응시번호를 따로 적어
+ * 두면 회차 씨앗을 고쳤을 때 없는 답안지를 가리키게 된다.
+ */
+export const seedSheets: Sheet[] = sheetsOf(SEED_SCORES);
+
 /** 답안지 한 장의 점수 — 받은 점 / 만점 */
 export function sheetScore(sheet: Sheet) {
   return {

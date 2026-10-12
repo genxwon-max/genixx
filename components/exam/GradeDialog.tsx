@@ -83,7 +83,7 @@ export default function GradeDialog({
     if (!first) return 0;
     return Math.max(
       0,
-      lineScreens(first.id, first.lines).findIndex((sc) => sc.some((l) => l.no === at.no)),
+      lineScreens(first.lines).findIndex((sc) => sc.some((l) => l.no === at.no)),
     );
   });
 
@@ -95,7 +95,7 @@ export default function GradeDialog({
   if (!current) return null;
 
   const lines = current.lines;
-  const screens = lineScreens(current.id, lines);
+  const screens = lineScreens(lines);
   if (screens.length === 0) return null;
 
   const screen = screens[Math.min(index, screens.length - 1)];
@@ -145,7 +145,7 @@ export default function GradeDialog({
     if (at0 === 0) return;
     const before = subjects[at0 - 1];
     setSubject(before.id);
-    setIndex(lineScreens(before.id, before.lines).length - 1);
+    setIndex(lineScreens(before.lines).length - 1);
   };
 
   return (

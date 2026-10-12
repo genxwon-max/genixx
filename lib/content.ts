@@ -142,7 +142,8 @@ export type MatchItem = { text: string; image?: Figure };
  *   choice  보기 중 하나를 고른다(OX도 보기 둘인 choice다)
  *   blanks  이름 붙은 괄호 칸을 여럿 채운다
  *   essay   긴 글 칸 하나
- *   match   왼쪽 항목과 오른쪽 항목을 선으로 잇는다 — 응시 화면은 4단계에서 붙인다
+ *   match   왼쪽 항목과 오른쪽 항목을 선으로 잇는다. pairs는 정답인 선([왼쪽, 오른쪽] 차례,
+ *           0부터) — 한 항목이 여러 선에 들어도 된다(lib/exam.ts의 Match)
  *   upload  파일로 낸다 — 그린 것을 찍어 올리는 사진, 말하기 문항의 녹음
  */
 export type Response =

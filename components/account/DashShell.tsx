@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { roleLabel, signOut, useSession, type Role } from "@/lib/authStore";
 import { useHydrated } from "@/lib/examStore";
+import { useAutoRelease } from "@/lib/reportSendStore";
 import { useRoster } from "@/lib/roster";
 import { ChevronDown } from "@/components/Icons";
 import { LogoLockup } from "@/components/Logo";
@@ -340,6 +341,9 @@ function Chip({ k, v }: { k: string; v: string }) {
 export default function DashShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hydrated = useHydrated();
+  /* 발행 예정일이 지난 리포트를 발행으로 적는다 — 콘솔을 아무도 열지 않아도 회원이 결과를
+     제날에 본다. 서버의 예약 작업이 할 일을 시안에서 대신하는 자리다(lib/reportSendStore.ts) */
+  useAutoRelease();
   const session = useSession();
   const roster = useRoster();
 

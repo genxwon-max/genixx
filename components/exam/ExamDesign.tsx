@@ -12,6 +12,9 @@ import { btnGhost, btnPrimary } from "./ui";
  *
  * 왼쪽 자료 · 가운데 문제는 응시와 같은 컴포넌트다. 문항 이동판과 시계는 두지 않는다 —
  * 보려는 것은 그 유형의 칸 하나이고, 답은 이 화면 안에만 둔다.
+ *
+ * 자료가 없는 독립 문항(선 잇기)은 왼쪽 칸 없이 문항만 가운데에 선다 — 응시 화면이 그렇게
+ * 그리는 것을 그대로 따른다(BriefPanel · ScreenColumn).
  */
 export default function ExamDesign({ kind }: { kind: DesignKind }) {
   const [answers, setAnswers] = useState<Record<string, number | string>>({});

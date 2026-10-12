@@ -5,16 +5,20 @@ import {
   assessment,
   autoGraded,
   joinBlanks,
+  joinPairs,
   joinUpload,
   markOf,
   pointsOf,
   subjects,
   tierQuestions,
   unanswered,
+  type Bank,
   type ExamTier,
+  type Pair,
   type SubjectId,
 } from "@/lib/exam";
 import { evalName, trackOf, type Availability, type TrackId } from "@/lib/examCatalog";
+import { matchBank, matchQuestion } from "@/lib/examDesign";
 import type { ExamRecord, SubjectRecord } from "@/lib/examStore";
 import { gradesOf, type GradeLine, type GradeMarks, type GradeSubject } from "@/lib/gradeSheet";
 import type { TicketUse, UseTier, Wallet } from "@/lib/ticketStore";
@@ -351,25 +355,33 @@ const reflects: Record<string, { pick: string; text: string }> = {
   "sci-4": { pick: "무슨 말인지는 알겠는데 쓰기가 어려웠어요", text: "" },
   "sci-16": { pick: "내 생각을 먼저 정하고 이유를 붙였어요", text: "" },
   "sci-18": { pick: "풀다가 헷갈려서 그만뒀어요", text: "나누는 걸 잘못한 것 같아요." },
+  [matchQuestion.id]: {
+    pick: "두 개 사이에서 고민하다가 하나를 골랐어요",
+    text: "캔도 쇠붙이라서 붙는다고 생각했어요.",
+  },
 };
 
+/** 응시 기록을 채점할 답안지로 — 문항 · 낸 답 · AI가 먼저 매긴 점수. bank를 넘기면 그 시험지로 편다 */
+const sheetOf = (record: ExamRecord, bank?: Bank): GradeSubject[] =>
+  subjects.map((s) => ({
+    id: s.id,
+    short: s.short,
+    lines: tierQuestions("paid", s.id, null, bank).map((q, i): GradeLine => {
+      const value = record.subjects[s.id].answers[q.id];
+      const max = pointsOf(q);
+      const base = { q, no: i + 1, value, max, reflect: reflects[q.id] };
+      if (unanswered(q, value)) return { ...base, ai: 0, aiWhy: AI_EMPTY };
+      if (autoGraded(q)) {
+        const right = markOf(q, value) === "right";
+        return { ...base, ai: right ? max : 0, aiWhy: right ? AI_RIGHT : AI_WRONG };
+      }
+      const ai = aiScores[q.id];
+      return { ...base, ai: ai ? ai.points : max, aiWhy: ai?.why ?? AI_FULL };
+    }),
+  }));
+
 /** 채점할 답안지 — 3분기 유료 진단, 세 과목 41문항 */
-export const flowSheet: GradeSubject[] = subjects.map((s) => ({
-  id: s.id,
-  short: s.short,
-  lines: tierQuestions("paid", s.id).map((q, i): GradeLine => {
-    const value = flowRecords.q3.subjects[s.id].answers[q.id];
-    const max = pointsOf(q);
-    const base = { q, no: i + 1, value, max, reflect: reflects[q.id] };
-    if (unanswered(q, value)) return { ...base, ai: 0, aiWhy: AI_EMPTY };
-    if (autoGraded(q)) {
-      const right = markOf(q, value) === "right";
-      return { ...base, ai: right ? max : 0, aiWhy: right ? AI_RIGHT : AI_WRONG };
-    }
-    const ai = aiScores[q.id];
-    return { ...base, ai: ai ? ai.points : max, aiWhy: ai?.why ?? AI_FULL };
-  }),
-}));
+export const flowSheet: GradeSubject[] = sheetOf(flowRecords.q3);
 
 const everyLine = flowSheet.flatMap((s) => s.lines);
 /** 이 문항들을 AI의 점수 그대로 확인한 것 */
@@ -413,3 +425,50 @@ export const flowMarks = {
 
 /** 채점이 끝난 뒤 학생의 정오표가 읽는 점수와 해설 */
 export const flowGrades = gradesOf(flowSheet, flowMarks.done);
+
+/* ───────────────────────── 선 잇기 문항이 든 답안지 ───────────────────────── */
+
+/**
+ * 선 잇기 문항에 낸 답 — [왼쪽, 오른쪽] 차례(0부터).
+ * 알루미늄 캔을 「자석에 붙는다」에 이었다. 금속이면 모두 자석에 붙는다고 본 답이라 다섯 가운데
+ * 넷은 바르게 이었고 하나가 틀렸다 — 답안 풀이에 바르게 이은 선 · 잘못 이은 선 · 잇지 않은 정답이
+ * 모두 나온다.
+ */
+const matchAnswer: Pair[] = [
+  [0, 0],
+  [0, 2],
+  [0, 4],
+  [1, 1],
+  [1, 3],
+];
+
+const matchRecord: ExamRecord = {
+  ...flowRecords.q3,
+  subjects: {
+    ...flowRecords.q3.subjects,
+    science: {
+      ...flowRecords.q3.subjects.science,
+      answers: {
+        ...flowRecords.q3.subjects.science.answers,
+        [matchQuestion.id]: joinPairs(matchAnswer),
+      },
+    },
+  },
+};
+
+/**
+ * 선 잇기 문항이 든 3분기 답안지 — 정답과 해설 · 회원 채점 디자인의 선 잇기 화면이 쓴다.
+ *
+ * 기본 문항에는 선 잇기가 아직 없어, 과학 5번에 독립 문항 하나를 넣은 시험지(lib/examDesign.ts의
+ * matchBank)로 같은 학생의 같은 답안을 다시 편 것이다. 나머지 문항의 답은 위의 3분기 기록과 같다.
+ */
+export const flowMatch = {
+  bank: matchBank,
+  record: matchRecord,
+  sheet: sheetOf(matchRecord, matchBank),
+  /** 그 문항의 과목과 번호 */
+  at: {
+    subject: "science" as SubjectId,
+    no: tierQuestions("paid", "science", null, matchBank).indexOf(matchQuestion) + 1,
+  },
+};

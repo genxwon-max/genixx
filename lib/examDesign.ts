@@ -1,4 +1,11 @@
-import { flattenSets, type ExamSet, type Question } from "./exam";
+import {
+  examOrderOf,
+  flattenSets,
+  questions,
+  type Bank,
+  type ExamSet,
+  type Question,
+} from "./exam";
 
 /**
  * 문항 유형 디자인 보기 (/exam/session/design/[유형]) — 디자인 확인용.
@@ -10,7 +17,7 @@ import { flattenSets, type ExamSet, type Question } from "./exam";
  * 문항은 보여 주려고 임의로 적은 것이다. 답은 이 화면 안에만 있고 응시 기록에 남지 않는다.
  */
 
-export type DesignKind = "listen" | "speak" | "short" | "file";
+export type DesignKind = "listen" | "speak" | "short" | "file" | "match";
 
 type Design = {
   id: DesignKind;
@@ -25,6 +32,66 @@ const story = [
   "민서는 아침마다 창문을 열고 화단을 살폈다. 지난 주말에 심은 봉숭아 씨앗이 언제쯤 싹을 틔울지 궁금했기 때문이다. 첫날에도, 둘째 날에도 흙은 그대로였다.",
   "“씨앗이 잘못된 걸까?” 민서는 걱정이 되었지만 물 주는 일을 거르지 않았다. 사흘째 아침, 흙 위로 아주 작은 초록빛이 고개를 내밀었다. 민서는 소리를 지를 뻔했다.",
 ];
+
+/**
+ * 독립 문항 · 선 잇기 — 함께 읽는 자료가 없어 왼쪽 자료 칸 없이 문항만 가운데에 선다.
+ *
+ * 왼쪽 2개 · 오른쪽 5개다. 오른쪽 다섯을 왼쪽 둘에 나누어 잇는 문항이라 왼쪽 한 항목에 선이
+ * 여럿 닿는다. 상태마다 주소를 나눈 디자인(components/design/screens/ExamSessions.tsx의
+ * ExamMatch)도 이 문항을 그대로 쓴다.
+ */
+export const matchSet: ExamSet = {
+  id: "design-match",
+  subject: "science",
+  material: { blocks: [] },
+  nodes: [
+    {
+      id: "design-match-1",
+      level: "S2",
+      stem: "다음 물체에 자석을 가까이 가져갔습니다. 물체마다 어떻게 되는지 알맞게 선으로 이으시오.",
+      response: {
+        kind: "match",
+        left: [{ text: "자석에 붙는다." }, { text: "자석에 붙지 않는다." }],
+        right: [
+          { text: "철로 만든 못" },
+          { text: "유리컵" },
+          { text: "철로 만든 클립" },
+          { text: "나무젓가락" },
+          { text: "알루미늄 캔" },
+        ],
+        pairs: [
+          [0, 0],
+          [0, 2],
+          [1, 1],
+          [1, 3],
+          [1, 4],
+        ],
+      },
+      scoring: ["다섯 개를 모두 바르게 이은 경우에만 정답으로 한다."],
+    },
+  ],
+};
+
+/** 그 독립 문항 하나 — 시험지에 끼워 넣을 때 쓴다 */
+export const matchQuestion: Question = flattenSets([matchSet])[0];
+
+/**
+ * 선 잇기 문항이 든 시험지 — 디자인 보기가 「이 문항이 시험지에 들어 있으면 응시 화면 · 정오표 ·
+ * 답안 풀이 · 채점 창에 어떻게 보이는가」를 그릴 때 쓴다. 기본 문항에는 선 잇기가 아직 없다.
+ *
+ * 기본 문항에서 과학의 첫 세트(문항 1~4) 다음에 독립 문항을 5번으로 넣었다. 유료 진단이 과학에서
+ * 여는 수(20문항)는 그대로라, 과학의 끝 문항 하나가 빠진다. 국어 · 수학은 그대로다.
+ */
+export const matchBank: Bank = (() => {
+  const science = examOrderOf("science");
+  const head = science.filter((q) => q.setId === science[0].setId);
+  return [
+    ...questions.filter((q) => q.subject !== "science"),
+    ...head,
+    matchQuestion,
+    ...science.slice(head.length, -1),
+  ];
+})();
 
 export const designs: Design[] = [
   {
@@ -172,6 +239,12 @@ export const designs: Design[] = [
         },
       ],
     },
+  },
+  {
+    id: "match",
+    name: "선 잇기 (독립 문항)",
+    desc: "함께 읽는 자료가 없는 독립 문항 — 왼쪽 2개와 오른쪽 5개를 선으로 잇습니다",
+    set: matchSet,
   },
 ];
 

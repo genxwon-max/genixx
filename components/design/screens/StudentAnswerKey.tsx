@@ -12,7 +12,15 @@ import { ResultPending } from "@/components/student/StudentResults";
 import { DiagRow, EmptyList, StageTag, type Diag, type Stage } from "@/components/student/diag";
 import { Head, cardBox } from "@/components/student/self";
 import DashFrame from "../DashFrame";
-import { flowFacts, flowGrades, flowRecords, flowRegs, flowStudent } from "./studentFlow";
+import { PublishedResult } from "./ResultsCounsel";
+import {
+  flowFacts,
+  flowGrades,
+  flowMatch,
+  flowRecords,
+  flowRegs,
+  flowStudent,
+} from "./studentFlow";
 
 /**
  * 정답과 해설 (실제 주소 /student/answers · /student/answers/[회차]/[학년]) — 디자인.
@@ -36,6 +44,10 @@ import { flowFacts, flowGrades, flowRecords, flowRegs, flowStudent } from "./stu
  *   채점이 끝난 뒤  전문가의 점수가 들어와 정답 · **부분 정답 △** · 오답으로 바뀌고, 답안 풀이
  *                  창에 채점자가 적은 해설이 보인다(…/graded). 점수와 해설은 운영 콘솔의 회원
  *                  채점 디자인(/design/admin2/grading/members)이 매긴 것과 같은 값이다
+ *
+ * 선 잇기 문항은 기본 문항에 아직 없다. 그 문항이 든 시험지로 같은 답안을 다시 편 화면을 따로
+ * 두었다(…/match) — 과학 5번이 선 잇기 독립 문항이고, 정오표의 그 줄에는 정답과 내 답이 글로
+ * 적힌다. 답안 풀이 창에서는 바르게 이은 선 · 잘못 이은 선 · 잇지 않은 정답이 선으로 보인다.
  */
 
 const to = designLinks("student-answers");
@@ -118,6 +130,10 @@ export function StudentAnswersScreen({ state }: { state: string }) {
   if (state.startsWith("2026-2/e4")) return <FreeSheet />;
 
   const tail = state.replace(/^2026-3\/e4\/?/, "");
+  if (tail.startsWith("match")) {
+    /* 선 잇기 문항이 든 시험지 — 과학을 편 정오표와, 그 문항을 편 답안 풀이 창 */
+    return <PaidSheet key={state} match reviewAt={tail === "match/review" ? flowMatch.at : null} />;
+  }
   if (tail.startsWith("graded")) {
     /* 채점이 끝난 뒤 — 2점 만점에 1점을 받아 부분 정답이 된 문항(국어 3번)을 창이 편다 */
     return <PaidSheet key={state} graded reviewAt={tail === "graded/review" ? gradedAt : null} />;
@@ -181,6 +197,7 @@ function PaidSheet({
   coachOpen = false,
   reviewAt,
   graded = false,
+  match = false,
 }: {
   /** 처음 펴 둘 과목 — 사진 답안과 긴 글이 있는 수학을 바로 여는 주소가 따로 있다 */
   subject?: SubjectId;
@@ -188,12 +205,14 @@ function PaidSheet({
   reviewAt: ReviewAt | null;
   /** 전문가의 채점이 끝난 뒤인가 — 점수가 들어와 「채점 중」이 정답 · 부분 정답 · 오답으로 바뀐다 */
   graded?: boolean;
+  /** 선 잇기 문항이 든 시험지로 편다 — 과학 5번이 그 문항이다 */
+  match?: boolean;
 }) {
   const router = useRouter();
   const reg = flowRegs.q3;
   const fact = flowFacts.q3;
-  /* 채점이 끝난 뒤의 화면은 제 주소(…/graded) 아래에서 창을 여닫는다 */
-  const base = graded ? `${here}/graded` : here;
+  /* 채점이 끝난 뒤의 화면과 선 잇기 화면은 제 주소(…/graded · …/match) 아래에서 창을 여닫는다 */
+  const base = graded ? `${here}/graded` : match ? `${here}/match` : here;
 
   return (
     <DashFrame {...frame} at="/student/answers">
@@ -204,13 +223,14 @@ function PaidSheet({
       />
       <AnswerSheet
         row={reg}
-        record={flowRecords.q3}
+        record={match ? flowMatch.record : flowRecords.q3}
+        bank={match ? flowMatch.bank : undefined}
         grades={graded ? flowGrades : undefined}
         student={flowStudent.name}
         submitted={fact.finalized}
-        initialSubject={subject}
+        initialSubject={match ? flowMatch.at.subject : subject}
         coach={
-          graded
+          graded || match
             ? undefined
             : {
                 open: coachOpen,
@@ -220,7 +240,7 @@ function PaidSheet({
         }
         review={{
           at: reviewAt,
-          onOpen: (want) => router.push(graded ? `${base}/review` : reviewHref(want)),
+          onOpen: (want) => router.push(graded || match ? `${base}/review` : reviewHref(want)),
           onClose: () => router.push(base),
         }}
       />
@@ -265,13 +285,16 @@ function Locked() {
 /**
  * 결과를 기다리는 화면 (실제 주소 /student/results/[회차]/[학년]) — 디자인.
  *
- * 최종 제출을 누르면 이 화면으로 온다. 결과지는 전문가가 확인해 발행한 뒤에 뜨고, 그때까지
- * 할 수 있는 일은 정답과 해설을 보는 것이다 — 그 길을 단추 하나로 단다. 판은 실제 화면의
- * 조각(components/student/StudentResults.tsx의 ResultPending)이다.
+ * 최종 제출을 누르면 이 화면으로 온다. 결과지는 채점이 끝나고 스케줄러가 정한 날에 발행된 뒤에
+ * 뜨고, 그때까지 할 수 있는 일은 정답과 해설을 보는 것이다 — 그 길을 단추 하나로 단다. 판은 실제
+ * 화면의 조각(components/student/StudentResults.tsx의 ResultPending)이다.
+ *
+ * 발행된 뒤의 결과지는 3분기 진단으로 그렸다(…/2026-3/e4 — ./ResultsCounsel.tsx의 PublishedResult).
  */
 export function StudentResultWait({ state }: { state: string }) {
-  /* 상태는 하나다(전문가 확인 중) — 주소가 가리키는 진단은 지금 응시하는 4분기 진단이다 */
-  void state;
+  /* 3분기 진단은 10월 2일 아침에 자동으로 발행됐다 — 조립 규칙이 넣은 문단이 든 결과지가 뜬다 */
+  if (state === "2026-3/e4") return <PublishedResult />;
+  /* 그 밖의 주소는 지금 응시하는 4분기 진단이다 — 전문가 확인 중 */
   return (
     <DashFrame {...frame} at="/student/results">
       <Head

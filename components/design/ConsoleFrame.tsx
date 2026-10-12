@@ -14,6 +14,9 @@ import { admin2Nav } from "@/lib/admin2";
  * 콘솔에 들어오는 사람은 두 부류다. **최상위 관리자**는 서비스를 열 때부터 있는 계정이고,
  * 나머지는 모두 사이트에서 전문가로 가입해 가입 승인에서 권한을 받은 **전문가 회원**이다.
  * 전문가에게는 받은 권한의 화면만 메뉴에 보인다(only).
+ *
+ * 왼쪽 메뉴 맨 아래의 「내 정보」는 어느 권한으로 들어와도 같은 자리에 있다. 권한마다 내 정보
+ * 화면이 다르므로 갈 주소는 화면이 넘긴다(meHref).
  */
 
 type NavItem = { label: string; href: string; count?: number; expertOnly?: boolean };
@@ -49,6 +52,9 @@ const fullNav: NavGroup[] = admin2Nav.map((g) => {
 /** 상단 바에 적는 「누구로 들어와 있나」 */
 export type ConsoleMe = { name: string; role: string; loginId: string };
 
+/** 최상위 관리자의 「내 정보」 디자인 주소 */
+const ME_HREF = "/design/admin2/me";
+
 /** 처음부터 있는 계정 — 서비스를 열 때 DB에 넣어 두는 최상위 관리자 */
 export const superAdmin: ConsoleMe = { name: "박서준", role: "최상위 관리자", loginId: "admin.park" };
 
@@ -56,6 +62,7 @@ export default function ConsoleFrame({
   at,
   crumb,
   me = superAdmin,
+  meHref = ME_HREF,
   only,
   children,
 }: {
@@ -65,6 +72,8 @@ export default function ConsoleFrame({
   crumb?: string;
   /** 로그인한 사람. 넘기지 않으면 최상위 관리자다 */
   me?: ConsoleMe;
+  /** 이 사람의 「내 정보」 디자인 주소. 넘기지 않으면 최상위 관리자의 것이다 */
+  meHref?: string;
   /**
    * 권한을 받은 화면만 보이는 사람(전문가)의 메뉴 — 이 주소들만 남긴다.
    * 넘기지 않으면 최상위 관리자의 메뉴(전문가 전용 화면을 뺀 전부)다.
@@ -141,6 +150,13 @@ export default function ConsoleFrame({
           </nav>
 
           <div className="border-t border-(--a2-side-line) p-2">
+            <Link
+              href={meHref}
+              className="a2-nav-item"
+              aria-current={at === "/admin2/me" ? "page" : undefined}
+            >
+              내 정보
+            </Link>
             <button type="button" className="a2-nav-item w-full justify-between">
               화면 찾기
               <span className="a2-kbd border-(--a2-side-line) bg-(--a2-side-2) text-(--a2-side-ink-2)">
@@ -171,7 +187,7 @@ export default function ConsoleFrame({
                 </span>
               </button>
               <Link
-                href="/design/admin2/me"
+                href={meHref}
                 title="내 정보"
                 className="hidden min-w-0 items-center gap-2 border-l border-(--a2-side-line) pl-2 hover:opacity-80 sm:flex"
               >

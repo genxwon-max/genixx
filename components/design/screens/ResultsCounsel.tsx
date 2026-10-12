@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { linesOf } from "@/lib/answerKey";
 import { designLinks } from "@/lib/designScreens";
 import { editions } from "@/lib/diagReport";
-import { assessment } from "@/lib/exam";
+import { assessment, pointText, subjects, type SubjectId } from "@/lib/exam";
 import { phaseTone } from "@/lib/progress";
 import { axes, decideType, type AxisId, type AxisScore } from "@/lib/result";
 import { topRule } from "@/components/account/ui";
@@ -13,6 +14,8 @@ import { btnGhost, btnPrimary, eyebrow, govTable, panel, td, tdStrong, th } from
 import { StageTag, TierChip, type Stage } from "@/components/student/diag";
 import { Head, btnGo, btnQuiet, cardBox } from "@/components/student/self";
 import DashFrame from "../DashFrame";
+import { docs, seojunScores } from "./reportFlow";
+import { flowFacts, flowGrades, flowRecords, flowSeat, flowStudent } from "./studentFlow";
 
 /**
  * 결과 화면의 「면담 신청」 버튼 (WBS M.2.11) — 디자인.
@@ -42,11 +45,9 @@ const studentInterview = designLinks("student-interview");
 
 /** 측정한 세 축의 점수 — 나머지 다섯 축은 아직 측정하지 않는다 */
 const marks: Partial<Record<AxisId, number>> = { language: 78, logic: 71, nature: 64 };
-const scores: AxisScore[] = axes.map((axis) => ({
-  axis,
-  score: marks[axis.id] ?? null,
-  measured: axis.id in marks,
-}));
+const scoresOf = (m: Partial<Record<AxisId, number>>): AxisScore[] =>
+  axes.map((axis) => ({ axis, score: m[axis.id] ?? null, measured: axis.id in m }));
+const scores = scoresOf(marks);
 const type = decideType(scores)!;
 
 const reports = [
@@ -72,10 +73,43 @@ const papers = [
 ];
 
 /** 전문가 진단 — 실제 결과지에는 네댓 칸이 들어간다. 여기서는 두 칸만 옮겼다 */
-const comments = [
+const comments: [string, string][] = [
   ["언어 축", "서술형 답에서 답만 쓰지 않고 그렇게 생각한 이유를 함께 적었습니다. 자료에서 찾은 표현을 자기 말로 바꾸어 쓰는 모습이 반복해서 나타납니다."],
   ["자연·탐구 축", "자연·탐구 영역은 이번 회차에서 낮게 측정되었습니다. 다만 이는 능력이 없다는 뜻이 아니라, 이 영역을 보여줄 기회가 적었을 가능성을 함께 봅니다."],
 ];
+
+/** 결과지 한 장에 적는 값 — 면담 버튼 디자인의 예시와, 자동 발행된 결과지의 예시가 이 꼴을 쓴다 */
+type SheetData = {
+  marks: Partial<Record<AxisId, number>>;
+  /** 머리에 적는 발행일 */
+  published: string;
+  confidence: string;
+  confidenceNote: string;
+  papers: { name: string; correct: string; score: number | undefined }[];
+  /** 과목 표 위의 안내와, 서술형 칸에 적는 글 */
+  papersNote: string;
+  essay: string;
+  /** 전문가 진단의 문단 — 제목과 글 */
+  comments: [string, string][];
+  sources: string;
+  surveys: string;
+  confirmed: string;
+};
+
+/** 면담 버튼 디자인이 처음부터 써 온 예시 */
+const sample: SheetData = {
+  marks,
+  published: "2026. 9. 12.",
+  confidence: "높음",
+  confidenceNote: "학생 응답 + 관찰 설문 2건 이상으로 교차 검증됨",
+  papers,
+  papersNote: "객관식 정답률 70% + 서술형 30%로 환산했습니다. 서술형은 전문가 채점으로 확정됩니다.",
+  essay: "제출 (전문가 검토 예정)",
+  comments,
+  sources: "반영 자료 4종",
+  surveys: "참여 설문: 학생 본인 · 보호자 · 담당 교사·교수 · 측정 축 3 / 8",
+  confirmed: "판정 확정 · GENIXX 진단운영팀 · 2026-09-12 14:30",
+};
 
 /* ───────────────────────── 면담 칸 ───────────────────────── */
 
@@ -127,7 +161,10 @@ function Sheet({
   code,
   back,
   bar,
+  data = sample,
 }: {
+  /** 결과지에 적는 값 — 넘기지 않으면 면담 버튼 디자인의 예시다 */
+  data?: SheetData;
   name: string;
   /** 「2026 3분기 초4 진단」 */
   diag: string;
@@ -136,6 +173,8 @@ function Sheet({
   back?: { href: string; label: string };
   bar: React.ReactNode;
 }) {
+  const scores = scoresOf(data.marks);
+  const type = decideType(scores)!;
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
@@ -150,7 +189,7 @@ function Sheet({
           )}
           <h1 className="text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]">{name} 학생 진단 결과</h1>
           <p className="mt-2 text-[12px] text-soft-muted">
-            {assessment.name} {diag} · 접속코드 {code} · 발행 2026. 9. 12.
+            {assessment.name} {diag} · 접속코드 {code} · 발행 {data.published}
           </p>
         </div>
         <div className="flex gap-2">
@@ -194,10 +233,10 @@ function Sheet({
             <p className="mt-1.5 text-[13px] text-soft-muted">{type.tagline}</p>
             <p className="mt-4 inline-flex items-center gap-2 rounded border border-soft-line bg-slate-50 px-3 py-1.5 text-[12px]">
               리포트 신뢰도
-              <b className="text-soft-ink">높음</b>
+              <b className="text-soft-ink">{data.confidence}</b>
             </p>
             <p className="mt-1.5 text-[11px] leading-relaxed text-soft-muted">
-              학생 응답 + 관찰 설문 2건 이상으로 교차 검증됨
+              {data.confidenceNote}
             </p>
           </div>
           <div>
@@ -253,9 +292,7 @@ function Sheet({
       </section>
 
       <section className="mt-8">
-        <SectionTitle note="객관식 정답률 70% + 서술형 30%로 환산했습니다. 서술형은 전문가 채점으로 확정됩니다.">
-          과목별 응시 결과
-        </SectionTitle>
+        <SectionTitle note={data.papersNote}>과목별 응시 결과</SectionTitle>
         <div className="overflow-x-auto">
           <table className={govTable}>
             <thead>
@@ -268,11 +305,11 @@ function Sheet({
               </tr>
             </thead>
             <tbody>
-              {papers.map((p) => (
+              {data.papers.map((p) => (
                 <tr key={p.name}>
                   <td className={`${tdStrong} text-left`}>{p.name}</td>
                   <td className={`${td} tabular-nums`}>{p.correct}</td>
-                  <td className={td}>제출 (전문가 검토 예정)</td>
+                  <td className={td}>{data.essay}</td>
                   <td className={`${td} tabular-nums`}>
                     <b className="text-soft-ink">{p.score}</b>
                   </td>
@@ -305,14 +342,14 @@ function Sheet({
           note="AI 1차 분석 결과를 교육전문가가 검토해 확정한 코멘트입니다."
           right={
             <span className="rounded border border-soft-line bg-slate-50 px-3 py-1.5 text-[12px] text-soft-muted">
-              반영 자료 4종
+              {data.sources}
             </span>
           }
         >
           전문가 진단
         </SectionTitle>
         <div className="grid gap-3 md:grid-cols-2">
-          {comments.map(([title, text]) => (
+          {data.comments.map(([title, text]) => (
             <div key={title} className={`p-5 ${panel}`}>
               <p className="text-[14px] font-bold text-soft-ink">{title}</p>
               <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">{text}</p>
@@ -321,10 +358,10 @@ function Sheet({
         </div>
         <div className={`mt-3 flex flex-wrap items-center justify-between gap-3 p-5 ${panel}`}>
           <p className="text-[12px] leading-relaxed text-soft-muted">
-            참여 설문: 학생 본인 · 보호자 · 담당 교사·교수 · 측정 축 3 / 8
+            {data.surveys}
           </p>
           <span className="text-[12px] font-bold text-soft-ink">
-            판정 확정 · GENIXX 진단운영팀 · 2026-09-12 14:30
+            {data.confirmed}
           </span>
         </div>
       </section>
@@ -548,7 +585,8 @@ export function StudentResultsCounsel({ state }: { state: string }) {
           when: "발행 2026.10.02",
           stage: "published",
           note: "NLM형 · 관찰 탐구가형",
-          href: "/student/results/2026-3/e4",
+          /* 스케줄러가 발행한 뒤의 결과지 — 아래 PublishedResult */
+          href: "/design/student/results/2026-3/e4",
           counsel: <span className="text-[12.5px] leading-snug text-soft-muted">면담은 보호자가 신청합니다</span>,
         },
         /* 아래 두 줄은 학생 대시보드의 다른 디자인(진단 접수 · 내 진단 · 정답과 해설)과 같은
@@ -618,6 +656,73 @@ export function StudentResultsCounsel({ state }: { state: string }) {
           ? "결과지를 상담 전문가와 함께 읽고 싶으면 보호자에게 말해 주세요. 만 14세 미만은 면담을 직접 신청할 수 없어 보호자 화면에서 신청합니다."
           : "면담은 결과지를 놓고 상담 전문가와 30분 또는 60분 동안 이야기하는 자리입니다. 결과가 발행된 진단에서 신청할 수 있습니다."}
       </p>
+    </DashFrame>
+  );
+}
+
+/* ───────────────────────── 자동 발행된 결과지 ───────────────────────── */
+
+/** 이서준의 3분기 리포트 — 리포트 승인 디자인의 맨 아래 줄이다(./reportFlow.ts) */
+const seojunDoc = docs.find((d) => d.sheet === flowSeat.key)!;
+
+/** 과목마다 고르는 문항(객관식)을 몇 개 맞혔는가 — 정오표 디자인과 같은 답안에서 센다 */
+const choiceOf = (subject: SubjectId) => {
+  const lines = linesOf(subject, flowRecords.q3, flowGrades).filter((l) => l.q.type === "choice");
+  return `${lines.filter((l) => l.mark === "right").length} / ${lines.length}`;
+};
+
+const seojun: SheetData = {
+  marks: Object.fromEntries(
+    (seojunDoc.facts?.scores ?? []).map((x) => [x.axis, x.score]),
+  ) as Partial<Record<AxisId, number>>,
+  published: "2026. 10. 2.",
+  confidence: seojunDoc.confidence,
+  confidenceNote: "학생 응답 + 관찰 설문 2건 이상으로 교차 검증됨",
+  papers: subjects.map((sub) => ({
+    name: sub.name,
+    correct: choiceOf(sub.id),
+    score: seojunScores.find((x) => x.subject === sub.id)?.score,
+  })),
+  /* 점수는 채점자가 확인한 점수에서 온다 — 회원 채점 디자인의 정오표에 적힌 것과 같은 숫자다 */
+  papersNote: `채점자가 확인한 점수(${seojunScores
+    .map((x) => `${subjects.find((sub) => sub.id === x.subject)?.short} ${pointText(x.got)} / ${x.max}점`)
+    .join(" · ")})를 과목마다 100점으로 환산했습니다.`,
+  essay: "전문가 채점 완료",
+  /* 조립 규칙이 넣은 문단 전부 — 콘솔의 리포트 상세에 보이는 것과 같은 글이다 */
+  comments: seojunDoc.blocks.map((b) => [b.title, b.override ?? b.text]),
+  sources: "반영 자료 3종",
+  surveys: "참여 설문: 학생 본인 · 보호자 · 측정 축 3 / 8",
+  confirmed: `판정 확정 · GENIXX 진단운영팀 · ${seojunDoc.publishedAt ?? ""}`,
+};
+
+/**
+ * 진단 결과 · 결과지 (실제 주소 /student/results/[회차]/[학년]) — 스케줄러가 발행한 뒤의 모습.
+ *
+ * 채점이 끝나면 조립 규칙이 리포트를 조립하고(./ReportRules.tsx), 스케줄러가 정한 날 아침에
+ * 저절로 발행된다(./Schedulers.tsx · ./ReportApproval.tsx). 그날부터 학생은 이 결과지를 본다 —
+ * 콘솔을 아무도 열지 않아도 된다.
+ *
+ * 「전문가 진단」의 문단은 손으로 쓴 예시가 아니라 **조립 규칙이 넣은 문단 그대로**다. 콘솔의
+ * 리포트 상세(조립 내역)에 보이는 문단과 제목 · 글 · 차례가 같다. 예시는 이서준의 3분기
+ * 진단이고, 9월 25일에 채점이 끝나 10월 2일 오전 9시에 자동으로 발행됐다. 점수는 회원 채점
+ * 디자인의 그 답안지를 채점한 결과다(./reportFlow.ts의 seojunScores).
+ *
+ * ⚠ 실제 결과지(components/exam/ResultView.tsx)의 유형 · 팔각형 · 과목 표는 아직 학생의 응시
+ *   기록에서 따로 센다(객관식 70% + 서술형 30%). 학생이 직접 낸 진단은 회원 채점과 이어져 있지
+ *   않기 때문이다. 이 디자인은 채점 → 리포트 → 결과지가 이어진 뒤의 모습이다.
+ */
+export function PublishedResult() {
+  return (
+    <DashFrame who="student" at="/student/results" unread={2} bellHref="/design/student/alerts">
+      <Sheet
+        data={seojun}
+        name={flowStudent.name}
+        diag={flowFacts.q3.name}
+        code={flowStudent.code}
+        back={{ href: "/design/student/results/child", label: "진단 결과" }}
+        /* 만 14세 미만 학생의 결과지다 — 면담은 보호자가 신청하므로 면담 칸은 두지 않는다 */
+        bar={null}
+      />
     </DashFrame>
   );
 }

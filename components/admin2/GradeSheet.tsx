@@ -73,6 +73,7 @@ export default function GradeSheet({
   marks,
   back,
   gradeAt,
+  doneNote,
   onOpen,
   onClose,
   onMark,
@@ -87,6 +88,11 @@ export default function GradeSheet({
   back: React.ReactNode;
   /** 채점 창이 펴 둔 문항 — null이면 창이 닫혀 있다 */
   gradeAt: GradeAt | null;
+  /**
+   * 채점이 끝난 답안지에 덧붙이는 한 줄 — 이 답안지의 리포트가 어디로 갔는가.
+   * 채점이 끝나야 리포트가 만들어진다(lib/reportStore.ts의 syncSheetReport).
+   */
+  doneNote?: React.ReactNode;
   onOpen: (at: GradeAt) => void;
   onClose: () => void;
   onMark: (edits: GradeEdit[]) => void;
@@ -150,6 +156,9 @@ export default function GradeSheet({
                   : "모든 문항을 확인했습니다"}
                 {stat.edited > 0 && ` · 수정 ${stat.edited}문항`}
               </span>
+              {stat.done === stat.total && doneNote && (
+                <span className="a2-hint">{doneNote}</span>
+              )}
             </FormRow>
             <FormRow label="지필 점수">
               <span className="a2-num a2-t-md font-bold text-(--a2-ink)">

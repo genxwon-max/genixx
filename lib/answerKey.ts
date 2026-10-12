@@ -9,9 +9,9 @@ import {
   markOfPoints,
   pointText,
   pointsOf,
-  screensOf,
   subjects,
   tierQuestions,
+  type Bank,
   type Grades,
   type Mark,
   type Question,
@@ -57,10 +57,18 @@ export type Line = {
  *
  * 그 진단이 연 문항만 싣는다. 무료 진단을 본 아이의 정오표에 풀지 않은 문항을 「미응답」으로
  * 스무 줄 세우면, 다 푼 아이가 자기 진단을 망친 것으로 읽는다.
+ *
+ * `bank`는 그 진단이 쓴 문항 목록이다 — 넘기지 않으면 기본 문항(lib/examQuestions.ts)을 쓴다.
+ * 응시 화면이 회차의 검사지를 따로 읽듯, 정오표도 그 진단의 문항을 받을 수 있어야 한다.
  */
-export function linesOf(subject: SubjectId, record: ExamRecord, grades?: Grades): Line[] {
+export function linesOf(
+  subject: SubjectId,
+  record: ExamRecord,
+  grades?: Grades,
+  bank?: Bank,
+): Line[] {
   const answers = record.subjects[subject].answers;
-  return tierQuestions(record.tier, subject, record.setSubject).map((q, i) => {
+  return tierQuestions(record.tier, subject, record.setSubject, bank).map((q, i) => {
     const value = answers[q.id];
     const max = pointsOf(q);
     const grade = grades?.[q.id];
@@ -91,14 +99,23 @@ export function linesOf(subject: SubjectId, record: ExamRecord, grades?: Grades)
 
 /**
  * 한 번에 세우는 문항들 — 응시 화면과 같은 **화면** 단위로 줄을 묶는다.
- * 기본은 문항 하나이고, 세트 안의 작은 묶음이면 그 문항들이 함께 선다(lib/exam.ts screensOf).
- * 답안 풀이 창과 채점 창이 함께 쓴다.
+ * 기본은 문항 하나이고, 세트 안의 작은 묶음이면 그 문항들이 함께 선다. 답안 풀이 창과 채점
+ * 창이 함께 쓴다.
+ *
+ * 묶는 셈은 응시 화면의 것(lib/exam.ts screensOf)과 같다 — 푸는 차례로 이어 붙은 문항 가운데
+ * 세트와 묶음(group)이 같은 것끼리 한 화면이다. 줄은 이미 푸는 차례로 와 있으므로 문항
+ * 목록을 다시 읽지 않고 줄에서 바로 묶는다. 그래서 기본 문항이 아닌 검사지의 줄도 그대로 묶인다.
  */
-export function lineScreens<T extends { q: Question }>(subject: SubjectId, lines: T[]): T[][] {
-  const byId = new Map(lines.map((l) => [l.q.id, l]));
-  return screensOf(subject)
-    .map((screen) => screen.flatMap((q) => byId.get(q.id) ?? []))
-    .filter((screen) => screen.length > 0);
+export function lineScreens<T extends { q: Question }>(lines: T[]): T[][] {
+  const screens: T[][] = [];
+  for (const line of lines) {
+    const last = screens[screens.length - 1];
+    const head = last?.[0];
+    if (head && line.q.group && head.q.group === line.q.group && head.q.setId === line.q.setId) {
+      last.push(line);
+    } else screens.push([line]);
+  }
+  return screens;
 }
 
 export function tally(lines: { mark: Mark }[]) {
@@ -120,8 +137,8 @@ export const answerSubjects = (row: Row) =>
   subjects.filter((s) => !row.info || row.info.subjects.some((x) => x.id === s.id));
 
 /** 진단 한 건의 채점 합계 — 목록의 한 줄(「채점한 18문항 중 14문항 정답」)이 쓴다 */
-export function answerTotals(row: Row, record: ExamRecord, grades?: Grades) {
-  const lines = answerSubjects(row).flatMap((s) => linesOf(s.id, record, grades));
+export function answerTotals(row: Row, record: ExamRecord, grades?: Grades, bank?: Bank) {
+  const lines = answerSubjects(row).flatMap((s) => linesOf(s.id, record, grades, bank));
   const count = tally(lines);
   return { ...count, graded: lines.length - count.pending };
 }
@@ -138,9 +155,14 @@ export const answerCsvHead = ["과목", "문항", "유형", "정답", "내 답",
  * 줄이지 않고 그대로 담고, 사진과 그림은 파일에 담을 수 없어 제출했다는 말만 적는다.
  * 점수는 채점이 끝난 문항에만 적는다.
  */
-export function answerCsv(row: Row, record: ExamRecord, grades?: Grades): CsvCell[][] {
+export function answerCsv(
+  row: Row,
+  record: ExamRecord,
+  grades?: Grades,
+  bank?: Bank,
+): CsvCell[][] {
   return answerSubjects(row).flatMap((s) =>
-    linesOf(s.id, record, grades).map(({ q, no, value, mark, points, max }) => {
+    linesOf(s.id, record, grades, bank).map(({ q, no, value, mark, points, max }) => {
       const key = q.type === "choice" ? `${q.answer! + 1}번` : keyText(q) || "전문가 채점";
       const mine =
         q.type === "choice"

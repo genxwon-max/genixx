@@ -11,12 +11,18 @@ import ConsoleMe from "@/components/design/screens/ConsoleMe";
 import ConsultProducts from "@/components/design/screens/ConsultProducts";
 import CounselorDetail from "@/components/design/screens/CounselorDetail";
 import ExamGuideMic from "@/components/design/screens/ExamGuideMic";
-import { ExamFree, ExamPaid, ExamTrial } from "@/components/design/screens/ExamSessions";
+import {
+  ExamFree,
+  ExamMatch,
+  ExamPaid,
+  ExamTrial,
+} from "@/components/design/screens/ExamSessions";
 import ExpertSignup from "@/components/design/screens/ExpertSignup";
 import Experts from "@/components/design/screens/Experts";
 import GradingAnswers from "@/components/design/screens/GradingAnswers";
 import GradingMembers from "@/components/design/screens/GradingMembers";
 import InterviewDetail from "@/components/design/screens/InterviewDetail";
+import ItemPreviewScreen from "@/components/design/screens/ItemPreviewScreen";
 import InterviewRecord from "@/components/design/screens/InterviewRecord";
 import Mails from "@/components/design/screens/Mails";
 import Metrics from "@/components/design/screens/Metrics";
@@ -24,7 +30,13 @@ import MyCounselStatus from "@/components/design/screens/MyCounselStatus";
 import MyInterview, { StudentInterview } from "@/components/design/screens/MyInterview";
 import NotificationSettings from "@/components/design/screens/NotificationSettings";
 import PaymentsCounsel from "@/components/design/screens/PaymentsCounsel";
+import Privacy from "@/components/design/screens/PrivacyList";
+import PrivacyPurge from "@/components/design/screens/PrivacyPurge";
 import ReportAnswers from "@/components/design/screens/ReportAnswers";
+import ReportApproval from "@/components/design/screens/ReportApproval";
+import ReportRules from "@/components/design/screens/ReportRules";
+import ReportTemplates from "@/components/design/screens/ReportTemplates";
+import Schedulers from "@/components/design/screens/Schedulers";
 import { ExamResultCounsel, StudentResultsCounsel } from "@/components/design/screens/ResultsCounsel";
 import SettingsInterview from "@/components/design/screens/SettingsInterview";
 import StaffCounselor from "@/components/design/screens/StaffCounselor";
@@ -68,6 +80,7 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "exam-trial": ExamTrial,
   "exam-free": ExamFree,
   "exam-paid": ExamPaid,
+  "exam-match": ExamMatch,
   "interview-detail": InterviewDetail,
   "counselor-detail": CounselorDetail,
   "settings-interview": SettingsInterview,
@@ -76,6 +89,13 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "audit-interview": AuditInterview,
   "grading-answers": GradingAnswers,
   "grading-members": GradingMembers,
+  "report-approval": ReportApproval,
+  "report-rules": ReportRules,
+  "report-templates": ReportTemplates,
+  privacy: Privacy,
+  "item-preview": ItemPreviewScreen,
+  schedulers: Schedulers,
+  "privacy-purge": PrivacyPurge,
   "my-counsel": MyCounselStatus,
   "notification-settings": NotificationSettings,
   "exam-result-counsel": ExamResultCounsel,

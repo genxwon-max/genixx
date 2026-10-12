@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { seedGraded, seedMarksOf } from "./gradedSeed";
 
 /**
  * 전문가가 응시 원본 위에 손본 것 (EXP-04-1).
@@ -67,10 +68,35 @@ function subscribe(onChange: () => void) {
   };
 }
 
+/* ───────────────────────── 씨앗 — 채점이 끝난 답안지 ─────────────────────────
+   지난 회차와 이번 회차의 몇 장은 채점이 끝난 채로 시작한다(lib/gradedSeed.ts). 그 답안지의
+   문항에는 채점자가 AI의 점수를 하나씩 확인한 표시를 깔아 둔다 — 깔아 두지 않으면 반년 전에
+   끝난 회차까지 「채점 중 0 / 20」으로 서고, 채점이 끝나야 만들어지는 리포트(lib/reportStore.ts)
+   는 거기서 나올 답안지가 없다.
+
+   저장소에 적어 넣지 않는다. 저장한 값 아래에 깔 뿐이라, 채점자가 그 답안지를 다시 열어 고치면
+   고친 문항만 저장된다. 점수를 정하는 셈은 lib/gradedSeed.ts에 있다 — 리포트 저장소가 같은
+   점수로 리포트를 조립한다. */
+
+let seedCache: SheetMarks | null = null;
+
+/** 씨앗 채점(lib/gradedSeed.ts)을 이 저장소의 열쇠(답안지/문항)로 편다 */
+function seedMarks(): SheetMarks {
+  if (seedCache) return seedCache;
+  const out: SheetMarks = {};
+  for (const g of seedGraded) {
+    for (const [id, m] of Object.entries(seedMarksOf(g))) out[markKey(g.sheet.key, id)] = m;
+  }
+  seedCache = out;
+  return out;
+}
+
 function useMarks(): SheetMarks {
   /* ⚠ 서버 스냅숏으로 모듈 상수를 돌려준다. 새 객체를 만들면 렌더마다 참조가 달라
      React가 무한 루프로 본다 */
-  return useSyncExternalStore(subscribe, read, () => EMPTY);
+  const stored = useSyncExternalStore(subscribe, read, () => EMPTY);
+  /* 저장한 값이 씨앗을 덮는다 — 씨앗은 서버와 브라우저에서 같은 값이라 하이드레이션에서 갈리지 않는다 */
+  return useMemo(() => ({ ...seedMarks(), ...stored }), [stored]);
 }
 
 function now() {
