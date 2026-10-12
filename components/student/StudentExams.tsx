@@ -8,6 +8,7 @@ import {
   EmptyList,
   StageTag,
   amountOf,
+  applyPath,
   dayText,
   daysLeft,
   examPath,
@@ -44,7 +45,7 @@ export default function StudentExams() {
         lead="접수한 진단입니다. 눌러서 들어가면 과목을 응시하고 진행 상황을 볼 수 있습니다."
         right={
           diags.length > 0 ? (
-            <Link href="/exam/apply" className={btnQuiet}>
+            <Link href={applyPath} className={btnQuiet}>
               진단 접수하기
             </Link>
           ) : undefined

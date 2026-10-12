@@ -4,7 +4,7 @@ import Link from "next/link";
 import { currentRegOf, useExamVersion } from "@/lib/examStore";
 import { progressOf, phaseTone, subjectTone, type StudentProgress } from "@/lib/progress";
 import { useRegistrations } from "@/components/exam/Registrations";
-import { examPath, resultPath } from "./diag";
+import { applyPath, examPath, resultPath } from "./diag";
 import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
 
 /**
@@ -18,8 +18,8 @@ import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
  *   내 진행      과목 셋 · 설문 · 단계. 어디까지 왔는지
  *
  * 예전에는 그 아래에 바로가기 카드(진단 보기 · 결과 · 정답과 해설 · 진단 안내 …)를 깔았다.
- * 모두 왼쪽 레일에 있는 자리이거나 「내 진단」 안에서 진단마다 여는 것이라 걷었다 —
- * 같은 곳으로 가는 길이 두 벌이면 아이는 어느 쪽을 눌러야 하는지부터 고른다.
+ * 모두 왼쪽 레일에 있는 자리라 걷었다 — 같은 곳으로 가는 길이 두 벌이면 아이는 어느 쪽을
+ * 눌러야 하는지부터 고른다. 접수 · 응시 · 정답과 해설 · 결과가 모두 이 레일에 있다.
  *
  * 만 14세 이상이면 레일에 **결제와 면담 신청**이 더 선다(DashShell의 studentTeenMenu).
  * 미만인 아이 화면에는 그 자리가 없으므로, 어디에 있는지만 아래 한 줄로 적는다.
@@ -64,7 +64,7 @@ export default function StudentHome() {
      과목을 응시하는 판. 없으면 접수하러 보낸다 */
   const ref = latest ? { round: latest.round, track: latest.track } : null;
   const finished = progress?.phase === "최종제출";
-  const goHref = !ref ? "/exam/apply" : finished ? resultPath(ref) : examPath(ref);
+  const goHref = !ref ? applyPath : finished ? resultPath(ref) : examPath(ref);
   const goLabel = !ref ? "진단 접수하기" : finished ? "결과 보기" : "진단 보기";
 
   return (
@@ -75,7 +75,7 @@ export default function StudentHome() {
         title={`${self.name}님, 안녕하세요`}
         right={
           latest ? (
-            <Link href="/exam/apply" className={btnQuiet}>
+            <Link href={applyPath} className={btnQuiet}>
               진단 접수하기
             </Link>
           ) : undefined

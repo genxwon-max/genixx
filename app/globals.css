@@ -420,9 +420,21 @@ body {
   }
 }
 
-/* 정오표 인쇄 — 종이 전용 정오표만 남기고 화면은 모두 감춘다 (components/exam/AnswerKey) */
+/* 정오표 인쇄 · PDF — 종이 전용 정오표만 남기고 화면은 모두 감춘다 (components/exam/AnswerKey) */
 .answer-sheet-print {
   display: none;
+}
+/* PDF로 뜨는 동안 — 화면 밖에 A4 본문 폭으로 펴 두고 줄 높이를 잰다 (lib/answerSheetPdf) */
+.answer-sheet-print.is-capturing {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 720px;
+  background: #ffffff;
+}
+.answer-sheet-print.is-capturing > [data-sheet] {
+  background: #ffffff;
 }
 @media print {
   body.printing-answer-sheet > *:not(.answer-sheet-print) {

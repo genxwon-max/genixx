@@ -168,6 +168,11 @@ export type ContentQuestion = {
   response: Response;
   /** 채점 기준 — 학생 화면에는 내보이지 않는다 */
   scoring?: string[];
+  /**
+   * 만점 — 채점 기준이 정한 값(「총 3점」). 적지 않으면 기계로 채점하는 문항은 1점, 전문가가
+   * 채점하는 문항은 2점으로 본다(lib/exam.ts pointsOf).
+   */
+  points?: number;
   /** 예시 답 — 칸이 있으면 칸 순서대로 */
   sampleAnswer?: string[];
 };

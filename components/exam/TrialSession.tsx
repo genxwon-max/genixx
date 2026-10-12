@@ -116,7 +116,7 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
       : `${seasonName(roundId, round?.label)} 셋트 문항`,
     phase === "run" && meta ? meta.name : null,
   );
-  /* ESC · 헤더의 「셋트 그만하기」 · 전체화면 해제 — 그만할지 묻는다. 1번 · 2번도 전체화면
+  /* ESC · 헤더의 「나가기」 · 전체화면 해제 — 나갈지 묻는다. 1번 · 2번도 전체화면
      안이라 브라우저의 닫기 단추가 보이지 않는다 */
   useExamExitRequest(phase !== "cover", () => setAskExit(true));
 
@@ -260,7 +260,7 @@ async function openInMain(href: string) {
  * 시작하는 단추는 응시 화면과 같은 자리에 둔다 — 종이 안, 「넘기지 마시오」 줄 바로 아래
  * 오른쪽.
  */
-function TrialStart({
+export function TrialStart({
   season,
   watermark,
   onStart,
@@ -402,7 +402,7 @@ function TrialAsk({
       {/* 하단 바 — 셋트와 같은 자리, 같은 단추 */}
       <div className="shrink-0 border-t border-exam-line bg-exam-panel">
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          {/* 셋트 그만하기는 헤더 오른쪽 위에 있다(ExamStatusBar) */}
+          {/* 나가기는 헤더 오른쪽 위에 있다(ExamStatusBar) */}
           <div className="ml-auto flex items-center gap-2">
             <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
               질문 {step + 1}/2
@@ -600,7 +600,7 @@ function TrialRun({
       {/* 하단 바 */}
       <div className="shrink-0 border-t border-exam-line bg-exam-panel">
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          {/* 셋트 그만하기는 헤더 오른쪽 위에 있다(ExamStatusBar) */}
+          {/* 나가기는 헤더 오른쪽 위에 있다(ExamStatusBar) */}
           <div className="ml-auto flex items-center gap-2">
             <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
               응답 {doneCount}/{free.length}
@@ -635,17 +635,17 @@ function TrialRun({
 }
 
 /**
- * 그만할지 묻는 창 — 1번 · 2번과 셋트가 같이 쓴다.
+ * 나갈지 묻는 창 — 1번 · 2번과 셋트가 같이 쓴다.
  *
- * 그만하면 표지로 돌아간다. 고른 것과 쓴 답은 창이 들고 있어, 다시 시작하면 1번부터 그대로
+ * 나가면 표지로 돌아간다. 고른 것과 쓴 답은 창이 들고 있어, 다시 시작하면 1번부터 그대로
  * 골라진 채로 지나온다.
  */
-function ExitDialog({
+export function ExitDialog({
   subjectName,
   onStay,
   onLeave,
 }: {
-  /** 셋트에 들어선 뒤에만 있다 — 「수학 셋트를 그만할까요?」 */
+  /** 셋트에 들어선 뒤에만 있다 — 「수학 셋트에서 나갈까요?」 */
   subjectName: string | null;
   onStay: () => void;
   onLeave: () => void;
@@ -659,7 +659,7 @@ function ExitDialog({
     >
       <div className="w-full max-w-md rounded-[2px] border border-exam-line bg-exam-panel p-7">
         <h2 id="trial-exit-title" className="text-[20px] font-black text-exam-text">
-          {subjectName ? `${subjectName} 셋트를` : "셋트를"} 그만할까요?
+          {subjectName ? `${subjectName} 셋트에서` : "셋트에서"} 나갈까요?
         </h2>
         <p className="mt-3 text-[13px] leading-relaxed text-exam-muted">
           처음 화면으로 돌아갑니다. 고른 학년과 과목, 지금까지 쓴 답은 이 창을 닫기 전까지 남아
@@ -670,7 +670,7 @@ function ExitDialog({
             계속 풀기
           </button>
           <button type="button" onClick={onLeave} className={btnGhost}>
-            그만하기
+            나가기
           </button>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
   examOrderOf,
   freeOrder,
   joinBlanks,
+  markLabel,
   screensOf,
   subjects,
   tierQuestions,
@@ -24,6 +25,7 @@ import {
   type Block,
   type Brief,
   type Figure,
+  type Mark,
   type Question,
   type SubjectId,
   type Table,
@@ -308,7 +310,7 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
     autoSubmit();
   }, [running, entered, elapsed, limitMin, config.autoSubmit, config.graceMin, autoSubmit]);
 
-  /* ESC · 헤더의 「포기하기」 · 전체화면 해제 — 모두 포기할지 묻는다 */
+  /* ESC · 헤더의 「나가기」 · 전체화면 해제 — 모두 나갈지 묻는다 */
   useExamExitRequest(running && entered, () => setAskForfeit(true));
 
   if (!hydrated) {
@@ -371,8 +373,8 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
           <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
             이번 회차의 응시 과목에서 빠져 있습니다. 지금까지 본 과목의 기록은 그대로 남아 있습니다.
           </p>
-          <Link href="/exam" className={`mt-8 ${btnPrimary}`}>
-            응시 현황으로 돌아가기
+          <Link href="/student/exams" className={`mt-8 ${btnPrimary}`}>
+            내 진단으로 돌아가기
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -481,7 +483,7 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
       {/* 하단 바 */}
       <div className="shrink-0 border-t border-exam-line bg-exam-panel">
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          {/* 포기하기는 헤더 오른쪽 위에 있다(ExamStatusBar) — ESC도 같은 물음을 연다 */}
+          {/* 나가기는 헤더 오른쪽 위에 있다(ExamStatusBar) — ESC도 같은 물음을 연다 */}
           <div className="ml-auto flex items-center gap-2">
             <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
               응답 {doneCount}/{list.length}
@@ -816,7 +818,7 @@ function StartGate({
         <ul className="mt-6 space-y-2 text-center text-[13px] leading-relaxed text-exam-muted">
           {note && <li>· {note}</li>}
           <li>· 답을 고르지 않아도 다음 문항으로 넘어갈 수 있습니다.</li>
-          <li>· 중간에 포기하면 이번 응시 기회가 사라집니다.</li>
+          <li>· 중간에 나가면 이번 응시 기회가 사라집니다.</li>
         </ul>
       </div>
     </div>
@@ -1226,7 +1228,13 @@ function ReflectAskDialog({ onDo, onLater }: { onDo: () => void; onLater: () => 
   );
 }
 
-function ForfeitDialog({
+/**
+ * 응시에서 나갈지 묻는 창 — 머리의 「나가기」 · ESC · 전체화면 해제가 모두 이 창을 연다.
+ *
+ * 나가는 것은 곧 이번 응시를 그만두는 것이라, 무엇을 잃는지를 창이 먼저 말한다.
+ * 디자인 보기(/design/exam/session/…)도 이 창을 그대로 쓴다.
+ */
+export function ForfeitDialog({
   subjectName,
   remain,
   onCancel,
@@ -1247,7 +1255,7 @@ function ForfeitDialog({
       <div className="w-full max-w-md rounded-[2px] border border-rose-300 bg-exam-panel p-7">
         <p className={eyebrow}>경고 · 되돌릴 수 없음</p>
         <h2 id="forfeit-title" className="mt-3 text-[20px] font-black text-exam-text">
-          {subjectName} 응시를 포기할까요?
+          {subjectName} 응시에서 나갈까요?
         </h2>
         <p className="mt-3 text-[13px] leading-relaxed text-exam-muted">
           아직 <b className="tabular-nums text-exam-text">{remain}</b> 남았습니다. 지금 나가지 않고
@@ -1265,7 +1273,7 @@ function ForfeitDialog({
             계속 응시하기
           </button>
           <button type="button" onClick={onConfirm} className={btnDanger}>
-            포기하기
+            나가기
           </button>
         </div>
       </div>
@@ -1286,10 +1294,10 @@ function Result({ children }: { children: React.ReactNode }) {
 /**
  * 응시 창을 닫는다.
  *
- * 응시는 따로 띄운 창에서 본다(lib/popup.ts examWindow). 다 보았거나 포기한 뒤에 할 일은
- * 이 창을 닫는 것이지 여기서 다른 화면으로 옮겨 가는 것이 아니다 — 원래 창의 응시 현황이
+ * 응시는 따로 띄운 창에서 본다(lib/popup.ts examWindow). 다 보았거나 도중에 나간 뒤에 할 일은
+ * 이 창을 닫는 것이지 여기서 다른 화면으로 옮겨 가는 것이 아니다 — 원래 창의 「내 진단」이
  * 그 결과를 이미 받아 두었다. 주소를 직접 열어 본 경우에는 창이 닫히지 않으므로 그때만
- * 응시 현황으로 보낸다.
+ * 「내 진단」(/student/exams)으로 보낸다.
  */
 function useCloseExam() {
   const router = useRouter();
@@ -1297,7 +1305,7 @@ function useCloseExam() {
     await leaveFullscreen();
     window.close();
     window.setTimeout(() => {
-      if (!window.closed) router.push("/exam");
+      if (!window.closed) router.push("/student/exams");
     }, 200);
   };
 }
@@ -1352,26 +1360,46 @@ function Submitted({
 }
 
 function Forfeited({ sheet }: { sheet: Sheet }) {
-  const attemptsLeft = sheet.attemptsLeft;
   const close = useCloseExam();
+  return (
+    <ForfeitedPanel
+      title={sheet.title}
+      attemptsLeft={sheet.attemptsLeft}
+      onRestart={() => sheet.restart()}
+      onClose={close}
+    />
+  );
+}
+
+/** 응시에서 나간 뒤의 화면 — 디자인 보기(/design/exam/session/…)도 이 조각을 그대로 쓴다 */
+export function ForfeitedPanel({
+  title,
+  attemptsLeft,
+  onRestart,
+  onClose,
+}: {
+  /** 「수학」 · 「무료 진단」 */
+  title: string;
+  attemptsLeft: number;
+  onRestart: () => void;
+  onClose: () => void;
+}) {
   return (
     <Result>
       <p className={eyebrow}>응시 중단</p>
-      <h1 className="mt-3 text-[24px] font-black text-exam-text">
-        {sheet.title} 응시를 포기했습니다
-      </h1>
+      <h1 className="mt-3 text-[24px] font-black text-exam-text">{title} 응시에서 나갔습니다</h1>
       <p className="mt-3 text-[14px] leading-relaxed text-exam-muted">
         이번 응시 기회를 썼습니다. 남은 기회는{" "}
         <b className="tabular-nums text-rose-600">{attemptsLeft}회</b>입니다.
       </p>
       <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
         {attemptsLeft > 0 && (
-          <button type="button" onClick={() => sheet.restart()} className={btnGhost}>
+          <button type="button" onClick={onRestart} className={btnGhost}>
             남은 기회로 다시 응시
           </button>
         )}
-        {/* 포기한 뒤에 할 일은 이 창을 닫는 것이다 — 원래 창의 응시 현황이 이미 갱신되어 있다 */}
-        <button type="button" onClick={close} className={btnPrimary}>
+        {/* 나간 뒤에 할 일은 이 창을 닫는 것이다 — 원래 창의 응시 현황이 이미 갱신되어 있다 */}
+        <button type="button" onClick={onClose} className={btnPrimary}>
           창 닫기
         </button>
       </div>
@@ -1922,6 +1950,7 @@ export function QuestionBody({
   value,
   onAnswer,
   watermark,
+  graded,
 }: {
   q: Question;
   /** 학생에게 보이는 문제 번호 — 푸는 차례로 매긴다 */
@@ -1931,9 +1960,20 @@ export function QuestionBody({
   onAnswer: (value: number | string) => void;
   /** 「GENIXX2026」 — 넘기면 이 문항 위에 겹쳐 깐다(ItemWatermark). 응시 화면만 넘긴다 */
   watermark?: string;
+  /**
+   * 채점한 모양으로 세운다 — 정답과 해설의 「답안 풀이 보기」 창이 넘긴다
+   * (components/exam/AnswerReview.tsx).
+   *
+   * 문항은 응시 때 모양 그대로 두고 셋만 달라진다. 번호 위에 정오 딱지(정답 · 오답 · 미응답 ·
+   * 채점 중)가 붙고, 객관식은 정답 보기를 짚고, 답을 고치는 손잡이(음성 입력 · 사진 바꾸기)는
+   * 걷는다. 긴 글은 칸 안에서 스크롤하지 않고 쓴 만큼 모두 편다.
+   */
+  graded?: Mark;
 }) {
+  const review = graded !== undefined;
   return (
     <section className="font-myeongjo relative isolate px-6 py-7 lg:px-10 lg:py-9">
+      {graded && <GradeTag mark={graded} />}
       {/*
         시험지처럼 **번호를 발문 왼쪽에** 붙인다.
         굵은 글씨는 번호에만 둔다 — 발문까지 굵으면 한 덩이가 통째로 강조되어, 무엇이 문항을
@@ -1955,11 +1995,18 @@ export function QuestionBody({
           choices={q.choices ?? []}
           value={typeof value === "number" ? value : undefined}
           onPick={onAnswer}
+          answer={review ? q.answer : undefined}
         />
       ) : q.upload === "image" ? (
-        <ImageAnswer value={value} onAnswer={onAnswer} />
+        <ImageAnswer value={value} onAnswer={onAnswer} readOnly={review} />
       ) : q.blanks ? (
-        <BlankFields q={q} blanks={q.blanks} value={value} onAnswer={onAnswer} />
+        <BlankFields
+          q={q}
+          blanks={q.blanks}
+          value={value}
+          onAnswer={onAnswer}
+          readOnly={review}
+        />
       ) : (
         <div className="mt-7">
           {q.guide && (
@@ -1973,21 +2020,40 @@ export function QuestionBody({
               ))}
             </ol>
           )}
-          {/* relative z-20 — 문항 위에 얹은 워터마크보다 위에 선다. 여기는 찍혀 나갈 문항이
-              아니라 아이가 쓰는 자리라, 쓴 글 위로 무늬가 지나가지 않게 한다 */}
-          <textarea
-            rows={9}
-            value={typeof value === "string" ? value : ""}
-            onChange={(e) => onAnswer(e.target.value)}
-            placeholder={q.placeholder}
-            aria-label="서술형 답안"
-            className="relative z-20 w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
-          />
-          <DictateBar
-            onText={(t) => onAnswer(addSpoken(typeof value === "string" ? value : "", t))}
-          >
-            {(typeof value === "string" ? value : "").trim().length}자
-          </DictateBar>
+          {review ? (
+            <>
+              {/* 낸 글 — 칸 높이를 정하지 않는다. 긴 글도 칸 안에서 스크롤하지 않고 쓴 만큼
+                  모두 보인다 */}
+              <p className="relative z-20 min-h-[6.5rem] whitespace-pre-wrap rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text [overflow-wrap:anywhere]">
+                {typeof value === "string" && value.trim() ? (
+                  value
+                ) : (
+                  <span className="font-sans text-[13px] text-exam-muted">쓰지 않았습니다.</span>
+                )}
+              </p>
+              <p className="relative z-20 mt-2 text-right font-sans text-[12px] tabular-nums text-exam-muted">
+                {(typeof value === "string" ? value : "").trim().length}자
+              </p>
+            </>
+          ) : (
+            <>
+              {/* relative z-20 — 문항 위에 얹은 워터마크보다 위에 선다. 여기는 찍혀 나갈 문항이
+                  아니라 아이가 쓰는 자리라, 쓴 글 위로 무늬가 지나가지 않게 한다 */}
+              <textarea
+                rows={9}
+                value={typeof value === "string" ? value : ""}
+                onChange={(e) => onAnswer(e.target.value)}
+                placeholder={q.placeholder}
+                aria-label="서술형 답안"
+                className="relative z-20 w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
+              />
+              <DictateBar
+                onText={(t) => onAnswer(addSpoken(typeof value === "string" ? value : "", t))}
+              >
+                {(typeof value === "string" ? value : "").trim().length}자
+              </DictateBar>
+            </>
+          )}
         </div>
       )}
 
@@ -2008,6 +2074,7 @@ export function ChoiceList({
   value,
   onPick,
   legend = "보기 선택",
+  answer,
 }: {
   /** 라디오 묶음의 이름 — 한 화면에 문항이 여럿 서므로 문항마다 달라야 한다 */
   name: string;
@@ -2017,7 +2084,16 @@ export function ChoiceList({
   onPick: (index: number) => void;
   /** 낭독기에 읽히는 묶음 이름 */
   legend?: string;
+  /**
+   * 정답 보기의 차례(0부터) — 넘기면 **채점한 모양**으로 선다(답안 풀이).
+   *
+   * 보기의 자리와 글은 응시 때 그대로다. 정답 보기의 번호를 초록으로, 틀리게 고른 보기의
+   * 번호를 붉게 칠하고 줄 끝에 「정답」 · 「내 답」을 적는다 — 색을 못 보는 아이도 글로 읽는다.
+   * 이미 낸 답이라 보기는 눌리지 않는다.
+   */
+  answer?: number;
 }) {
+  const graded = answer !== undefined;
   return (
     <fieldset className="relative mt-6">
       <legend className="sr-only">{legend}</legend>
@@ -2028,42 +2104,92 @@ export function ChoiceList({
       <ul className="-mx-3">
         {choices.map((c, i) => {
           const on = value === i;
+          /* 채점한 모양 — 정답 보기와, 틀리게 고른 보기 */
+          const key = graded && i === answer;
+          const miss = graded && on && !key;
           return (
             <li key={c}>
               {/* relative는 숨긴 라디오(sr-only)를 이 칸에 붙잡아 둔다 — 없으면 문서 맨
                     위를 기준으로 놓여 응시 화면 바깥에 스크롤이 생긴다. */}
-              <label className="group relative flex cursor-pointer items-start gap-3.5 rounded-[2px] px-3 py-3 transition-colors hover:bg-exam-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text">
+              <label
+                className={`group relative flex items-start gap-3.5 rounded-[2px] px-3 py-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text ${
+                  graded ? "cursor-default" : "cursor-pointer hover:bg-exam-raised"
+                }`}
+              >
                 <input
                   type="radio"
                   name={name}
                   value={i}
                   checked={on}
+                  disabled={graded}
                   onChange={() => onPick(i)}
                   className="sr-only"
                 />
                 <span
                   aria-hidden
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
-                    on
-                      ? "border-exam-text bg-exam-text text-white"
-                      : "border-exam-line text-exam-muted group-hover:border-exam-muted"
+                    miss
+                      ? "border-rose-600 bg-rose-600 text-white"
+                      : key
+                        ? on
+                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          : "border-emerald-600 text-emerald-700"
+                        : on
+                          ? "border-exam-text bg-exam-text text-white"
+                          : `border-exam-line text-exam-muted ${
+                              graded ? "" : "group-hover:border-exam-muted"
+                            }`
                   }`}
                 >
                   {i + 1}
                 </span>
                 <span
                   className={`text-[14px] leading-[1.7] ${
-                    on ? "font-semibold text-exam-text" : "text-exam-text"
+                    on || key ? "font-semibold text-exam-text" : "text-exam-text"
                   }`}
                 >
                   {c}
                 </span>
+                {(key || miss) && (
+                  <span
+                    className={`ml-auto shrink-0 self-center whitespace-nowrap pl-2 font-sans text-[12px] font-bold ${
+                      key ? "text-emerald-700" : "text-rose-600"
+                    }`}
+                  >
+                    {key ? (on ? "내 답 · 정답" : "정답") : "내 답"}
+                  </span>
+                )}
               </label>
             </li>
           );
         })}
       </ul>
     </fieldset>
+  );
+}
+
+/** 채점한 문항 머리에 붙는 정오 딱지의 색 */
+const gradeTone: Record<Mark, string> = {
+  right: "border-emerald-600 bg-emerald-600 text-white",
+  partial: "border-amber-500 bg-amber-500 text-white",
+  wrong: "border-rose-600 bg-rose-600 text-white",
+  empty: "border-rose-300 bg-rose-50 text-rose-700",
+  pending: "border-exam-line bg-exam-raised text-exam-muted",
+};
+
+/**
+ * 정오 딱지 — 번호 위에 한 줄. 고딕으로 적는다: 시험지의 글이 아니라 화면이 하는 말이다
+ * (서술형 글자 수 표시와 같은 규칙).
+ */
+function GradeTag({ mark }: { mark: Mark }) {
+  return (
+    <p className="relative z-20 mb-3 font-sans">
+      <span
+        className={`inline-flex h-6 items-center rounded-[2px] border px-2 text-[12px] font-bold ${gradeTone[mark]}`}
+      >
+        {markLabel[mark]}
+      </span>
+    </p>
   );
 }
 
@@ -2089,11 +2215,17 @@ function BlankFields({
   blanks,
   value,
   onAnswer,
+  readOnly = false,
 }: {
   q: Question;
   blanks: Blank[];
   value: number | string | undefined;
   onAnswer: (value: string) => void;
+  /**
+   * 낸 답을 보기만 한다(답안 풀이) — 음성 입력 단추와 「여기에 쓰세요」 같은 안내 글을 걷고,
+   * 쓰는 칸은 글이 길어도 모두 보이도록 칸 대신 글로 세운다.
+   */
+  readOnly?: boolean;
 }) {
   const values = splitBlanks(value, blanks.length);
   const put = (i: number, v: string) => {
@@ -2128,7 +2260,11 @@ function BlankFields({
                   <span className="inline-flex min-w-[8em] items-center gap-1.5 text-[14px] font-bold">
                     <span aria-hidden>(</span>
                     <span className={values[i] ? "" : "font-normal text-exam-muted/60"}>
-                      {values[i] ? (values[i].match(/^\(\S\)/)?.[0] ?? values[i]) : "고르세요"}
+                      {values[i]
+                        ? (values[i].match(/^\(\S\)/)?.[0] ?? values[i])
+                        : readOnly
+                          ? ""
+                          : "고르세요"}
                     </span>
                     <span aria-hidden>)</span>
                   </span>
@@ -2139,16 +2275,21 @@ function BlankFields({
                     return (
                       <label
                         key={o}
-                        className={`relative cursor-pointer rounded-[2px] border px-3.5 py-2 text-[14px] transition-colors ${
+                        className={`relative rounded-[2px] border px-3.5 py-2 text-[14px] transition-colors ${
+                          readOnly ? "cursor-default" : "cursor-pointer"
+                        } ${
                           on
                             ? "border-exam-text font-bold text-exam-text shadow-[inset_0_0_0_1px_var(--color-exam-text)]"
-                            : "border-exam-line text-exam-text hover:border-exam-muted"
+                            : `border-exam-line text-exam-text ${
+                                readOnly ? "" : "hover:border-exam-muted"
+                              }`
                         }`}
                       >
                         <input
                           type="radio"
                           name={id}
                           checked={on}
+                          disabled={readOnly}
                           /* 같은 것을 다시 누르면 지운다 — 잘못 고른 것을 되돌릴 길 */
                           onClick={() => put(i, on ? "" : o)}
                           onChange={() => {}}
@@ -2184,6 +2325,7 @@ function BlankFields({
                         <input
                           aria-label={`${k + 1}번째 괄호`}
                           value={slots[k]}
+                          readOnly={readOnly}
                           onChange={(e) => {
                             const next = slots.slice();
                             next[k] = e.target.value.replaceAll(SLOT, "");
@@ -2212,6 +2354,7 @@ function BlankFields({
                 value={values[i]}
                 onChange={(v) => put(i, v)}
                 label={b.label}
+                readOnly={readOnly}
               />
             </li>
           );
@@ -2235,7 +2378,19 @@ function BlankFields({
               <span aria-hidden className="pt-2">
                 (
               </span>
-              {b.short ? (
+              {readOnly ? (
+                /* 낸 답 — 칸이 아니라 글이다. 길어도 줄이 바뀌며 모두 보인다 */
+                <p
+                  id={id}
+                  className={
+                    b.short
+                      ? "flex h-11 w-24 items-center justify-center border-b border-exam-line px-2 text-[14px] tabular-nums text-exam-text"
+                      : "min-h-11 w-full whitespace-pre-wrap border-b border-exam-line px-2 py-2 text-[14px] leading-[1.7] text-exam-text [overflow-wrap:anywhere]"
+                  }
+                >
+                  {values[i]}
+                </p>
+              ) : b.short ? (
                 <input
                   id={id}
                   value={values[i]}
@@ -2258,10 +2413,12 @@ function BlankFields({
                 )
               </span>
             </div>
-            <DictateButton
-              label={b.label}
-              onText={(t) => put(i, b.short ? t : addSpoken(values[i], t))}
-            />
+            {!readOnly && (
+              <DictateButton
+                label={b.label}
+                onText={(t) => put(i, b.short ? t : addSpoken(values[i], t))}
+              />
+            )}
           </li>
         );
       })}
@@ -2281,11 +2438,14 @@ function DrawPad({
   value,
   onChange,
   label,
+  readOnly = false,
 }: {
   background: string;
   value: string;
   onChange: (v: string) => void;
   label: string;
+  /** 그린 것을 보기만 한다(답안 풀이) — 펜 · 지우개를 걷고 그림만 세운다 */
+  readOnly?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -2343,6 +2503,30 @@ function DrawPad({
     c.getContext("2d")!.clearRect(0, 0, SIZE, SIZE);
     onChange("");
   };
+
+  if (readOnly) {
+    return (
+      <div className="mt-2.5 pl-6">
+        <div
+          className="relative aspect-square w-full max-w-[20rem] overflow-hidden rounded-[2px] border border-exam-text/60 bg-white bg-cover bg-center"
+          style={background ? { backgroundImage: `url(${background})` } : undefined}
+        >
+          {value && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={value}
+              alt={`${label} 칸에 그린 그림`}
+              draggable={false}
+              className="absolute inset-0 h-full w-full"
+            />
+          )}
+        </div>
+        {!value && (
+          <p className="mt-2 font-sans text-[12px] text-exam-muted">그리지 않았습니다.</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mt-2.5 pl-6">

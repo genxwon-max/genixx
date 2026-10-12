@@ -25,14 +25,16 @@ import {
   type Wallet,
 } from "@/lib/ticketStore";
 import { CloseIcon } from "@/components/Icons";
-import { btnBox, btnBoxGhost } from "./ui";
+
+/** 접수한 진단의 자리 — 「내 진단」에서 과목을 응시하는 판이 선다(components/student/diag.tsx의 examPath와 같다) */
+const diagHref = (round: string, track: TrackId) => `/student/exams/${round}/${track}`;
 
 /**
- * 「접수하기」 탭의 카드 버튼 — 무엇을 누를 수 있는지는 여기 한 곳에서 정한다.
+ * 「진단 접수」 목록의 줄 끝 단추 — 무엇을 누를 수 있는지는 여기 한 곳에서 정한다.
  */
 export type ApplyAction =
-  /** 이미 접수한 평가 — 응시하기 탭으로 보낸다. tier는 어느 갈래로 접수했는지 */
-  | { kind: "done"; label: string; tier: UseTier }
+  /** 이미 접수한 진단 — 「내 진단」의 그 진단으로 보낸다. tier는 어느 갈래로 접수했는지 */
+  | { kind: "done"; label: string; tier: UseTier; href: string }
   /** 접수 창을 연다 — 갈래는 고르는 것이 아니라 응시권이 있는지가 정한다 */
   | { kind: "apply"; label: string }
   | { kind: "blocked"; label: string }
@@ -47,10 +49,12 @@ export function applyAction(
 ): ApplyAction {
   const used = usedInRound(wallet, round.id);
   if (used?.track === track) {
-    /* 무료로 접수해 둔 평가는 유료로 올릴 길을 남긴다 — 응시하기로만 보내면 결제할 자리가 없다 */
-    return used.tier === "free"
-      ? { kind: "done", label: "응시하기로 이동", tier: "free" }
-      : { kind: "done", label: "응시하기로 이동", tier: "paid" };
+    return {
+      kind: "done",
+      label: "내 진단에서 보기",
+      tier: used.tier === "free" ? "free" : "paid",
+      href: diagHref(round.id, track),
+    };
   }
   if (round.availability === "ended") return { kind: "blocked", label: "접수 마감" };
   if (round.availability === "soon") {
@@ -67,7 +71,7 @@ export function applyAction(
 }
 
 /**
- * 「접수하기」를 누른 뒤의 흐름 — 접수하고, 끝나면 응시하기 탭으로 갈 길을 연다.
+ * 「접수하기」를 누른 뒤의 흐름 — 접수하고, 끝나면 「내 진단」의 그 진단으로 갈 길을 연다.
  *
  * ── 갈래를 묻지 않는다 ──
  * 예전에는 이 창에서 「무료 진단 / 유료 진단」 두 칸을 세워 고르게 했다. 접수하려던 사람이
@@ -89,8 +93,8 @@ export function applyAction(
  * 그 창을 보려는 사람은 매번 목록을 띄우고 줄을 찾아 눌러야 하고, 띄워 놓은 창을 남에게
  * 건넬 수도, 새로 고쳐 되돌아올 수도 없다.
  *
- *   /exam/apply?apply=2026-3&track=e3      접수 확인
- *   /exam/apply?applied=2026-3&track=e3    접수 완료
+ *   /student/apply?apply=2026-3&track=e3      접수 확인
+ *   /student/apply?applied=2026-3&track=e3    접수 완료
  *
  * 응시 화면을 갈래마다 주소로 가른 것과 같은 까닭이다(/exam/session/…).
  */
@@ -107,7 +111,7 @@ const appliedHref = (pathname: string, round: string, track: TrackId) =>
  * 접수 확인·완료 창.
  *
  * ⚠ useSearchParams는 Suspense 경계 안에서 부른다. 경계 없이 부르면 빌드가 이 화면을
- *   정적으로 그리지 못한다. 경계는 이 창을 세우는 ExamCatalog가 두른다.
+ *   정적으로 그리지 못한다. 경계는 이 창을 세우는 접수 화면(StudentApply)이 두른다.
  */
 export function ApplyDialog({ studentId }: { studentId: string }) {
   const router = useRouter();
@@ -134,30 +138,7 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
     /* 완료 창에 적는 유형은 **접수 기록**에서 읽는다. 남은 응시권으로 되짚으면, 마지막 한
        매를 쓴 사람은 새로 고쳤을 때 무료로 접수한 것으로 읽힌다 */
     const tier = tierApplied(wallet, round.id, track) ?? (left > 0 ? "paid" : "free");
-
-    return (
-      <ExamDialog
-        title="접수 완료"
-        onClose={close}
-        footer={
-          <>
-            <button type="button" onClick={close} className={btnBoxGhost}>
-              닫기
-            </button>
-            <Link href="/exam" data-autofocus className={btnBox}>
-              응시하기로 이동
-            </Link>
-          </>
-        }
-      >
-        <Summary round={round} track={track} minutes={tier === "paid"} />
-        <p className="mt-4 text-[14px] leading-relaxed text-soft-ink">
-          {tier === "free"
-            ? `${tierOf("free").label}으로 접수했습니다. 응시하기 탭에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
-            : `${tierOf("paid").label}으로 접수했습니다. 응시하기 탭에서 과목을 하나씩 응시합니다.`}
-        </p>
-      </ExamDialog>
-    );
+    return <ApplyDoneView round={round} track={track} tier={tier} onClose={close} />;
   }
 
   if (applyId) {
@@ -176,95 +157,172 @@ export function ApplyDialog({ studentId }: { studentId: string }) {
       router.replace(appliedHref(pathname, round.id, track));
     };
 
-    const paid = tier === "paid";
-    const counts = subjects
-      .map((x) => `${x.short} ${(paid ? PAID_COUNT : FREE_COUNT)[x.id]}`)
-      .join(" · ");
-
     return (
-      <ExamDialog
-        title="접수 확인"
+      <ApplyConfirmView
+        round={round}
+        track={track}
+        tier={tier}
+        left={left}
         onClose={close}
-        footer={
-          <>
-            <button type="button" onClick={close} className={btnBoxGhost}>
-              취소
-            </button>
-            <button type="button" data-autofocus onClick={confirm} className={btnBox}>
-              접수하기
-            </button>
-          </>
-        }
-      >
-        {/* 과목과 시간은 유료 진단 창에만 — 아래 참고 */}
-        <Summary round={round} track={track} minutes={paid} />
-
-        {/**
-         * 접수되는 내용 — 문장으로 늘어놓지 않고 항목으로 세운다. 접수 확인은 읽는 글이
-         * 아니라 **맞는지 훑는 표**라, 무엇이 어떤 값인지 눈이 왼쪽에서 찾을 수 있어야 한다.
-         *
-         * ── 무료 진단은 짧게 ──
-         * 적을 것이 같지 않다. 유료 진단은 응시권 한 매가 나가고 과목마다 따로 들어가므로,
-         * 무엇이 몇 매나 어떻게 쓰이는지가 누르기 전에 보여야 한다. 무료 진단은 나가는 것이
-         * 없고 한 번에 이어서 푸는 시험 하나라, 같은 칸을 다 세우면 확인할 것이 없는 자리에
-         * 확인할 것을 늘어놓는 꼴이 된다. 유형과 문항 수만 둔다.
-         */}
-        <dl className="mt-5 border-y border-soft-line">
-          <Row t="응시 유형">
-            <span className="inline-flex items-center rounded-[2px] bg-soft-primary-soft px-2 py-0.5 text-[13px] font-bold text-soft-primary">
-              {tierOf(tier).label}
-            </span>
-          </Row>
-          <Row t="문항">
-            {counts}
-            <span className="ml-1.5 text-soft-muted">· 모두 {paid ? PAID_TOTAL : FREE_TOTAL}문항</span>
-          </Row>
-          {paid && (
-            <>
-              <Row t="응시 방식">과목마다 따로 응시</Row>
-              {/* 값은 응시권을 살 때 이미 나갔다. 그래도 적는 까닭은, 이 창이 「무엇을 얼마에
-                  접수하는가」를 마지막으로 훑는 자리이기 때문이다 — 여기서 값을 빼면 보호자가
-                  낸 값과 아이가 접수한 평가를 잇는 줄이 어디에도 없다 */}
-              <Row t="응시료">
-                {examDiscounted(round) && (
-                  <span className="mr-1.5 text-[12.5px] text-slate-400 line-through">
-                    {orderWon(round.price)}
-                  </span>
-                )}
-                {examFeeText(round)}
-                <span className="ml-1.5 text-soft-muted">· 결제한 응시권으로 냅니다</span>
-              </Row>
-              <Row t="응시권">
-                1매 사용
-                <span className="ml-1.5 text-soft-muted">· 쓰고 나면 {left - 1}매 남음</span>
-              </Row>
-            </>
-          )}
-        </dl>
-
-        {/* 왜 이 유형인지 — 고르는 자리를 없앤 만큼 까닭은 적어 두어야 한다 */}
-        <p className="mt-3.5 text-[13px] leading-relaxed text-soft-ink">
-          {paid
-            ? "결제한 응시권이 있어 유료 진단으로 접수합니다. 정밀 리포트와 전문가 해석으로 이어집니다."
-            : "결제 없이 응시하고 요약 리포트를 받습니다."}
-        </p>
-
-        <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-soft-muted">
-          <li>· 같은 기간에 열리는 진단은 하나만 접수할 수 있습니다.</li>
-          <li>· 학년은 접수한 뒤 바꿀 수 없습니다.</li>
-          {!paid && (
-            <li>
-              · 응시권은 보호자가 결제해 넘겨줍니다
-              {examFee(round) > 0 && ` — 이 진단은 ${examFeeText(round)}입니다`}. 결제한 뒤에
-              접수하면 유료 진단이 됩니다.
-            </li>
-          )}
-        </ul>
-      </ExamDialog>
+        onConfirm={confirm}
+      />
     );
   }
 
   return null;
+}
+
+/**
+ * 접수 완료 창 — 그리기만 한다.
+ *
+ * 무엇을 어느 유형으로 접수했는지는 넘겨받는다. 실제 화면은 ApplyDialog가 주소와 접수 기록에서
+ * 읽어 넘기고, 디자인 보기(/design/student/apply/done)는 값을 적어 넘긴다.
+ */
+export function ApplyDoneView({
+  round,
+  track,
+  tier,
+  onClose,
+  goHref,
+}: {
+  round: CatalogRound;
+  track: TrackId;
+  tier: UseTier;
+  onClose: () => void;
+  /** 「이 진단으로 가기」가 가는 곳. 넘기지 않으면 「내 진단」의 그 진단이다 */
+  goHref?: string;
+}) {
+  return (
+    <ExamDialog
+      title="접수 완료"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={dialogBtnQuiet}>
+            닫기
+          </button>
+          <Link href={goHref ?? diagHref(round.id, track)} data-autofocus className={dialogBtnGo}>
+            이 진단으로 가기
+          </Link>
+        </>
+      }
+    >
+      <Summary round={round} track={track} minutes={tier === "paid"} />
+      <p className="mt-4 text-[14px] leading-relaxed text-soft-ink">
+        {tier === "free"
+          ? `${tierOf("free").label}으로 접수했습니다. 「내 진단」에서 ${FREE_TOTAL}문항을 한 번에 이어서 응시합니다.`
+          : `${tierOf("paid").label}으로 접수했습니다. 「내 진단」에서 과목을 하나씩 응시합니다.`}
+      </p>
+    </ExamDialog>
+  );
+}
+
+/**
+ * 접수 확인 창 — 그리기만 한다.
+ *
+ * `left`는 지금 남은 응시권 매수다. 유료 진단 창이 「쓰고 나면 몇 매 남는지」를 적는 데 쓴다.
+ */
+export function ApplyConfirmView({
+  round,
+  track,
+  tier,
+  left,
+  onClose,
+  onConfirm,
+}: {
+  round: CatalogRound;
+  track: TrackId;
+  tier: UseTier;
+  left: number;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const paid = tier === "paid";
+  const counts = subjects
+    .map((x) => `${x.short} ${(paid ? PAID_COUNT : FREE_COUNT)[x.id]}`)
+    .join(" · ");
+
+  return (
+    <ExamDialog
+      title="접수 확인"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={dialogBtnQuiet}>
+            취소
+          </button>
+          <button type="button" data-autofocus onClick={onConfirm} className={dialogBtnGo}>
+            접수하기
+          </button>
+        </>
+      }
+    >
+      {/* 과목과 시간은 유료 진단 창에만 — 아래 참고 */}
+      <Summary round={round} track={track} minutes={paid} />
+
+      {/**
+       * 접수되는 내용 — 문장으로 늘어놓지 않고 항목으로 세운다. 접수 확인은 읽는 글이
+       * 아니라 **맞는지 훑는 표**라, 무엇이 어떤 값인지 눈이 왼쪽에서 찾을 수 있어야 한다.
+       *
+       * ── 무료 진단은 짧게 ──
+       * 적을 것이 같지 않다. 유료 진단은 응시권 한 매가 나가고 과목마다 따로 들어가므로,
+       * 무엇이 몇 매나 어떻게 쓰이는지가 누르기 전에 보여야 한다. 무료 진단은 나가는 것이
+       * 없고 한 번에 이어서 푸는 시험 하나라, 같은 칸을 다 세우면 확인할 것이 없는 자리에
+       * 확인할 것을 늘어놓는 꼴이 된다. 유형과 문항 수만 둔다.
+       */}
+      <dl className="mt-5 border-y border-soft-line">
+        <Row t="응시 유형">
+          <span className="inline-flex items-center rounded-full bg-soft-primary-soft px-2.5 py-0.5 text-[13px] font-bold text-soft-primary">
+            {tierOf(tier).label}
+          </span>
+        </Row>
+        <Row t="문항">
+          {counts}
+          <span className="ml-1.5 text-soft-muted">· 모두 {paid ? PAID_TOTAL : FREE_TOTAL}문항</span>
+        </Row>
+        {paid && (
+          <>
+            <Row t="응시 방식">과목마다 따로 응시</Row>
+            {/* 값은 응시권을 살 때 이미 나갔다. 그래도 적는 까닭은, 이 창이 「무엇을 얼마에
+                접수하는가」를 마지막으로 훑는 자리이기 때문이다 — 여기서 값을 빼면 보호자가
+                낸 값과 아이가 접수한 평가를 잇는 줄이 어디에도 없다 */}
+            <Row t="응시료">
+              {examDiscounted(round) && (
+                <span className="mr-1.5 text-[12.5px] text-slate-400 line-through">
+                  {orderWon(round.price)}
+                </span>
+              )}
+              {examFeeText(round)}
+              <span className="ml-1.5 text-soft-muted">· 결제한 응시권으로 냅니다</span>
+            </Row>
+            <Row t="응시권">
+              1매 사용
+              <span className="ml-1.5 text-soft-muted">· 쓰고 나면 {left - 1}매 남음</span>
+            </Row>
+          </>
+        )}
+      </dl>
+
+      {/* 왜 이 유형인지 — 고르는 자리를 없앤 만큼 까닭은 적어 두어야 한다 */}
+      <p className="mt-3.5 text-[13px] leading-relaxed text-soft-ink">
+        {paid
+          ? "결제한 응시권이 있어 유료 진단으로 접수합니다. 정밀 리포트와 전문가 해석으로 이어집니다."
+          : "결제 없이 응시하고 요약 리포트를 받습니다."}
+      </p>
+
+      <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-soft-muted">
+        <li>· 같은 기간에 열리는 진단은 하나만 접수할 수 있습니다.</li>
+        <li>· 학년은 접수한 뒤 바꿀 수 없습니다.</li>
+        {!paid && (
+          <li>
+            · 응시권은 보호자가 결제해 넘겨줍니다
+            {examFee(round) > 0 && ` — 이 진단은 ${examFeeText(round)}입니다`}. 결제한 뒤에
+            접수하면 유료 진단이 됩니다.
+          </li>
+        )}
+      </ul>
+    </ExamDialog>
+  );
 }
 
 /** 접수 내용 한 줄 — 왼쪽에 무엇, 오른쪽에 값 */
@@ -312,20 +370,22 @@ function Summary({
   );
 }
 
+/** 창 발치의 단추 — 회원 존의 다른 확인 창(components/account/ConfirmDialog.tsx)과 같은 크기 */
+const dialogBtnGo =
+  "inline-flex min-h-[2.875rem] items-center justify-center rounded-full bg-soft-primary px-7 text-[15px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
+const dialogBtnQuiet =
+  "inline-flex min-h-[2.875rem] items-center justify-center rounded-full border border-soft-line bg-white px-7 text-[15px] font-semibold text-soft-ink transition-colors hover:bg-slate-50";
+
 /**
- * 응시 존 확인 창.
+ * 접수 확인 창.
  *
- * ── 창처럼 생겼어야 한다 ──
- * 예전에는 흰 상자 안에 작은 라벨 · 제목 · 본문 · 단추가 차례로 얹혀 있을 뿐이었다.
- * 테두리 하나가 전부라 화면 위에 글 뭉치가 떠 있는 것처럼 보이고, 어디까지가 이 창인지도
- * 눈으로 끊기지 않는다. 창이면 창의 부분을 갖춘다 —
- *
- *   머리띠  제목과 ✕. 같은 색 띠가 「여기부터 이 창」이라고 말한다
- *   본문    길면 여기만 구른다. 창이 화면 밖으로 자라지 않는다
- *   발치    단추가 서는 띠. 배경을 한 톤 깔아 본문과 가른다
- *
- * 이것은 공지 판(components/site/NoticePopup.tsx)이 쓰는 짜임 그대로다. 한 제품 안에서
+ * 접수가 학생 대시보드로 옮겨 오면서 창도 그 자리의 모양을 따른다 — 둥근 흰 판에 제목,
+ * 본문, 알약 단추 둘. 응시 존에 있을 때는 색 머리띠를 두른 각진 창이었다. 한 껍데기 안에서
  * 창이 두 가지 모양이면 둘 중 하나는 남의 것처럼 보인다.
+ *
+ *   머리    제목과 ✕
+ *   본문    길면 여기만 스크롤된다. 창이 화면 밖으로 자라지 않는다
+ *   발치    단추 둘 — 좁은 화면에서는 세로로 쌓고, 하려는 일을 위에 둔다
  *
  * 좁은 화면에서는 아래에 붙여 세운다(items-end). 손이 닿는 곳이 화면 아래쪽이라, 가운데
  * 띄운 창은 단추까지 손을 올려야 한다.
@@ -343,7 +403,7 @@ function ExamDialog({
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** 발치 띠에 서는 단추들 */
+  /** 발치에 서는 단추들 */
   footer: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -364,7 +424,7 @@ function ExamDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-soft-ink/45 p-0 sm:items-center sm:p-5"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-soft-ink/40 p-0 sm:items-center sm:p-5"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -390,27 +450,27 @@ function ExamDialog({
             first.focus();
           }
         }}
-        className="w-full max-w-[30rem] overflow-hidden rounded-t-[10px] bg-white shadow-float sm:rounded-[var(--ui-r-card)]"
+        className="w-full max-w-[30rem] overflow-hidden rounded-t-[20px] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.25)] sm:rounded-[16px]"
       >
-        <div className="flex items-center justify-between gap-3 bg-soft-primary py-2.5 pl-6 pr-2.5 text-white">
-          <h2 id="exam-dialog-title" className="text-[15px] font-bold tracking-tight">
+        <div className="flex items-center justify-between gap-3 pl-6 pr-3.5 pt-5 sm:pl-7 sm:pr-4">
+          <h2 id="exam-dialog-title" className="text-[18px] font-bold text-soft-ink">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="창 닫기"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[2px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-soft-muted transition-colors hover:bg-slate-100 hover:text-soft-ink"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="max-h-[calc(100dvh-16rem)] overflow-y-auto px-6 py-6 sm:max-h-[60vh]">
+        <div className="max-h-[calc(100dvh-16rem)] overflow-y-auto px-6 pb-1 pt-4 sm:max-h-[60vh] sm:px-7">
           {children}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-soft-line bg-slate-50 px-6 py-4">
+        <div className="flex flex-col-reverse gap-2.5 px-6 pb-6 pt-5 sm:flex-row sm:justify-end sm:px-7 sm:pb-7">
           {footer}
         </div>
       </div>

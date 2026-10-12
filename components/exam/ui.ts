@@ -54,7 +54,7 @@ export const td = "border-b border-slate-100 px-3 py-3.5 text-center text-soft-m
 export const tdStrong =
   "border-b border-slate-100 px-3 py-3.5 text-center font-semibold text-soft-ink";
 
-/* ── 각진 버튼 — 응시 첫 화면(/exam)과 그 확인 창 ──
+/* ── 각진 버튼 — 응시 존의 첫 화면(/exam 진단 둘러보기) ──
    공공 서비스 접수 화면처럼 모서리를 거의 세운다. 알약 모양(rounded-[var(--ui-r-pill)])은 홍보 화면의
    말투라, 시험을 고르는 자리에서는 가볍게 읽힌다. 카드만 둥글게 둔다. */
 export const btnBox =

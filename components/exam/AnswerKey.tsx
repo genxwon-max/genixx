@@ -1,227 +1,200 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { useSession } from "@/lib/authStore";
 import {
-  answerText,
+  answerCsv,
+  answerCsvHead,
+  answerSubjects,
+  linesOf,
+  tally,
+  type Line,
+} from "@/lib/answerKey";
+import { useMediaUrl } from "@/lib/answerMedia";
+import { saveAnswerSheetPdf } from "@/lib/answerSheetPdf";
+import { downloadCsv } from "@/lib/csv";
+import {
+  answerKind,
+  answerParts,
+  assessment,
   autoGraded,
-  tierQuestions,
   keyText,
-  markOf,
+  markLabel,
+  pointText,
   shortAnswer,
+  splitUpload,
   subjects,
+  type AnswerPart,
+  type Grades,
   type Mark,
-  type Question,
   type SubjectId,
 } from "@/lib/exam";
-import { getRecord, useExamVersion, type ExamRecord } from "@/lib/examStore";
-import { GoApply, PageTitle, RegTable, useRegistrations, type Registration } from "./Registrations";
-import StudentOnly from "./StudentOnly";
-import { btnGhost, btnPrimary, eyebrow } from "./ui";
+import { evalName } from "@/lib/examCatalog";
+import type { ExamRecord } from "@/lib/examStore";
+import AnswerReview, { type ReviewAt } from "./AnswerReview";
+import type { Registration } from "./Registrations";
+import { btnPrimary, btnSmGhost } from "./ui";
+
+export { answerSubjects, answerTotals } from "@/lib/answerKey";
+export type { ReviewAt } from "./AnswerReview";
 
 /**
- * 정답과 해설 탭 (/exam/answers).
+ * 정답과 해설 — 정오표.
  *
- * 접수한 평가 표를 펴고, **최종 제출을 마친 평가만** 정답을 연다. 풀기 전에 정답이 보이면
- * 시험이 되지 않는다. 제출을 마쳤으면 첫 평가를 펼친 채로 연다 — 들어오자마자 정오표가
- * 보여야 「쉽게 본다」.
+ * 학생 대시보드의 「정답과 해설」이 이 조각으로 진단 한 건의 답을 편다
+ * (/student/answers/2026-3/e4 — components/student/StudentAnswers.tsx). 머리(제목)는 그
+ * 화면이 세운다.
  *
- * 펼친 평가는 두 층이다.
- *   정오표      문항마다 정답 · 내 답 · ○✕를 한 줄씩. 종이로 뽑아 볼 수 있다
- *   문항별 풀이  문제와 보기, 내 답과 정답, 서술형의 예시 답과 작성 안내
+ * **최종 제출을 마친 진단만** 정답을 연다. 풀기 전에 정답이 보이면 진단이 되지 않는다. 최종
+ * 제출한 그날부터 열린다 — 결과 발행을 기다리지 않는다.
  *
- * 서술형은 정답이 하나로 정해지지 않아 전문가가 채점하므로 정오표에 「채점 중」으로 둔다.
+ * 이 화면에는 **정오표만** 선다. 예전에는 표 아래에 문항별 풀이를 죽 늘어놓았다. 문제를 다시
+ * 보는 일은 「답안 풀이 보기」 창이 맡는다 — 응시 화면과 같은 틀에 채점한 표시를 얹은 창이다
+ * (./AnswerReview.tsx).
  *
- * 응시 기록은 평가마다 한 벌이라, 줄마다 그 평가의 기록으로 제출 여부를 보고 정오표를 편다.
+ *   정오표      문항마다 정답 · 내 답 · 정오를 한 줄씩
+ *   답안 풀이   단추나 문항 번호를 누르면 열리는 창
+ *   내려받기    PDF · CSV · 인쇄 — 본 과목을 모두 담는다
  *
- * ⚠ 문항 자료(lib/examQuestions.ts)에는 해설 문장이 아직 없다. 없는 해설을 지어 넣지
- *   않고, 해설 칸이 생기면 문항별 풀이에 붙인다.
+ * ── 정오는 다섯 가지다 ──
+ *   정답 ○ · 오답 ✕  기계로 채점하는 문항(객관식 · 단답형)은 최종 제출하면 바로 난다
+ *   미응답 ✕         답하지 않았다
+ *   채점 중          서술형 · 논술형 · 사진 — 정답이 하나로 정해지지 않아 전문가가 채점한다
+ *   부분 정답 △      전문가가 만점보다 적은 점수를 준 문항. 받은 점수를 함께 적는다
+ * 전문가의 채점이 끝난 문항은 「채점 중」 대신 그 점수를 따라 정답 · 부분 정답 · 오답으로 바뀐다.
+ * 채점 결과(grades)는 부르는 쪽이 넘긴다 — 운영 콘솔의 「회원 채점」이 매기는 값이다.
+ *
+ * ── 쓴 답은 줄이지 않는다 ──
+ * 서술형 · 논술형은 쓴 글을 **모두** 적는다. 줄 수를 자르거나 칸 안에서 스크롤하게 두면
+ * 아이는 자기가 쓴 글을 다 보려고 칸마다 손을 대야 한다. 사진으로 낸 답은 그 사진을, 그림
+ * 칸에 그린 답은 그 그림을 표 안에 그대로 보인다.
  */
-export default function AnswerKey() {
-  const session = useSession();
-  const studentId = session?.studentId ?? "demo";
-  /* 줄마다 getRecord로 읽는다 — 기록이 바뀌면 다시 그리도록 구독만 건다 */
-  useExamVersion();
-  const rows = useRegistrations(studentId);
-  /* undefined — 아직 아무것도 누르지 않음. 그때는 제출을 마친 첫 평가를 펼쳐 둔다 */
-  const [chosen, setChosen] = useState<string | null | undefined>(undefined);
-
-  if (session && session.role !== "student") return <StudentOnly role={session.role} />;
-
-  const key = (r: Registration) => `${r.round}-${r.track}`;
-  const recordOf = (r: Registration) => getRecord(studentId, { round: r.round, track: r.track });
-  const firstDone = rows.find((r) => recordOf(r).finalized);
-  const open = chosen === undefined ? (firstDone ? key(firstDone) : null) : chosen;
-  const picked = rows.find((r) => key(r) === open) ?? null;
-  const pickedRecord = picked ? recordOf(picked) : null;
-
-  return (
-    <div>
-      <PageTitle>정답과 해설</PageTitle>
-      <div className="mt-10">
-        <RegTable
-          caption="정답과 해설을 볼 수 있는 진단"
-          rows={rows}
-          lastHead="정답"
-          renderLast={(row) =>
-            recordOf(row).finalized ? (
-              <button
-                type="button"
-                aria-expanded={open === key(row)}
-                onClick={() => setChosen(open === key(row) ? null : key(row))}
-                className={`inline-flex items-center justify-center rounded-[2px] px-4 py-2 text-[13px] font-semibold transition-colors ${
-                  open === key(row)
-                    ? "border border-soft-line bg-white text-soft-ink hover:bg-slate-50"
-                    : "bg-soft-primary text-white hover:bg-soft-primary-dark"
-                }`}
-              >
-                {open === key(row) ? "닫기" : "보기"}
-              </button>
-            ) : (
-              <span>응시 완료 후 공개</span>
-            )
-          }
-        />
-      </div>
-      {rows.length === 0 && <GoApply />}
-
-      {picked && pickedRecord?.finalized && (
-        <Sheet key={key(picked)} row={picked} record={pickedRecord} student={session?.name ?? ""} />
-      )}
-    </div>
-  );
-}
 
 /* ───────────────────────── 정오 모양 ───────────────────────── */
 
-const MARK: Record<Mark, { sign: string; label: string; tone: string }> = {
-  right: { sign: "○", label: "맞음", tone: "text-emerald-700" },
-  wrong: { sign: "✕", label: "틀림", tone: "text-rose-600" },
-  empty: { sign: "✕", label: "답 안 함", tone: "text-rose-600" },
-  pending: { sign: "", label: "채점 중", tone: "text-soft-muted" },
+const MARK: Record<Mark, { sign: string; tone: string }> = {
+  right: { sign: "○", tone: "text-emerald-700" },
+  partial: { sign: "△", tone: "text-amber-600" },
+  wrong: { sign: "✕", tone: "text-rose-600" },
+  empty: { sign: "✕", tone: "text-rose-600" },
+  pending: { sign: "", tone: "text-soft-muted" },
 };
 
-type Line = { q: Question; no: number; value: number | string | undefined; mark: Mark };
+const subjectName = (id: SubjectId) => subjects.find((s) => s.id === id)?.short ?? "";
 
-/**
- * 한 과목의 정오표 줄 — 응시 때와 같은 차례 · 같은 번호.
- *
- * 갈래가 연 문항만 싣는다. 무료 진단을 본 아이의 정오표에 풀지 않은 문항을 「답 안 함」으로
- * 스무 줄 세우면, 다 푼 아이가 자기 시험을 망친 것으로 읽는다.
- */
-function linesOf(subject: SubjectId, record: ExamRecord): Line[] {
-  const answers = record.subjects[subject].answers;
-  return tierQuestions(record.tier, subject, record.setSubject).map((q, i) => ({
-    q,
-    no: i + 1,
-    value: answers[q.id],
-    mark: markOf(q, answers[q.id]),
-  }));
-}
+/* ───────────────────────── 진단 한 건의 정오표 ───────────────────────── */
 
-function tally(lines: Line[]) {
-  const n = (m: Mark) => lines.filter((l) => l.mark === m).length;
-  return { right: n("right"), wrong: n("wrong"), empty: n("empty"), pending: n("pending") };
-}
-
-const anchor = (subject: SubjectId, no: number) => `answer-${subject}-${no}`;
-
-/* ───────────────────────── 펼친 평가 ───────────────────────── */
-
-function Sheet({
+export function AnswerSheet({
   row,
   record,
+  grades,
   student,
+  submitted,
+  initialSubject,
+  coach: coachFrom,
+  review: reviewFrom,
 }: {
   row: Registration;
   record: ExamRecord;
+  /**
+   * 전문가가 매긴 점수 — 채점이 끝난 문항만 들어 있다. 넘기면 그 문항은 「채점 중」 대신
+   * 점수를 따라 정답 · 부분 정답 · 오답으로 적힌다.
+   */
+  grades?: Grades;
+  /** 내려받는 파일과 종이 머리에 적는 이름 */
   student: string;
+  /** 최종 제출한 날 — 「2026.09.12」 */
+  submitted: string;
+  /** 처음 펴 둘 과목 — 넘기지 않으면 첫 과목이다 */
+  initialSubject?: SubjectId;
+  /**
+   * 「맞춤 학습」 창을 밖에서 여닫을 때. 디자인 보기는 창이 열린 화면과 닫힌 화면을 주소로
+   * 가른다(/design/student/answers/…/coach). 넘기지 않으면 이 조각이 스스로 여닫는다.
+   */
+  coach?: { open: boolean; onOpen: () => void; onClose: () => void };
+  /**
+   * 「답안 풀이 보기」 창을 밖에서 여닫을 때 — 디자인 보기가 같은 까닭으로 쓴다
+   * (/design/student/answers/…/review). at이 있으면 그 문항을 편 채로 창이 떠 있다.
+   */
+  review?: { at: ReviewAt | null; onOpen: (at: ReviewAt) => void; onClose: () => void };
 }) {
-  const available = subjects.filter(
-    (s) => !row.info || row.info.subjects.some((x) => x.id === s.id),
+  const available = answerSubjects(row);
+  const [subject, setSubject] = useState<SubjectId>(
+    reviewFrom?.at?.subject ?? initialSubject ?? available[0]?.id ?? "korean",
   );
-  const [subject, setSubject] = useState<SubjectId>(available[0]?.id ?? "korean");
-  const [coach, setCoach] = useState(false);
-  const lines = linesOf(subject, record);
+  const [coachOwn, setCoachOwn] = useState(false);
+  const [reviewOwn, setReviewOwn] = useState<ReviewAt | null>(null);
+  const coach = coachFrom ? coachFrom.open : coachOwn;
+  const openCoach = coachFrom ? coachFrom.onOpen : () => setCoachOwn(true);
+  const closeCoach = coachFrom ? coachFrom.onClose : () => setCoachOwn(false);
+  const reviewAt = reviewFrom ? reviewFrom.at : reviewOwn;
+  const openReview = reviewFrom ? reviewFrom.onOpen : setReviewOwn;
+  const closeReview = reviewFrom ? reviewFrom.onClose : () => setReviewOwn(null);
+  const lines = linesOf(subject, record, grades);
   const count = tally(lines);
-  const graded = lines.length - count.pending;
-  const submitted = record.finalizedAt
-    ? new Date(record.finalizedAt).toLocaleDateString("ko-KR")
-    : "-";
 
   return (
-    <section className="mt-12 pb-24" aria-labelledby="answer-sheet">
-      {/* 머리는 결과 리포트(ResultView)와 같은 모양으로 둔다 — 두 탭에서 펼치는 것이 같은
-          평가의 다른 면이라, 펼친 뒤의 화면이 서로 남처럼 보이면 안 된다 */}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
-        <div>
-          <p className={eyebrow}>정답과 해설</p>
-          <h2
-            id="answer-sheet"
-            className="mt-2.5 text-[24px] font-bold tracking-tight text-soft-ink md:text-[28px]"
-          >
-            {row.title}
-          </h2>
-          <p className="mt-2 text-[12px] text-soft-muted">
-            최종 제출 {submitted} · 과목 {available.length}개
-          </p>
+    <section className="mt-7 pb-24" aria-label="정답과 해설">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div role="group" aria-label="과목" className="flex flex-wrap gap-2">
+          {available.map((s) => {
+            const on = s.id === subject;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setSubject(s.id)}
+                className={`rounded-full border px-5 py-2 text-[14px] transition-colors ${
+                  on
+                    ? "border-soft-primary bg-soft-primary font-semibold text-white"
+                    : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
+                }`}
+              >
+                {s.short}
+              </button>
+            );
+          })}
         </div>
-        <PrintButton
-          title={row.title}
-          student={student}
-          submitted={submitted}
-          record={record}
-          subjects={available.map((s) => s.id)}
-        />
-      </div>
-
-      <div role="group" aria-label="과목" className="mt-7 flex flex-wrap gap-2">
-        {available.map((s) => {
-          const on = s.id === subject;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setSubject(s.id)}
-              className={`rounded-[2px] border px-5 py-2.5 text-[14px] transition-colors ${
-                on
-                  ? "border-soft-primary bg-soft-primary font-semibold text-white"
-                  : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
-              }`}
-            >
-              {s.short}
-            </button>
-          );
-        })}
+        <button
+          type="button"
+          onClick={() => openReview({ subject, no: 1 })}
+          className={`no-print ${btnPrimary}`}
+        >
+          답안 풀이 보기
+        </button>
       </div>
 
       {/* ── 정오표 ── */}
-      <div className="mt-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-[17px] font-bold text-soft-ink">정오표</h3>
-          <p className="text-[13px] text-soft-muted">번호를 누르면 아래 문항 풀이로 갑니다</p>
+      <div className="mt-7">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 className="text-[17px] font-bold text-soft-ink">{subjectName(subject)} 정오표</h2>
+          <AnswerDownloads
+            row={row}
+            record={record}
+            grades={grades}
+            student={student}
+            submitted={submitted}
+          />
         </div>
-        <Tally count={count} graded={graded} className="mt-3" />
-        <MarkTable lines={lines} subject={subject} linked className="mt-3" />
+        <Tally count={count} total={lines.length} className="mt-3" />
+        <MarkTable
+          lines={lines}
+          onOpen={(no) => openReview({ subject, no })}
+          className="mt-3"
+        />
+        <p className="mt-3 text-[13px] leading-[1.75] text-soft-muted">
+          문항 번호를 누르면 그 문항의 답안 풀이가 열립니다. 서술형 · 논술형 · 사진 답안은 전문가가
+          채점하며, 채점이 끝나기 전에는 「채점 중」으로 적습니다. 만점보다 적게 받은 문항은 「부분
+          정답」(△)으로 적고 받은 점수를 함께 보여 줍니다.
+        </p>
       </div>
 
-      {/* ── 문항별 풀이 ── */}
-      <h3 className="mt-14 border-b border-soft-line pb-3 text-[17px] font-bold text-soft-ink">
-        문항별 풀이
-      </h3>
-      <ol className="mt-5 space-y-4">
-        {lines.map((l) => (
-          <QuestionReview key={l.q.id} line={l} subject={subject} />
-        ))}
-      </ol>
-
-      {/* ── 맞춤 학습 — 오른쪽 아래에 떠 있다 ── */}
+      {/* ── 맞춤 학습 — 오른쪽 아래에 떠 있다. 좁은 화면에서는 아래 메뉴 줄 위로 올린다 ── */}
       <button
         type="button"
-        onClick={() => setCoach(true)}
-        className="no-print fixed right-5 bottom-5 z-40 inline-flex items-center gap-2 rounded-[2px] bg-soft-primary px-6 py-3.5 text-[15px] font-bold text-white shadow-float transition-colors hover:bg-soft-primary-dark md:right-8 md:bottom-8"
+        onClick={openCoach}
+        className="no-print fixed bottom-[5.25rem] right-5 z-10 inline-flex items-center gap-2 rounded-full bg-soft-primary px-6 py-3.5 text-[15px] font-bold text-white shadow-float transition-colors hover:bg-soft-primary-dark md:right-8 lg:bottom-8"
       >
         <svg aria-hidden viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none">
           <path
@@ -237,20 +210,25 @@ function Sheet({
       {coach && (
         <CoachDialog
           record={record}
+          grades={grades}
           subjects={available.map((s) => s.id)}
           onGo={(s, no) => {
-            setCoach(false);
+            /* 창을 주소로 여닫는 디자인 보기에서는 답안 풀이 주소로 가는 것이 곧 이 창을 닫는 일이다 */
+            if (!reviewFrom) closeCoach();
             setSubject(s);
-            /* 과목을 바꾼 뒤 그려진 문항으로 내려간다 */
-            window.setTimeout(
-              () =>
-                document
-                  .getElementById(anchor(s, no))
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-              50,
-            );
+            openReview({ subject: s, no });
           }}
-          onClose={() => setCoach(false)}
+          onClose={closeCoach}
+        />
+      )}
+      {reviewAt && (
+        <AnswerReview
+          key={`${reviewAt.subject}-${reviewAt.no}`}
+          row={row}
+          record={record}
+          grades={grades}
+          at={reviewAt}
+          onClose={closeReview}
         />
       )}
     </section>
@@ -261,59 +239,75 @@ function Sheet({
 
 function Tally({
   count,
-  graded,
+  total,
   className = "",
 }: {
   count: ReturnType<typeof tally>;
-  graded: number;
+  /** 이 과목의 문항 수 */
+  total: number;
   className?: string;
 }) {
   return (
     <p
-      className={`flex flex-wrap gap-x-5 gap-y-1 border-y border-soft-line bg-white px-4 py-3 text-[14px] text-soft-ink ${className}`}
+      className={`flex flex-wrap gap-x-5 gap-y-1 rounded-[12px] border border-soft-line bg-white px-4 py-3 text-[14px] text-soft-ink ${className}`}
     >
       <span>
-        채점한 {graded}문항 중 <b className="tabular-nums text-emerald-700">{count.right}문항</b>{" "}
-        맞음
+        채점한 {total - count.pending}문항 중{" "}
+        <b className="tabular-nums text-emerald-700">정답 {count.right}문항</b>
+      </span>
+      {count.partial > 0 && (
+        <span className="text-amber-600">
+          부분 정답 <b className="tabular-nums">{count.partial}</b>
+        </span>
+      )}
+      <span className="text-rose-600">
+        오답 <b className="tabular-nums">{count.wrong}</b>
       </span>
       <span className="text-rose-600">
-        틀림 <b className="tabular-nums">{count.wrong}</b>
-      </span>
-      <span className="text-rose-600">
-        답 안 함 <b className="tabular-nums">{count.empty}</b>
+        미응답 <b className="tabular-nums">{count.empty}</b>
       </span>
       {count.pending > 0 && (
         <span className="text-soft-muted">
-          서술형 <b className="tabular-nums">{count.pending}</b>문항은 전문가가 채점합니다
+          채점 중 <b className="tabular-nums">{count.pending}</b>
         </span>
       )}
     </p>
   );
 }
 
+/**
+ * 정오표 — 화면과 종이(인쇄 · PDF)가 같은 표를 쓴다.
+ *
+ * 폭은 칸마다 정해 둔다(table-fixed). 「내 답」에 긴 글과 사진이 들어가도 표가 옆으로 밀리지
+ * 않고 그 칸 안에서 줄이 바뀐다 — 좁은 화면에서도 표를 옆으로 미는 일이 없다.
+ */
 function MarkTable({
   lines,
-  subject,
-  linked = false,
+  onOpen,
+  paper = false,
   className = "",
 }: {
   lines: Line[];
-  subject: SubjectId;
-  linked?: boolean;
+  /** 문항 번호를 눌렀을 때 — 그 문항의 답안 풀이를 연다. 종이에는 없다 */
+  onOpen?: (no: number) => void;
+  /** 인쇄 · PDF용 — 색을 줄이고 줄이 쪽 사이에서 갈리지 않게 한다 */
+  paper?: boolean;
   className?: string;
 }) {
   const th =
-    "border border-soft-line bg-slate-50 px-3 py-2.5 text-center font-semibold text-soft-ink";
-  const td = "border border-soft-line px-3 py-2.5 text-center";
+    "border border-soft-line bg-slate-50 px-2 py-2.5 text-center font-semibold text-soft-ink sm:px-3";
+  const td = "border border-soft-line px-2 py-2.5 text-center align-middle sm:px-3";
   return (
-    <div className={`overflow-x-auto ${className}`}>
-      <table className="w-full min-w-[480px] border-collapse bg-white text-[14px]">
+    /* relative — 정오 칸의 읽기 전용 글(sr-only)은 absolute라, 기준이 이 틀이 아니면 문서 맨 위를
+       기준으로 놓여 페이지 전체에 스크롤을 만든다 */
+    <div className={`relative ${className}`}>
+      <table className="w-full table-fixed border-collapse bg-white text-[14px]">
         <caption className="sr-only">정오표</caption>
         <colgroup>
-          <col className="w-[14%]" />
-          <col className="w-[34%]" />
-          <col className="w-[34%]" />
-          <col className="w-[18%]" />
+          <col className="w-[13%] sm:w-[10%]" />
+          <col className="w-[24%] sm:w-[20%]" />
+          <col />
+          <col className="w-[19%] sm:w-[15%]" />
         </colgroup>
         <thead>
           <tr>
@@ -332,45 +326,53 @@ function MarkTable({
           </tr>
         </thead>
         <tbody>
-          {lines.map(({ q, no, value, mark }) => {
+          {lines.map((line) => {
+            const { q, no, mark, points, max } = line;
             const m = MARK[mark];
             const key = keyText(q);
-            const mine = shortAnswer(q, value);
             return (
-              <tr key={q.id}>
+              <tr key={q.id} className={paper ? "break-inside-avoid" : undefined}>
                 <th scope="row" className={`${td} font-bold tabular-nums text-soft-ink`}>
-                  {linked ? (
-                    <a
-                      href={`#${anchor(subject, no)}`}
-                      className="underline-offset-4 hover:text-soft-primary hover:underline"
+                  {onOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpen(no)}
+                      aria-label={`문항 ${no} 답안 풀이 보기`}
+                      className="rounded px-1.5 py-0.5 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-soft-primary hover:decoration-soft-primary"
                     >
                       {no}
-                    </a>
+                    </button>
                   ) : (
                     no
                   )}
                 </th>
                 <td className={`${td} tabular-nums text-soft-ink`}>
                   {key || (
-                    <span className="text-[13px] text-soft-muted">서술형 · 예시 답 참고</span>
+                    /* 정답이 하나로 정해지지 않는 문항 — 유형과 누가 채점하는지를 적는다 */
+                    <span className="block text-[12.5px] leading-[1.5] text-soft-muted">
+                      {answerKind(q)}
+                      <br />
+                      전문가 채점
+                    </span>
                   )}
                 </td>
-                <td className={`${td} tabular-nums text-soft-ink`}>
-                  {mine || <span className="text-soft-muted">-</span>}
+                <td className={`${td} text-soft-ink`}>
+                  <AnswerCell q={q} value={line.value} />
                 </td>
                 <td className={`${td} font-bold ${m.tone}`}>
-                  {m.sign ? (
-                    <>
-                      <span aria-hidden className="text-[17px] leading-none">
+                  <span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1.5">
+                    {m.sign && (
+                      <span aria-hidden className="text-[16px] leading-none">
                         {m.sign}
                       </span>
-                      <span className="sr-only">{m.label}</span>
-                      {mark === "empty" && (
-                        <span className="ml-1 text-[12px] font-semibold">답 안 함</span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-[13px] font-semibold">{m.label}</span>
+                    )}
+                    <span className="whitespace-nowrap text-[13px]">{markLabel[mark]}</span>
+                  </span>
+                  {/* 부분 정답은 몇 점을 받았는지 함께 적는다 — 세모만으로는 얼마나 모자란지 모른다 */}
+                  {mark === "partial" && points !== null && (
+                    <span className="mt-0.5 block whitespace-nowrap text-[12px] font-semibold tabular-nums">
+                      {pointText(points)} / {max}점
+                    </span>
                   )}
                 </td>
               </tr>
@@ -382,35 +384,134 @@ function MarkTable({
   );
 }
 
-/* ───────────────────────── 인쇄 ───────────────────────── */
+const dash = <span className="text-soft-muted">-</span>;
+
+/**
+ * 「내 답」 칸.
+ *
+ * 기계로 채점하는 문항은 짧은 답(②, 12개)을 가운데에, 전문가가 채점하는 문항은 쓴 글을 왼쪽에
+ * 맞춰 **모두** 적는다. 사진과 그림은 그대로 보인다.
+ *
+ * 운영 콘솔의 채점 화면도 「제출한 답」 칸에 이것을 쓴다 — 채점자가 보는 답과 아이가 정오표에서
+ * 보는 답이 같은 모양이어야 한다.
+ */
+export function AnswerCell({
+  q,
+  value,
+}: {
+  q: Line["q"];
+  value: number | string | undefined;
+}) {
+  if (q.upload) return <PhotoAnswer value={value} />;
+  if (autoGraded(q)) {
+    const mine = shortAnswer(q, value);
+    return mine ? <span className="tabular-nums">{mine}</span> : dash;
+  }
+  const parts = answerParts(q, value).filter((p) => p.text || p.drawing || !p.optional);
+  return parts.length > 0 ? <WrittenAnswer parts={parts} /> : dash;
+}
+
+/** 쓴 글 — 칸 이름이 있으면 이름을 위에 적고, 줄 수를 자르지 않는다 */
+function WrittenAnswer({ parts }: { parts: AnswerPart[] }) {
+  return (
+    <div className="space-y-2.5 text-left text-[13.5px] leading-[1.75] [overflow-wrap:anywhere]">
+      {parts.map((p, i) => (
+        <div key={i}>
+          {p.label && <p className="text-[12px] font-bold text-soft-muted">{p.label}</p>}
+          {p.drawing ? (
+            <div
+              className="relative mt-1 aspect-square w-full max-w-[11rem] overflow-hidden rounded-[8px] border border-soft-line bg-white bg-cover bg-center"
+              style={
+                p.drawing.background
+                  ? { backgroundImage: `url(${p.drawing.background})` }
+                  : undefined
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.drawing.strokes}
+                alt={`${p.label || "그림 칸"}에 그린 그림`}
+                className="absolute inset-0 h-full w-full"
+              />
+            </div>
+          ) : p.text ? (
+            <p className="whitespace-pre-line">{p.text}</p>
+          ) : (
+            <p className="text-soft-muted">쓰지 않았습니다</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 사진으로 낸 답 — 올린 사진을 표 안에 그대로 보인다 */
+function PhotoAnswer({ value }: { value: number | string | undefined }) {
+  const saved = splitUpload(value);
+  const { url, missing } = useMediaUrl(saved?.key ?? null);
+  if (!saved) return dash;
+  if (!url) {
+    return (
+      <span className="text-[12.5px] leading-[1.5] text-soft-muted">
+        {missing ? "올린 사진을 이 기기에서 찾을 수 없습니다" : "사진을 불러오는 중입니다"}
+      </span>
+    );
+  }
+  return (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={url}
+      alt="올린 사진"
+      className="mx-auto max-h-64 w-auto max-w-full rounded-[8px] border border-soft-line"
+    />
+  );
+}
+
+/* ───────────────────────── 내려받기 · 인쇄 ───────────────────────── */
 
 const subscribeNothing = () => () => {};
 
 /**
- * 정오표 인쇄.
+ * 정오표 내려받기 — PDF · CSV · 인쇄. 과목 단추와 상관없이 **본 과목을 모두** 담는다.
  *
- * 화면의 정오표는 탭 · 표 · 풀이 사이에 끼어 있어 그대로 찍으면 종이가 지저분해진다.
- * 인쇄할 때만 body 바로 밑에 **종이 전용 정오표**를 세우고, 그것만 남기고 모두 감춘다
- * (globals.css의 `.answer-sheet-print`). 과목마다 한 장씩 넘긴다.
+ *   PDF   누르면 바로 파일이 내려받아진다. 과목마다 새 쪽에서 시작한다(lib/answerSheetPdf)
+ *   CSV   표 프로그램에서 여는 파일. 사진과 그림은 담지 못해 제출했다는 말만 적는다
+ *   인쇄  브라우저 인쇄 창
+ *
+ * 화면의 정오표는 과목 단추와 안내 글 사이에 끼어 있어 그대로 찍으면 종이가 지저분해진다.
+ * 그래서 body 바로 밑에 **종이 전용 정오표**를 세워 두고 PDF와 인쇄가 그것을 쓴다. 평소에는
+ * 감춰 두고(globals.css의 `.answer-sheet-print`), 인쇄할 때는 그것만 남기고 모두 감춘다.
  */
-function PrintButton({
-  title,
+function AnswerDownloads({
+  row,
+  record,
+  grades,
   student,
   submitted,
-  record,
-  subjects: ids,
 }: {
-  title: string;
+  row: Registration;
+  record: ExamRecord;
+  grades?: Grades;
   student: string;
   submitted: string;
-  record: ExamRecord;
-  subjects: SubjectId[];
 }) {
+  const ids = answerSubjects(row).map((s) => s.id);
+  const paper = useRef<HTMLDivElement>(null);
+  const [saving, setSaving] = useState(false);
   const mounted = useSyncExternalStore(
     subscribeNothing,
     () => true,
     () => false,
   );
+  /* 「TalentMe_정오표_2026 3분기 초4 진단_이서준」 */
+  const fileName = [
+    assessment.name,
+    "정오표",
+    evalName(row.round, row.track, row.info?.label),
+    student,
+  ]
+    .filter(Boolean)
+    .join("_");
 
   useEffect(() => {
     const done = () => document.body.classList.remove("printing-answer-sheet");
@@ -418,43 +519,96 @@ function PrintButton({
     return () => window.removeEventListener("afterprint", done);
   }, []);
 
+  const print = () => {
+    /* 인쇄 창에서 「PDF로 저장」을 고르면 문서 제목이 파일 이름이 된다 */
+    const before = document.title;
+    document.title = fileName;
+    const restore = () => {
+      document.title = before;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    document.body.classList.add("printing-answer-sheet");
+    window.print();
+  };
+
+  const savePdf = async () => {
+    const root = paper.current;
+    if (!root) return;
+    setSaving(true);
+    /* 감춰 둔 종이를 화면 밖에 펴서 줄 높이를 잰다 */
+    root.classList.add("is-capturing");
+    try {
+      await Promise.all(
+        Array.from(root.querySelectorAll("img")).map((img) => img.decode().catch(() => {})),
+      );
+      await saveAnswerSheetPdf(
+        Array.from(root.querySelectorAll<HTMLElement>("[data-sheet]")),
+        fileName,
+      );
+    } catch {
+      window.alert("PDF를 만들지 못했습니다. 「인쇄」에서 「PDF로 저장」을 골라 주세요.");
+    } finally {
+      root.classList.remove("is-capturing");
+      setSaving(false);
+    }
+  };
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          document.body.classList.add("printing-answer-sheet");
-          window.print();
-        }}
-        className={`no-print ${btnGhost}`}
-      >
-        <svg aria-hidden viewBox="0 0 20 20" className="h-4 w-4" fill="none">
-          <path
-            d="M5.5 7V3h9v4M5.5 14h-2V8.5A1.5 1.5 0 0 1 5 7h10a1.5 1.5 0 0 1 1.5 1.5V14h-2M5.5 11.5h9V17h-9v-5.5Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-        </svg>
-        정오표 인쇄
-      </button>
+      <div className="no-print flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[12.5px] text-soft-muted">정오표 내려받기</span>
+        <button
+          type="button"
+          onClick={savePdf}
+          disabled={saving}
+          className={`${btnSmGhost} disabled:cursor-wait disabled:opacity-60`}
+        >
+          {saving ? "PDF 만드는 중…" : "PDF"}
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadCsv(fileName, answerCsvHead, answerCsv(row, record, grades))}
+          className={btnSmGhost}
+        >
+          CSV
+        </button>
+        <button type="button" onClick={print} className={btnSmGhost}>
+          <svg aria-hidden viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none">
+            <path
+              d="M5.5 7V3h9v4M5.5 14h-2V8.5A1.5 1.5 0 0 1 5 7h10a1.5 1.5 0 0 1 1.5 1.5V14h-2M5.5 11.5h9V17h-9v-5.5Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
+          인쇄
+        </button>
+      </div>
       {mounted &&
         createPortal(
-          <div className="answer-sheet-print text-black">
+          <div ref={paper} className="answer-sheet-print text-black">
             {ids.map((id, i) => {
-              const lines = linesOf(id, record);
+              const lines = linesOf(id, record, grades);
               const count = tally(lines);
-              const name = subjects.find((s) => s.id === id)?.short ?? "";
               return (
-                <div key={id} className={i > 0 ? "break-before-page" : ""}>
-                  <p className="text-[11px] text-slate-500">{title}</p>
-                  <h1 className="mt-1 text-[22px] font-bold">정오표 · {name}</h1>
-                  <p className="mt-2 text-[12px]">
+                <div key={id} data-sheet className={i > 0 ? "break-before-page" : ""}>
+                  <p className="text-[11px] text-slate-500">{row.title}</p>
+                  <h1 className="mt-1 text-[22px] font-bold">정오표 · {subjectName(id)}</h1>
+                  <p className="mt-2 text-[12px] leading-relaxed">
                     {student && <>이름 {student} · </>}최종 제출 {submitted} · 채점한{" "}
-                    {lines.length - count.pending}문항 중 {count.right}문항 맞음
-                    {count.pending > 0 && ` · 서술형 ${count.pending}문항 전문가 채점`}
+                    {lines.length - count.pending}문항 중 정답 {count.right}문항
+                    {count.partial > 0 && ` · 부분 정답 ${count.partial}`} · 오답 {count.wrong} · 미응답{" "}
+                    {count.empty}
+                    {count.pending > 0 && ` · 채점 중 ${count.pending}`}
                   </p>
-                  <MarkTable lines={lines} subject={id} className="mt-4" />
+                  <MarkTable lines={lines} paper className="mt-4" />
+                  {count.pending > 0 && (
+                    <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                      서술형 · 논술형 · 사진 답안은 전문가가 채점하며, 채점이 끝나기 전에는 「채점
+                      중」으로 적습니다.
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -465,159 +619,46 @@ function PrintButton({
   );
 }
 
-/* ───────────────────────── 문항별 풀이 ───────────────────────── */
-
-function QuestionReview({ line, subject }: { line: Line; subject: SubjectId }) {
-  const { q, no, value: mine, mark } = line;
-  const m = MARK[mark];
-  const auto = autoGraded(q);
-  return (
-    <li
-      id={anchor(subject, no)}
-      className="scroll-mt-36 rounded-[2px] border border-soft-line bg-white px-5 py-5"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <p className="text-[14px] font-bold text-soft-ink">
-          문항 <span className="tabular-nums">{no}</span>
-          <span className={`ml-2 text-[13px] ${m.tone}`}>
-            {m.sign && <span aria-hidden>{m.sign} </span>}
-            {m.label}
-          </span>
-        </p>
-        <p className="text-[12px] text-soft-muted">
-          {q.type === "choice" ? "객관식" : auto ? "단답형" : "서술형"}
-        </p>
-      </div>
-
-      <p className="mt-3 whitespace-pre-line text-[15px] font-semibold leading-relaxed text-soft-ink">
-        {q.stem}
-      </p>
-
-      {q.type === "choice" ? (
-        <>
-          <ul className="mt-3 space-y-1.5">
-            {q.choices?.map((c, i) => {
-              const isAnswer = i === q.answer;
-              const isMine = mine === i;
-              return (
-                <li
-                  key={c}
-                  className={`flex items-start gap-3 rounded-[2px] border px-3.5 py-2.5 text-[14px] leading-relaxed ${
-                    isAnswer
-                      ? "border-emerald-500 bg-emerald-50 text-soft-ink"
-                      : isMine
-                        ? "border-rose-300 bg-rose-50 text-soft-ink"
-                        : "border-slate-100 text-soft-muted"
-                  }`}
-                >
-                  <span className="w-4 shrink-0 font-bold tabular-nums">{i + 1}</span>
-                  <span className="flex-1">{c}</span>
-                  {isAnswer && (
-                    <span className="shrink-0 text-[12px] font-bold text-emerald-700">정답</span>
-                  )}
-                  {isMine && (
-                    <span
-                      className={`shrink-0 text-[12px] font-bold ${
-                        isAnswer ? "text-emerald-700" : "text-rose-600"
-                      }`}
-                    >
-                      내 답
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-3 text-[13px] font-semibold">
-            {typeof mine !== "number" ? (
-              <span className="text-soft-muted">
-                답을 고르지 않았습니다 · 정답 {q.answer! + 1}번
-              </span>
-            ) : mine === q.answer ? (
-              <span className="text-emerald-700">맞았습니다</span>
-            ) : (
-              <span className="text-rose-600">
-                틀렸습니다 · 내 답 {mine + 1}번, 정답 {q.answer! + 1}번
-              </span>
-            )}
-          </p>
-        </>
-      ) : (
-        <div className="mt-3 space-y-3">
-          <div className="rounded-[2px] border border-slate-100 bg-slate-50 px-4 py-3">
-            <p className="text-[12px] font-bold text-soft-muted">내 답</p>
-            <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-soft-ink">
-              {answerText(q, mine) || "쓰지 않았습니다."}
-            </p>
-          </div>
-          {q.sampleAnswer && (
-            <div className="px-1">
-              <p className="text-[12px] font-bold text-soft-muted">{auto ? "정답" : "예시 답"}</p>
-              <ul className="mt-1 space-y-1">
-                {q.sampleAnswer.map((a, k) => (
-                  <li key={a} className="text-[14px] leading-relaxed text-soft-ink">
-                    {q.blanks?.[k] ? `${q.blanks[k].label} : ` : ""}
-                    {a}
-                    {q.blanks?.[k]?.suffix ?? ""}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {q.guide && (
-            <div className="px-1">
-              <p className="text-[12px] font-bold text-soft-muted">작성 안내</p>
-              <ol className="mt-1 space-y-1">
-                {q.guide.map((g, i) => (
-                  <li key={g} className="flex gap-2 text-[14px] leading-relaxed text-soft-ink">
-                    <span className="font-bold tabular-nums text-soft-muted">{i + 1}.</span>
-                    {g}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-          {!auto && (
-            <p className="text-[13px] text-soft-muted">
-              서술형은 전문가가 채점하며 결과보기에서 확인합니다.
-            </p>
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
 /* ───────────────────────── 맞춤 학습 ───────────────────────── */
 
 /**
- * 맞춤 학습 — 틀렸거나 답하지 않은 문항을 과목별로 모아 다시 보게 한다.
+ * 맞춤 학습 — 오답 · 부분 정답이거나 답하지 않은 문항을 과목별로 모아 다시 보게 한다.
  *
- * 학습 콘텐츠는 아직 없다. 지금은 「무엇을 다시 볼까」를 정오표에서 뽑아 문항 풀이로
- * 바로 데려가는 데까지만 한다. 서술형은 채점이 끝나야 더해진다.
+ * 학습 콘텐츠는 아직 없다. 지금은 「무엇을 다시 볼까」를 정오표에서 뽑아 그 문항의 답안
+ * 풀이로 바로 데려가는 데까지만 한다. 전문가가 채점하는 문항은 채점이 끝나야 더해진다.
  */
 function CoachDialog({
   record,
+  grades,
   subjects: ids,
   onGo,
   onClose,
 }: {
   record: ExamRecord;
+  grades?: Grades;
   subjects: SubjectId[];
   onGo: (subject: SubjectId, no: number) => void;
   onClose: () => void;
 }) {
   const groups = ids.map((id) => ({
     id,
-    name: subjects.find((s) => s.id === id)?.short ?? "",
-    lines: linesOf(id, record),
+    name: subjectName(id),
+    lines: linesOf(id, record, grades),
   }));
   const misses = groups.map((g) => ({
     ...g,
-    miss: g.lines.filter((l) => l.mark === "wrong" || l.mark === "empty"),
+    miss: g.lines.filter(
+      (l) => l.mark === "wrong" || l.mark === "empty" || l.mark === "partial",
+    ),
   }));
   const total = misses.reduce((n, g) => n + g.miss.length, 0);
   const pending = groups.reduce((n, g) => n + tally(g.lines).pending, 0);
+  /* 창이 열린 채로 처음 그려질 수 있다(디자인 보기의 …/coach 주소) — 서버에는 붙일 body가 없다 */
+  const mounted = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -625,23 +666,25 @@ function CoachDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  /* body 바로 밑에 띄운다 — 페이지 패널 안에 두면 위 머리띠가 덮개 위로 올라온다 */
+  if (!mounted) return null;
+
+  /* body 바로 밑에 띄운다 — 본문 안에 두면 위 상태바와 아래 메뉴 줄이 덮개 위로 올라온다 */
   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="coach-title"
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-5"
+      className="no-print fixed inset-0 z-50 flex items-center justify-center bg-soft-ink/40 p-5"
     >
-      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-[2px] bg-white p-7 shadow-float">
-        <h2 id="coach-title" className="text-[19px] font-bold text-soft-ink">
+      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-[16px] bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.25)] sm:p-7">
+        <h2 id="coach-title" className="text-[18px] font-bold text-soft-ink">
           맞춤 학습
         </h2>
         <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
           {total > 0
-            ? `틀렸거나 답하지 않은 ${total}문항부터 다시 살펴봅니다. 번호를 누르면 그 문항 풀이로 갑니다.`
-            : "채점한 문항은 모두 맞았습니다."}
+            ? `만점을 받지 못한 ${total}문항부터 다시 살펴봅니다. 번호를 누르면 그 문항의 답안 풀이가 열립니다.`
+            : "채점한 문항은 모두 정답입니다."}
         </p>
 
         {total > 0 && (
@@ -649,7 +692,7 @@ function CoachDialog({
             {misses
               .filter((g) => g.miss.length > 0)
               .map((g) => (
-                <li key={g.id} className="rounded-[2px] border border-soft-line px-4 py-3">
+                <li key={g.id} className="rounded-[12px] border border-soft-line px-4 py-3">
                   <p className="text-[13px] font-bold text-soft-ink">
                     {g.name}{" "}
                     <span className="font-semibold text-rose-600">{g.miss.length}문항</span>
@@ -660,7 +703,8 @@ function CoachDialog({
                         key={l.q.id}
                         type="button"
                         onClick={() => onGo(g.id, l.no)}
-                        className="min-w-9 rounded-[2px] border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[13px] font-bold tabular-nums text-rose-700 transition-colors hover:bg-rose-100"
+                        aria-label={`${g.name} 문항 ${l.no} ${markLabel[l.mark]}`}
+                        className="min-w-9 rounded-[8px] border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[13px] font-bold tabular-nums text-rose-700 transition-colors hover:bg-rose-100"
                       >
                         {l.no}
                       </button>
@@ -673,7 +717,7 @@ function CoachDialog({
 
         {pending > 0 && (
           <p className="mt-4 text-[12px] leading-relaxed text-soft-muted">
-            서술형 {pending}문항은 전문가 채점이 끝나면 함께 더해집니다.
+            채점 중인 {pending}문항은 전문가 채점이 끝나면 함께 더해집니다.
           </p>
         )}
 

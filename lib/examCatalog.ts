@@ -3,8 +3,8 @@ import type { RoundState } from "./admin";
 /**
  * 학생이 고르는 평가 차림표 — **회차 × 학년**.
  *
- * 접수하기 탭(/exam/apply)에서 회차를 먼저 고르고, 그 안에서 학년 카드를 골라 접수한다.
- * 접수한 평가는 응시하기 탭(/exam)에 올라와 과목별로 응시한다.
+ * 학생 대시보드의 「진단 접수」(/student/apply)에서 회차와 학년을 골라 접수한다.
+ * 접수한 평가는 「내 진단」(/student/exams)에 올라와 과목별로 응시한다.
  * 회차가 몇 개 있는지·언제 열리는지는 관리자 회차 편성(lib/roundPlanStore.ts)이 들고
  * 있는 것을 그대로 읽고, 여기에는 학생 화면에만 필요한 것 — 학년 칸과 카드 사진,
  * 회차를 부르는 이름 — 만 둔다.
@@ -204,5 +204,3 @@ export const availabilityLabel: Record<Availability, string> = {
 /** 「2026-08-01」 → 「2026.08.01」 */
 export const dotDate = (d: string) => d.replace(/-/g, ".");
 
-/** 응시하기 탭에서 접수한 평가를 누른 뒤 과목을 하나씩 보는 자리 */
-export const roomHref = (roundId: string, track: TrackId) => `/exam/${roundId}/${track}`;

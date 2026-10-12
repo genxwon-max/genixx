@@ -89,7 +89,7 @@ export default function StatusTable({
   heading,
   reg,
   studentId: forced,
-  resultHref = "/exam/report",
+  resultHref = "/student/results",
   embedded = false,
 }: {
   heading?: StatusHeading;
@@ -652,7 +652,7 @@ function FreeRow({
   );
 }
 
-function FinalDialog({
+export function FinalDialog({
   missing,
   onCancel,
   onConfirm,

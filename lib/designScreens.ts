@@ -10,15 +10,34 @@
  * 단추만 그 상태의 주소로 이어 두었다.
  *
  * 주소는 `/design` + 실제 서비스 주소 + 상태다. 번호가 들어가는 주소는 예시 한 건으로 굳혔다.
+ *
+ * 둘째 묶음은 **화면은 있는데 WBS의 항목이 빠져 있던 것**이다(면담 배정 · 휴무일 · 면담 설정 ·
+ * 마이크 점검 …). 지금 화면을 값만 적어 넣은 사본으로 세우고 빠진 항목을 얹었다. 같은 실제
+ * 주소에 디자인이 둘이면(/my의 알림 종과 면담 상태) 상태 꼬리로 가른다.
+ *
+ * 셋째 묶음은 **접수 · 응시 · 정답과 해설 · 결과를 학생 대시보드 한 곳으로 모은 것**이다
+ * (2026-10-12). 응시 존 헤더의 네 탭이 없어지고 그 화면들이 /student 아래로 옮겨 갔다 —
+ * 진단 접수 · 내 진단 · 정답과 해설 · 진단 결과. 응시 존에 남은 첫 화면(진단 둘러보기)도 함께 둔다.
+ * 네 화면은 같은 학생의 같은 진단을 말한다(components/design/screens/studentFlow.ts).
  */
 
-export type DesignZone = "account" | "admin2" | "my" | "student" | "site" | "mail";
+export type DesignZone =
+  | "account"
+  | "exam"
+  | "admin2"
+  | "my"
+  | "student"
+  | "report"
+  | "site"
+  | "mail";
 
 export const zoneLabel: Record<DesignZone, string> = {
   account: "가입 · 로그인",
+  exam: "진단 응시",
   admin2: "운영 콘솔",
   my: "보호자",
   student: "학생",
+  report: "진단 보고서",
   site: "공개 사이트",
   mail: "이메일",
 };
@@ -287,6 +306,363 @@ export const designScreens: DesignScreen[] = [
       { slug: "member/kim-jiwon/no-report", name: "진단 결과 필요 안내 창", who: "회원", popup: true },
     ],
   },
+  /* ── 진단 응시 — 응시 존의 첫 화면. 머리의 네 탭이 없어진 뒤의 모습이다 ── */
+  {
+    id: "exam-browse",
+    zone: "exam",
+    name: "진단 둘러보기 (응시 존의 첫 화면)",
+    wbs: "v4/ns/5.1.2",
+    real: "/exam",
+    base: "/exam",
+    states: [
+      { slug: "", name: "진단 목록", who: "비회원", note: "줄마다 「무료로 풀어보기」 · 머리가 한 줄이다" },
+      { slug: "card", name: "진단 목록 · 카드로 보기", who: "비회원" },
+      { slug: "empty", name: "진단 목록 · 찾는 진단 없음", who: "비회원" },
+      { slug: "student", name: "내 진단으로 넘어가는 중", who: "회원 · 학생", note: "학생은 자기 대시보드로 보낸다" },
+      { slug: "parent", name: "응시는 학생 계정에서", who: "회원 · 보호자" },
+    ],
+  },
+  /* ── 진단 응시 — 머리의 「나가기」 (비회원 · 회원 무료 · 회원 유료) ── */
+  {
+    id: "exam-trial",
+    zone: "exam",
+    name: "셋트 응시 · 나가기",
+    wbs: "Q3 5.2.1 ~ 5.2.3",
+    real: "/exam/session/trial/[회차]/[학년]",
+    base: "/exam/session/trial",
+    states: [
+      { slug: "", name: "응시 중", who: "비회원", note: "머리 오른쪽 끝의 「나가기」" },
+      { slug: "exit", name: "나가기 확인 창", who: "비회원", popup: true },
+      { slug: "left", name: "나간 뒤 · 표지로 돌아옴", who: "비회원", note: "답은 창을 닫기 전까지 남는다" },
+    ],
+  },
+  {
+    id: "exam-free",
+    zone: "exam",
+    name: "무료 진단 응시 · 나가기",
+    wbs: "Q3 5.2.1 ~ 5.2.3",
+    real: "/exam/session/free",
+    base: "/exam/session/free",
+    states: [
+      { slug: "", name: "응시 중", who: "회원 · 무료", note: "머리 오른쪽 끝의 「나가기」" },
+      { slug: "exit", name: "나가기 확인 창", who: "회원 · 무료", popup: true },
+      { slug: "left", name: "나간 뒤 · 남은 기회 있음", who: "회원 · 무료" },
+      { slug: "left/none", name: "나간 뒤 · 남은 기회 없음", who: "회원 · 무료" },
+    ],
+  },
+  {
+    id: "exam-paid",
+    zone: "exam",
+    name: "유료 진단 응시 · 나가기",
+    wbs: "Q3 5.2.1 ~ 5.2.3",
+    real: "/exam/session/paid/[과목]",
+    base: "/exam/session/paid",
+    states: [
+      { slug: "", name: "응시 중", who: "회원 · 유료", note: "머리 오른쪽 끝의 「나가기」" },
+      { slug: "exit", name: "나가기 확인 창", who: "회원 · 유료", popup: true },
+      { slug: "left", name: "나간 뒤 · 남은 기회 있음", who: "회원 · 유료" },
+      { slug: "left/none", name: "나간 뒤 · 남은 기회 없음", who: "회원 · 유료" },
+    ],
+  },
+
+  /* ── 접수 · 응시 · 정답과 해설 · 결과를 학생 대시보드로 모은 것 ── */
+  {
+    id: "student-apply",
+    zone: "student",
+    name: "진단 접수",
+    wbs: "v4/new/22",
+    real: "/student/apply",
+    base: "/student/apply",
+    states: [
+      { slug: "", name: "진단 목록 · 접수 전", who: "학생", note: "예전 응시 존의 「접수하기」 탭" },
+      { slug: "card", name: "진단 목록 · 카드로 보기", who: "학생" },
+      { slug: "empty", name: "진단 목록 · 찾는 진단 없음", who: "학생" },
+      { slug: "confirm", name: "접수 확인 창 · 유료 진단", who: "학생 · 응시권 있음", popup: true },
+      { slug: "confirm/free", name: "접수 확인 창 · 무료 진단", who: "학생 · 응시권 없음", popup: true },
+      { slug: "done", name: "접수 완료 창 · 유료 진단", who: "학생 · 응시권 있음", popup: true },
+      { slug: "done/free", name: "접수 완료 창 · 무료 진단", who: "학생 · 응시권 없음", popup: true },
+      { slug: "applied", name: "접수한 뒤 · 유료 진단", who: "학생 · 응시권 있음", note: "그 줄이 「내 진단에서 보기」로 바뀐다" },
+      { slug: "applied/free", name: "접수한 뒤 · 무료 진단", who: "학생 · 응시권 없음" },
+      { slug: "guardian", name: "보호자가 학생 접속코드로 들어옴", who: "보호자", note: "접수는 학생이 한다" },
+    ],
+  },
+  {
+    id: "student-exams",
+    zone: "student",
+    name: "내 진단 (응시)",
+    wbs: "v4/new/32 · v4/new/20 · v4/ns/5.1.2",
+    real: "/student/exams · /student/exams/[회차]/[학년]",
+    base: "/student/exams",
+    states: [
+      { slug: "", name: "목록", who: "학생", note: "예전 응시 존의 「응시하기」 탭" },
+      { slug: "empty", name: "목록 · 접수한 진단 없음", who: "학생" },
+      { slug: "2026-4/e4", name: "진단 한 건 · 시작 전", who: "학생 · 유료" },
+      { slug: "2026-4/e4/doing", name: "진단 한 건 · 한 과목 제출", who: "학생 · 유료" },
+      { slug: "2026-4/e4/submitted", name: "진단 한 건 · 과목을 모두 제출", who: "학생 · 유료", note: "「제출 완료」가 눌린다" },
+      { slug: "2026-4/e4/sms", name: "설문 링크 문자 보내기 창", who: "학생 · 유료", popup: true },
+      { slug: "2026-4/e4/final", name: "최종 제출 확인 창", who: "학생 · 유료", popup: true },
+      { slug: "2026-4/e4/final/missing", name: "최종 제출 확인 창 · 내지 않은 설문 있음", who: "학생 · 유료", popup: true },
+      { slug: "2026-4/e4/reviewing", name: "진단 한 건 · 최종 제출 뒤", who: "학생 · 유료", note: "「정답과 해설 보기」" },
+      { slug: "2026-4/e4/free", name: "진단 한 건 · 시작 전", who: "학생 · 무료", note: "20문항을 한 번에 응시" },
+      { slug: "2026-4/e4/free/submitted", name: "진단 한 건 · 20문항 제출", who: "학생 · 무료" },
+      { slug: "2026-4/e4/guardian", name: "진단 한 건 · 보호자가 학생 접속코드로 들어옴", who: "보호자", note: "학부모 설문만 한다" },
+      { slug: "2026-3/e4", name: "진단 한 건 · 결과 발행", who: "학생 · 유료", note: "「정답과 해설」 「결과 보기」" },
+      { slug: "2026-1/e4", name: "진단 한 건 · 기간 종료", who: "학생 · 무료", note: "최종 제출하지 못한 진단" },
+    ],
+  },
+  {
+    id: "student-answers",
+    zone: "student",
+    name: "정답과 해설",
+    wbs: "없음",
+    real: "/student/answers · /student/answers/[회차]/[학년]",
+    base: "/student/answers",
+    states: [
+      { slug: "", name: "목록", who: "학생", note: "예전 응시 존의 「정답과 해설」 탭" },
+      { slug: "empty", name: "목록 · 접수한 진단 없음", who: "학생" },
+      { slug: "2026-3/e4", name: "진단 한 건 · 정오표 · 채점 중", who: "학생 · 유료", note: "내려받기 PDF · CSV · 인쇄" },
+      { slug: "2026-3/e4/math", name: "정오표 · 사진 답안과 긴 글", who: "학생 · 유료", note: "수학 과목을 편 상태" },
+      { slug: "2026-3/e4/review", name: "답안 풀이 보기 창 · 정답", who: "학생 · 유료", popup: true, note: "응시 화면과 같은 틀" },
+      { slug: "2026-3/e4/review/wrong", name: "답안 풀이 보기 창 · 오답", who: "학생 · 유료", popup: true },
+      { slug: "2026-3/e4/review/empty", name: "답안 풀이 보기 창 · 미응답", who: "학생 · 유료", popup: true },
+      { slug: "2026-3/e4/review/essay", name: "답안 풀이 보기 창 · 논술형 채점 중", who: "학생 · 유료", popup: true, note: "긴 글" },
+      { slug: "2026-3/e4/review/photo", name: "답안 풀이 보기 창 · 사진 답안 채점 중", who: "학생 · 유료", popup: true },
+      { slug: "2026-3/e4/review/short", name: "답안 풀이 보기 창 · 단답형 오답", who: "학생 · 유료", popup: true, note: "묶인 두 문항" },
+      { slug: "2026-3/e4/graded", name: "진단 한 건 · 정오표 · 채점이 끝난 뒤", who: "학생 · 유료", note: "부분 정답 △" },
+      { slug: "2026-3/e4/graded/review", name: "답안 풀이 보기 창 · 부분 정답과 해설", who: "학생 · 유료", popup: true, note: "채점자가 적은 해설" },
+      { slug: "2026-3/e4/coach", name: "맞춤 학습 창", who: "학생 · 유료", popup: true },
+      { slug: "2026-2/e4", name: "진단 한 건 · 정오표", who: "학생 · 무료", note: "20문항" },
+      { slug: "2026-4/e4", name: "진단 한 건 · 최종 제출 전", who: "학생", note: "정답이 아직 열리지 않았다" },
+    ],
+  },
+  {
+    id: "student-result-wait",
+    zone: "student",
+    name: "진단 결과 · 결과를 기다리는 화면",
+    wbs: "v4/new/student-results",
+    real: "/student/results/[회차]/[학년]",
+    base: "/student/results",
+    states: [
+      { slug: "2026-4/e4", name: "전문가 확인 중", who: "학생", note: "「정답과 해설 보기」" },
+    ],
+  },
+
+  /* ── 화면은 있는데 항목이 빠져 있던 것 ── */
+  {
+    id: "interview-detail",
+    zone: "admin2",
+    name: "면담 상세 · 상담사 배정과 알림 발송",
+    wbs: "L.2.4 · L.2.5",
+    real: "/admin2/interviews/[id]",
+    base: "/admin2/interviews/CS-2610-0019",
+    states: [
+      { slug: "", name: "상담사 배정 대기 · 추천 목록", note: "신청자가 「관리자 배정 요청」을 고른 신청" },
+      { slug: "assign", name: "배정 확인 창", popup: true },
+      { slug: "assigned", name: "상담사 배정됨" },
+      { slug: "auto", name: "자동 배정된 신청", note: "분야 일치 → 시간 가능 → 주간 배정이 가장 적은 사람" },
+      { slug: "no-match", name: "추천할 상담사 없음", note: "그 시간에 가능한 상담사가 없을 때" },
+      { slug: "notify", name: "알림 발송 창", popup: true },
+      { slug: "notified", name: "알림 발송 뒤", note: "발송 내역에 한 줄이 늘어난다" },
+    ],
+  },
+  {
+    id: "counselor-detail",
+    zone: "admin2",
+    name: "상담사 상세 · 주간 배정 현황과 휴무일",
+    wbs: "L.2.9 · L.2.10",
+    real: "/admin2/counselors/[id]",
+    base: "/admin2/counselors/kim-jiwon",
+    states: [
+      { slug: "", name: "주간 배정 현황 · 휴무일" },
+      { slug: "week/next", name: "다음 주 · 배정 없음" },
+      { slug: "dayoff", name: "휴무일 추가 창", popup: true },
+      { slug: "dayoff/conflict", name: "휴무일 추가 창 · 그날 잡힌 면담 있음", popup: true },
+      { slug: "dayoff/added", name: "휴무일 추가 뒤" },
+      { slug: "dayoff/delete", name: "휴무일 삭제 확인 창", popup: true },
+    ],
+  },
+  {
+    id: "settings-interview",
+    zone: "admin2",
+    name: "시스템 설정 · 면담 설정",
+    wbs: "L.2.14",
+    real: "/admin2/settings",
+    base: "/admin2/settings",
+    states: [
+      { slug: "interview", name: "면담 설정", note: "자동 배정 · 기록 기한 · 자동 종료 일수" },
+      { slug: "interview/edit", name: "면담 설정 · 수정 중" },
+      { slug: "interview/manual", name: "면담 설정 · 자동 배정 끔" },
+      { slug: "interview/error", name: "면담 설정 · 입력 오류" },
+      { slug: "interview/saved", name: "면담 설정 · 저장 완료" },
+    ],
+  },
+  {
+    id: "staff-counselor",
+    zone: "admin2",
+    name: "운영자 · 연결된 상담사 프로필",
+    wbs: "L.2.16",
+    real: "/admin2/staff · /admin2/staff/[id]",
+    base: "/admin2/staff",
+    states: [
+      { slug: "", name: "목록 · 상담사 표시" },
+      { slug: "EX-2609-001", name: "상세 · 상담사 프로필 연결됨" },
+      { slug: "EX-2609-001/hidden", name: "상세 · 상담사 프로필 숨김", note: "소개 페이지와 면담 신청에 보이지 않는 상태" },
+      { slug: "EX-2609-002", name: "상세 · 상담사 권한 없음" },
+    ],
+  },
+  {
+    id: "payments-counsel",
+    zone: "admin2",
+    name: "결제 내역 · 면담 구분",
+    wbs: "K.2.3",
+    real: "/admin2/payments",
+    base: "/admin2/payments",
+    states: [
+      { slug: "", name: "전체 · 「구분」 열과 필터" },
+      { slug: "counsel", name: "면담 결제만" },
+      { slug: "exam", name: "진단 결제만" },
+      { slug: "counsel/empty", name: "면담 결제만 · 그 기간에 결제 없음" },
+    ],
+  },
+  {
+    id: "audit-interview",
+    zone: "admin2",
+    name: "감사 로그 · 면담과 전문가 활동 기록",
+    wbs: "K.1.6",
+    real: "/admin2/audit",
+    base: "/admin2/audit",
+    states: [
+      { slug: "", name: "전체 · 새 기록 포함" },
+      { slug: "interview", name: "면담 기록만" },
+      { slug: "expert", name: "전문가 활동만" },
+    ],
+  },
+  {
+    id: "grading-answers",
+    zone: "admin2",
+    name: "채점 상세 · 음성 입력 답과 사진 답안",
+    wbs: "Q.1.6",
+    real: "/admin2/grading/[id]",
+    base: "/admin2/grading/answers",
+    states: [
+      { slug: "voice", name: "음성으로 입력한 답", note: "말한 것을 받아 적은 글을 채점한다" },
+      { slug: "file", name: "사진 답안 · 확인 전" },
+      { slug: "file/zoom", name: "사진 크게 보기 창", popup: true },
+      { slug: "file/scored", name: "사진 답안 · 채점함" },
+      { slug: "file/unreadable", name: "사진 답안 · 알아볼 수 없음", note: "다시 올려 달라고 요청" },
+    ],
+  },
+  {
+    id: "grading-members",
+    zone: "admin2",
+    name: "회원 채점 · 정오표와 채점하기 창",
+    wbs: "Q.1.6",
+    real: "/admin2/grading/members · /admin2/grading/members/[답안지]",
+    base: "/admin2/grading/members",
+    states: [
+      { slug: "", name: "목록 · 채점할 답안지", who: "채점자" },
+      { slug: "2026-3-0412", name: "답안지 · 정오표 · 채점 전", who: "채점자", note: "AI가 먼저 매긴 점수만 있다" },
+      { slug: "2026-3-0412/grading", name: "답안지 · 정오표 · 채점 중", who: "채점자", note: "국어를 다 보고 수학을 보는 중" },
+      { slug: "2026-3-0412/done", name: "답안지 · 정오표 · 채점 완료", who: "채점자", note: "부분 정답 △" },
+      { slug: "2026-3-0412/grade", name: "채점하기 창 · 객관식", who: "채점자", popup: true, note: "응시 화면과 같은 틀 · 오른쪽 아래 점수 칸" },
+      { slug: "2026-3-0412/grade/lowered", name: "채점하기 창 · 점수를 낮춤", who: "채점자", popup: true, note: "2점 만점에 2점 → 1점" },
+      { slug: "2026-3-0412/grade/essay", name: "채점하기 창 · 논술형", who: "채점자", popup: true, note: "긴 글" },
+      { slug: "2026-3-0412/grade/photo", name: "채점하기 창 · 사진 답안", who: "채점자", popup: true, note: "AI는 채점하지 않는다" },
+      { slug: "2026-3-0412/grade/written", name: "채점하기 창 · 서술형", who: "채점자", popup: true, note: "3점 만점" },
+      { slug: "2026-3-0412/grade/drawing", name: "채점하기 창 · 그리기", who: "채점자", popup: true },
+      { slug: "2026-3-0412/grade/short", name: "채점하기 창 · 단답형", who: "채점자", popup: true, note: "묶인 두 문항" },
+      { slug: "2026-3-0412/grade/last", name: "채점하기 창 · 마지막 문항", who: "채점자", popup: true, note: "「확인하고 마치기」" },
+    ],
+  },
+  {
+    id: "my-counsel",
+    zone: "my",
+    name: "보호자 홈 · 면담 상태",
+    wbs: "M.2.13",
+    real: "/my",
+    base: "/my",
+    states: [
+      { slug: "counsel", name: "면담 예약 확정", who: "보호자" },
+      { slug: "counsel/today", name: "오늘 면담 · 입장 가능", who: "보호자" },
+      { slug: "counsel/pay-wait", name: "면담 결제 대기", who: "보호자" },
+      { slug: "counsel/assigning", name: "상담 전문가 배정 중", who: "보호자" },
+      { slug: "counsel/done", name: "면담 완료", who: "보호자" },
+      { slug: "counsel/none", name: "신청한 면담 없음", who: "보호자", note: "결과가 발행된 학생에게 「면담 신청」" },
+    ],
+  },
+  {
+    id: "notification-settings",
+    zone: "my",
+    name: "알림 설정 · 면담 안내와 앱 알림",
+    wbs: "L.1.13 · M.2.12",
+    real: "/my/account/notification",
+    base: "/my/account/notification",
+    states: [
+      { slug: "", name: "알림 설정", who: "보호자", note: "받을 소식 8가지 · 앱 알림 추가" },
+      { slug: "push-off", name: "이 기기의 앱 알림이 꺼져 있음", who: "보호자" },
+      { slug: "saved", name: "저장 완료", who: "보호자" },
+    ],
+  },
+  {
+    id: "exam-result-counsel",
+    zone: "my",
+    name: "결과 화면 · 「면담 신청」 버튼",
+    wbs: "M.2.11",
+    real: "/exam/result",
+    base: "/exam/result",
+    states: [
+      { slug: "", name: "결과 발행됨 · 면담 신청 가능", who: "보호자" },
+      { slug: "booked", name: "이미 면담을 신청함", who: "보호자" },
+      { slug: "pending", name: "결과 발행 전", who: "보호자", note: "버튼이 없다" },
+    ],
+  },
+  {
+    id: "student-results-counsel",
+    zone: "student",
+    name: "진단 결과 · 「면담 신청」 버튼",
+    wbs: "M.2.11",
+    real: "/student/results · /student/results/[회차]/[학년]",
+    base: "/student/results",
+    states: [
+      { slug: "", name: "목록 · 면담 신청 가능", who: "학생 (만 14세 이상)" },
+      { slug: "detail", name: "결과지 · 면담 신청 가능", who: "학생 (만 14세 이상)" },
+      { slug: "booked", name: "목록 · 이미 면담을 신청함", who: "학생 (만 14세 이상)" },
+      { slug: "child", name: "목록 · 보호자가 신청", who: "학생 (만 14세 미만)", note: "버튼 대신 안내" },
+    ],
+  },
+  {
+    id: "exam-guide-mic",
+    zone: "exam",
+    name: "진단 안내 · 응시 전 마이크 점검",
+    wbs: "Q.1.4",
+    real: "/exam/info",
+    base: "/exam/info",
+    states: [
+      { slug: "", name: "점검 전", who: "회원" },
+      { slug: "guest", name: "점검 전", who: "비회원" },
+      { slug: "mic/asking", name: "마이크 사용 허용을 기다리는 중", who: "회원" },
+      { slug: "mic/listening", name: "말하는 중 · 소리 확인", who: "회원" },
+      { slug: "mic/ok", name: "점검 통과", who: "회원", note: "받아 적은 글이 보인다" },
+      { slug: "mic/denied", name: "마이크 사용이 막혀 있음", who: "회원" },
+      { slug: "mic/none", name: "마이크를 찾지 못함", who: "회원" },
+      { slug: "mic/quiet", name: "소리가 들리지 않음", who: "회원" },
+      { slug: "mic/unsupported", name: "음성 입력을 쓸 수 없는 브라우저", who: "회원" },
+    ],
+  },
+  {
+    id: "report-answers",
+    zone: "report",
+    name: "진단 보고서 · 음성 입력 답과 사진 답안 표시",
+    wbs: "Q.1.7",
+    real: "/report/full (정밀본 과목 면)",
+    base: "/report/answers",
+    states: [
+      { slug: "", name: "대표 문항의 답 · 음성 입력 표시와 사진 답안", note: "국어 면은 음성 입력, 과학 면은 사진" },
+      { slug: "photo", name: "사진 답안 크게 보기 창", popup: true },
+      { slug: "none", name: "글로 쓴 답만 있는 보고서", note: "표시가 붙지 않는다 — 지금과 같다" },
+    ],
+  },
+
   {
     id: "mail",
     zone: "mail",

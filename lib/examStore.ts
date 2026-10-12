@@ -80,7 +80,7 @@ export type SubjectRecord = {
    * null이면 옛 기록이므로 지금 회차 설정을 쓴다.
    */
   limitMin: number | null;
-  /** 남은 응시 기회. '포기하기' 선택 시 1 감소 */
+  /** 남은 응시 기회. 응시 중 「나가기」를 고르면 1 감소 */
   attemptsLeft: number;
   /** 제출 후 문항별로 적는 해석 — 왜 그렇게 답했는지 / 왜 못 풀었는지 */
   reflections: Record<string, string>;
@@ -548,7 +548,7 @@ export function finishReflection(studentId: string, subject: SubjectId) {
   patchSubject(studentId, subject, { reflectionAt: new Date().toISOString() });
 }
 
-/** 포기하기 — 해당 과목의 응시 기회가 1회 소모되고 답안은 폐기된다. */
+/** 응시 중 나가기(포기) — 해당 과목의 응시 기회가 1회 소모되고 답안은 폐기된다. */
 export function forfeitSubject(studentId: string, subject: SubjectId) {
   const rec = readRecord(studentId).subjects[subject];
   patchSubject(studentId, subject, {

@@ -15,13 +15,14 @@ import {
 import { tracks } from "@/lib/examCatalog";
 import { useExamConfig } from "@/lib/roundStore";
 import { PageTitle } from "./Registrations";
-import { examMenu } from "@/lib/examNav";
+import { examSteps } from "@/lib/examNav";
 
 /**
  * 진단 안내 (/exam/info) — 시험 세 갈래, 응시 순서, 규정.
  *
- * 순서는 응시 메뉴(접수하기 → 응시하기 → 정답과 해설 → 결과보기)를 그대로 따른다. 안내에
- * 적힌 단계와 헤더 아래 메뉴가 같은 이름이어야 읽은 대로 누를 수 있다.
+ * 순서는 학생 대시보드의 메뉴(진단 접수 → 내 진단 → 정답과 해설 → 진단 결과)를 그대로
+ * 따른다(lib/examNav.ts의 examSteps). 안내에 적힌 단계와 메뉴가 같은 이름이어야 읽은 대로
+ * 누를 수 있다. 네 단계는 모두 대시보드에 있고, 응시 존에는 문항을 푸는 창만 남아 있다.
  *
  * 과목과 제한 시간은 회차 설정(lib/roundStore.ts)에서 읽는다 — 응시 화면이 실제로 주는
  * 시간과 안내가 어긋나면 안 된다.
@@ -30,12 +31,11 @@ import { examMenu } from "@/lib/examNav";
  * 받은 아이가 시험이 끊긴 줄 알고, 준비된 수만 적으면 절차에 적힌 것과 화면이 달라 보인다.
  */
 const stepDesc: Record<string, string> = {
-  "/exam/apply":
-    "분기와 학년을 골라 무료 진단 또는 유료 진단으로 접수합니다. 로그인하지 않았다면 여기서 1셋트를 풀어 볼 수 있습니다.",
-  "/exam":
+  "/student/apply": "분기와 학년을 골라 무료 진단 또는 유료 진단으로 접수합니다.",
+  "/student/exams":
     "무료 진단은 20문항을 한 번에, 유료 진단은 과목마다 따로 응시하고, 마친 뒤 설문에 답합니다.",
-  "/exam/answers": "응시를 마친 과목의 정답과 내 답을 비교합니다.",
-  "/exam/report": "전문가 검토를 거친 결과 리포트를 확인합니다.",
+  "/student/answers": "최종 제출을 마친 진단의 정답과 내 답을 비교합니다.",
+  "/student/results": "전문가 검토를 거친 결과 리포트를 확인합니다.",
 };
 
 export default function ExamInfo() {
@@ -51,7 +51,9 @@ export default function ExamInfo() {
 
   return (
     <div>
-      <PageTitle sub="접수부터 결과까지, 헤더 아래 메뉴 순서대로 진행합니다.">진단 안내</PageTitle>
+      <PageTitle sub="접수부터 결과까지, 로그인한 뒤 「내 대시보드」의 메뉴 순서대로 진행합니다.">
+        진단 안내
+      </PageTitle>
 
       {/* 한눈에 */}
       <dl className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -109,10 +111,17 @@ export default function ExamInfo() {
         ))}
       </ol>
 
-      {/* 순서 — 응시 메뉴와 같은 이름 */}
+      {/* 순서 — 대시보드 메뉴와 같은 이름 */}
       <h2 className="mt-12 text-[20px] font-bold tracking-tight text-soft-ink">응시 순서</h2>
+      <p className="mt-2 text-[13px] leading-relaxed text-soft-muted">
+        네 단계는 모두 「내 대시보드」에 있습니다. 아직 가입하지 않았다면{" "}
+        <Link href="/exam" className="font-semibold text-soft-primary hover:underline">
+          진단 둘러보기
+        </Link>
+        에서 1셋트를 먼저 풀어 볼 수 있습니다.
+      </p>
       <ol className="mt-4 grid gap-3 md:grid-cols-4">
-        {examMenu.map((m, i) => (
+        {examSteps.map((m, i) => (
           <li key={m.href}>
             <Link
               href={m.href}
@@ -153,7 +162,7 @@ export default function ExamInfo() {
             <li>· 제출한 뒤에는 문제마다 왜 그렇게 답했는지 적는 단계가 이어집니다.</li>
             <li>· 응시를 마치면 학생 설문, 이어서 학부모 설문에 답합니다. 필수는 아닙니다.</li>
             <li>· 설문은 낸 뒤에도 다시 열어 고칠 수 있고, 아직 안 낸 분은 나중에 내도 됩니다.</li>
-            <li>· 중간에 포기하면 그 과목(무료 진단은 전체)의 응시 기회가 사라집니다.</li>
+            <li>· 중간에 나가면 그 과목(무료 진단은 전체)의 응시 기회가 사라집니다.</li>
           </ul>
         </section>
         <section className="rounded-[2px] border border-soft-line bg-white p-6">

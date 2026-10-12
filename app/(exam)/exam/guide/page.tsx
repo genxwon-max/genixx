@@ -16,8 +16,8 @@ export const metadata: Metadata = {
 /**
  * 응시 존 서비스 안내 (/exam/guide).
  *
- * 헤더의 「서비스 안내」가 사이트(/service)로 나가지 않고 여기서 열린다 — 응시 메뉴와
- * 오른쪽 리모컨이 그대로 남아, 둘러본 뒤 바로 접수·응시로 옮겨 갈 수 있다.
+ * 헤더의 「서비스 안내」가 사이트(/service)로 나가지 않고 여기서 열린다 — 응시 존의 머리가
+ * 그대로 남아, 둘러본 뒤 바로 진단 둘러보기(/exam)로 옮겨 가 1셋트를 풀어 볼 수 있다.
  *
  * 왼쪽은 **학력진단**(교과 문항, 정답이 있다), 오른쪽은 **재능진단**(상황판단·확산적
  * 사고, 정답이 없다). 나란히 놓아야 두 진단이 무엇을 다르게 보는지 한눈에 읽힌다.
@@ -75,7 +75,7 @@ export default function ExamGuidePage() {
             ))}
           </ul>
           <Link
-            href="/exam/apply"
+            href="/exam"
             className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-[4px] bg-soft-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-soft-primary-dark"
           >
             진단 골라 무료로 풀어보기

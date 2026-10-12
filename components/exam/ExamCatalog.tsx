@@ -2,22 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { useSession } from "@/lib/authStore";
-import {
-  examDiscounted,
-  examFeeText,
-  useCatalogRounds,
-  type CatalogRound,
-} from "@/lib/catalogRounds";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { examDiscounted, examFeeText, useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
 import { FREE_TOTAL, SET_QUESTIONS, assessment, questionCount } from "@/lib/exam";
 import {
   availabilityLabel,
   dotDate,
   evalName,
   schoolLevels,
-  trackFromGrade,
   trackLabel,
   trackOf,
   tracks,
@@ -25,35 +17,35 @@ import {
   type Track,
   type TrackId,
 } from "@/lib/examCatalog";
-import { resetStudent } from "@/lib/examStore";
 import { examWindow } from "@/lib/popup";
-import { useClaimSet } from "@/lib/setStore";
-import { findById } from "@/lib/roster";
 import { orderWon } from "@/lib/orderStore";
-import { resetWallet, useWallet } from "@/lib/ticketStore";
-import { ApplyDialog, applyAction, applyHref, type ApplyAction } from "./ApplyFlow";
+import type { ApplyAction } from "./ApplyFlow";
 import { PageTitle } from "./Registrations";
-import StudentOnly from "./StudentOnly";
 import { btnBox, btnBoxDisabled } from "./ui";
 
 /**
- * 접수하기 탭 (/exam/apply) — 평가를 골라 접수한다.
+ * 진단 목록 — 회차 × 학년을 한 줄씩 세우고 걸러 보는 화면. 두 자리가 함께 쓴다.
  *
- *   제목      가운데 큰 「접수하기」
+ *   응시 존 /exam                 「진단 둘러보기」 — 가입 전 사람이 골라 1셋트를 풀어 본다
+ *   학생 대시보드 /student/apply   「진단 접수」 — 골라서 접수한다(components/student/StudentApply.tsx)
+ *
+ * 접수는 학생 대시보드 한 곳에서만 한다. 예전에는 응시 존에도 「접수하기」 탭이 있어 같은
+ * 목록이 두 자리에 섰다 — 접수한 사람이 어느 쪽으로 돌아가야 하는지부터 골라야 했다.
+ * 응시 존에 남은 이 목록은 **로그인하지 않은 사람**의 것이라 접수 단추가 없다.
+ *
  *   왼쪽      학년 카테고리 — 전체 · 초등학교(3~6학년)
- *   오른쪽    검색(접수 상태 · 검색어) → 건수와 보기 방식 → 평가 목록 → 페이지
+ *   오른쪽    검색(접수 상태 · 검색어) → 건수와 보기 방식 → 진단 목록 → 페이지
  *
  * ── 해가 쌓여도 버티는 모양 ──
- * 평가는 해마다 네 분기, 분기마다 학년 수만큼 열린다(「2026 3분기 초3 평가」 · 「초4」 …).
+ * 진단은 해마다 네 분기, 분기마다 학년 수만큼 열린다(「2026 3분기 초3 진단」 · 「초4」 …).
  * 학년이 넷이라 한 해에 열여섯, 세 해가 쌓이면 쉰을 넘는다.
  * 연도·회차를 탭이나 고르개로 세우면 해가 늘 때마다 고를 것이 는다. 그래서 목록은 지난
- * 평가까지 **한 줄로 모두** 두고, 찾는 일은 검색어와 페이지가 맡는다.
+ * 진단까지 **한 줄로 모두** 두고, 찾는 일은 검색어와 페이지가 맡는다.
  *
- * 차례는 **접수 중 → 접수 예정 → 접수 마감**, 같은 상태 안에서는 최근 평가가 위다. 학생이
- * 이 탭을 여는 까닭은 거의 늘 「지금 접수할 것」이라, 그것이 첫 쪽 맨 위에 서야 한다.
+ * 차례는 **접수 중 → 접수 예정 → 접수 마감**, 같은 상태 안에서는 최근 진단이 위다. 이
+ * 목록을 여는 까닭은 거의 늘 「지금 접수할 것」이라, 그것이 첫 쪽 맨 위에 서야 한다.
  *
- * 목록은 기본이 리스트이고, 오른쪽 위에서 카드로 바꿔 볼 수 있다. 접수하면 응시권 한
- * 매를 쓰고, 그 평가가 응시하기 탭 표에 올라온다.
+ * 목록은 기본이 리스트이고, 오른쪽 위에서 카드로 바꿔 볼 수 있다.
  *
  * 좁은 화면에서는 왼쪽 카테고리를 세로로 세우면 목록이 한참 아래로 밀리므로, 같은 선택을
  * 가로 버튼 줄로 바꿔 목록 위에 둔다.
@@ -74,41 +66,208 @@ const stateTone: Record<Availability, string> = {
   ended: "text-slate-400",
 };
 
+/**
+ * 자리마다 다른 모양 — 목록의 짜임은 같고 모서리와 테두리만 갈린다.
+ *
+ * 응시 존은 모서리를 세우고 표 머리에 굵은 윗선을 긋는다. 시험을 고르는 자리의 말투다.
+ * 학생 대시보드는 그 안의 다른 화면처럼 둥근 판과 알약 단추를 쓴다 — 접수 화면만 각지면
+ * 남의 화면을 끼워 넣은 것으로 읽힌다.
+ */
+export type CatalogSkin = "exam" | "dash";
+
+const skins: Record<
+  CatalogSkin,
+  {
+    wrap: string;
+    side: string;
+    sideBox: string;
+    chip: string;
+    search: string;
+    field: string;
+    btnFind: string;
+    btnReset: string;
+    toggle: string;
+    pagerCell: string;
+    rowBtn: string;
+    tableWrap: string;
+    theadRow: string;
+    mineBadge: string;
+    cards: string;
+    card: string;
+    cardBadge: string;
+    empty: string;
+    go: string;
+    goOff: string;
+  }
+> = {
+  exam: {
+    wrap: "mt-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8",
+    side: "shrink-0 lg:w-[220px]",
+    /* 윗선만 파랗게 — 오른쪽 표의 머리와 같은 말투다 */
+    sideBox: "hidden border border-t-2 border-soft-line border-t-soft-primary bg-white lg:block",
+    chip: "rounded-[2px]",
+    search: "border border-soft-line bg-white",
+    field: "rounded-[2px]",
+    btnFind: "rounded-[2px]",
+    btnReset: "rounded-[2px]",
+    toggle: "inline-flex border border-soft-line bg-white",
+    pagerCell: "rounded-[2px]",
+    rowBtn: "rounded-[2px]",
+    tableWrap: "overflow-x-auto",
+    theadRow: "border-t-2 border-soft-primary bg-slate-50",
+    mineBadge: "rounded-[2px] bg-soft-primary px-1.5 py-0.5 text-[11px] font-bold text-white",
+    cards: "grid gap-5 border-t-2 border-soft-primary pt-5 sm:grid-cols-2 xl:grid-cols-3",
+    card: "rounded-[2px]",
+    cardBadge: "rounded-[2px] px-2",
+    empty: "border-y border-soft-line bg-white py-4 text-center text-[14px] text-soft-muted",
+    go: `${btnBox} w-full`,
+    goOff: `${btnBoxDisabled} w-full`,
+  },
+  dash: {
+    wrap: "mt-7 flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6",
+    side: "shrink-0 lg:w-[200px]",
+    sideBox: "hidden overflow-hidden rounded-[14px] border border-soft-line bg-white lg:block",
+    chip: "rounded-full",
+    search: "rounded-[14px] border border-soft-line bg-white",
+    field: "rounded-[10px]",
+    btnFind: "rounded-full",
+    btnReset: "rounded-full",
+    toggle: "inline-flex overflow-hidden rounded-[10px] border border-soft-line bg-white",
+    pagerCell: "rounded-[10px]",
+    rowBtn: "rounded-full",
+    /* 판이 테두리를 두르므로 마지막 줄의 밑줄은 걷는다 — 두 줄이 겹쳐 굵어진다 */
+    tableWrap:
+      "overflow-x-auto rounded-[14px] border border-soft-line bg-white [&_tbody_tr:last-child>td]:border-b-0",
+    theadRow: "bg-slate-50",
+    mineBadge:
+      "rounded-full bg-soft-primary-soft px-2 py-0.5 text-[11.5px] font-bold text-soft-primary",
+    cards: "grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+    card: "rounded-[14px]",
+    cardBadge: "rounded-full px-2.5",
+    empty:
+      "rounded-[14px] border border-soft-line bg-white py-10 text-center text-[14px] text-soft-muted",
+    go: "inline-flex w-full items-center justify-center rounded-full bg-soft-primary px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark",
+    goOff:
+      "inline-flex w-full cursor-not-allowed items-center justify-center rounded-full border border-soft-line bg-slate-50 px-5 py-2.5 text-[14px] font-medium text-slate-400",
+  },
+};
+
+type Skin = (typeof skins)[CatalogSkin];
+
 type Item = {
   round: CatalogRound;
   track: Track;
-  /** 「2026 3-1 평가」 */
+  /** 「2026 3분기 초3 진단」 */
   name: string;
   mine: boolean;
   action: ApplyAction;
   onApply: () => void;
 };
 
+/**
+ * 진단 둘러보기 (/exam) — 로그인하지 않은 사람이 보는 목록.
+ *
+ * 줄마다 단추는 「무료로 풀어보기」 하나다. 누르면 그 진단의 1셋트가 응시 창으로 뜬다
+ * (/exam/session/trial/…). 다 풀면 그 창이 가입을 권하고, 가입한 뒤의 접수 · 응시 · 정답 ·
+ * 결과는 모두 학생 대시보드에 있다.
+ */
 export default function ExamCatalog() {
-  const session = useSession();
-  const studentId = session?.studentId ?? "demo";
-  const asGuardian = session?.asGuardian === true;
-  /* 로그인 전 — 접수 대신 셋트 창으로 보낸다(ExamGate가 이 모드로 부른다) */
-  const guest = !session;
+  return (
+    <div>
+      <BrowseTitle />
+
+      <CatalogBrowser
+        skin="exam"
+        mine={null}
+        actionOf={(round, track) => tryAction(`/exam/session/trial/${round.id}/${track}`)}
+      />
+    </div>
+  );
+}
+
+/** 둘러보기 목록의 줄 끝 단추 — 「무료로 풀어보기」. 누르면 그 주소가 응시 창으로 뜬다 */
+export const tryAction = (href: string): ApplyAction => ({
+  kind: "try",
+  label: "무료로 풀어보기",
+  href,
+});
+
+/** 진단 둘러보기의 제목과 안내 — 가입 없이 무엇을 할 수 있는지 */
+export function BrowseTitle() {
+  return (
+    <PageTitle
+      sub={
+        <>
+          회원가입 없이 보고 싶은 진단을 골라 교과 하나로 1셋트 {SET_QUESTIONS}문항을 풀어 볼
+          수 있습니다.
+          <br />
+          셋트를 풀고 가입하면 무료 진단 {FREE_TOTAL}문항으로 이어집니다. 결과 리포트는{" "}
+          <Link href="/signup" className="font-semibold text-soft-primary hover:underline">
+            회원가입
+          </Link>{" "}
+          또는{" "}
+          <Link href="/login" className="font-semibold text-soft-primary hover:underline">
+            로그인
+          </Link>{" "}
+          후 이용할 수 있습니다.
+        </>
+      }
+    >
+      진단 둘러보기
+    </PageTitle>
+  );
+}
+
+type CatalogProps = {
+  skin: CatalogSkin;
+  /** 보는 학생의 학년 — 그 학년 줄에 「내 학년」을 붙인다. 모르면 null */
+  mine: TrackId | null;
+  actionOf: (round: CatalogRound, track: TrackId) => ApplyAction;
+  /** 「접수하기」를 눌렀을 때 — 접수 확인 창을 띄운다 */
+  onApply?: (round: CatalogRound, track: TrackId) => void;
+};
+
+/**
+ * 목록 본체 — 학년 카테고리 · 검색 · 리스트/카드 · 페이지.
+ *
+ * 줄 끝의 단추가 무엇인지는 부르는 자리가 정한다(actionOf). 둘러보기는 「무료로 풀어보기」,
+ * 접수 화면은 응시권과 접수 기록을 보고 「접수하기 · 접수 마감 · 이미 접수」를 가른다.
+ *
+ * 회차는 관리자 회차 편성 저장분에서 읽는다(useCatalogRounds). 그리는 일은 CatalogView가 한다.
+ */
+export function CatalogBrowser(props: CatalogProps) {
   const rounds = useCatalogRounds();
-  const wallet = useWallet(studentId);
-  /* 접수 창은 화면 안의 상태가 아니라 주소의 상태다 — 누르면 주소를 바꾼다(ApplyFlow) */
-  const router = useRouter();
-  const pathname = usePathname();
-  const mine = trackFromGrade(findById(studentId)?.grade);
-  /* 셋트를 풀고 가입한 학생이 이 탭에 먼저 닿을 수 있다 — 그 평가를 무료로 접수해 둔다 */
-  useClaimSet(guest ? null : studentId);
+  return <CatalogView rounds={rounds} {...props} />;
+}
+
+/**
+ * 목록을 그리는 쪽 — 회차를 넘겨받아 그대로 세운다.
+ *
+ * 저장소를 읽지 않는다. 디자인 보기(/design/student/apply · /design/exam)가 회차를 적어 넘겨
+ * 누가 열어도 같은 목록을 보게 하려고 읽는 쪽(CatalogBrowser)과 갈라 두었다.
+ */
+export function CatalogView({
+  rounds,
+  skin: skinId,
+  mine,
+  actionOf,
+  onApply,
+  initial,
+}: CatalogProps & {
+  rounds: CatalogRound[];
+  /** 처음에 걸어 둘 보기 방식과 검색어 — 디자인 보기가 「카드로 보기」 · 「찾는 진단 없음」을 주소로 굳힌다 */
+  initial?: { view?: View; query?: string };
+}) {
+  const skin = skins[skinId];
 
   const [filter, setFilter] = useState<Filter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   /* 입력 중인 검색어와 실제로 건 검색어를 가른다 — 한 글자마다 목록이 흔들리면 쪽 번호도 함께 흔들린다 */
-  const [draft, setDraft] = useState("");
-  const [query, setQuery] = useState("");
-  const [view, setView] = useState<View>("list");
+  const [draft, setDraft] = useState(initial?.query ?? "");
+  const [query, setQuery] = useState(initial?.query ?? "");
+  const [view, setView] = useState<View>(initial?.view ?? "list");
   const [page, setPage] = useState(1);
   const head = useRef<HTMLDivElement>(null);
-
-  if (session && session.role !== "student") return <StudentOnly role={session.role} />;
 
   const q = query.trim().toLowerCase();
   const all: Item[] = rounds
@@ -118,14 +277,8 @@ export default function ExamCatalog() {
         track,
         name: evalName(round.id, track.id, round.label),
         mine: mine === track.id,
-        action: guest
-          ? ({
-              kind: "try",
-              label: "무료로 풀어보기",
-              href: `/exam/session/trial/${round.id}/${track.id}`,
-            } as const)
-          : applyAction(round, track.id, wallet, asGuardian),
-        onApply: () => router.replace(applyHref(pathname, round.id, track.id)),
+        action: actionOf(round, track.id),
+        onApply: () => onApply?.(round, track.id),
       })),
     )
     .filter((it) => filter === "all" || it.track.id === filter)
@@ -157,172 +310,127 @@ export default function ExamCatalog() {
   };
 
   return (
-    <div>
-      {guest ? (
-        <PageTitle
-          sub={
-            <>
-              회원가입 없이 보고 싶은 진단을 골라 교과 하나로 1셋트 {SET_QUESTIONS}문항을 풀어 볼
-              수 있습니다.
-              <br />
-              셋트를 풀고 가입하면 무료 진단 {FREE_TOTAL}문항으로 이어집니다. 결과 리포트는{" "}
-              <Link href="/signup" className="font-semibold text-soft-primary hover:underline">
-                회원가입
-              </Link>{" "}
-              또는{" "}
-              <Link href="/login" className="font-semibold text-soft-primary hover:underline">
-                로그인
-              </Link>{" "}
-              후 이용할 수 있습니다.
-            </>
-          }
+    <div className={skin.wrap}>
+      <GradeCategory
+        skin={skin}
+        filter={filter}
+        onPick={(f) => {
+          setFilter(f);
+          setPage(1);
+        }}
+        mine={mine}
+      />
+
+      <div className="min-w-0 flex-1">
+        {/* 검색 */}
+        <form
+          role="search"
+          aria-label="진단 검색"
+          onSubmit={search}
+          className={`flex flex-wrap items-end gap-x-3 gap-y-3 px-5 py-4 ${skin.search}`}
         >
-          진단 둘러보기
-        </PageTitle>
-      ) : (
-        <PageTitle>접수하기</PageTitle>
-      )}
-
-      <div className="mt-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <GradeCategory
-          filter={filter}
-          onPick={(f) => {
-            setFilter(f);
-            setPage(1);
-          }}
-          mine={mine}
-        />
-
-        <div className="min-w-0 flex-1">
-          {/* 검색 */}
-          <form
-            role="search"
-            aria-label="진단 검색"
-            onSubmit={search}
-            className="flex flex-wrap items-end gap-x-3 gap-y-3 border border-soft-line bg-white px-5 py-4"
-          >
-            <Field label="접수 상태" htmlFor="apply-status">
-              <select
-                id="apply-status"
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value as StatusFilter);
-                  setPage(1);
-                }}
-                className="h-10 min-w-[120px] rounded-[2px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none focus:border-soft-primary"
-              >
-                <option value="all">전체</option>
-                {(Object.keys(availabilityLabel) as Availability[]).map((k) => (
-                  <option key={k} value={k}>
-                    {availabilityLabel[k]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="검색어" htmlFor="apply-query" grow>
-              <input
-                id="apply-query"
-                type="search"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="진단명으로 찾기 (예: 2026, 3분기, 초4)"
-                className="h-10 w-full rounded-[2px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none placeholder:text-slate-400 focus:border-soft-primary"
-              />
-            </Field>
-            <button
-              type="submit"
-              className="h-10 rounded-[2px] bg-soft-primary px-5 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark"
-            >
-              검색
-            </button>
-            {touched && (
-              <button
-                type="button"
-                onClick={() => {
-                  setStatus("all");
-                  setDraft("");
-                  setQuery("");
-                  setPage(1);
-                }}
-                className="h-10 rounded-[2px] border border-soft-line bg-white px-4 text-[14px] text-soft-ink transition-colors hover:bg-slate-50"
-              >
-                초기화
-              </button>
-            )}
-          </form>
-
-          {/* 목록 머리 — 왼쪽에 건수, 오른쪽 위에 보기 방식 */}
-          <div
-            ref={head}
-            className="mt-6 flex scroll-mt-4 flex-wrap items-center justify-between gap-3 pb-3"
-          >
-            <p className="text-[14px] text-soft-muted">
-              <b className="font-semibold text-soft-ink">{filterLabel}</b>
-              {query && (
-                <>
-                  {" "}
-                  · 「<span className="text-soft-ink">{query}</span>」 검색
-                </>
-              )}{" "}
-              · 총 <b className="tabular-nums text-soft-primary">{all.length}</b>건
-              <span className="ml-1 tabular-nums">
-                ({current}/{pages}쪽)
-              </span>
-            </p>
-            <ViewToggle
-              view={view}
-              onPick={(v) => {
-                setView(v);
+          <Field label="접수 상태" htmlFor="apply-status">
+            <select
+              id="apply-status"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value as StatusFilter);
                 setPage(1);
               }}
-            />
-          </div>
-
-          {view === "list" ? (
-            <ListView items={items} total={all.length} offset={offset} />
-          ) : items.length === 0 ? (
-            <p className="border-y border-soft-line bg-white py-4 text-center text-[14px] text-soft-muted">
-              조건에 맞는 진단이 없습니다.
-            </p>
-          ) : (
-            <ul className="grid gap-5 border-t-2 border-soft-primary pt-5 sm:grid-cols-2 xl:grid-cols-3">
-              {items.map((it) => (
-                <li key={`${it.round.id}-${it.track.id}`}>
-                  <ExamCard {...it} />
-                </li>
+              className={`h-10 min-w-[120px] border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none focus:border-soft-primary ${skin.field}`}
+            >
+              <option value="all">전체</option>
+              {(Object.keys(availabilityLabel) as Availability[]).map((k) => (
+                <option key={k} value={k}>
+                  {availabilityLabel[k]}
+                </option>
               ))}
-            </ul>
+            </select>
+          </Field>
+          <Field label="검색어" htmlFor="apply-query" grow>
+            <input
+              id="apply-query"
+              type="search"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="진단명으로 찾기 (예: 2026, 3분기, 초4)"
+              className={`h-10 w-full border border-soft-line bg-white px-3 text-[14px] text-soft-ink outline-none placeholder:text-slate-400 focus:border-soft-primary ${skin.field}`}
+            />
+          </Field>
+          <button
+            type="submit"
+            className={`h-10 bg-soft-primary px-5 text-[14px] font-semibold text-white transition-colors hover:bg-soft-primary-dark ${skin.btnFind}`}
+          >
+            검색
+          </button>
+          {touched && (
+            <button
+              type="button"
+              onClick={() => {
+                setStatus("all");
+                setDraft("");
+                setQuery("");
+                setPage(1);
+              }}
+              className={`h-10 border border-soft-line bg-white px-4 text-[14px] text-soft-ink transition-colors hover:bg-slate-50 ${skin.btnReset}`}
+            >
+              초기화
+            </button>
           )}
+        </form>
 
-          <Pager
-            page={current}
-            pages={pages}
-            onPage={(p) => {
-              setPage(p);
-              head.current?.scrollIntoView({ block: "start" });
+        {/* 목록 머리 — 왼쪽에 건수, 오른쪽 위에 보기 방식 */}
+        <div
+          ref={head}
+          className="mt-6 flex scroll-mt-20 flex-wrap items-center justify-between gap-3 pb-3"
+        >
+          <p className="text-[14px] text-soft-muted">
+            <b className="font-semibold text-soft-ink">{filterLabel}</b>
+            {query && (
+              <>
+                {" "}
+                · 「<span className="text-soft-ink">{query}</span>」 검색
+              </>
+            )}{" "}
+            · 총 <b className="tabular-nums text-soft-primary">{all.length}</b>건
+            <span className="ml-1 tabular-nums">
+              ({current}/{pages}쪽)
+            </span>
+          </p>
+          <ViewToggle
+            skin={skin}
+            view={view}
+            onPick={(v) => {
+              setView(v);
+              setPage(1);
             }}
           />
         </div>
-      </div>
 
-      <div className="mt-12 flex justify-end border-t border-soft-line pt-5">
-        <button
-          type="button"
-          onClick={() => {
-            resetWallet(studentId);
-            resetStudent(studentId);
+        {view === "list" ? (
+          <ListView skin={skin} items={items} total={all.length} offset={offset} />
+        ) : items.length === 0 ? (
+          <p className={skin.empty}>조건에 맞는 진단이 없습니다.</p>
+        ) : (
+          <ul className={skin.cards}>
+            {items.map((it) => (
+              <li key={`${it.round.id}-${it.track.id}`}>
+                <ExamCard skin={skin} {...it} />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <Pager
+          skin={skin}
+          page={current}
+          pages={pages}
+          onPage={(p) => {
+            setPage(p);
+            head.current?.scrollIntoView({ block: "start" });
           }}
-          className="rounded-[2px] border border-soft-line bg-white px-4 py-2 text-[12px] font-bold text-soft-muted transition-colors hover:bg-slate-50"
-        >
-          시연용 초기화
-        </button>
+        />
       </div>
-
-      {/* 경계는 여기서 두른다 — 창이 주소를 읽으므로(useSearchParams) 없으면 이 화면이
-          정적으로 그려지지 않는다. 창은 떠 있을 때만 무언가를 그린다 */}
-      <Suspense fallback={null}>
-        <ApplyDialog studentId={studentId} />
-      </Suspense>
     </div>
   );
 }
@@ -351,10 +459,12 @@ function Field({
 /* ───────────────────────── 왼쪽 학년 카테고리 ───────────────────────── */
 
 function GradeCategory({
+  skin,
   filter,
   onPick,
   mine,
 }: {
+  skin: Skin;
   filter: Filter;
   onPick: (f: Filter) => void;
   mine: TrackId | null;
@@ -381,10 +491,9 @@ function GradeCategory({
   };
 
   return (
-    <nav aria-label="학년 선택" className="shrink-0 lg:w-[220px]">
+    <nav aria-label="학년 선택" className={skin.side}>
       {/* 넓은 화면 — 세로 카테고리 */}
-      {/* 윗선만 파랗게 — 오른쪽 표의 머리와 같은 말투다 */}
-      <div className="hidden border border-t-2 border-soft-line border-t-soft-primary bg-white lg:block">
+      <div className={skin.sideBox}>
         <p className="px-4 py-3 text-[15px] font-bold text-soft-ink">학년 선택</p>
         {row("all", "전체", false)}
         {schoolLevels.map((level) => (
@@ -407,7 +516,7 @@ function GradeCategory({
               type="button"
               aria-pressed={on}
               onClick={() => onPick(id)}
-              className={`rounded-[2px] border px-3.5 py-2 text-[14px] transition-colors ${
+              className={`border px-3.5 py-2 text-[14px] transition-colors ${skin.chip} ${
                 on
                   ? "border-soft-primary bg-soft-primary font-semibold text-white"
                   : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
@@ -430,7 +539,15 @@ function GradeCategory({
  * 리스트 · 카드 전환 — 흔히 쓰는 줄 모양 · 바둑판 모양 아이콘으로 둔다.
  * 글자가 보이지 않으므로 이름은 aria-label과 title(마우스를 올리면 뜨는 말)로 준다.
  */
-function ViewToggle({ view, onPick }: { view: View; onPick: (v: View) => void }) {
+function ViewToggle({
+  skin,
+  view,
+  onPick,
+}: {
+  skin: Skin;
+  view: View;
+  onPick: (v: View) => void;
+}) {
   const opts: { id: View; label: string; icon: ReactNode }[] = [
     {
       id: "list",
@@ -456,11 +573,7 @@ function ViewToggle({ view, onPick }: { view: View; onPick: (v: View) => void })
     },
   ];
   return (
-    <div
-      role="group"
-      aria-label="보기 방식"
-      className="inline-flex border border-soft-line bg-white"
-    >
+    <div role="group" aria-label="보기 방식" className={skin.toggle}>
       {opts.map((o, i) => {
         const on = view === o.id;
         return (
@@ -500,10 +613,12 @@ function ViewToggle({ view, onPick }: { view: View; onPick: (v: View) => void })
  * 다섯 쪽 번호를 지금 쪽 둘레로 보여 준다. 쪽이 백을 넘어도 줄 길이가 같다.
  */
 function Pager({
+  skin,
   page,
   pages,
   onPage,
 }: {
+  skin: Skin;
   page: number;
   pages: number;
   onPage: (p: number) => void;
@@ -512,8 +627,7 @@ function Pager({
   const start = Math.max(1, Math.min(page - 2, pages - 4));
   const nums = Array.from({ length: Math.min(5, pages) }, (_, i) => start + i);
 
-  const cell =
-    "inline-flex h-9 min-w-9 items-center justify-center rounded-[2px] border px-2.5 text-[13px] tabular-nums transition-colors";
+  const cell = `inline-flex h-9 min-w-9 items-center justify-center border px-2.5 text-[13px] tabular-nums transition-colors ${skin.pagerCell}`;
   const idle = "border-soft-line bg-white text-soft-ink hover:bg-slate-50";
   const off = "cursor-not-allowed border-soft-line bg-white text-slate-300";
 
@@ -553,15 +667,22 @@ function Pager({
 
 /* ───────────────────────── 리스트 ───────────────────────── */
 
-const rowBtn =
-  "inline-flex items-center justify-center whitespace-nowrap rounded-[2px] bg-soft-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark";
-
-function ListView({ items, total, offset }: { items: Item[]; total: number; offset: number }) {
+function ListView({
+  skin,
+  items,
+  total,
+  offset,
+}: {
+  skin: Skin;
+  items: Item[];
+  total: number;
+  offset: number;
+}) {
   const th = "border-b border-soft-line px-4 py-4 font-semibold text-soft-ink";
   const td = "border-b border-soft-line px-4 py-4 text-soft-muted";
 
   return (
-    <div className="overflow-x-auto">
+    <div className={skin.tableWrap}>
       <table className="w-full min-w-[680px] border-collapse bg-white text-[14px]">
         <caption className="sr-only">접수할 수 있는 진단</caption>
         <colgroup>
@@ -573,7 +694,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
           <col className="w-[17%]" />
         </colgroup>
         <thead>
-          <tr className="border-t-2 border-soft-primary bg-slate-50">
+          <tr className={skin.theadRow}>
             <th scope="col" className={`${th} text-left`}>
               번호
             </th>
@@ -613,7 +734,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
                     {assessment.name} {it.name}
                   </span>
                   {it.mine && (
-                    <span className="ml-2 whitespace-nowrap rounded-[2px] bg-soft-primary px-1.5 py-0.5 align-[1px] text-[11px] font-bold text-white">
+                    <span className={`ml-2 whitespace-nowrap align-[1px] ${skin.mineBadge}`}>
                       내 학년
                     </span>
                   )}
@@ -637,7 +758,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
                   {availabilityLabel[it.round.availability]}
                 </td>
                 <td className={`${td} text-center`}>
-                  <ActionCell action={it.action} onApply={it.onApply} />
+                  <ActionCell skin={skin} action={it.action} onApply={it.onApply} />
                 </td>
               </tr>
             ))
@@ -654,7 +775,7 @@ function ListView({ items, total, offset }: { items: Item[]; total: number; offs
  * 표와 카드가 같은 조각을 쓴다. 값을 두 곳에서 각자 그리면 한쪽만 할인 표시를 빠뜨리고,
  * 목록에서 본 값과 카드에서 본 값이 다르면 무엇이 맞는지 물으러 온다.
  *
- * 지난 평가에도 값을 적는다. 「접수 마감」 줄의 값이 대시로 비면 그 평가가 얼마짜리였는지
+ * 지난 진단에도 값을 적는다. 「접수 마감」 줄의 값이 대시로 비면 그 진단이 얼마짜리였는지
  * 알 수 없고, 다음 분기에 얼마를 준비해야 하는지도 거기서 가늠한다.
  */
 function Fee({ round }: { round: CatalogRound }) {
@@ -668,14 +789,27 @@ function Fee({ round }: { round: CatalogRound }) {
   );
 }
 
-function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => void }) {
+function ActionCell({
+  skin,
+  action,
+  onApply,
+}: {
+  skin: Skin;
+  action: ApplyAction;
+  onApply: () => void;
+}) {
+  const rowBtn = `inline-flex items-center justify-center whitespace-nowrap bg-soft-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-soft-primary-dark ${skin.rowBtn}`;
+
   if (action.kind === "done") {
     return (
       <span className="flex flex-col items-center gap-1">
         <span className="text-[13px] font-semibold text-soft-primary">
           {action.tier === "free" ? "무료 진단 접수" : "유료 진단 접수"}
         </span>
-        <Link href="/exam" className="text-[12px] text-soft-ink underline-offset-2 hover:underline">
+        <Link
+          href={action.href}
+          className="text-[12px] text-soft-ink underline-offset-2 hover:underline"
+        >
           {action.label}
         </Link>
       </span>
@@ -701,11 +835,13 @@ function ActionCell({ action, onApply }: { action: ApplyAction; onApply: () => v
 
 /* ───────────────────────── 카드 ───────────────────────── */
 
-function ExamCard({ round, track, name, mine, action, onApply }: Item) {
+function ExamCard({ skin, round, track, name, mine, action, onApply }: Item & { skin: Skin }) {
   const total = round.subjects.reduce((sum, s) => sum + s.minutes, 0);
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-[2px] border border-soft-line bg-white">
+    <article
+      className={`flex h-full flex-col overflow-hidden border border-soft-line bg-white ${skin.card}`}
+    >
       <div className="relative aspect-[16/9] bg-slate-100">
         <Image
           src={track.image}
@@ -715,7 +851,9 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
           className="object-cover"
         />
         {mine && (
-          <span className="absolute right-3 top-3 rounded-[2px] bg-soft-primary px-2 py-1 text-[12px] font-bold text-white">
+          <span
+            className={`absolute right-3 top-3 bg-soft-primary py-1 text-[12px] font-bold text-white ${skin.cardBadge}`}
+          >
             내 학년
           </span>
         )}
@@ -766,24 +904,20 @@ function ExamCard({ round, track, name, mine, action, onApply }: Item) {
               <p className="mb-2 text-[13px] font-semibold text-soft-primary">
                 {action.tier === "free" ? "무료 진단 접수 완료" : "유료 진단 접수 완료"}
               </p>
-              <Link href="/exam" className={`${btnBox} w-full`}>
+              <Link href={action.href} className={skin.go}>
                 {action.label}
               </Link>
             </>
           ) : action.kind === "try" ? (
-            <button
-              type="button"
-              onClick={() => examWindow(action.href)}
-              className={`${btnBox} w-full`}
-            >
+            <button type="button" onClick={() => examWindow(action.href)} className={skin.go}>
               {action.label}
             </button>
           ) : action.kind === "apply" ? (
-            <button type="button" onClick={onApply} className={`${btnBox} w-full`}>
+            <button type="button" onClick={onApply} className={skin.go}>
               {action.label}
             </button>
           ) : (
-            <span aria-disabled className={`${btnBoxDisabled} w-full`}>
+            <span aria-disabled className={skin.goOff}>
               {action.label}
             </span>
           )}

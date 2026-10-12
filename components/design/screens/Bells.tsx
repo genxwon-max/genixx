@@ -44,7 +44,7 @@ const parentOlder: Alert[] = [
 
 const studentAlerts: Alert[] = [
   { kind: "진단", title: "2026 4분기 초4 진단이 열렸습니다", body: "10.31(토)까지 응시할 수 있습니다.", at: "방금 전", unread: true },
-  { kind: "진단", title: "수학을 아직 끝내지 않았습니다", body: "풀던 곳부터 이어서 응시할 수 있습니다. 남은 문항 8개", at: "3시간 전", unread: true },
+  { kind: "진단", title: "수학을 아직 끝내지 않았습니다", body: "풀던 곳부터 이어서 응시할 수 있습니다. 남은 문항 6개", at: "3시간 전", unread: true },
   { kind: "설문", title: "학생 설문을 작성해 주세요", body: "설문 3개 가운데 1개를 작성했습니다.", at: "어제" },
   { kind: "결과", title: "진단 결과가 나왔습니다", body: "2026 3분기 초4 진단 결과를 볼 수 있습니다.", at: "10.02" },
 ];
@@ -307,7 +307,7 @@ function StudentHomeCopy({ teen }: { teen: boolean }) {
       <Head
         title={`${teen ? "이하윤" : "이서준"}님, 안녕하세요`}
         right={
-          <Link href="/exam/apply" className={btnQuiet}>
+          <Link href="/design/student/apply" className={btnQuiet}>
             진단 접수하기
           </Link>
         }
@@ -324,7 +324,11 @@ function StudentHomeCopy({ teen }: { teen: boolean }) {
               {teen ? "2026 3분기 중2 진단" : "2026 4분기 초4 진단"}
             </p>
           </div>
-          <Link href={teen ? "/student/results" : "/student/exams"} className={btnGo}>
+          {/* 누르면 가는 곳도 디자인 화면이다 — 결과 목록 · 지금 응시하는 진단 */}
+          <Link
+            href={teen ? "/design/student/results" : "/design/student/exams/2026-4/e4/doing"}
+            className={btnGo}
+          >
             {teen ? "결과 보기" : "진단 보기"} →
           </Link>
         </div>

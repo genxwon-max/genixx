@@ -58,6 +58,14 @@ export async function dropMedia(key: string) {
 }
 
 /**
+ * 열쇠가 곧 주소인가 — 서버에 올라가 있는 파일이면 저장소를 뒤지지 않고 그 주소를 그대로 쓴다.
+ *
+ * 지금 이런 열쇠를 적는 곳은 디자인 보기의 예시 답안뿐이다(사이트에 실어 둔 그림). 서버가
+ * 붙어 saveMedia가 주소를 돌려주게 되면 그 답도 이 길로 읽힌다.
+ */
+const isAddress = (key: string) => /^(\/|https?:\/\/)/.test(key);
+
+/**
  * 열쇠로 파일을 읽어 화면에 쓸 주소로 만든다.
  *
  *   url      읽는 중이거나 없으면 null
@@ -65,9 +73,10 @@ export async function dropMedia(key: string) {
  */
 export function useMediaUrl(key: string | null) {
   const [state, setState] = useState<{ key: string; url: string | null } | null>(null);
+  const direct = !!key && isAddress(key);
 
   useEffect(() => {
-    if (!key) return;
+    if (!key || direct) return;
     let url: string | null = null;
     let gone = false;
     loadMedia(key)
@@ -81,8 +90,9 @@ export function useMediaUrl(key: string | null) {
       gone = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [key]);
+  }, [key, direct]);
 
+  if (direct) return { url: key, missing: false };
   const ready = !!key && state?.key === key;
   return { url: ready ? state.url : null, missing: ready && !state.url };
 }

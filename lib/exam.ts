@@ -47,6 +47,7 @@ export function flattenSets(sets: ExamSet[]): Question[] {
       group: group?.id,
       groupBrief: group?.brief,
       scoring: cq.scoring,
+      points: cq.points,
       sampleAnswer: cq.sampleAnswer,
     };
   };
@@ -266,6 +267,8 @@ export type Question = {
   upload?: "image";
   /** 채점 기준 — 학생 화면에는 내보이지 않는다 */
   scoring?: string[];
+  /** 만점 — 채점 기준이 정한 값. 없으면 pointsOf가 유형을 보고 정한다 */
+  points?: number;
   /** 예시 답 — 칸이 있으면 칸 순서대로 */
   sampleAnswer?: string[];
 };
@@ -291,7 +294,7 @@ export function blankFilled(b: Blank, v: string) {
 
 /** 칸 하나의 답을 읽는 글로 */
 function blankText(b: Blank, v: string) {
-  if (b.draw) return v ? "(그림을 그림)" : "";
+  if (b.draw !== undefined) return v ? "(그림 답안)" : "";
   if (b.template) {
     const parts = slotValues(b.template, v);
     if (parts.every((x) => !x.trim())) return "";
@@ -366,16 +369,31 @@ export function answerText(q: Question, value: number | string | undefined): str
 /**
  * 문항 하나의 정오.
  *
- *   right    맞음
- *   wrong    틀림
- *   empty    답하지 않음 — 정오표에서는 틀림과 같이 센다
- *   pending  기계로 맞춰 볼 수 없어 전문가가 채점한다
+ *   right    정답
+ *   partial  부분 정답 — 만점보다 적게 받았다. 전문가가 점수를 매긴 문항에서만 나온다
+ *   wrong    오답
+ *   empty    미응답 — 답하지 않았다. 정오표에서는 오답과 같이 ✕로 적는다
+ *   pending  채점 중 — 기계로 맞춰 볼 수 없어 전문가가 채점한다
  *
  * 기계로 맞춰 보는 것은 객관식과, 칸마다 허용 답(accept)이 적힌 괄호 칸 문항뿐이다.
  * 한 칸이라도 허용 답이 없으면 그 문항은 통째로 전문가에게 넘긴다 — 반만 맞춰 보고
  * ○ · ✕를 붙이면 부분점수 문항의 정오가 틀어진다.
  */
-export type Mark = "right" | "wrong" | "empty" | "pending";
+export type Mark = "right" | "partial" | "wrong" | "empty" | "pending";
+
+/**
+ * 정오를 화면에 적는 말 — 정오표 · 답안 풀이 · 내려받는 파일이 같은 말을 쓴다.
+ *
+ * 「맞음 · 틀림」이라 적던 것을 「정답 · 오답」으로 바꿨다(2026-10-12). 표 이름이 정오표이고
+ * 옆 칸이 「정답」이라 짝이 맞고, 운영 콘솔의 채점 화면도 오답 · 미응답이라 적는다.
+ */
+export const markLabel: Record<Mark, string> = {
+  right: "정답",
+  partial: "부분 정답",
+  wrong: "오답",
+  empty: "미응답",
+  pending: "채점 중",
+};
 
 /** 허용 답과 견줄 때 — 띄어쓰기 · 대소문자는 보지 않는다 */
 const plain = (s: string) => s.replace(/\s+/g, "").toLowerCase();
@@ -400,6 +418,53 @@ export function markOf(q: Question, value: number | string | undefined): Mark {
   return ok ? "right" : "wrong";
 }
 
+/* ───────────────────────── 점수 ───────────────────────── */
+
+/**
+ * 문항의 만점.
+ *
+ * 채점 기준이 값을 정해 둔 문항(「총 3점」)은 그 값을 쓴다. 적혀 있지 않으면 기계로 채점하는
+ * 문항(객관식 · 단답형)은 1점, 전문가가 채점하는 문항(서술형 · 논술형 · 사진)은 2점이다 —
+ * 채점 루브릭의 세 칸(완전 2 · 부분 1 · 오답 0)과 같은 만점이다.
+ */
+export function pointsOf(q: Question): number {
+  return q.points ?? (autoGraded(q) ? 1 : 2);
+}
+
+/** 답을 내지 않았는가 — 고르지도 쓰지도 올리지도 않았다 */
+export function unanswered(q: Question, value: number | string | undefined): boolean {
+  if (q.type === "choice") return typeof value !== "number";
+  if (q.upload) return splitUpload(value) === null;
+  if (q.blanks) return splitBlanks(value, q.blanks.length).every((p) => !p.trim());
+  return typeof value !== "string" || !value.trim();
+}
+
+/**
+ * 매긴 점수에서 정오를 읽는다 — 만점이면 정답, 0점이면 오답(답을 내지 않았으면 미응답),
+ * 그 사이는 부분 정답이다.
+ *
+ * 기계가 정답으로 본 문항도 채점자가 점수를 낮출 수 있다(찍어서 맞힌 것이 분명한 답). 그래서
+ * 정오는 기계의 판정이 아니라 **마지막에 매겨진 점수**를 따른다.
+ */
+export function markOfPoints(
+  q: Question,
+  value: number | string | undefined,
+  points: number,
+): Mark {
+  if (points >= pointsOf(q)) return "right";
+  if (points > 0) return "partial";
+  return unanswered(q, value) ? "empty" : "wrong";
+}
+
+/** 채점자가 문항 하나에 매긴 것 — 점수와, 아이와 보호자가 읽는 해설 */
+export type Grade = { points: number; comment?: string };
+
+/** 채점이 끝난 문항들 — 문항 ID → 매긴 것. 여기 없는 문항은 아직 채점자가 보지 않았다 */
+export type Grades = Record<string, Grade>;
+
+/** 점수를 적는 꼴 — 1.5는 1.5로, 2는 2로 */
+export const pointText = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
 /** 동그라미 번호 — 정오표의 객관식 답 */
 export const circled = (i: number) => String.fromCharCode(0x2460 + i);
 
@@ -412,15 +477,78 @@ export function keyText(q: Question): string {
     .join(", ");
 }
 
-/** 정오표의 「내 답」 칸 — 짧게 */
+/**
+ * 정오표의 「내 답」 칸 — 기계로 채점하는 문항의 짧은 답.
+ * 전문가가 채점하는 문항(서술형 · 논술형 · 사진)은 쓴 글과 올린 사진을 그대로 편다(answerParts).
+ */
 export function shortAnswer(q: Question, value: number | string | undefined): string {
   if (q.type === "choice") return typeof value === "number" ? circled(value) : "";
-  if (!autoGraded(q)) return answerText(q, value) ? "작성함" : "";
+  if (!autoGraded(q)) return "";
   const parts = splitBlanks(value, q.blanks!.length);
   if (parts.every((p) => !p.trim())) return "";
   return q
     .blanks!.map((b, i) => (parts[i].trim() ? parts[i].trim() + (b.suffix ?? "") : "-"))
     .join(", ");
+}
+
+/**
+ * 문항 유형 — 정오표와 내려받는 파일이 적는 이름.
+ *
+ *   객관식  보기에서 고른다
+ *   단답형  칸마다 정해진 답이 있어 기계로 채점한다
+ *   서술형  칸마다 한두 문장을 쓴다 — 전문가가 채점한다
+ *   논술형  긴 글 칸 하나에 쓴다 — 전문가가 채점한다
+ *   사진    종이에 쓰거나 그린 것을 찍어 올린다 — 전문가가 채점한다
+ */
+export type AnswerKind = "객관식" | "단답형" | "서술형" | "논술형" | "사진";
+
+export function answerKind(q: Question): AnswerKind {
+  if (q.type === "choice") return "객관식";
+  if (q.upload) return "사진";
+  if (!q.blanks) return "논술형";
+  return autoGraded(q) ? "단답형" : "서술형";
+}
+
+/** 쓴 답의 한 칸 — 글이거나, 그림 칸에 그린 그림이다 */
+export type AnswerPart = {
+  /** 칸 이름 — 긴 글 칸 하나뿐인 문항은 빈 글이다 */
+  label: string;
+  /** 쓴 글. 쓰지 않았으면 빈 글 */
+  text: string;
+  /** 그림 칸에 그린 것 — 밑그림(없으면 빈 글)과 그 위에 그은 선 */
+  drawing?: { background: string; strokes: string };
+  /** 비워 두어도 되는 칸 — 비었으면 정오표에 적지 않는다 */
+  optional: boolean;
+};
+
+/**
+ * 글로 쓴 답을 칸마다 갈라 읽는다 — 쓴 것이 하나도 없으면 빈 배열.
+ *
+ * 정오표와 답안 풀이는 쓴 글을 줄이지 않고 모두 보여 주고, 그림 칸에 그린 것은 그림으로
+ * 보여 준다. 글 한 줄로 이어 붙인 answerText로는 그림을 놓을 자리가 없어 따로 둔다.
+ */
+export function answerParts(q: Question, value: number | string | undefined): AnswerPart[] {
+  if (typeof value !== "string" || q.type === "choice" || q.upload) return [];
+  if (!q.blanks) {
+    return value.trim() ? [{ label: "", text: value.trim(), optional: false }] : [];
+  }
+  const parts = splitBlanks(value, q.blanks.length);
+  if (parts.every((p) => !p.trim())) return [];
+  return q.blanks.map((b, i) =>
+    b.draw !== undefined
+      ? {
+          label: b.label,
+          text: "",
+          drawing: parts[i] ? { background: b.draw, strokes: parts[i] } : undefined,
+          optional: !!b.optional,
+        }
+      : {
+          label: b.label,
+          /* 짧은 칸의 단위(°)는 쓴 값 뒤에 붙인다 — 칸에 적혀 있던 모양 그대로 */
+          text: blankText(b, parts[i]) + (b.short && parts[i].trim() ? (b.suffix ?? "") : ""),
+          optional: !!b.optional,
+        },
+  );
 }
 
 /* ───────────────────────── 시험 세 갈래 ───────────────────────── */

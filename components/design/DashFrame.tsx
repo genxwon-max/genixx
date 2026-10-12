@@ -59,14 +59,14 @@ export default function DashFrame({
         >
           GX
         </Link>
-        <nav aria-label="주 메뉴" className="flex flex-1 flex-col gap-1 px-2 py-3">
+        <nav aria-label="주 메뉴" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 py-3">
           {menu.map((m) => (
             <Link
               key={m.label}
               href={m.href}
               aria-current={m.href === at ? "page" : undefined}
               title={m.label}
-              className={`flex w-full flex-col items-center gap-1 rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
+              className={`flex w-full shrink-0 flex-col items-center gap-1 whitespace-nowrap rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === at
                   ? "bg-soft-primary-soft text-soft-primary"
                   : "text-soft-muted hover:bg-slate-50 hover:text-soft-ink"
@@ -144,14 +144,14 @@ export default function DashFrame({
 
         <nav
           aria-label="주 메뉴"
-          className="fixed inset-x-0 bottom-0 z-20 flex border-t border-soft-line bg-white lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-soft-line bg-white [scrollbar-width:none] lg:hidden"
         >
           {menu.map((m) => (
             <Link
               key={m.label}
               href={m.href}
               aria-current={m.href === at ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ${
+              className={`flex flex-[1_0_auto] flex-col items-center gap-0.5 whitespace-nowrap px-1.5 py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === at ? "text-soft-primary" : "text-soft-muted"
               }`}
             >

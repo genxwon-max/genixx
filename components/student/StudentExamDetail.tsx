@@ -11,6 +11,7 @@ import {
   MissingDiag,
   StageTag,
   amountOf,
+  answerPath,
   dayText,
   daysLeft,
   findDiag,
@@ -21,7 +22,7 @@ import {
   useDiags,
   type Diag,
 } from "./diag";
-import { Head, WhoNote, btnGo, cardBox, useSelf } from "./self";
+import { Head, WhoNote, btnGo, btnQuiet, cardBox, useSelf } from "./self";
 
 const back = { href: "/student/exams", label: "내 진단" };
 
@@ -127,6 +128,9 @@ function Folded({ children }: { children: React.ReactNode }) {
  *
  * 결과가 나왔으면 재능 유형을 적고 결과지로 가는 단추를 단다. 결과지 자체는 「진단 결과」의
  * 자리다 — 여기에 다시 펴면 같은 결과가 두 곳에서 따로 선다.
+ *
+ * 최종 제출을 마친 진단에는 「정답과 해설」로 가는 단추도 단다. 정답은 결과가 발행되기 전,
+ * 최종 제출한 그날부터 열리므로 전문가 확인을 기다리는 동안 할 수 있는 일이 그것이다.
  */
 function Now({ diag }: { diag: Diag }) {
   const { stage, record, reg } = diag;
@@ -163,7 +167,7 @@ function Now({ diag }: { diag: Diag }) {
       case "reviewing":
         return [
           "최종 제출을 마쳤습니다",
-          "전문가가 결과를 확인하고 있습니다. 발행되면 「진단 결과」에서 봅니다.",
+          "전문가가 결과를 확인하고 있습니다. 발행되면 「진단 결과」에서 봅니다. 정답과 해설은 지금 볼 수 있습니다.",
         ];
       case "published":
         return [
@@ -183,10 +187,20 @@ function Now({ diag }: { diag: Diag }) {
         <p className="text-[16.5px] font-bold text-soft-ink">{head}</p>
         <p className="mt-1 text-[13.5px] leading-[1.7] text-soft-muted">{body}</p>
       </div>
-      {stage === "published" && (
-        <Link href={resultPath(diag.ref)} className={btnGo}>
-          결과 보기 →
+      {stage === "reviewing" && (
+        <Link href={answerPath(diag.ref)} className={btnGo}>
+          정답과 해설 보기 →
         </Link>
+      )}
+      {stage === "published" && (
+        <div className="flex flex-wrap gap-2.5">
+          <Link href={answerPath(diag.ref)} className={btnQuiet}>
+            정답과 해설
+          </Link>
+          <Link href={resultPath(diag.ref)} className={btnGo}>
+            결과 보기 →
+          </Link>
+        </div>
       )}
     </section>
   );

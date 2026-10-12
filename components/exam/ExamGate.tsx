@@ -19,7 +19,10 @@ import ExamCatalog from "./ExamCatalog";
  * 주소만 읽으면 된다. 응시 기록은 그대로 계정에 붙고, 명부에 없는 사람은 demo 학생으로
  * 돈다. 가입을 권하는 자리는 이 평가 목록과 셋트 끝 화면이다.
  *
- * 접수·기록·결과·해설은 계정에 붙어야만 뜻이 있는 화면이라 여전히 이 문을 두른다.
+ * ── 지금 이 문을 두른 곳 ──
+ * 보호자·기관의 결과 리포트(/exam/result)와 옛 응시권 결제(/exam/payment) 둘이다. 계정에
+ * 붙어야만 뜻이 있는 화면이다. 학생의 접수 · 응시 · 정답과 해설 · 결과는 학생 대시보드
+ * (/student)로 옮겨 갔고, 응시 존의 첫 화면(/exam)은 ExamEntrance가 사람에 따라 가른다.
  */
 export default function ExamGate({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();

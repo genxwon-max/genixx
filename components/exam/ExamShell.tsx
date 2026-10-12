@@ -3,22 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
+import { examPaper } from "./skin";
 
 /** 응시 화면(실제 응시 · 셋트)인가 — 둘 다 /exam/session 아래에 있다 */
 export const isExamScreen = (pathname: string) => pathname.startsWith("/exam/session/");
-
-/**
- * 응시 화면의 바탕 — 시험지처럼 흰 종이.
- *
- * 응시 존의 색 토큰(globals.css의 --color-exam-*)을 이 틀 안에서만 덮는다. 헤더 · 자료 ·
- * 문제 · 이동판 · 하단 바가 모두 이 토큰을 쓰므로 한 곳에서 바꾸면 화면 전체가 희어진다.
- * raised만은 옅은 회색으로 남긴다 — 번호 단추에 마우스를 올렸을 때의 표시가 사라지면 안 된다.
- */
-const examScreenColors = {
-  "--color-exam-bg": "#ffffff",
-  "--color-exam-panel": "#ffffff",
-  "--color-exam-raised": "#f4f5f7",
-} as CSSProperties;
 
 /**
  * 응시 존 바깥 틀.
@@ -41,7 +29,8 @@ export function ExamShell({
   return (
     <div
       className={`${className} ${locked ? "h-dvh overflow-hidden" : "min-h-full"} flex flex-col`}
-      style={locked ? { ...style, ...examScreenColors } : style}
+      /* 응시 화면에서는 흰 종이를 덧씌운다(skin.ts의 examPaper) */
+      style={locked ? { ...style, ...examPaper } : style}
     >
       {children}
     </div>
@@ -55,8 +44,8 @@ export function ExamMain({ children }: { children: ReactNode }) {
 }
 
 /**
- * 헤더 첫 줄의 안내 메뉴 — 응시 화면에서는 그리지 않는다.
- * 시험 도중에 사이트로 나가는 길을 두지 않는다(응시 메뉴 · 리모컨과 같은 약속).
+ * 헤더의 안내 메뉴 — 응시 화면에서는 그리지 않는다.
+ * 시험 도중에 사이트로 나가는 길을 두지 않는다.
  */
 export function ExamSiteNav({ links }: { links: { href: string; label: string }[] }) {
   if (isExamScreen(usePathname())) return null;
