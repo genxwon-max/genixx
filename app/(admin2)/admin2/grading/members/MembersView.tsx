@@ -5,8 +5,9 @@ import { useCallback, useMemo, useState } from "react";
 import { rounds } from "@/lib/admin";
 import { n } from "@/lib/admin2";
 import { sheetsOf, useExpert, type Sheet } from "@/lib/expertStore";
-import { AI_POINT_OF, QUESTION_POINT, sheetAnswersOf } from "@/lib/examSheet";
-import { markKey, useAllMarks, type SheetMarks } from "@/lib/sheetMarkStore";
+import { sheetSubjects } from "@/lib/examSheet";
+import { gradeStat, type GradeMarks } from "@/lib/gradeSheet";
+import { useAllMarks, type SheetMarks } from "@/lib/sheetMarkStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Tab } from "@/components/admin2/ui";
 
@@ -34,29 +35,19 @@ const pt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
  * 「0 / 2」와 상세의 「35 / 100」이 서로 다른 것을 세게 되었고, 두 화면이 같은 답안지를
  * 다른 숫자로 말했다.
  *
- * 이제 둘 다 시험지 문항 + 서술형 응답을 함께 세고, 전문가가 점수를 친 문항을 「채점함」으로
- * 본다(lib/sheetMarkStore.ts).
+ * 이제 둘 다 **시험지 문항**(1번부터 끝까지)을 세고, 채점자가 점수를 확인하거나 고친 문항을
+ * 「채점함」으로 본다(lib/gradeSheet.ts의 gradeStat — 상세의 정오표와 같은 셈이다). 만점은
+ * 문항마다 다르다(lib/exam.ts pointsOf).
  */
-function sheetStat(sheet: Sheet, marks: SheetMarks) {
-  const paper = sheetAnswersOf(
-    sheet.seat,
-    [...new Set(sheet.tasks.map((t) => t.subject))],
-  );
-  const rows = [
-    ...paper.map((a) => ({ id: a.q.id, ai: a.aiPoints ?? 0 })),
-    ...sheet.tasks.map((t) => ({ id: t.id, ai: AI_POINT_OF[t.human?.level ?? t.aiLevel] })),
-  ];
-
-  let done = 0;
-  let got = 0;
-  let comments = 0;
-  for (const r of rows) {
-    const m = marks[markKey(sheet.key, r.id)];
-    if (m?.points !== undefined) done += 1;
-    if (m?.comment) comments += 1;
-    got += m?.points ?? r.ai;
+function sheetStat(sheet: Sheet, all: SheetMarks) {
+  const subjects = sheetSubjects(sheet.seat, [...new Set(sheet.tasks.map((t) => t.subject))]);
+  /* 저장소의 열쇠는 「답안지/문항」이다 — 이 답안지의 것만 문항 ID로 추린다 */
+  const head = `${sheet.key}/`;
+  const marks: GradeMarks = {};
+  for (const [k, v] of Object.entries(all)) {
+    if (k.startsWith(head)) marks[k.slice(head.length)] = v;
   }
-  return { done, got, comments, total: rows.length, max: rows.length * QUESTION_POINT };
+  return gradeStat(subjects, marks);
 }
 
 type TabId = "open" | "done" | "all";

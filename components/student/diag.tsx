@@ -19,11 +19,12 @@ import { useRegistrations, type Registration } from "@/components/exam/Registrat
 import { Head, btnGo, cardBox } from "./self";
 
 /**
- * 학생 대시보드의 진단 한 건 — 「내 진단」과 「진단 결과」가 같은 줄을 읽는다.
+ * 학생 대시보드의 진단 한 건 — 「내 진단」 · 「정답과 해설」 · 「진단 결과」가 같은 줄을 읽는다.
  *
- * 두 자리 모두 목록 → 상세다. 목록은 접수한 진단을 최근 것부터 한 줄씩 세우고, 줄을 누르면
- * 그 진단의 주소(/student/exams/2026-3/e4 · /student/results/2026-3/e4)로 들어간다.
- * 단계와 진행을 두 곳이 따로 세면 같은 진단이 목록마다 다르게 읽히므로 여기 한곳에서 센다.
+ * 세 자리 모두 목록 → 상세다. 목록은 접수한 진단을 최근 것부터 한 줄씩 세우고, 줄을 누르면
+ * 그 진단의 주소(/student/exams/2026-3/e4 · /student/answers/2026-3/e4 ·
+ * /student/results/2026-3/e4)로 들어간다.
+ * 단계와 진행을 자리마다 따로 세면 같은 진단이 목록마다 다르게 읽히므로 여기 한곳에서 센다.
  */
 
 /** 학생에게 부르는 진단의 자리 — 과목 상태(lib/progress.ts의 Phase)보다 한 겹 넓다 */
@@ -96,8 +97,12 @@ export const findDiag = (diags: Diag[], round: string, track: string) =>
 
 /** 진단 한 건의 자리 — 과목을 응시하는 판이 선다 */
 export const examPath = (r: RegRef) => `/student/exams/${r.round}/${r.track}`;
+/** 진단 한 건의 정답과 해설 — 최종 제출을 마친 진단만 열린다 */
+export const answerPath = (r: RegRef) => `/student/answers/${r.round}/${r.track}`;
 /** 진단 한 건의 결과지 */
 export const resultPath = (r: RegRef) => `/student/results/${r.round}/${r.track}`;
+/** 진단을 골라 접수하는 자리 */
+export const applyPath = "/student/apply";
 
 /** 얼마나 했나 — 유료는 과목, 무료는 한 판이라 문항으로 센다 */
 export function amountOf(record: ExamRecord) {
@@ -125,6 +130,13 @@ export const dayText = (n: number | null) =>
 
 /** 「2026-08-01」 → 「08.01」 */
 export const md = (d: string) => dotDate(d).slice(5);
+
+/** ISO 시각 → 이 기기 날짜로 「2026.09.12」 */
+export function dayOf(iso: string) {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+}
 
 /** 「응시 기간 2026.08.01 ~ 2026.08.31」 — 회차가 목록에서 사라졌으면 빈 글 */
 export const periodOf = (info: CatalogRound | undefined) =>
@@ -168,7 +180,8 @@ export function DiagRow({
   state,
   note,
 }: {
-  diag: Diag;
+  /** 줄이 읽는 것은 진단 이름과 접수 유형뿐이다 — 디자인 보기는 이 둘만 적어 넘긴다 */
+  diag: Pick<Diag, "name" | "reg">;
   href?: string;
   /** 이름 아래 한 줄 — 응시 기간 · 발행일 */
   when: string;
@@ -208,13 +221,13 @@ export function DiagRow({
   );
 }
 
-/** 목록이 비었을 때 — 접수하는 길 하나 */
-export function EmptyList({ body }: { body: string }) {
+/** 목록이 비었을 때 — 접수하는 길 하나. applyHref는 디자인 보기가 제 주소로 바꿔 넘긴다 */
+export function EmptyList({ body, applyHref = applyPath }: { body: string; applyHref?: string }) {
   return (
     <div className={`${cardBox} mt-7 p-10 text-center`}>
       <p className="text-[15px] font-bold text-soft-ink">아직 접수한 진단이 없습니다</p>
       <p className="mx-auto mt-2 max-w-md text-[13px] leading-[1.75] text-soft-muted">{body}</p>
-      <Link href="/exam/apply" className={`${btnGo} mt-5`}>
+      <Link href={applyHref} className={`${btnGo} mt-5`}>
         진단 접수하기 →
       </Link>
     </div>

@@ -600,6 +600,7 @@ export const examSets: ExamSet[] = [
       },
       {
         id: "sci-4",
+        points: 3,
         level: "S4",
         stem: "등잔과 초의 그림에서 등잔불과 촛불이 모두 위를 향하고 있는 것을 볼 수 있다. 이렇게 등잔불과 촛불은 위로 향하는 이유를 쓰고, 그 이유를 증명할 수 있는지 방법을 제시하시오.",
         response: {
@@ -752,6 +753,7 @@ export const examSets: ExamSet[] = [
       },
       {
         id: "sci-7",
+        points: 3,
         level: "S4",
         stem: "사진의 구름 A와 구름 B를 관찰하여 ‘구름 A보다 구름 B의 이동 속도가 빠르다’고 주장한 친구가 있다. 이 친구의 주장에 대한 여러분의 동의 여부를 밝히고 그 이유를 쓰시오.",
         response: {
@@ -898,6 +900,7 @@ export const examSets: ExamSet[] = [
       },
       {
         id: "sci-10",
+        points: 1,
         level: "S2",
         stem: "열화상 이미지를 보면 연잎 A보다 연잎 B의 온도가 상대적으로 낮은 것을 볼 수 있다. 그 이유를 쓰시오.",
         response: {
@@ -939,6 +942,7 @@ export const examSets: ExamSet[] = [
       },
       {
         id: "sci-12",
+        points: 3,
         level: "S4",
         stem: "연잎의 온도를 분석한 결과를 보면 Sp1과 Sp4 위치는 다른 곳보다 온도가 더 높은 것을 볼 수 있다. 그 이유를 추론하여 적고, 여러분의 추론을 증명하기 위해 어떤 내용의 실험을 해야 하는지 쓰시오.",
         response: {
@@ -1260,6 +1264,7 @@ export const examSets: ExamSet[] = [
           },
           {
             id: "sci-19",
+            points: 3,
             level: "S4",
             stem: "아래 표의 (    ) 속의 값은 학생 B가 측정한 값을 미리 10으로 나눈 후 평균을 구한 것이다. 이 표를 참고하여 학생 A보다 학생 B의 실험 방법 중 어느 학생의 실험 방법이 더 과학적인지 그 이유를 설명하시오.",
             blocks: [

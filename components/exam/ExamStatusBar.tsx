@@ -76,8 +76,9 @@ function useTrialHeadValue() {
  * 이 줄은 응시 화면(/exam/session/…)에서만 선다. 탭 화면에서는 아무것도 그리지 않는다 —
  * 거기 헤더는 로고와 메뉴가 쓰는 자리다.
  *
- * 전체화면을 끄는 단추는 두지 않는다 — 나가는 길은 「포기하기」 하나고, ESC도 같은 물음을
- * 연다(lib/fullscreen.ts). 셋트는 시계가 없어 「셋트 그만하기」만 선다.
+ * 전체화면을 끄는 단추는 두지 않는다 — 나가는 길은 「나가기」 하나고, ESC도 같은 물음을
+ * 연다(lib/fullscreen.ts). 비회원 셋트 · 무료 진단 · 유료 진단이 모두 같은 말을 쓴다 —
+ * 나가면 무슨 일이 생기는지는 갈래마다 달라, 그것은 눌렀을 때 뜨는 창이 말한다.
  *
  * ── 평가명은 어디서 오는가 ──
  * 셋트 창은 주소에 회차와 학년이 들어 있다(/exam/session/trial/2026-3/e4). 다만 학년은 창
@@ -140,7 +141,7 @@ export default function ExamStatusBar() {
    * 응시 화면 밖에서는 아무것도 그리지 않는다.
    *
    * 이 줄은 **시험지 머리**다 — 로고도 메뉴도 감춘 자리에 평가명 · 과목 · 남은 시간만
-   * 세우려고 만들었다. 그런데 주소를 가리지 않아 접수하기 · 응시하기 같은 탭 화면의
+   * 세우려고 만들었다. 그런데 주소를 가리지 않아 진단 둘러보기 · 안내 같은 화면의
    * 헤더에도 평가명이 따라 붙었다. 거기는 왼쪽에 이미 「GENIXX · TalentMe 재능진단」이
    * 서 있는 자리라, 같은 이름이 한 줄에 두 번 서고 로그인한 사람 이름 앞을 막았다.
    */
@@ -164,8 +165,8 @@ export default function ExamStatusBar() {
          주소에서 읽은 이름은 창이 아직 건네기 전의 첫 그림에만 선다 */
       <HeadRow name={trial.name ?? examName} subject={trial.subject}>
         {/* 시작하기 전(표지)에는 나갈 길이 「창 닫기」다. 시작한 뒤에는 전체화면이라
-            브라우저의 닫기 단추가 보이지 않으므로 「셋트 그만하기」가 그 자리를 잇는다 */}
-        {canExit ? <ExitLink>셋트 그만하기</ExitLink> : <CloseWindow fallback="/exam/apply" />}
+            브라우저의 닫기 단추가 보이지 않으므로 「나가기」가 그 자리를 잇는다 */}
+        {canExit ? <ExitLink>나가기</ExitLink> : <CloseWindow fallback="/exam" />}
       </HeadRow>
     );
   }
@@ -179,7 +180,7 @@ export default function ExamStatusBar() {
   if (!rec || !hydrated) {
     return (
       <HeadRow name={hydrated ? examName : null} subject={subjectText}>
-        <CloseWindow fallback="/exam" />
+        <CloseWindow fallback="/student/exams" />
       </HeadRow>
     );
   }
@@ -192,7 +193,7 @@ export default function ExamStatusBar() {
        문항 옆에 서게 된다. 아직 한 번도 시작하지 않았을 때만 세운다 */
     return (
       <HeadRow name={examName} subject={subjectText}>
-        {rec.startedAt ? null : <CloseWindow fallback="/exam" />}
+        {rec.startedAt ? null : <CloseWindow fallback="/student/exams" />}
       </HeadRow>
     );
   }
@@ -206,28 +207,50 @@ export default function ExamStatusBar() {
 
   return (
     <HeadRow name={examName} subject={subjectText}>
-      <div
-        className={`flex items-center gap-2 rounded-[2px] border px-3.5 py-1.5 ${
-          low ? "border-rose-300 bg-rose-50" : "border-exam-line bg-exam-raised"
+      <ExamClock remain={remain} limitMin={limitMin} low={low} />
+
+      {canExit && <ExitLink>나가기</ExitLink>}
+    </HeadRow>
+  );
+}
+
+/**
+ * 남은 시간 칸.
+ *
+ * 머리 줄과 함께 밖에서도 쓴다 — 디자인 보기(/design/exam/session/…)가 응시 화면의 머리를
+ * 값만 적어 넣고 그대로 세운다(components/design/ExamFrame.tsx).
+ */
+export function ExamClock({
+  remain,
+  limitMin,
+  low,
+}: {
+  /** 남은 초 */
+  remain: number;
+  limitMin: number;
+  /** 얼마 남지 않았다 — 붉게 세운다 */
+  low: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-[2px] border px-3.5 py-1.5 ${
+        low ? "border-rose-300 bg-rose-50" : "border-exam-line bg-exam-raised"
+      }`}
+    >
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-exam-muted">
+        남은 시간
+      </span>
+      <span
+        className={`text-[18px] font-black leading-none tabular-nums ${
+          low ? "text-rose-600" : "text-exam-text"
         }`}
       >
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-exam-muted">
-          남은 시간
-        </span>
-        <span
-          className={`text-[18px] font-black leading-none tabular-nums ${
-            low ? "text-rose-600" : "text-exam-text"
-          }`}
-        >
-          {pad(Math.floor(remain / 60))}:{pad(remain % 60)}
-        </span>
-        <span className="hidden text-[10px] tabular-nums text-exam-muted md:block">
-          / {limitMin}:00
-        </span>
-      </div>
-
-      {canExit && <ExitLink>포기하기</ExitLink>}
-    </HeadRow>
+        {pad(Math.floor(remain / 60))}:{pad(remain % 60)}
+      </span>
+      <span className="hidden text-[10px] tabular-nums text-exam-muted md:block">
+        / {limitMin}:00
+      </span>
+    </div>
   );
 }
 
@@ -237,7 +260,7 @@ export default function ExamStatusBar() {
  * 이 줄이 응시 화면의 유일한 머리다. 응시 존 레이아웃이 로고와 메뉴를 감추고 이것만
  * 세운다(app/(exam)/layout.tsx).
  */
-function HeadRow({
+export function HeadRow({
   name,
   subject,
   children,
@@ -286,7 +309,10 @@ function CloseWindow({ fallback }: { fallback?: string }) {
   );
 }
 
-/** 버튼이 아니라 글 링크로 둔다 — 시험 도중에 눈에 띄게 누를 자리가 아니다 */
+/** 「나가기」의 모양 — 버튼이 아니라 글 링크로 둔다. 시험 도중에 눈에 띄게 누를 자리가 아니다 */
+export const exitLinkClass =
+  "ml-2 cursor-pointer whitespace-nowrap text-[13px] font-medium text-exam-muted underline-offset-4 transition-colors hover:text-rose-600 hover:underline";
+
 function ExitLink({ children }: { children: string }) {
   return (
     <a
@@ -295,7 +321,7 @@ function ExitLink({ children }: { children: string }) {
         e.preventDefault();
         askExamExit();
       }}
-      className="ml-2 cursor-pointer whitespace-nowrap text-[13px] font-medium text-exam-muted underline-offset-4 transition-colors hover:text-rose-600 hover:underline"
+      className={exitLinkClass}
     >
       {children}
     </a>

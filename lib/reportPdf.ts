@@ -27,7 +27,8 @@ async function dataUrl(url: string) {
   });
 }
 
-async function fontEmbedCss() {
+/** 이 창에서 이미 내려받은 글꼴 조각만 파일째 심은 @font-face — 정오표 PDF(lib/answerSheetPdf)도 쓴다 */
+export async function fontEmbedCss() {
   const loaded = new Set<string>();
   document.fonts.forEach((f) => {
     if (f.status === "loaded")

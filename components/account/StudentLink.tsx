@@ -185,7 +185,7 @@ export default function StudentLink({ variant = 2 }: { variant?: Variant }) {
             </ul>
           </div>
 
-          <Link href="/exam" className={t.btnPrimary}>
+          <Link href="/student/exams" className={t.btnPrimary}>
             진단 응시하러 가기
           </Link>
         </div>

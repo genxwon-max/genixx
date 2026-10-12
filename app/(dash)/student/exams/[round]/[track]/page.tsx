@@ -15,7 +15,7 @@ export async function generateMetadata({
 
 /**
  * 진단 한 건 — 「내 진단」 목록에서 줄을 누르면 온다. 주소가 회차 × 학년을 가리킨다
- * (응시 존의 /exam/2026-3/e4와 같은 꼴). 이 학생이 접수한 진단인지는 화면이 명부에서 확인한다.
+ * (/student/exams/2026-3/e4). 이 학생이 접수한 진단인지는 화면이 명부에서 확인한다.
  */
 export default async function StudentExamPage({
   params,

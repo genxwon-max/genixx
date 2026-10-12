@@ -341,14 +341,46 @@ const PHOTO_MAX_PX = 1600;
 export function ImageAnswer({
   value,
   onAnswer,
+  readOnly = false,
 }: {
   value: number | string | undefined;
   onAnswer: (value: string) => void;
+  /**
+   * 올린 사진만 보여 준다 — 바꾸기 · 삭제 단추와 안내 줄을 걷는다.
+   * 정답과 해설의 「답안 풀이 보기」 창이 쓴다. 이미 낸 답이라 고칠 것이 없다.
+   */
+  readOnly?: boolean;
 }) {
   const saved = splitUpload(value);
   const { url, missing } = useMediaUrl(saved?.key ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  if (readOnly) {
+    return (
+      <div className="mt-7">
+        <div className={box}>
+          {!saved ? (
+            <p className={note}>사진을 올리지 않았습니다.</p>
+          ) : url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={url}
+              alt="올린 사진"
+              draggable={false}
+              className="mx-auto max-h-[28rem] w-auto max-w-full rounded-[2px] border border-exam-line"
+            />
+          ) : (
+            <p className={note}>
+              {missing
+                ? "올린 사진을 이 기기에서 찾을 수 없습니다."
+                : "사진을 불러오는 중입니다."}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const pick = async (file: File | undefined) => {
     if (!file) return;

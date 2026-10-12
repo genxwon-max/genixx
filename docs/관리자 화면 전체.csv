@@ -24,8 +24,8 @@
 진단 관리,회차 문항 편성,https://genixx-theta.vercel.app/admin2/forms/2026-4,그 회차의 과목별 검사지에 문항 은행의 문항을 담는 자리. 담은 문항과 은행이 나란히 서고 「AI 문항 추천」 · 진단 미리보기. 확정하면 잠금.
 채점 관리,진단 채점,https://genixx-theta.vercel.app/admin2/grading,서술형 응답 하나하나를 채점하는 목록 — AI 1차 채점을 사람이 확정. 검토 대기 · 저신뢰 · 이중 채점 · 확정으로 거르고 「나에게 배정」. (EXP-04)
 채점 관리,채점대,https://genixx-theta.vercel.app/admin2/grading/SC-0412-K1,응답 하나의 문항·학생 답·AI 1차 채점을 보고 점수를 확정. 「다음 대기 건」으로 이어 감.
-채점 관리,회원 채점,https://genixx-theta.vercel.app/admin2/grading/members,학생(응시번호) 단위 목록 — 진단명·채점 진행·점수·해설. (EXP-04-1)
-채점 관리,답안지,https://genixx-theta.vercel.app/admin2/grading/members/2026-3-0412,학생 한 명의 답안지 전체(틀림 · 못 냄 · 서술형으로 거름). 배점을 손보고 해설을 붙임 — 고친 배점은 진단 채점 목록에도 그대로 섬.
+채점 관리,회원 채점,https://genixx-theta.vercel.app/admin2/grading/members,학생(응시번호) 단위 목록 — 진단명 · 채점 진행(확인한 문항 / 전체 문항) · 점수. 항목을 누르면 그 답안지의 정오표로 들어감. (EXP-04-1)
+채점 관리,답안지,https://genixx-theta.vercel.app/admin2/grading/members/2026-3-0412,"학생 한 명의 정오표 — 1번부터 끝까지 문항마다 정답 · 제출한 답(긴 글 · 사진 · 그림 그대로) · AI 점수 · 지금 점수 · 정오(정답 · 부분 정답 · 오답 · 미응답) · 채점 상태(확인 전 · 확인 · 수정). 「채점하기」나 표의 문항을 누르면 응시 화면과 같은 틀의 채점 창이 열림 — AI가 먼저 매긴 점수를 오른쪽 아래 점수 칸에서 확인하거나 수정하고(모든 문항 수정 가능, 만점을 받은 문항도 낮출 수 있음) 「확인하고 다음」으로 넘김. 사진 답안은 AI가 채점하지 않아 채점자가 직접 매김. 문항 아래에 정답 · 예시 답 · 채점 기준 · AI 채점 해설 · 자아성찰과 해설 칸. 수정한 점수는 그 자리에서 저장."
 면담 관리,면담 신청,https://genixx-theta.vercel.app/admin2/interviews,면담 케이스 목록 — 사유·상태(신청 접수 · 선발됨 · 일정 잡힘 · 지난 일정 · 마친 것)·일정·면담원·방식·대기 일수. (EXP-06)
 면담 관리,면담 상세,https://genixx-theta.vercel.app/admin2/interviews/IV-2603-0426,"면담 한 건의 신청 내용과 일정 잡기·지우기, 기록."
 면담 관리,면담 일정,https://genixx-theta.vercel.app/admin2/interviews/calendar,달력(월 · 주)으로 날마다 잡힌 면담과 면담원별 일정을 봄. (EXP-06-1)

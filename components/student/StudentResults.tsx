@@ -9,6 +9,8 @@ import {
   EmptyList,
   MissingDiag,
   StageTag,
+  answerPath,
+  dayOf,
   examPath,
   findDiag,
   md,
@@ -63,13 +65,6 @@ export default function StudentResults() {
       )}
     </>
   );
-}
-
-/** ISO 시각 → 이 기기 날짜로 「2026.09.12」 */
-function dayOf(iso: string) {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
 /**
@@ -152,28 +147,15 @@ export function StudentResultDetail({ round, track }: { round: string; track: Tr
   }
 
   if (diag.stage !== "published") {
-    const reviewing = diag.stage === "reviewing";
     return (
       <>
         <WhoNote self={self} />
         <Head back={back} title={`${diag.name} 결과`} />
-        <div className={`${cardBox} mt-7 p-10 text-center`}>
-          <p className="text-[15px] font-bold text-soft-ink">
-            {reviewing ? "전문가가 결과를 확인하고 있습니다" : "아직 결과가 없습니다"}
-          </p>
-          <p className="mx-auto mt-2 max-w-md text-[13px] leading-[1.75] text-soft-muted">
-            {reviewing
-              ? "최종 제출을 마쳤습니다. 전문가가 확인해 발행하면 여기에 결과지가 뜹니다."
-              : diag.stage === "closed"
-                ? "기간 안에 최종 제출하지 않아 결과가 나오지 않습니다."
-                : "과목을 모두 내고 최종 제출하면, 전문가 확인을 거쳐 결과가 나옵니다."}
-          </p>
-          {!reviewing && diag.stage !== "closed" && (
-            <Link href={examPath(diag.ref)} className={`${btnGo} mt-5`}>
-              이 진단으로 가기 →
-            </Link>
-          )}
-        </div>
+        <ResultPending
+          stage={diag.stage}
+          answerHref={answerPath(diag.ref)}
+          examHref={examPath(diag.ref)}
+        />
       </>
     );
   }
@@ -183,5 +165,47 @@ export function StudentResultDetail({ round, track }: { round: string; track: Tr
       <WhoNote self={self} />
       <ResultView reg={diag.ref} studentId={self.id} back={back} />
     </>
+  );
+}
+
+/**
+ * 결과가 아직 발행되지 않은 진단에 서는 판 — 지금 어디까지 왔는지와 할 수 있는 일 하나.
+ *
+ * 최종 제출을 마치고 전문가 확인을 기다리는 동안에는 「정답과 해설」로 가는 길을 단다 — 정답은
+ * 결과 발행을 기다리지 않고 최종 제출한 날부터 열린다. 아직 응시 중이면 그 진단으로 보낸다.
+ */
+export function ResultPending({
+  stage,
+  answerHref,
+  examHref,
+}: {
+  stage: Stage;
+  answerHref: string;
+  examHref: string;
+}) {
+  const reviewing = stage === "reviewing";
+  return (
+    <div className={`${cardBox} mt-7 p-10 text-center`}>
+      <p className="text-[15px] font-bold text-soft-ink">
+        {reviewing ? "전문가가 결과를 확인하고 있습니다" : "아직 결과가 없습니다"}
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-[13px] leading-[1.75] text-soft-muted">
+        {reviewing
+          ? "최종 제출을 마쳤습니다. 전문가가 확인해 발행하면 여기에 결과지가 뜹니다. 정답과 해설은 지금 볼 수 있습니다."
+          : stage === "closed"
+            ? "기간 안에 최종 제출하지 않아 결과가 나오지 않습니다."
+            : "과목을 모두 내고 최종 제출하면, 전문가 확인을 거쳐 결과가 나옵니다."}
+      </p>
+      {reviewing && (
+        <Link href={answerHref} className={`${btnGo} mt-5`}>
+          정답과 해설 보기 →
+        </Link>
+      )}
+      {!reviewing && stage !== "closed" && (
+        <Link href={examHref} className={`${btnGo} mt-5`}>
+          이 진단으로 가기 →
+        </Link>
+      )}
+    </div>
   );
 }

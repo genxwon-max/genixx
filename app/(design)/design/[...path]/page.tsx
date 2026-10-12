@@ -3,16 +3,33 @@ import { IBM_Plex_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { designPaths, findDesign } from "@/lib/designScreens";
 import Approvals from "@/components/design/screens/Approvals";
+import AuditInterview from "@/components/design/screens/AuditInterview";
 import { MyBell, MyNotifications, StudentBell } from "@/components/design/screens/Bells";
+import { ExamBrowseScreen, StudentApplyScreen } from "@/components/design/screens/Catalogs";
 import { ConsoleLogin, ExpertWaitingScreen } from "@/components/design/screens/ConsoleEntry";
 import ConsoleMe from "@/components/design/screens/ConsoleMe";
 import ConsultProducts from "@/components/design/screens/ConsultProducts";
+import CounselorDetail from "@/components/design/screens/CounselorDetail";
+import ExamGuideMic from "@/components/design/screens/ExamGuideMic";
+import { ExamFree, ExamPaid, ExamTrial } from "@/components/design/screens/ExamSessions";
 import ExpertSignup from "@/components/design/screens/ExpertSignup";
 import Experts from "@/components/design/screens/Experts";
+import GradingAnswers from "@/components/design/screens/GradingAnswers";
+import GradingMembers from "@/components/design/screens/GradingMembers";
+import InterviewDetail from "@/components/design/screens/InterviewDetail";
 import InterviewRecord from "@/components/design/screens/InterviewRecord";
 import Mails from "@/components/design/screens/Mails";
 import Metrics from "@/components/design/screens/Metrics";
+import MyCounselStatus from "@/components/design/screens/MyCounselStatus";
 import MyInterview, { StudentInterview } from "@/components/design/screens/MyInterview";
+import NotificationSettings from "@/components/design/screens/NotificationSettings";
+import PaymentsCounsel from "@/components/design/screens/PaymentsCounsel";
+import ReportAnswers from "@/components/design/screens/ReportAnswers";
+import { ExamResultCounsel, StudentResultsCounsel } from "@/components/design/screens/ResultsCounsel";
+import SettingsInterview from "@/components/design/screens/SettingsInterview";
+import StaffCounselor from "@/components/design/screens/StaffCounselor";
+import { StudentAnswersScreen, StudentResultWait } from "@/components/design/screens/StudentAnswerKey";
+import StudentExamBoard from "@/components/design/screens/StudentExamBoard";
 import StudentNew from "@/components/design/screens/StudentNew";
 import "@/app/(admin2)/admin2.css";
 
@@ -48,6 +65,28 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "student-bell": StudentBell,
   experts: Experts,
   mail: Mails,
+  "exam-trial": ExamTrial,
+  "exam-free": ExamFree,
+  "exam-paid": ExamPaid,
+  "interview-detail": InterviewDetail,
+  "counselor-detail": CounselorDetail,
+  "settings-interview": SettingsInterview,
+  "staff-counselor": StaffCounselor,
+  "payments-counsel": PaymentsCounsel,
+  "audit-interview": AuditInterview,
+  "grading-answers": GradingAnswers,
+  "grading-members": GradingMembers,
+  "my-counsel": MyCounselStatus,
+  "notification-settings": NotificationSettings,
+  "exam-result-counsel": ExamResultCounsel,
+  "student-results-counsel": StudentResultsCounsel,
+  "exam-guide-mic": ExamGuideMic,
+  "exam-browse": ExamBrowseScreen,
+  "student-apply": StudentApplyScreen,
+  "student-exams": StudentExamBoard,
+  "student-answers": StudentAnswersScreen,
+  "student-result-wait": StudentResultWait,
+  "report-answers": ReportAnswers,
 };
 
 export const dynamicParams = false;

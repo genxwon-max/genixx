@@ -28,8 +28,9 @@ import { useSelf } from "@/components/student/self";
  * 가른다(menuFor). 한 주소에서 역할만 보고 갈랐을 때는 같은 화면이 두 사람 것이 되어,
  * 학생 쪽을 고치면 보호자 쪽이 함께 흔들렸다.
  *
- * 실제 응시(ASM-01)는 여기 없다. 학생 레일은 응시 존(/exam)으로 건너가는 길만 두고,
- * 문항을 푸는 자리는 시험지 껍데기(app/(exam)/layout.tsx)가 따로 두른다.
+ * 문항을 푸는 창(ASM-01)만은 여기 없다. 접수 · 응시 · 정답과 해설 · 결과는 모두 학생 레일에
+ * 있고, 「내 진단」에서 과목을 누르면 시험지 껍데기(app/(exam)/layout.tsx)를 두른 응시 창이
+ * 따로 뜬다.
  *
  * 반응형은 정의서 12장을 따른다 — 학부모는 모바일 우선이라 좁은 화면에서 레일이
  * 하단 탭으로 내려간다.
@@ -74,6 +75,14 @@ const ic = {
   /** 문항지 — 학생의 「내 진단」 */
   paper: (
     <path d="M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1ZM9 8h6M9 11.5h6M9 15h3.5" />
+  ),
+  /** 달력에 적는 줄 — 학생의 「진단 접수」 */
+  apply: (
+    <path d="M5.5 5h13a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM3.5 9.5h17M8 3.5v3M16 3.5v3M7.5 13.5h4M7.5 17h7" />
+  ),
+  /** 체크한 문항지 — 학생의 「정답과 해설」 */
+  answer: (
+    <path d="M5.5 3.5h9l5 5v12a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20.5v-15A1.5 1.5 0 0 1 5.5 3.5ZM14 3.5v5h5M8 13.5l2.5 2.5 4.5-4.5" />
   ),
   /** 사람 하나 — 학생 자기 정보 */
   me: (
@@ -122,13 +131,24 @@ export const parentMenu: Item[] = [
  * 하나뿐이고, 학생 등록·결제·면담처럼 보호자가 하는 일은 눌러 봐야 「보호자 계정에서
  * 확인하세요」만 나온다. 그래서 학생 등록은 이 레일에 아예 없다.
  *
- * 응시도 이 레일 안에서 한다 — 「내 진단」 목록에서 진단을 누르면 과목 셋이 서고, 과목을
- * 누르면 응시 창이 뜬다. 「진단 결과」도 목록에서 진단을 골라 결과지로 들어간다.
- * 접수(/exam/apply)와 정답·해설만 아직 응시 존에 남아 있다.
+ * 진단을 받는 일은 처음부터 끝까지 이 레일 안에서 한다. 차례가 곧 메뉴 차례다 —
+ *
+ *   진단 접수     분기와 학년을 골라 접수한다
+ *   내 진단       접수한 진단을 누르면 과목 셋이 서고, 과목을 누르면 응시 창이 뜬다
+ *   정답과 해설   최종 제출을 마친 진단의 정오표와 「답안 풀이 보기」 창
+ *   진단 결과     발행된 진단을 골라 결과지로 들어간다
+ *
+ * 예전에는 이 넷이 응시 존(/exam) 헤더의 탭으로도 서 있었다(접수하기 · 응시하기 · 정답과
+ * 해설 · 결과보기). 한 가지 일에 자리가 둘이라 넷을 모두 여기로 모았다(lib/examNav.ts).
+ *
+ * 진단 접수와 정답과 해설은 정의서에 번호가 따로 없어 응시(ASM-01) 번호를 함께 적었다
+ * (확정되면 함께 고친다).
  */
 export const studentMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
+  { href: "/student/apply", label: "진단 접수", sid: "ASM-01", icon: <Icon>{ic.apply}</Icon> },
   { href: "/student/exams", label: "내 진단", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/answers", label: "정답과 해설", sid: "ASM-01", icon: <Icon>{ic.answer}</Icon> },
   { href: "/student/results", label: "진단 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
   { href: "/student/account", label: "내 정보", sid: "ACC-04", icon: <Icon>{ic.me}</Icon> },
@@ -151,7 +171,9 @@ export const studentMenu: Item[] = [
  */
 export const studentTeenMenu: Item[] = [
   { href: "/student", label: "홈", sid: "ACC-03", icon: <Icon>{ic.home}</Icon> },
+  { href: "/student/apply", label: "진단 접수", sid: "ASM-01", icon: <Icon>{ic.apply}</Icon> },
   { href: "/student/exams", label: "내 진단", sid: "ASM-01", icon: <Icon>{ic.paper}</Icon> },
+  { href: "/student/answers", label: "정답과 해설", sid: "ASM-01", icon: <Icon>{ic.answer}</Icon> },
   { href: "/student/results", label: "진단 결과", sid: "RPT-01", icon: <Icon>{ic.report}</Icon> },
   { href: "/student/payments", label: "결제", sid: "PAY-03", icon: <Icon>{ic.pay}</Icon> },
   { href: "/student/surveys", label: "설문", sid: "ASM-04", icon: <Icon>{ic.survey}</Icon> },
@@ -330,6 +352,13 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
   const asStudent = useSelf();
   const menu = menuFor(session?.role, approved, pathname, asStudent.teen);
   const current = activeHref(menu, pathname);
+  /* 좁은 화면의 아래 메뉴 줄 — 지금 보는 항목이 줄 밖에 밀려 있으면 안으로 끌어온다 */
+  const tabs = useRef<HTMLElement>(null);
+  useEffect(() => {
+    tabs.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [current]);
   const isOrg = !isStudent && (session?.role === "director" || session?.role === "teacher");
   const mine = roster.filter((s) => (isOrg ? s.owner === "director" : s.owner === "parent"));
   /* 학생 자리에서는 이름도 명부에서 읽는다 — 접속코드로 들어온 세션의 name과 명부가
@@ -348,14 +377,15 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
         >
           GX
         </Link>
-        <nav aria-label="주 메뉴" className="flex flex-1 flex-col gap-1 px-2 py-3">
+        {/* 학생 레일은 항목이 아홉까지 선다(만 14세 이상) — 낮은 창에서는 레일 안에서 스크롤된다 */}
+        <nav aria-label="주 메뉴" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 py-3">
           {menu.map((m) => (
             <Link
               key={m.label}
               href={m.href}
               aria-current={m.href === current ? "page" : undefined}
               title={m.label}
-              className={`flex w-full flex-col items-center gap-1 rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
+              className={`flex w-full shrink-0 flex-col items-center gap-1 whitespace-nowrap rounded-[12px] py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === current
                   ? "bg-soft-primary-soft text-soft-primary"
                   : "text-soft-muted hover:bg-slate-50 hover:text-soft-ink"
@@ -406,16 +436,20 @@ export default function DashShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
+        {/* 항목은 제 이름만큼의 폭을 먼저 갖고 남는 폭을 나눠 갖는다 — 학생 메뉴는 일곱에서
+            아홉 개라 고르게 나누면 「정답과 해설」 같은 이름이 옆 칸으로 넘친다. 그래도 다
+            들어가지 않으면(만 14세 이상의 아홉 개 · 좁은 전화기) 줄을 옆으로 민다 */}
         <nav
+          ref={tabs}
           aria-label="주 메뉴"
-          className="fixed inset-x-0 bottom-0 z-20 flex border-t border-soft-line bg-white lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-soft-line bg-white [scrollbar-width:none] lg:hidden"
         >
           {menu.map((m) => (
             <Link
               key={m.label}
               href={m.href}
               aria-current={m.href === current ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ${
+              className={`flex flex-[1_0_auto] flex-col items-center gap-0.5 whitespace-nowrap px-1.5 py-2.5 text-[11px] font-semibold transition-colors ${
                 m.href === current ? "text-soft-primary" : "text-soft-muted"
               }`}
             >

@@ -160,7 +160,7 @@ function Detail({ who, slug }: { who: DashWho; slug: Slug }) {
                 <>
                   <p className="mt-0.5 text-[15.5px] font-bold text-soft-ink">배정하고 있습니다</p>
                   <p className="mt-1 text-[13px] leading-[1.7] text-soft-muted">
-                    「전문가 배정 요청」으로 신청하셨습니다. 영업일 기준 하루 안에 배정해 문자로 알려 드립니다.
+                    상담 전문가를 고르지 않고 배정을 요청하셨습니다. 영업일 기준 하루 안에 배정해 문자로 알려 드립니다.
                   </p>
                 </>
               ) : (
