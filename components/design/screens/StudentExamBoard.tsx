@@ -320,8 +320,8 @@ const published: View = {
       guardian: { done: "2026-08-12 21:14" },
       teacher: {},
     },
-    /* 결과지 디자인은 따로 있다 — 이서준(만 14세 미만)의 진단 결과 목록으로 간다 */
-    resultHref: "/design/student/results/child",
+    /* 이 진단의 결과지 — 채점이 끝나고 스케줄러가 발행한 뒤의 모습이다(./ResultsCounsel.tsx의 PublishedResult) */
+    resultHref: "/design/student/results/2026-3/e4",
   },
 };
 

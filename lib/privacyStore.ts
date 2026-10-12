@@ -2,13 +2,26 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { parents, students, type UserState } from "./adminUsers";
+import {
+  defaultKeep,
+  purgeReasonLabel,
+  validKeep,
+  type KeepKind,
+  type KeepPolicy,
+  type PurgePolicy,
+  type PurgeReason,
+  type PurgeState,
+} from "./purgePolicy";
 
 /**
  * 동의와 개인정보 (ADM-10).
  *
  * 아동 데이터를 다루는 서비스라 이 화면이 없으면 안 된다. 정의서가 세 갈래로 잡아 둔
- * 것 중 앞의 둘이 여기다 — **동의 이력 조회**와 **파기 스케줄러**. 나머지 하나(개인정보
- * 접근 감사)는 이미 감사 로그(ADM-11)가 맡고 있다.
+ * 것 중 앞의 둘이 여기다 — **동의 이력 조회**와 **파기**. 나머지 하나(개인정보 접근 감사)는
+ * 이미 감사 로그(ADM-11)가 맡고 있다.
+ *
+ * 파기는 두 화면이 나눠 든다. 언제 파기 대기에 올릴지(자동 파기 · 보관기간)는 시스템 >
+ * 스케줄러(ADM-13-2)가 정하고, 대기에 오른 것을 지우는 일은 개인정보 파기(ADM-10-1)가 한다.
  *
  * ── 동의를 넷으로 가른다 ──
  *   개인정보 수집·이용   서비스를 쓰려면 반드시 있어야 한다
@@ -68,22 +81,16 @@ export type ConsentLog = {
   via: string;
 };
 
-/* ───────────────────────── 파기 ───────────────────────── */
+/* ───────────────────────── 파기 ─────────────────────────
+   사유와 상태의 말은 lib/purgePolicy.ts에 있다 — 화면 조각과 디자인 보기도 함께 읽는다.
+   여기서 다시 내보내 기존에 부르던 자리는 그대로 둔다 */
 
-export type PurgeReason = "expired" | "withdrawn";
-
-export const purgeReasonLabel: Record<PurgeReason, string> = {
-  expired: "보관기간 도래",
-  withdrawn: "철회 요청",
-};
-
-export type PurgeState = "none" | "queued" | "done";
-
-export const purgeStateLabel: Record<PurgeState, string> = {
-  none: "해당 없음",
-  queued: "파기 대기",
-  done: "파기 완료",
-};
+export {
+  purgeReasonLabel,
+  purgeStateLabel,
+  type PurgeReason,
+  type PurgeState,
+} from "./purgePolicy";
 
 /* ───────────────────────── 한 줄 ───────────────────────── */
 
@@ -97,7 +104,14 @@ export type PrivacyRow = {
   minor: boolean;
   consents: Record<ConsentKind, ConsentState>;
   log: ConsentLog[];
-  /** 보관 만료일 (YYYY-MM-DD) — 이 날이 지나면 자동으로 파기 큐에 선다 */
+  /** 보관기간을 세기 시작하는 날 — 탈퇴한 회원은 마지막 접속일, 그 밖에는 가입일 */
+  keepFrom: string;
+  /** 어느 보관기간이 걸리는가 — 탈퇴한 회원(left)인가 그 밖의 회원(member)인가 */
+  keepKind: KeepKind;
+  /**
+   * 보관 만료일 (YYYY-MM-DD) — 이 날이 지나면 자동으로 파기 큐에 선다.
+   * 씨앗에는 기본 보관기간으로 센 날이 들어 있고, 화면이 읽을 때 스케줄러의 보관기간으로 다시 센다.
+   */
   keepUntil: string;
   purge: PurgeState;
   purgeReason: PurgeReason | null;
@@ -117,6 +131,11 @@ function plus(day: string, days: number) {
   d.setUTCDate(d.getUTCDate() + days);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+}
+
+/** 보관 만료일 — 세기 시작하는 날에서 보관기간만큼 뒤 */
+function keepUntilOf(from: string, kind: KeepKind, keep: KeepPolicy) {
+  return plus(from, kind === "left" ? keep.leftDays : keep.memberYears * 365);
 }
 
 /** 두 날 사이의 날수 */
@@ -212,7 +231,8 @@ function build(): PrivacyRow[] {
       log.push({ kind: "sensitive", state: "withdrawn", at, by: p.name, via: "1:1 문의 · 파기 요청" });
     }
 
-    const keepUntil = withdrawn ? plus(p.lastSeen, 30) : plus(p.joinedAt, 1095);
+    const keepFrom = withdrawn ? p.lastSeen : p.joinedAt;
+    const keepKind: KeepKind = withdrawn ? "left" : "member";
     rows.push({
       id: p.id,
       name: p.name,
@@ -228,7 +248,9 @@ function build(): PrivacyRow[] {
         marketing,
       },
       log: log.sort((a, b) => a.at.localeCompare(b.at)),
-      keepUntil,
+      keepFrom,
+      keepKind,
+      keepUntil: keepUntilOf(keepFrom, keepKind, defaultKeep),
       purge: "none",
       purgeReason: null,
       purgeDue: null,
@@ -278,7 +300,9 @@ function build(): PrivacyRow[] {
         marketing: "none",
       },
       log: log.sort((a, b) => a.at.localeCompare(b.at)),
-      keepUntil: plus(s.joinedAt, 1095),
+      keepFrom: s.joinedAt,
+      keepKind: "member",
+      keepUntil: keepUntilOf(s.joinedAt, "member", defaultKeep),
       purge: "none",
       purgeReason: null,
       purgeDue: null,
@@ -295,17 +319,22 @@ const SEED = build();
 
 /* ───────────────────────── 저장소 ───────────────────────── */
 
-/** 우리가 한 일 — 파기를 실행했는가, 자동 큐를 켜 두었는가 */
+/** 우리가 한 일 — 파기를 실행했는가, 스케줄러를 어떻게 걸어 두었는가 */
 export type PurgeWork = { at: string; by: string; reason: PurgeReason; why: string };
 export type Privacy = {
   /** 자동 파기 — 켜 두면 만료일이 지난 줄이 파기 대기로 선다 */
   auto: boolean;
+  /** 보관기간 — 만료일을 여기서 센다 */
+  keep: KeepPolicy;
+  /** 스케줄러를 마지막으로 고친 때와 사람 */
+  setAt?: string;
+  setBy?: string;
   done: Record<string, PurgeWork>;
 };
 
 const KEY = "genixx.privacy";
 const EVENT = "genixx:privacy-change";
-const EMPTY: Privacy = { auto: true, done: {} };
+const EMPTY: Privacy = { auto: true, keep: defaultKeep, done: {} };
 
 let cacheRaw: string | null = null;
 let cacheValue: Privacy = EMPTY;
@@ -331,7 +360,16 @@ function read(): Privacy {
       if (v.reason !== "expired" && v.reason !== "withdrawn") continue;
       done[id] = { at: v.at, by: v.by, reason: v.reason, why: typeof v.why === "string" ? v.why : "" };
     }
-    cacheValue = saved ? { auto: saved.auto ?? true, done } : EMPTY;
+    cacheValue = saved
+      ? {
+          auto: saved.auto ?? true,
+          /* 보관기간은 뒤늦게 붙은 값이다 — 없거나 꼴이 다르면 기본 기간으로 읽는다 */
+          keep: validKeep(saved.keep) ? saved.keep : defaultKeep,
+          setAt: typeof saved.setAt === "string" ? saved.setAt : undefined,
+          setBy: typeof saved.setBy === "string" ? saved.setBy : undefined,
+          done,
+        }
+      : EMPTY;
   } catch {
     cacheValue = EMPTY;
   }
@@ -370,7 +408,9 @@ export function today() {
  * 값이라, 따로 담아 두면 원본이 바뀌었는데 큐만 옛 상태로 남는 날이 온다.
  */
 function apply(rows: PrivacyRow[], work: Privacy, now: string): PrivacyRow[] {
-  return rows.map((v) => {
+  return rows.map((seed) => {
+    /* 만료일은 스케줄러의 보관기간으로 다시 센다 — 씨앗에 든 날은 기본 기간의 것이다 */
+    const v = { ...seed, keepUntil: keepUntilOf(seed.keepFrom, seed.keepKind, work.keep) };
     const done = work.done[v.id];
     if (done) {
       return {
@@ -396,16 +436,51 @@ function apply(rows: PrivacyRow[], work: Privacy, now: string): PrivacyRow[] {
   });
 }
 
-export function usePrivacy(): { rows: PrivacyRow[]; auto: boolean } {
+export function usePrivacy(): {
+  rows: PrivacyRow[];
+  auto: boolean;
+  keep: KeepPolicy;
+  /** 스케줄러를 마지막으로 고친 때와 사람 — 한 번도 고치지 않았으면 없다 */
+  setAt?: string;
+  setBy?: string;
+} {
   const work = useWork();
   const now = today();
   const rows = useMemo(() => apply(SEED, work, now), [work, now]);
-  return { rows, auto: work.auto };
+  return { rows, auto: work.auto, keep: work.keep, setAt: work.setAt, setBy: work.setBy };
 }
 
-/** 자동 파기를 켜고 끈다 — 켜 두는 것은 「도래분을 큐에 세운다」까지다 */
-export function setAutoPurge(on: boolean) {
-  write({ ...read(), auto: on });
+/**
+ * 개인정보 스케줄러를 정한다 — 자동 파기를 켤지, 보관기간을 얼마로 둘지.
+ *
+ * 여기서 달라지는 것은 **파기 대기에 오르는 줄**까지다. 켜 두어도, 보관기간을 줄여도 저절로
+ * 지워지지는 않는다 — 지우는 일은 개인정보 파기(ADM-10-1)에서 사람이 한다. 그래서 되돌릴 수
+ * 있는 값이다: 다시 끄거나 늘리면 대기에서 빠진다(이미 지운 것은 그대로다).
+ */
+export function savePurgePolicy(next: PurgePolicy, by: string): boolean {
+  const keep = { leftDays: next.leftDays, memberYears: next.memberYears };
+  if (!validKeep(keep)) return false;
+  const d = new Date();
+  const p2 = (v: number) => String(v).padStart(2, "0");
+  write({
+    ...read(),
+    auto: next.auto,
+    keep,
+    setAt: `${today()} ${p2(d.getHours())}:${p2(d.getMinutes())}`,
+    setBy: by,
+  });
+  return true;
+}
+
+/**
+ * 스케줄러를 이렇게 바꾸면 파기 대기가 몇 건이 되는가 — 저장하기 전에 적어 보인다.
+ * 지금 저장된 파기 기록 위에서 센다. 철회 요청은 스케줄러와 상관없이 늘 대기에 있다.
+ */
+export function previewPurge(next: PurgePolicy) {
+  const cur = read();
+  const keep = { leftDays: next.leftDays, memberYears: next.memberYears };
+  const c = countPrivacy(apply(SEED, { ...cur, auto: next.auto, keep }, today()));
+  return { expired: c.queuedExpired, withdrawn: c.queuedWithdrawn };
 }
 
 /**

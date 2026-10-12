@@ -6,8 +6,11 @@ import { answerSubjects, lineScreens, linesOf, tally, type Line } from "@/lib/an
 import {
   answerKind,
   autoGraded,
+  keyText,
   markLabel,
   pointText,
+  shortAnswer,
+  type Bank,
   type Grades,
   type Mark,
   type SubjectId,
@@ -48,6 +51,7 @@ export default function AnswerReview({
   row,
   record,
   grades,
+  bank,
   at,
   onClose,
 }: {
@@ -55,6 +59,8 @@ export default function AnswerReview({
   record: ExamRecord;
   /** 전문가가 매긴 점수 — 정오표와 같은 것을 넘긴다 */
   grades?: Grades;
+  /** 이 진단이 쓴 문항 목록 — 정오표와 같은 것을 넘긴다. 없으면 기본 문항이다 */
+  bank?: Bank;
   at: ReviewAt;
   onClose: () => void;
 }) {
@@ -62,15 +68,15 @@ export default function AnswerReview({
   const [subject, setSubject] = useState<SubjectId>(at.subject);
   /** 지금 보는 화면의 차례(0부터) — 응시 때처럼 문항 하나이거나, 묶인 문항 둘셋이다 */
   const [index, setIndex] = useState(() => {
-    const first = lineScreens(at.subject, linesOf(at.subject, record, grades));
+    const first = lineScreens(linesOf(at.subject, record, grades, bank));
     return Math.max(
       0,
       first.findIndex((screen) => screen.some((l) => l.no === at.no)),
     );
   });
 
-  const lines = linesOf(subject, record, grades);
-  const screens = lineScreens(subject, lines);
+  const lines = linesOf(subject, record, grades, bank);
+  const screens = lineScreens(lines);
   if (screens.length === 0) return null;
 
   const screen = screens[Math.min(index, screens.length - 1)];
@@ -230,6 +236,18 @@ function Verdict({ line }: { line: Line }) {
             {picked !== null && <>내 답 {picked + 1}번 · </>}정답 {q.answer! + 1}번
           </p>
         )
+      ) : q.match ? (
+        /* 선 잇기 — 이은 선과 정답을 글로도 적는다. 선의 색만으로는 색을 못 보는 사람이 가를 수 없다 */
+        <dl className="mt-2.5 space-y-1 text-[13px] text-exam-text">
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-bold">내 답</dt>
+            <dd>{shortAnswer(q, value) || "잇지 않았습니다."}</dd>
+          </div>
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-bold">정답</dt>
+            <dd>{keyText(q)}</dd>
+          </div>
+        </dl>
       ) : auto ? (
         /* 단답형 — 칸마다 정답을 적는다 */
         <dl className="mt-2.5 space-y-1 text-[13px] text-exam-text">

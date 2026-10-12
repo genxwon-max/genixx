@@ -3,11 +3,17 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { AxisId } from "./result";
 import { axes } from "./result";
-import { labelCheck, type LabelFinding } from "./labelCheck";
+import { labelCheck } from "./labelCheck";
 import {
-  bandFromScore,
-  condText,
-  crossKeyOf,
+  assemble,
+  ruleSetError,
+  sameCond,
+  type Assembly,
+  type Facts,
+  type Kit,
+  type RuleSet,
+} from "./reportAssembly";
+import {
   parseKey,
   defaultCrossCuts,
   defaultCuts,
@@ -17,6 +23,7 @@ import {
   seedTemplates,
   gradesOfBand,
   setCustomSlots,
+  slots as seedSlots,
   templateGrades,
   slotOf,
   slotOrder,
@@ -24,10 +31,8 @@ import {
   type BandCuts,
   type CrossCellRule,
   type CrossCuts,
-  type CrossKey,
   type CustomSlot,
   type Rule,
-  type RuleCond,
   type SlotId,
   type Template,
   type TemplateGrade,
@@ -45,11 +50,11 @@ import {
  * 템플릿을 하나 더하면 그 줄만 새로 서고, 운영자가 고쳐 둔 칸은 그대로 남는다
  * (lib/expertStore.ts가 배열을 통째로 덮어 같은 함정에 걸려 있는 것과 반대로 짰다).
  *
- * ── 고친 문구는 다음 조립부터 ──
- * 이 저장소는 **리포트를 건드리지 않는다.** 리포트는 조립되는 순간 문장을 블록에 복사해
- * 담고(lib/reportStore.ts의 ReportBlock.text) 그 뒤로는 템플릿을 다시 보지 않는다. 보호자가
- * 이미 읽은 글이 뒤에서 소리 없이 바뀌면 안 되기 때문이다. 그래서 여기서 무엇을 고쳐도
- * 발행된 리포트는 그대로이고, 바뀌는 것은 다음에 조립되는 리포트뿐이다.
+ * ── 고친 것은 발행 전 리포트까지 ──
+ * 이 저장소는 **리포트를 건드리지 않는다.** 규칙과 문구를 들고 있을 뿐이다. 여기서 고친 것은
+ * 그 뒤에 조립되는 리포트와, **아직 발행하지 않은 리포트**에 걸린다 — 리포트를 읽는 화면이 열릴
+ * 때 발행 전 리포트를 지금 규칙으로 다시 조립한다(lib/reportStore.ts의 syncWaitingReports).
+ * 발행한 리포트는 그대로다. 보호자가 이미 읽은 글이 뒤에서 소리 없이 바뀌면 안 된다.
  *
  * ⚠ 브라우저 저장소에만 남는다. 붙일 때는 리포트 자산 API로 갈아 끼운다 — 그때 「버전과
  *   사용 이력 보존」(사이트맵 ADM-08-1)이 서버 쪽 일이 된다. 지금은 마지막 한 벌만 든다.
@@ -92,7 +97,7 @@ export type RuleEdit = Partial<Pick<Rule, "desc" | "order" | "on" | "cond">> & {
 export type CutRev = { L3: number; L2: number; at: string; by: string };
 
 /** 운영자가 고친 교차 셀 한 칸 */
-export type CrossEdit = Partial<Pick<CrossCellRule, "text" | "next" | "on">> & {
+export type CrossEdit = Partial<Pick<CrossCellRule, "title" | "text" | "next" | "on">> & {
   at: string;
   by: string;
 };
@@ -106,6 +111,9 @@ export type Assets = {
   crossCuts?: CrossCuts;
   /** 운영자가 해석 템플릿 화면에서 더한 자리 — 리포트 맨 끝 쪽에 새 절로 붙는다 */
   slots?: CustomSlot[];
+  /** 조립 규칙 화면에서 마지막으로 저장한 때와 사람 */
+  savedAt?: string;
+  savedBy?: string;
 };
 
 const EMPTY: Assets = { templates: {}, rules: {} };
@@ -253,6 +261,13 @@ export function useEveryTemplate(): TemplateRow[] {
   return useMemo(() => templateGrades.flatMap((g) => allOf(a, g.id)), [a]);
 }
 
+/**
+ * 처음 값 그대로의 모든 칸 — 저장소를 읽지 않는다.
+ * 디자인 보기(/design/admin2/reports/templates)가 목록과 상세를 이 값으로 그린다.
+ */
+export const seedTemplateRows = (): TemplateRow[] =>
+  templateGrades.flatMap((g) => allOf(EMPTY, g.id));
+
 /** 학년 하나의 모든 칸 — 「몇 칸이 비었나」를 세는 데 쓴다 */
 export function useAllTemplates(grade: TemplateGrade): TemplateRow[] {
   const a = useAssets();
@@ -319,46 +334,13 @@ function crossOfAssets(a: Assets): (CrossCellRule & { edited: boolean })[] {
     const e = a.cross?.[c.id];
     return {
       ...c,
+      title: e?.title ?? c.title,
       text: e?.text ?? c.text,
       next: e?.next ?? c.next,
       on: e?.on ?? c.on,
       edited: !!e,
     };
   });
-}
-
-export function useCrossCells(): (CrossCellRule & { edited: boolean })[] {
-  const a = useAssets();
-  return useMemo(() => crossOfAssets(a), [a]);
-}
-
-export function useCrossCuts(): CrossCuts {
-  return crossCutsOf(useAssets());
-}
-
-/** 교차 셀 한 칸을 고친다 */
-export function saveCross(id: CrossKey, change: Omit<CrossEdit, "at" | "by">, by: string) {
-  const cur = read();
-  write({
-    ...cur,
-    cross: { ...(cur.cross ?? {}), [id]: { ...(cur.cross?.[id] ?? {}), ...change, at: now(), by } },
-  });
-}
-
-/** 2×2를 가르는 점수를 옮긴다 */
-export function saveCrossCuts(cuts: CrossCuts): boolean {
-  if (!(cuts.paper > 0 && cuts.paper <= 100 && cuts.talent > 0 && cuts.talent <= 100)) return false;
-  write({ ...read(), crossCuts: cuts });
-  return true;
-}
-
-export function useRules(): (Rule & { edited: boolean })[] {
-  const a = useAssets();
-  return useMemo(() => rulesOf(a), [a]);
-}
-
-export function useBandCuts(): BandCuts {
-  return cutsOf(useAssets());
 }
 
 /* ───────────────────────── 쓰는 길 ───────────────────────── */
@@ -449,212 +431,120 @@ export function resetTemplate(id: string) {
 }
 
 /**
- * 규칙 한 줄을 고친다.
+ * 조립 규칙 화면의 저장 — 컷 · 규칙 · 교차 셀을 **한 번에** 적는다.
  *
- * ⚠ 잠긴 규칙(Rule.locked)은 **끄지 못한다.** 화면에서도 스위치를 잠그지만 여기서 한 번 더
- *   본다 — 미측정 안내가 꺼진 채로 리포트가 나가면 재지 않은 축이 「0점」으로 읽힌다.
- *   끄는 것만 막고 차례·근거 줄·조건 숫자는 그대로 받는다.
- */
-export function saveRule(id: string, change: Omit<RuleEdit, "at" | "by">, by: string): boolean {
-  const seed = seedRules.find((r) => r.id === id);
-  if (!seed) return false;
-  if (seed.locked && change.on === false) return false;
-  const cur = read();
-  write({
-    ...cur,
-    rules: { ...cur.rules, [id]: { ...cur.rules[id], ...change, at: now(), by } },
-  });
-  return true;
-}
-
-/** 규칙을 씨앗 값으로 되돌린다 */
-export function resetRule(id: string) {
-  const cur = read();
-  if (!cur.rules[id]) return;
-  const next = { ...cur.rules };
-  delete next[id];
-  write({ ...cur, rules: next });
-}
-
-/**
- * 밴드 컷을 고친다.
+ * 한동안 값 하나를 고칠 때마다 그 자리에서 저장했다. 숫자 하나가 그 뒤의 모든 리포트를 바꾸는
+ * 화면인데, 「75」를 지우고 「8」을 치는 사이에 L3 컷이 8점이 되었다. 지금은 고친 것을 화면에서
+ * 미리 조립해 본 뒤 저장을 눌러야 걸린다.
  *
- * L3 컷이 L2 컷보다 낮으면 가운데 구간이 사라진다. 부르는 쪽에서도 막지만 여기서 한 번 더 본다.
- */
-export function saveCuts(cuts: BandCuts, by: string): boolean {
-  if (!(cuts.L3 > cuts.L2 && cuts.L2 > 0 && cuts.L3 <= 100)) return false;
-  const cur = read();
-  write({
-    ...cur,
-    cuts,
-    cutLog: [{ ...cuts, at: now(), by }, ...(cur.cutLog ?? [])].slice(0, 10),
-  });
-  return true;
-}
-
-/** 컷을 옮겨 온 자취 */
-export function useCutLog(): CutRev[] {
-  return useAssets().cutLog ?? [];
-}
-
-/* ───────────────────────── 조립 미리보기 ───────────────────────── */
-
-/**
- * 「이 규칙을 고치면 리포트가 어떻게 달라지나」를 그 자리에서 보이는 값.
+ * 씨앗과 같은 값은 덮어 두지 않는다. 덮어 둔 것만 남겨야 씨앗을 고쳤을 때 이미 저장한
+ * 브라우저도 그 값을 받는다(이 파일 머리의 「덮는 단위」).
  *
- * 진짜 아이 자료로 미리 보이지 않는다. 발행된 리포트는 이미 문장을 복사해 담았고, 아직
- * 조립되지 않은 아이의 점수를 여기서 끌어오면 이 화면이 개인정보를 펴는 자리가 된다.
- * 대신 **운영자가 값을 세워 보는 표본**을 받는다 — 축·점수·설문 건수를 손으로 놓고
- * 「그러면 어떤 블록이 붙나」를 본다. 규칙을 고치는 사람이 알고 싶은 것이 바로 그것이다.
+ * ⚠ 값이 어긋나면(ruleSetError) 저장하지 않는다. 화면도 같은 검사로 저장 단추를 잠그지만
+ *   여기서 한 번 더 본다 — 미측정 안내가 꺼진 채로, 또는 검토가 필요한 표현이 든 교차 셀
+ *   문구가 저장되면 그 뒤의 리포트가 전부 그 값으로 나간다.
  */
-export type PreviewInput = {
-  grade: TemplateGrade;
-  topAxis: AxisId;
-  topScore: number;
-  lowAxis: AxisId | null;
-  lowScore: number;
-  /** 과목 점수 — 교차 셀 규칙이 본다 */
-  subjectScore: number;
-  /** 들어온 관찰 설문 건수 */
-  surveys: number;
-};
+export function saveRuleSet(set: RuleSet, by: string): boolean {
+  if (ruleSetError(set)) return false;
+  const cur = read();
+  const at = now();
 
-export type PreviewBlock = {
-  rule: Rule;
-  section: string;
-  title: string;
-  text: string;
-  /** 규칙은 걸렸는데 그 칸의 문구가 없다 */
-  missing: boolean;
-  /** 그 학년대에 없어 초등 3~4학년 문구로 물러섰다 */
-  fellBack: boolean;
-  axis: AxisId | null;
-  band: Band | null;
-  findings: LabelFinding[];
-};
-
-/** 조건이 걸리는가 */
-function fires(c: RuleCond, v: PreviewInput, a: Assets): boolean {
-  switch (c.kind) {
-    case "always":
-      return true;
-    case "topAxis":
-      return true;
-    case "lowAxis":
-      return v.lowAxis !== null;
-    case "sourcesBelow":
-      return v.surveys < c.n;
-    case "cross": {
-      /* 걸린 칸이 꺼져 있으면 블록도 붙지 않는다 — 규칙을 켜 두고 칸만 끄는 것이
-         「이 조합에는 아무 말도 하지 않는다」를 뜻한다 */
-      const key = crossKeyOf(v.subjectScore, v.topScore, crossCutsOf(a));
-      return crossOfAssets(a).find((x) => x.id === key)?.on ?? false;
+  const rules: Record<string, RuleEdit> = {};
+  for (const base of [...seedRules, ...(cur.slots ?? []).map(customRule)]) {
+    const was = cur.rules[base.id];
+    const next = set.rules.find((r) => r.id === base.id);
+    if (!next) {
+      if (was) rules[base.id] = was;
+      continue;
     }
+    const change: Omit<RuleEdit, "at" | "by"> = {};
+    if (was?.desc !== undefined) change.desc = was.desc;
+    if (next.order !== base.order) change.order = next.order;
+    if (next.on !== base.on) change.on = next.on;
+    if (!sameCond(next.cond, base.cond)) change.cond = next.cond;
+    if (Object.keys(change).length === 0) continue;
+    const same =
+      !!was &&
+      was.order === change.order &&
+      was.on === change.on &&
+      (was.cond === undefined) === (change.cond === undefined) &&
+      (!was.cond || !change.cond || sameCond(was.cond, change.cond));
+    rules[base.id] = same ? was : { ...change, at, by };
   }
-}
 
-/**
- * 빈 칸에서 물러서는 자리.
- *
- * 어느 학년의 문구가 아직 없다고 리포트에 구멍을 낼 수는 없다. 같은 슬롯의 초등 3~4학년
- * 문구로 물러서고, **물러섰다는 사실을 값에 담아** 화면이 그것을 적게 한다 — 조용히
- * 물러서면 「초6 문구를 다 썼다」고 착각한 채로 리포트가 나간다.
- */
-/**
- * 물러서는 차례 — 같은 옛 학년대의 다른 학년(4학년이 비면 3학년), 그다음 초등 3학년.
- * 초등 3 · 4학년은 씨앗이 온전히 차 있다.
- */
-function fallbacksOf(g: TemplateGrade): TemplateGrade[] {
-  const band = templateGrades.find((x) => x.id === g)!.band;
-  const sibling = gradesOfBand[band].filter((x) => x !== g);
-  return [...sibling, "e3" as TemplateGrade].filter((x, k, all) => x !== g && all.indexOf(x) === k);
-}
-
-function build(
-  a: Assets,
-  rules: Rule[],
-  cuts: BandCuts,
-  v: PreviewInput,
-): PreviewBlock[] {
-  {
-    const band = bandFromScore(v.topScore, cuts);
-    return rules
-      .filter((r) => r.on && fires(r.cond, v, a))
-      .map((r) => {
-        /* 교차 해석은 학년대가 아니라 걸린 셀이 문구를 든다.
-           ⚠ slotOf보다 **먼저** 가른다 — cross는 슬롯 목록에 없어서 저것이 undefined를
-             돌려주고, 바로 아래 s.byAxis에서 터진다 */
-        if (r.slot === "cross") {
-          const key = crossKeyOf(v.subjectScore, v.topScore, crossCutsOf(a));
-          const cell = crossOfAssets(a).find((x) => x.id === key)!;
-          return {
-            rule: r,
-            section: "교차 해석",
-            title: cell.label,
-            text: cell.text,
-            missing: !cell.text.trim(),
-            fellBack: false,
-            axis: null,
-            band: null,
-            findings: cell.text ? labelCheck(cell.text) : [],
-          };
-        }
-
-        const s = slotOf(r.slot);
-        /* 어느 축의 문구를 부르는가 — 자리마다 다르다 */
-        const axis = !s.byAxis ? null : r.cond.kind === "lowAxis" ? v.lowAxis : v.topAxis;
-        const useBand = s.byBand ? band : null;
-
-        let row = rowOf(a, r.slot, v.grade, axis, useBand);
-        let fellBack = false;
-        if (row.empty) {
-          for (const g of fallbacksOf(v.grade)) {
-            const back = rowOf(a, r.slot, g, axis, useBand);
-            if (!back.empty) {
-              row = back;
-              fellBack = true;
-              break;
-            }
-          }
-        }
-
-        return {
-          rule: r,
-          section: s.section,
-          title: row.title || s.label,
-          text: row.text,
-          missing: row.empty && !fellBack,
-          fellBack,
-          axis,
-          band: useBand,
-          findings: row.text ? labelCheck(row.text) : [],
-        };
-      });
+  const cross: Record<string, CrossEdit> = {};
+  for (const base of seedCross) {
+    const next = set.cross.find((c) => c.id === base.id);
+    if (!next) continue;
+    const change: Omit<CrossEdit, "at" | "by"> = {};
+    if (next.title.trim() !== base.title) change.title = next.title.trim();
+    if (next.text.trim() !== base.text) change.text = next.text.trim();
+    if (next.next.trim() !== base.next) change.next = next.next.trim();
+    if (next.on !== base.on) change.on = next.on;
+    if (Object.keys(change).length === 0) continue;
+    const was = cur.cross?.[base.id];
+    const same =
+      !!was &&
+      was.title === change.title &&
+      was.text === change.text &&
+      was.next === change.next &&
+      was.on === change.on;
+    cross[base.id] = same ? was : { ...change, at, by };
   }
+
+  const wasCuts = cutsOf(cur);
+  const cutMoved = wasCuts.L3 !== set.cuts.L3 || wasCuts.L2 !== set.cuts.L2;
+
+  write({
+    ...cur,
+    rules,
+    cross,
+    cuts: set.cuts,
+    crossCuts: set.crossCuts,
+    cutLog: cutMoved
+      ? [{ ...set.cuts, at, by }, ...(cur.cutLog ?? [])].slice(0, 10)
+      : cur.cutLog,
+    savedAt: at,
+    savedBy: by,
+  });
+  return true;
 }
 
-export function useAssemblyPreview(v: PreviewInput): PreviewBlock[] {
+/** 조립 규칙을 마지막으로 저장한 때와 사람 — 한 번도 고치지 않았으면 null */
+export function useRuleSetStamp(): { at: string; by: string } | null {
   const a = useAssets();
-  const rules = useRules();
-  const cuts = useBandCuts();
-  return useMemo(() => build(a, rules, cuts, v), [a, rules, cuts, v]);
+  return useMemo(() => (a.savedAt ? { at: a.savedAt, by: a.savedBy ?? "" } : null), [a]);
 }
 
-/** 규칙 한 줄이 이 표본에 걸리는가 */
-export function useRuleFires(r: Rule, v: PreviewInput) {
+/* ───────────────────────── 조립 ─────────────────────────
+   조립하는 셈은 lib/reportAssembly.ts 하나다. 여기서는 그 셈에 넘길 한 벌(규칙 · 컷 · 교차 셀 ·
+   문구)을 씨앗 위에 운영자가 고친 것을 덮어 꾸린다. 조립 규칙 화면의 미리 보기와 실제 조립이
+   **같은 한 벌, 같은 함수**를 쓴다. */
+
+/** 지금 걸려 있는 한 벌 */
+function kitOf(a: Assets): Kit {
+  return {
+    rules: rulesOf(a),
+    cuts: cutsOf(a),
+    crossCuts: crossCutsOf(a),
+    cross: crossOfAssets(a),
+    slots: [...seedSlots, ...(a.slots ?? [])],
+    template: (slot, grade, axis, band) => {
+      const row = rowOf(a, slot, grade, axis, band);
+      return row.empty ? null : { id: row.id, title: row.title, text: row.text };
+    },
+  };
+}
+
+export function useKit(): Kit {
   const a = useAssets();
-  return r.on && fires(r.cond, v, a);
+  return useMemo(() => kitOf(a), [a]);
 }
 
-export { condText };
+/** 훅 밖에서 읽는 한 벌 — 리포트 저장소가 발행 전 리포트를 다시 조립할 때 쓴다 */
+export const getKit = (): Kit => kitOf(read());
 
-/* ───────────────────────── 실제 조립 ─────────────────────────
-   미리보기와 **같은 함수를 쓴다.** 화면이 보여 준 것과 실제로 나가는 글이 다른 코드에서
-   나오면, 미리보기가 「그럴 것이다」를 말하는 자리가 되어 아무도 믿지 않게 된다.
-   위의 useAssemblyPreview는 이 함수를 훅으로 감싼 것뿐이다. */
-
-/** 훅 밖에서 부르는 조립 — lib/reportStore.ts의 ensureReport가 쓴다 */
-export function assembleFrom(v: PreviewInput): PreviewBlock[] {
-  const a = read();
-  return build(a, rulesOf(a), cutsOf(a), v);
+/** 지금 규칙으로 조립한다 — lib/reportStore.ts가 쓴다 */
+export function assembleFrom(facts: Facts): Assembly {
+  return assemble(facts, getKit());
 }

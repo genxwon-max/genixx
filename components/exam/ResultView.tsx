@@ -17,6 +17,7 @@ import { evalName } from "@/lib/examCatalog";
 import { useSession } from "@/lib/authStore";
 import { findById, formatCode, useRoster } from "@/lib/roster";
 import { confidenceOf, decideType, scoreAxes, scoreSubject } from "@/lib/result";
+import { AUTO_BY } from "@/lib/reportRelease";
 import { blockText, useReportOf } from "@/lib/reportStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { editions } from "@/lib/diagReport";
@@ -336,7 +337,13 @@ export default function ResultView({
             {" · "}측정 축 {measured.length} / {scores.length}
           </p>
           <span className="text-[12px] font-bold text-soft-ink">
-            판정 확정 · {report.publishedBy ?? "GENIXX 진단운영팀"} · {report.publishedAt ?? ""}
+            {/* 스케줄러가 발행한 리포트에는 팀 이름을 적는다 — 「리포트 스케줄러」는 콘솔 안에서
+                쓰는 이름이라 회원에게 보이는 결과지에 그대로 나가면 안 된다 */}
+            판정 확정 ·{" "}
+            {report.publishedBy && report.publishedBy !== AUTO_BY
+              ? report.publishedBy
+              : "GENIXX 진단운영팀"}{" "}
+            · {report.publishedAt ?? ""}
           </span>
         </div>
       </section>

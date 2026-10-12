@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { rounds } from "@/lib/admin";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useHydrated } from "@/lib/examStore";
-import { sheetSubjects } from "@/lib/examSheet";
+import { paperOf } from "@/lib/examSheet";
+import { gradeStat } from "@/lib/gradeSheet";
+import { nowStamp } from "@/lib/reportRelease";
+import { useSendRow } from "@/lib/reportSendStore";
+import { reportIdOf, syncSheetReport } from "@/lib/reportStore";
+import { factsOfSheet } from "@/lib/sheetFacts";
 import { saveSheetMarks, useSheetMarks } from "@/lib/sheetMarkStore";
 import { sheetsOf, useExpert, type Sheet } from "@/lib/expertStore";
 import type { GradeAt } from "@/components/exam/GradeDialog";
@@ -26,14 +31,23 @@ import { Body, PageHead, Panel } from "@/components/admin2/ui";
  * 화면이라, 점수를 고치거나 「확인하고 다음」을 누르는 그 자리에서 저장한다 — 서른 문항을
  * 넘기다 창을 닫아도 본 데까지는 남는다.
  *
+ * ── 채점이 끝나면 리포트가 만들어진다 ──
+ * 마지막 문항까지 확인하는 순간 이 답안지의 점수로 리포트를 조립해 리포트 승인(EXP-08) 목록에
+ * 올린다(lib/reportStore.ts의 syncSheetReport). 리포트는 그때부터 스케줄러가 정한 날을 기다린다.
+ * 채점이 끝나지 않은 답안지에는 리포트가 없다.
+ *
+ * 그 뒤에 점수를 고치면, 발행 전인 리포트는 새 점수로 다시 조립된다. 정오표의 점수와 리포트의
+ * 근거가 다른 값을 말하면 안 된다. 발행한 리포트는 바뀌지 않는다.
+ *
  * ── 서술형 응답 큐는 여기서 다루지 않는다 ──
  * 예전에는 진단 채점(EXP-04)의 서술형 응답(ScoreTask)을 답안지 끝에 붙여 함께 손봤다. 그
  * 응답은 시험지에 없는 문항이라 시험지 모양으로 펼 수 없고, 시험지의 서술형 · 논술형 문항이
  * 이미 같은 일을 한다. 루브릭 판정은 진단 채점에서 그대로 한다 — 이 화면은 그 응답으로
- * 「이 아이가 어느 과목을 봤는지」만 읽는다.
+ * 「어느 회차의 어느 아이인지」만 읽고, 시험지는 세 과목을 모두 편다(lib/examSheet.ts의 paperOf).
  *
- * ⚠ 여기서 매긴 점수는 진단 채점(EXP-04)의 루브릭 점수를 고치지 않는다. 저쪽은 세 칸(완전 2 ·
- *   부분 1 · 오답 0)으로 재고 그 값이 리포트로 나간다.
+ * ⚠ 여기서 매긴 점수와 진단 채점(EXP-04)의 루브릭 점수(완전 2 · 부분 1 · 오답 0)는 서로 이어져
+ *   있지 않다 — 한쪽에서 확정해도 다른 쪽 값은 그대로다. 리포트는 **이 화면의 점수**로
+ *   조립한다(lib/sheetFacts.ts). 붙일 때는 두 화면이 같은 점수 하나를 읽고 고치게 해야 한다.
  */
 
 const roundLabel = (id: string) => rounds.find((r) => r.id === id)?.label ?? id;
@@ -74,13 +88,22 @@ export default function SheetView({ sheetId }: { sheetId: string }) {
 function Sheet1({ sheet, back }: { sheet: Sheet; back: React.ReactNode }) {
   const by = useAdminPrefs().staffName || "운영자";
   const marks = useSheetMarks(sheet.key);
+  /* 이 답안지의 리포트 — 채점이 끝나기 전에는 없다 */
+  const report = useSendRow(reportIdOf(sheet.key), nowStamp());
   const [gradeAt, setGradeAt] = useState<GradeAt | null>(null);
 
-  /* 이 아이가 본 과목 — 채점 자료에 걸린 과목만 시험지를 편다 */
-  const subjects = useMemo(
-    () => sheetSubjects(sheet.seat, [...new Set(sheet.tasks.map((t) => t.subject))]),
-    [sheet],
-  );
+  /* 이 아이의 시험지 — 세 과목 전부 */
+  const subjects = useMemo(() => paperOf(sheet.seat), [sheet.seat]);
+
+  /* 마지막 문항까지 확인하면 이 답안지의 점수로 리포트가 조립돼 리포트 승인 목록에 오른다.
+     그 뒤에 점수를 고치면 발행 전 리포트가 새 점수로 다시 조립된다 — 발행 예정일은 처음
+     채점이 끝난 때에서 그대로 센다 */
+  const stat = gradeStat(subjects, marks);
+  const done = stat.total > 0 && stat.done === stat.total;
+  const facts = useMemo(() => factsOfSheet(sheet, subjects, marks), [sheet, subjects, marks]);
+  useEffect(() => {
+    if (done) syncSheetReport(sheet, facts);
+  }, [done, sheet, facts]);
 
   return (
     <GradeSheet
@@ -90,6 +113,14 @@ function Sheet1({ sheet, back }: { sheet: Sheet; back: React.ReactNode }) {
       subjects={subjects}
       marks={marks}
       back={back}
+      /* 이름은 적지 않는다 — 채점하는 사람이 누구 답인지 알면 안 된다 */
+      doneNote={
+        !report
+          ? undefined
+          : report.send === "sent"
+            ? `이 답안지의 리포트는 ${report.sentAt}에 발행되었습니다.`
+            : `이 답안지의 리포트가 「리포트 승인」 목록에 있습니다. 발행 예정일은 ${report.sendOn}입니다.`
+      }
       gradeAt={gradeAt}
       onOpen={setGradeAt}
       onClose={() => setGradeAt(null)}

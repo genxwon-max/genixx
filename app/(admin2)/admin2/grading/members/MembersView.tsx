@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { rounds } from "@/lib/admin";
 import { n } from "@/lib/admin2";
 import { sheetsOf, useExpert, type Sheet } from "@/lib/expertStore";
-import { sheetSubjects } from "@/lib/examSheet";
+import { paperOf } from "@/lib/examSheet";
 import { gradeStat, type GradeMarks } from "@/lib/gradeSheet";
 import { useAllMarks, type SheetMarks } from "@/lib/sheetMarkStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
@@ -40,7 +40,7 @@ const pt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
  * 문항마다 다르다(lib/exam.ts pointsOf).
  */
 function sheetStat(sheet: Sheet, all: SheetMarks) {
-  const subjects = sheetSubjects(sheet.seat, [...new Set(sheet.tasks.map((t) => t.subject))]);
+  const subjects = paperOf(sheet.seat);
   /* 저장소의 열쇠는 「답안지/문항」이다 — 이 답안지의 것만 문항 ID로 추린다 */
   const head = `${sheet.key}/`;
   const marks: GradeMarks = {};

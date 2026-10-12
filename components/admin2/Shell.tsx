@@ -38,6 +38,9 @@ import ConsoleGate from "./ConsoleGate";
 import ExpertWaiting from "./ExpertWaiting";
 import Palette from "./Palette";
 
+/** 내 정보 — 화면 권한과 상관없이 누구에게나 열리는 자기 계정 화면 */
+const ME_HREF = "/admin2/me";
+
 /**
  * 콘솔 껍데기 — 어두운 왼쪽 기둥(216px) + 같은 색 상단 바(40px) + 밝은 본문.
  *
@@ -125,6 +128,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [groups, setGroups] = useState<string[]>(() => [
     findAdmin2(pathname)?.group ?? admin2Nav[0].label,
   ]);
+  /* 펴 둔 그룹이 이 사람의 메뉴에 하나도 없으면 첫 그룹을 편다. 내 정보처럼 그룹 밖의 화면에
+     전문가로 들어오면 위의 기본값(「운영」)이 그 사람 메뉴에 없어, 기둥에 접힌 이름표만 남는다.
+     사람이 한 번이라도 여닫은 뒤에는 건드리지 않는다 — 다 접어 둔 것을 다시 펴면 안 된다 */
+  const [picked, setPicked] = useState(false);
+  const opened =
+    picked || nav.some((g) => groups.includes(g.label)) || !nav[0] ? groups : [nav[0].label];
 
   /* 접힌 그룹 안의 화면으로 건너가면(⌘K · 화면 안의 링크) 그 그룹을 편다.
      효과(useEffect)로 하지 않는다 — 효과 안에서 상태를 바꾸면 한 번 그린 뒤에 다시 그리게
@@ -217,7 +226,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   /* 「내 정보」는 화면 권한과 상관없이 연다 — 자기 계정을 보는 자리다 */
   const allowed =
     canOpen(screens, pathname) ||
-    pathname === "/admin2/me" ||
+    pathname === ME_HREF ||
     (!!previewRole && pathname.startsWith("/admin2/staff/roles"));
 
   return (
@@ -249,7 +258,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             className="flex-1 overflow-y-auto px-2 py-2"
           >
             {nav.map((g, gi) => {
-              const shown = groups.includes(g.label);
+              const shown = opened.includes(g.label);
               /* 접힌 그룹의 건수는 머리로 올려 더한다. 올리지 않으면 「가입 승인 5」가 접는
                  순간 사라져, 기둥의 배지가 오늘 할 일을 알려 주던 일을 못 하게 된다.
                  펼쳤을 때는 적지 않는다 — 같은 수가 머리와 항목에 두 번 서면 그 둘이
@@ -269,8 +278,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                        그룹을 접으려고 누른 것까지 기둥을 닫아 버리면 접은 결과를 못 본다 */
                     onClick={(e) => {
                       e.stopPropagation();
-                      setGroups((v) =>
-                        v.includes(g.label) ? v.filter((x) => x !== g.label) : [...v, g.label],
+                      setPicked(true);
+                      setGroups(
+                        opened.includes(g.label)
+                          ? opened.filter((x) => x !== g.label)
+                          : [...opened, g.label],
                       );
                     }}
                   >
@@ -286,7 +298,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       {g.items.map((it) => {
                         /* 지금 화면은 하나다 — 주소 앞머리가 걸리는 항목을 다 칠하면,
                            한 항목의 주소가 다른 항목의 앞머리인 자리(개인정보 관리 ·
-                           파기 스케줄러)에서 둘이 함께 「여기」라고 말한다. 가장 긴
+                           개인정보 파기)에서 둘이 함께 「여기」라고 말한다. 가장 긴
                            주소가 이기는 셈은 findAdmin2가 이미 하고 있으므로 그것을 쓴다 */
                         const on = here?.item.href === it.href;
                         const count = it.live ? live[it.live] : it.count;
@@ -306,7 +318,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
+          {/* 내 정보 — 어느 권한으로 들어와도 기둥의 같은 자리에 있다.
+              메뉴 그룹에 넣지 않는다. 그룹은 받은 권한마다 다르고 접히기도 해서, 그 안에 두면
+              권한마다 자리가 달라지고 접힌 그룹 뒤로 숨는다. 상단 바의 이름도 같은 곳으로
+              가지만 좁은 화면에서는 그 이름이 접혀, 기둥에 없으면 갈 길이 없었다 */}
           <div className="border-t border-(--a2-side-line) p-2">
+            <Link
+              href={ME_HREF}
+              className="a2-nav-item"
+              aria-current={pathname === ME_HREF ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              내 정보
+            </Link>
             <button
               type="button"
               onClick={() => setPalette(true)}
@@ -356,7 +380,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <span aria-hidden className="a2-t-sm text-(--a2-side-ink-2)">
                 /
               </span>
-              <span className="truncate a2-t-sm font-bold text-white">{here?.item.label ?? "—"}</span>
+              {/* 내 정보는 메뉴 그룹 밖의 화면이라 이름을 여기서 적는다 */}
+              <span className="truncate a2-t-sm font-bold text-white">
+                {here?.item.label ?? (pathname === ME_HREF ? "내 정보" : "—")}
+              </span>
             </nav>
 
             {/* 「예시 데이터」 꼬리표와 「기존 콘솔」 단추를 뺐다.

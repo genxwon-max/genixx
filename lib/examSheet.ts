@@ -1,8 +1,10 @@
 import {
   SLOT,
   autoGraded,
+  connectPair,
   examOrderOf,
   joinBlanks,
+  joinPairs,
   joinUpload,
   pointsOf,
   slotCount,
@@ -64,6 +66,35 @@ function rngOf(text: string) {
     s >>>= 0;
     return s / 4294967296;
   };
+}
+
+/**
+ * 이 아이가 이 과목에서 얼마나 맞히는가(0~1) — 응시번호와 과목으로 정해지는 값.
+ *
+ * 한동안 모든 아이가 같은 확률(0.62)로 맞혔다. 그러면 답안지 예순 장의 과목 점수가 전부
+ * 50~65점에 몰린다. 채점이 끝난 답안지로 리포트를 조립하는데(lib/reportAssembly.ts) 점수가
+ * 다 비슷하면 리포트도 전부 같은 문단을 받아, 규칙이 아이마다 다른 글을 고르는지를 화면에서
+ * 볼 수가 없다. 아이마다 바탕 실력이 다르고, 그 안에서 과목마다 조금씩 기운다.
+ */
+/**
+ * 실력을 정해 둔 답안지 — 리포트 승인의 예시로 이름을 붙여 둔 넷(lib/reportStore.ts의 NAMED).
+ *
+ * 문서와 디자인 보기가 이 넷을 이름으로 가리키므로, 어떤 리포트가 나오는지를 우연에 맡기지
+ * 않는다. 한 축이 뚜렷한 아이 · 수리가 강한 아이 · 고른 아이 · 한 축만 높은 아이다.
+ */
+const PROFILE: Record<string, Record<SubjectId, number>> = {
+  "0474": { korean: 0.95, math: 0.84, science: 0.72 },
+  "0467": { korean: 0.82, math: 0.96, science: 0.74 },
+  "0453": { korean: 0.66, math: 0.62, science: 0.72 },
+  "0483": { korean: 0.62, math: 0.58, science: 0.97 },
+};
+
+function skillOf(seat: string, subject: SubjectId) {
+  const fixed = PROFILE[seat]?.[subject];
+  if (fixed !== undefined) return fixed;
+  const base = 0.42 + ((seedOf(`skill:${seat}`) % 1000) / 1000) * 0.48;
+  const tilt = ((seedOf(`skill:${seat}:${subject}`) % 1000) / 1000 - 0.5) * 0.4;
+  return Math.min(0.97, Math.max(0.34, base + tilt));
 }
 
 /* ───────────────────────── 지어내는 값 ───────────────────────── */
@@ -191,10 +222,12 @@ const aiPointOf = (max: number, grade: Grade) =>
  */
 export function answersOf(seat: string, subject: SubjectId): GradeLine[] {
   const r = rngOf(`${seat}:${subject}`);
+  const skill = skillOf(seat, subject);
 
   return examOrderOf(subject).map((q, i): GradeLine => {
-    /* 뒤로 갈수록 층이 올라가 못 내는 문항이 늘어난다 — S4에서 빈칸이 가장 잦다 */
-    const hard = q.level === "S4" ? 0.3 : q.level === "S3" ? 0.16 : 0.06;
+    /* 뒤로 갈수록 층이 올라가 못 내는 문항이 늘어난다 — S4에서 빈칸이 가장 잦다.
+       잘 맞히는 아이는 빈칸도 적다 */
+    const hard = (q.level === "S4" ? 0.3 : q.level === "S3" ? 0.16 : 0.06) * (1.6 - skill);
     const answered = r() > hard;
     const max = pointsOf(q);
     const kind = !answered ? "blank" : q.type === "choice" ? "choice" : "essay";
@@ -205,14 +238,22 @@ export function answersOf(seat: string, subject: SubjectId): GradeLine[] {
     };
     const base = { q, no: i + 1, max, reflect };
 
-    /* 기계로 채점하는 문항 — 객관식과 단답형 */
+    /* 기계로 채점하는 문항 — 객관식 · 선 잇기 · 단답형 */
     if (autoGraded(q)) {
-      const right = answered && r() < 0.62;
+      const right = answered && r() < skill;
       let value: number | string | undefined;
       if (!answered) value = undefined;
       else if (q.type === "choice") {
         const wrong = (q.choices ?? []).map((_, k) => k).filter((k) => k !== (q.answer ?? 0));
         value = right ? (q.answer ?? 0) : (wrong[Math.floor(r() * wrong.length)] ?? 0);
+      } else if (q.match) {
+        /* 선 잇기 — 틀린 답은 정답의 첫 선을 옆 항목으로 잘못 이은 것이다 */
+        const [first, ...rest] = q.match.pairs;
+        value = joinPairs(
+          right || !first
+            ? q.match.pairs
+            : connectPair(q.match, rest, [first[0], (first[1] + 1) % q.match.right.length]),
+        );
       } else {
         value = joinBlanks(
           q.blanks!.map((b, k) =>
@@ -229,8 +270,12 @@ export function answersOf(seat: string, subject: SubjectId): GradeLine[] {
     }
 
     /* 전문가가 채점하는 문항 — AI가 시작값을 깔고 채점자가 그 위에서 고친다 */
+    /* 글로 쓴 답은 잘하는 아이일수록 이유까지 쓴 답이 늘고 못 잡은 답이 준다.
+       실력이 0.62일 때 이유까지 쓴 답 34% · 답만 쓴 답 38% · 못 잡은 답 28%다 */
     const roll = r();
-    const grade: Grade = roll < 0.34 ? "full" : roll < 0.72 ? "partial" : "none";
+    const full = Math.min(0.9, Math.max(0.03, 1.25 * skill - 0.44));
+    const none = Math.min(0.8, Math.max(0.03, 0.9 - skill));
+    const grade: Grade = roll < full ? "full" : roll < 1 - none ? "partial" : "none";
 
     if (q.upload) {
       return {
@@ -257,19 +302,14 @@ export function answersOf(seat: string, subject: SubjectId): GradeLine[] {
   });
 }
 
-/** 과목 이름(국어)을 응시 화면의 열쇠(korean)로 — 채점 자료와 응시 자료가 쓰는 말이 다르다 */
-export const subjectIdOf = (name: string): SubjectId | null =>
-  subjects.find((s) => s.name === name || s.short === name)?.id ?? null;
-
-export const subjectNameOf = (id: SubjectId) => subjects.find((s) => s.id === id)?.name ?? id;
-
 /**
- * 이 아이가 본 과목들의 응시 원본 — 과목마다 한 벌, 과목 목록의 차례(국어 · 수학 · 과학)대로.
- * 안 본 과목의 시험지는 짓지 않는다. 지어 두면 전부 빈칸으로 서서 「안 냈다」로 읽힌다.
+ * 한 아이의 시험지 — 세 과목 전부, 과목 목록의 차례(국어 · 수학 · 과학)대로.
+ *
+ * 한동안 진단 채점(EXP-04)의 서술형 응답 큐에 걸린 과목만 폈다. 큐에 국어 응답만 올라온 아이는
+ * 국어만 본 것으로 읽혀 답안지가 열 문항이 되었고, 그 답안지로 조립한 리포트는 축이 하나뿐이라
+ * 「낮게 나온 축」도 「교차 해석」도 붙을 수 없었다. 큐에 오르는 것은 사람이 다시 볼 응답일 뿐이고,
+ * 아이는 세 과목을 모두 본다.
  */
-export function sheetSubjects(seat: string, subjectNames: string[]): GradeSubject[] {
-  const taken = new Set(subjectNames.map(subjectIdOf));
-  return subjects
-    .filter((s) => taken.has(s.id))
-    .map((s) => ({ id: s.id, short: s.short, lines: answersOf(seat, s.id) }));
+export function paperOf(seat: string): GradeSubject[] {
+  return subjects.map((s) => ({ id: s.id, short: s.short, lines: answersOf(seat, s.id) }));
 }

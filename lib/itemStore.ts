@@ -1968,6 +1968,12 @@ const SET_SEEDS: Partial<ItemDraft>[] = examSets
 
 const SEED: ItemDraft[] = withCodes([...SEED_RAW, ...SET_SEEDS].map(fill));
 
+/**
+ * 처음 값 그대로의 문항 하나 — 저장소를 읽지 않는다.
+ * 디자인 보기(/design/admin2/items/preview)가 미리보기 창을 이 값으로 그린다.
+ */
+export const seedItem = (id: string): ItemDraft | null => SEED.find((i) => i.id === id) ?? null;
+
 const KEY = "genixx.items";
 const EVENT = "genixx:items-change";
 

@@ -25,6 +25,7 @@ import {
   splitUpload,
   subjects,
   type AnswerPart,
+  type Bank,
   type Grades,
   type Mark,
   type SubjectId,
@@ -93,9 +94,12 @@ export function AnswerSheet({
   initialSubject,
   coach: coachFrom,
   review: reviewFrom,
+  bank,
 }: {
   row: Registration;
   record: ExamRecord;
+  /** 이 진단이 쓴 문항 목록 — 넘기지 않으면 기본 문항이다(lib/answerKey.ts의 linesOf) */
+  bank?: Bank;
   /**
    * 전문가가 매긴 점수 — 채점이 끝난 문항만 들어 있다. 넘기면 그 문항은 「채점 중」 대신
    * 점수를 따라 정답 · 부분 정답 · 오답으로 적힌다.
@@ -130,7 +134,7 @@ export function AnswerSheet({
   const reviewAt = reviewFrom ? reviewFrom.at : reviewOwn;
   const openReview = reviewFrom ? reviewFrom.onOpen : setReviewOwn;
   const closeReview = reviewFrom ? reviewFrom.onClose : () => setReviewOwn(null);
-  const lines = linesOf(subject, record, grades);
+  const lines = linesOf(subject, record, grades, bank);
   const count = tally(lines);
 
   return (
@@ -173,6 +177,7 @@ export function AnswerSheet({
             row={row}
             record={record}
             grades={grades}
+            bank={bank}
             student={student}
             submitted={submitted}
           />
@@ -211,6 +216,7 @@ export function AnswerSheet({
         <CoachDialog
           record={record}
           grades={grades}
+          bank={bank}
           subjects={available.map((s) => s.id)}
           onGo={(s, no) => {
             /* 창을 주소로 여닫는 디자인 보기에서는 답안 풀이 주소로 가는 것이 곧 이 창을 닫는 일이다 */
@@ -227,6 +233,7 @@ export function AnswerSheet({
           row={row}
           record={record}
           grades={grades}
+          bank={bank}
           at={reviewAt}
           onClose={closeReview}
         />
@@ -486,12 +493,14 @@ function AnswerDownloads({
   row,
   record,
   grades,
+  bank,
   student,
   submitted,
 }: {
   row: Registration;
   record: ExamRecord;
   grades?: Grades;
+  bank?: Bank;
   student: string;
   submitted: string;
 }) {
@@ -568,7 +577,7 @@ function AnswerDownloads({
         </button>
         <button
           type="button"
-          onClick={() => downloadCsv(fileName, answerCsvHead, answerCsv(row, record, grades))}
+          onClick={() => downloadCsv(fileName, answerCsvHead, answerCsv(row, record, grades, bank))}
           className={btnSmGhost}
         >
           CSV
@@ -589,7 +598,7 @@ function AnswerDownloads({
         createPortal(
           <div ref={paper} className="answer-sheet-print text-black">
             {ids.map((id, i) => {
-              const lines = linesOf(id, record, grades);
+              const lines = linesOf(id, record, grades, bank);
               const count = tally(lines);
               return (
                 <div key={id} data-sheet className={i > 0 ? "break-before-page" : ""}>
@@ -630,12 +639,14 @@ function AnswerDownloads({
 function CoachDialog({
   record,
   grades,
+  bank,
   subjects: ids,
   onGo,
   onClose,
 }: {
   record: ExamRecord;
   grades?: Grades;
+  bank?: Bank;
   subjects: SubjectId[];
   onGo: (subject: SubjectId, no: number) => void;
   onClose: () => void;
@@ -643,7 +654,7 @@ function CoachDialog({
   const groups = ids.map((id) => ({
     id,
     name: subjectName(id),
-    lines: linesOf(id, record, grades),
+    lines: linesOf(id, record, grades, bank),
   }));
   const misses = groups.map((g) => ({
     ...g,

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   assessment,
   flattenSets,
+  keyText,
   screensOf,
+  standsAlone,
   subjects,
   type Question as ExamQuestion,
 } from "@/lib/exam";
@@ -68,15 +70,18 @@ export default function ItemPreview({
   item,
   onClose,
   nav,
+  startReveal = true,
 }: {
   item: ItemDraft;
   onClose: () => void;
   nav?: PreviewNav;
+  /** 정답 · 해설을 켠 채로 여는가 — 디자인 보기가 「끈 모습」을 주소로 굳힐 때만 false를 넘긴다 */
+  startReveal?: boolean;
 }) {
   const qs = item.questions;
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
   /* 검수하러 온 사람이 열므로 처음부터 켜 둔다. 아이 화면 그대로를 보려면 끈다 */
-  const [reveal, setReveal] = useState(true);
+  const [reveal, setReveal] = useState(startReveal);
 
   const box = useRef<HTMLDivElement>(null);
 
@@ -111,7 +116,8 @@ export default function ItemPreview({
   const bank = flattenSets([{ ...content, subject }]);
   const screens = screensOf(subject, bank);
   const set = bank.length > 1;
-  const hasBrief = content.material.blocks.length > 0 || !!content.material.lead;
+  /* 자료가 없으면 응시 화면처럼 왼쪽 칸 없이 문항만 가운데에 둔다(lib/exam.ts의 standsAlone) */
+  const hasBrief = !standsAlone(content.material);
   const byId = new Map(qs.map((q) => [q.id, q]));
   const contentById = new Map(questionsIn(content).map((c) => [c.id, c]));
 
@@ -125,7 +131,12 @@ export default function ItemPreview({
       />
       {reveal && byId.get(q.id) && (
         <div className="grid gap-3 px-6 pb-7 lg:px-10">
-          <RevealNotes q={byId.get(q.id)!} cq={contentById.get(q.id)} />
+          <RevealNotes
+            q={byId.get(q.id)!}
+            cq={contentById.get(q.id)}
+            /* 선 잇기의 정답 — 「(1) - ㄱ · ㄷ / (2) - ㄴ」. 정오표와 같은 글이다 */
+            matchKey={q.match ? keyText(q) : ""}
+          />
         </div>
       )}
     </div>
@@ -236,8 +247,13 @@ export default function ItemPreview({
             }
           />
         )}
-        {/* 오른쪽 — 응시 화면은 한 화면씩 넘기지만, 미리보기는 화면들을 이어서 세운다 */}
-        <div className="order-3 lg:order-2 lg:overflow-y-auto">
+        {/* 오른쪽 — 응시 화면은 한 화면씩 넘기지만, 미리보기는 화면들을 이어서 세운다.
+            자료가 없으면 문항이 가운데 한 칸에 서므로(ScreenColumn) 아래 유의 글도 같은 폭에 맞춘다 */}
+        <div
+          className={`order-3 lg:order-2 lg:overflow-y-auto ${
+            hasBrief ? "" : "mx-auto w-full max-w-[56rem]"
+          }`}
+        >
           {screens.map((screen) => (
             <div key={screen[0].id} className="border-b border-exam-line">
               <ScreenColumn order={bank} screen={screen} renderQuestion={one} />
@@ -260,7 +276,16 @@ const NL = String.fromCharCode(10);
 /**
  * 검수자만 보는 것 — 정답 · 칸마다의 답 · 채점 기준. 아이 화면에는 없는 글이라 점선으로 가른다.
  */
-function RevealNotes({ q, cq }: { q: Question; cq?: ContentQuestion }) {
+function RevealNotes({
+  q,
+  cq,
+  matchKey = "",
+}: {
+  q: Question;
+  cq?: ContentQuestion;
+  /** 선 잇기 문항의 정답을 글로 적은 것 — 선 잇기가 아니면 빈 글 */
+  matchKey?: string;
+}) {
   const choices = choicesOf(q);
   const picks = q.type === "choice" || q.type === "ox";
   const blanks = cq?.response.kind === "blanks" ? cq.response.blanks : [];
@@ -283,6 +308,7 @@ function RevealNotes({ q, cq }: { q: Question; cq?: ContentQuestion }) {
             .join(NL)}
         </Keyed>
       )}
+      {matchKey && <Keyed label="정답">{matchKey.split(" / ").join(NL)}</Keyed>}
       {blanks.length > 0 && answers.some((a) => a.trim()) && (
         <Keyed label="칸마다 정답 · 예시 답">
           {blanks

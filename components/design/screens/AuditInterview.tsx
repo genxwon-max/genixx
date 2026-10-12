@@ -23,6 +23,11 @@ import ConsoleFrame from "../ConsoleFrame";
  *    「개인정보 열람」은 지금처럼 사유가 적힌 기록을 세 분류에 걸쳐 모은다. 상담일지 열람은 사유를
  *    받는 기록이라 면담 탭과 개인정보 열람 탭에 함께 표시된다.
  *  · 표 아래 「기록 분류」 판과, 표준 열람 사유 둘(상담일지를 열 때 고르는 값).
+ *  · 스케줄러 변경 · 조립 규칙 변경 — 한 번 고치면 그 뒤의 리포트와 파기 전부에 걸리는 값이라
+ *    누가 언제 무엇에서 무엇으로 바꿨는지를 남긴다(2026-10-12). 「그 외」 탭에 모인다(…/rest).
+ *    리포트를 내보내는 일은 「발행 승인」이 아니라 「발행」이다 — 스케줄러가 정한 날에 저절로
+ *    나가고(「리포트 자동 발행」 · 자동 처리), 사람이 누르는 것은 예정일보다 먼저 내보낼 때뿐이다.
+ *    예시의 한 줄은 리포트 승인 디자인의 최민준 리포트(10월 11일 오전 9시 자동 발행)다.
  *
  * ── 누가 남기나 ──
  * 콘솔에서 일하는 사람은 최상위 관리자(박서준)와, 전문가로 가입해 권한을 받은 사람들이다.
@@ -62,11 +67,14 @@ const YOON_IP = "112.169.77.9";
 
 /** 최근 것이 위로. 면담 CS-2610-0012의 기록은 면담 결과 기록 화면(L.2.12)의 시각과 같다 */
 const log: Row[] = [
-  { id: "L-93142", at: "2026-10-12 15:42:10", actor: "박서준", role: "최상위 관리자", group: "expert", action: "전문가 권한 수정", target: "한지수 (EX-2610-004) · 진단 위원 추가 → 출제자 · 진단 위원 · 상담사", reason: null, ip: ADMIN_IP },
-  { id: "L-93141", at: "2026-10-12 15:20:33", actor: "김지원", role: "상담사", group: "interview", action: "상담일지 열람", target: "CS-2610-0031 결과 기록 (2026-10-06 면담)", reason: "면담 준비 — 같은 학생의 다음 면담을 앞두고 지난 상담 내용 확인", ip: KIM_IP },
-  { id: "L-93140", at: "2026-10-12 14:55:02", actor: "시스템", role: "자동 처리", group: "interview", action: "상담사 자동 배정", target: "CS-2610-0088 → 서민정 · 분야 일치 · 10.16(금) 16:00 가능 · 이번 주 배정 2건", reason: null, ip: "—" },
-  { id: "L-93139", at: "2026-10-12 14:31:49", actor: "시스템", role: "자동 처리", group: "interview", action: "면담 알림 발송", target: "CS-2610-0086 · 상담사 배정 안내 · 보호자(알림톡) · 상담사(앱 알림)", reason: null, ip: "—" },
-  { id: "L-93138", at: "2026-10-12 14:31:47", actor: "박서준", role: "최상위 관리자", group: "interview", action: "상담사 배정", target: "CS-2610-0086 → 김지원 · 신청자가 관리자 배정을 요청", reason: null, ip: ADMIN_IP },
+  { id: "L-93145", at: "2026-10-12 15:42:10", actor: "박서준", role: "최상위 관리자", group: "expert", action: "전문가 권한 수정", target: "한지수 (EX-2610-004) · 진단 위원 추가 → 출제자 · 진단 위원 · 상담사", reason: null, ip: ADMIN_IP },
+  { id: "L-93144", at: "2026-10-12 15:20:33", actor: "김지원", role: "상담사", group: "interview", action: "상담일지 열람", target: "CS-2610-0031 결과 기록 (2026-10-06 면담)", reason: "면담 준비 — 같은 학생의 다음 면담을 앞두고 지난 상담 내용 확인", ip: KIM_IP },
+  { id: "L-93143", at: "2026-10-12 14:55:02", actor: "시스템", role: "자동 처리", group: "interview", action: "상담사 자동 배정", target: "CS-2610-0088 → 서민정 · 분야 일치 · 10.16(금) 16:00 가능 · 이번 주 배정 2건", reason: null, ip: "—" },
+  { id: "L-93142", at: "2026-10-12 14:31:49", actor: "시스템", role: "자동 처리", group: "interview", action: "면담 알림 발송", target: "CS-2610-0086 · 상담사 배정 안내 · 보호자(알림톡) · 상담사(앱 알림)", reason: null, ip: "—" },
+  { id: "L-93141", at: "2026-10-12 14:31:47", actor: "박서준", role: "최상위 관리자", group: "interview", action: "상담사 배정", target: "CS-2610-0086 → 김지원 · 신청자가 관리자 배정을 요청", reason: null, ip: ADMIN_IP },
+  { id: "L-93140", at: "2026-10-12 14:05:41", actor: "박서준", role: "최상위 관리자", group: "rest", action: "조립 규칙 변경", target: "발현 밴드 컷 L3 75 → 80 · 발행 전 리포트 2건 변경", reason: null, ip: ADMIN_IP },
+  { id: "L-93139", at: "2026-10-12 13:52:07", actor: "박서준", role: "최상위 관리자", group: "rest", action: "스케줄러 변경", target: "리포트 스케줄러 · 채점 완료 7일 뒤 오전 9시 → 3일 뒤 오전 9시 · 4건 바로 발행", reason: null, ip: ADMIN_IP },
+  { id: "L-93138", at: "2026-10-12 13:50:26", actor: "박서준", role: "최상위 관리자", group: "rest", action: "스케줄러 변경", target: "개인정보 스케줄러 · 탈퇴 30일 뒤 → 14일 뒤 · 파기 대기 3건 → 5건", reason: null, ip: ADMIN_IP },
   { id: "L-93137", at: "2026-10-12 13:48:15", actor: "서민정", role: "진단 위원", group: "expert", action: "진단 채점", target: "SC-0733-M2 · 초4 수학 서술형 · AI 제안 3점 → 4점으로 확정", reason: null, ip: SEO_IP },
   { id: "L-93136", at: "2026-10-12 13:40:29", actor: "서민정", role: "진단 위원", group: "expert", action: "학생 개인정보 열람", target: "C-2610-0733 (응시번호 0733)", reason: "서술형 응답 해석을 위해 학년·생년월일 확인", ip: SEO_IP },
   { id: "L-93135", at: "2026-10-12 13:36:04", actor: "서민정", role: "전문가", group: "expert", action: "전문가 로그인", target: "seo_mj · 2단계 인증(문자)", reason: null, ip: SEO_IP },
@@ -80,7 +88,7 @@ const log: Row[] = [
   { id: "L-93127", at: "2026-10-12 09:12:40", actor: "박서준", role: "최상위 관리자", group: "rest", action: "관리자 로그인", target: "admin.park · 2단계 인증(인증 앱)", reason: null, ip: ADMIN_IP },
   { id: "L-93126", at: "2026-10-11 16:02:11", actor: "서민정", role: "상담사", group: "interview", action: "휴무일 등록", target: "서민정 · 2026-10-24(토) 종일 · 그날 잡힌 면담 0건", reason: null, ip: SEO_IP },
   { id: "L-93125", at: "2026-10-11 11:30:12", actor: "박서준", role: "최상위 관리자", group: "interview", action: "면담 알림 발송", target: "CS-2610-0052 · 입장 안내 다시 보내기 · 보호자(문자)", reason: null, ip: ADMIN_IP },
-  { id: "L-93124", at: "2026-10-11 09:57:31", actor: "박서준", role: "최상위 관리자", group: "rest", action: "리포트 발행 승인", target: "2026 3분기 초4 진단 · 41건", reason: null, ip: ADMIN_IP },
+  { id: "L-93124", at: "2026-10-11 09:00:02", actor: "시스템", role: "자동 처리", group: "rest", action: "리포트 자동 발행", target: "RP-2026-3-0483 (2026 3분기 초4 진단) · 채점 완료 7일 뒤 오전 9시", reason: null, ip: "—" },
   { id: "L-93123", at: "2026-10-10 17:20:05", actor: "박서준", role: "최상위 관리자", group: "interview", action: "면담 설정 변경", target: "상담사 자동 배정: 끔 → 켬", reason: null, ip: ADMIN_IP },
   { id: "L-93122", at: "2026-10-10 10:24:36", actor: "박서준", role: "최상위 관리자", group: "interview", action: "결과 기록 보완 요청", target: "CS-2610-0008 · 상담사 서민정 · 권고 사항이 구체적이지 않음", reason: null, ip: ADMIN_IP },
   { id: "L-93121", at: "2026-10-09 11:05:02", actor: "박서준", role: "최상위 관리자", group: "interview", action: "면담 승인 · 종료", target: "CS-2610-0012 · 상담사 김지원", reason: null, ip: ADMIN_IP },
@@ -102,7 +110,7 @@ const tabs: { id: TabId; label: string; match: (r: Row) => boolean; empty: strin
   { id: "pii", label: "개인정보 열람", match: (r) => r.reason !== null, empty: "개인정보 열람 기록이 없습니다." },
   { id: "interview", label: "면담", match: (r) => r.group === "interview", empty: "면담 기록이 없습니다.", slug: "interview" },
   { id: "expert", label: "전문가 활동", match: (r) => r.group === "expert", empty: "전문가 활동 기록이 없습니다.", slug: "expert" },
-  { id: "rest", label: "그 외", match: (r) => r.group === "rest", empty: "그 밖의 기록이 없습니다." },
+  { id: "rest", label: "그 외", match: (r) => r.group === "rest", empty: "그 밖의 기록이 없습니다.", slug: "rest" },
 ];
 
 /* 칸과 차례는 실제 표(AuditTable) 그대로다. 역할 칸만 이름이 길어져(최상위 관리자) 폭을 넓혔다 */
@@ -237,7 +245,7 @@ export default function AuditInterview({ state }: { state: string }) {
         tabsLabel="기록 종류별 조회 조건"
         tabs={tabs.map((t) => {
           const count = log.filter(t.match).length;
-          /* 주소가 있는 탭(전체 · 면담 · 전문가 활동)만 링크다. 나머지 둘은 눌러도 바뀌지 않는다 */
+          /* 주소가 있는 탭(전체 · 면담 · 전문가 활동 · 그 외)만 링크다. 개인정보 열람은 눌러도 바뀌지 않는다 */
           return t.slug === undefined ? (
             <Tab key={t.id} label={t.label} count={count} active={false} onClick={noop} />
           ) : (
@@ -275,7 +283,7 @@ export default function AuditInterview({ state }: { state: string }) {
               },
               {
                 k: "그 외",
-                v: "위 두 분류에 들지 않는 기록입니다. 관리자 로그인 · 접속코드 · 문의 · 리포트 발행 · 개인정보 파기가 여기에 표시됩니다.",
+                v: "위 두 분류에 들지 않는 기록입니다. 관리자 로그인 · 접속코드 · 문의 · 리포트 발행 · 개인정보 파기와 함께, 스케줄러 변경 · 조립 규칙 변경이 여기에 표시됩니다.",
               },
             ]}
           />

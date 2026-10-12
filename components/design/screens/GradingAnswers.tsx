@@ -29,7 +29,7 @@ const to = designLinks("grading-answers");
 const noop = () => {};
 
 /** 채점은 진단 위원 권한을 받은 전문가가 한다 */
-const grader: ConsoleMe = { name: "윤태호", role: "전문가 · 진단 위원", loginId: "ex.taeho_yoon" };
+const grader: ConsoleMe = { name: "서민정", role: "전문가 · 진단 위원", loginId: "ex.expert_grader" };
 const graderMenu = ["/admin2/grading", "/admin2/grading/members"];
 
 const levels: RubricLevel[] = ["full", "partial", "none"];
@@ -38,7 +38,7 @@ const toneOf = (level: RubricLevel) =>
 
 export default function GradingAnswers({ state }: { state: string }) {
   return (
-    <ConsoleFrame at="/admin2/grading" me={grader} only={graderMenu}>
+    <ConsoleFrame at="/admin2/grading" me={grader} meHref="/design/admin2/me/grader" only={graderMenu}>
       {state === "voice" ? <Voice /> : <Photo state={state} />}
     </ConsoleFrame>
   );
@@ -309,7 +309,7 @@ function Photo({ state }: { state: string }) {
                     {rubric.full.label}
                   </span>
                   <span className="a2-t-xs text-(--a2-ink-4)">
-                    <span className="a2-mono">2026-10-12 11:20</span> · 윤태호
+                    <span className="a2-mono">2026-10-12 11:20</span> · 서민정
                   </span>
                   <span className="a2-t-xs text-(--a2-ink-4)">사진을 직접 확인해 채점함</span>
                   <span className="a2-t-sm w-full text-(--a2-ink-2)">

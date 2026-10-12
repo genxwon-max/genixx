@@ -52,9 +52,11 @@ function same(a: unknown, b: unknown) {
  * 신원으로 견주지 않는다. 저장이 끝나면 `saved`가 초안을 따라잡으므로 dirty가 저절로
  * 내려간다. 바깥에서 값이 바뀌어도 초안은 따라가지 않는다 — 치고 있는 글자를 남의
  * 저장이 밀어내면 안 되기 때문이다.
+ *
+ * `start`는 처음부터 손대 둔 값이다 — 디자인 보기가 「고치는 중」을 주소로 굳힐 때만 넘긴다.
  */
-export function useEditDraft<T extends Record<string, unknown>>(saved: T) {
-  const [value, setValue] = useState<T>(saved);
+export function useEditDraft<T extends Record<string, unknown>>(saved: T, start?: Partial<T>) {
+  const [value, setValue] = useState<T>(start ? { ...saved, ...start } : saved);
 
   const dirty = (Object.keys(saved) as (keyof T)[]).some((k) => !same(value[k], saved[k]));
 

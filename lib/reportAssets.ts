@@ -35,10 +35,13 @@ import type { SurveyBand } from "./surveyBands";
  * ReportDoc.grade는 「초등 4학년」 같은 자유 입력 글자인데, 그것을 학년대로 옮겨 주는
  * bandFromGrade()가 저쪽에 이미 있다. 이 축을 쓰면 새로 지을 것이 없다.
  *
- * ⚠ 문구를 고쳐도 **이미 발행된 리포트는 그대로 둔다.** 리포트는 조립되는 순간 블록에
- *   문장을 복사해 담고(lib/reportStore.ts의 ReportBlock.text), 그 뒤로는 이 템플릿을 다시
- *   보지 않는다. 보호자가 이미 읽은 글이 뒤에서 소리 없이 바뀌면 안 되기 때문이다 —
- *   고친 문구는 **다음 조립부터** 나간다.
+ * ⚠ 문구와 규칙을 고친 것은 그 뒤에 조립하는 리포트와 **아직 발행하지 않은 리포트**에 걸린다
+ *   (lib/reportStore.ts의 syncWaitingReports). 이미 발행한 리포트는 그대로 둔다 — 보호자가
+ *   이미 읽은 글이 뒤에서 소리 없이 바뀌면 안 된다. 리포트는 문장을 문단에 복사해 담고
+ *   (ReportBlock.text), 발행하는 순간 그 글이 굳는다.
+ *
+ * 조립하는 셈은 lib/reportAssembly.ts에 있다. 이 파일은 그 셈이 읽는 것 — 문구가 놓이는 자리,
+ * 처음 값의 문구와 규칙, 컷 — 을 든다.
  */
 
 /* ───────────────────────── 발현 밴드 ───────────────────────── */
@@ -262,6 +265,17 @@ export function templateGradeFrom(grade?: string): TemplateGrade {
   return n >= 3 && n <= 6 ? (`e${n}` as TemplateGrade) : "e3";
 }
 
+/**
+ * 진단 대상 학년(초등 3~6학년)인가 — templateGradeFrom과 같은 규칙으로 읽는다.
+ * 대상이 아닌 학년의 리포트는 가장 어린 칸의 문구로 조립하고, 그랬다는 것을 기록에 남긴다.
+ */
+export function isTargetGrade(grade?: string) {
+  const t = (grade ?? "").trim();
+  if (t.includes("중") || t.includes("고")) return false;
+  const n = Number(t.match(/\d/)?.[0] ?? "");
+  return n >= 3 && n <= 6;
+}
+
 export const keyOf = (slot: SlotId, grade: TemplateGrade, axis: AxisId | null, band: Band | null) =>
   `${slot}-${grade}-${axis ?? "all"}-${band ?? "all"}`;
 
@@ -423,7 +437,15 @@ export type Side = "high" | "low";
 
 export type CrossCellRule = {
   id: CrossKey;
+  /** 콘솔에서 부르는 이름 — 판정 협진(EXP-07)의 여섯 칸과 같은 말이다 */
   label: string;
+  /**
+   * 리포트에 서는 제목 — 회원이 읽는 말이다.
+   *
+   * 칸 이름(「잠재-발현 갭」 · 「현시점 비우선」)은 운영자끼리 쓰는 말이라 그대로 내보내지 않는다.
+   * 한동안 칸 이름이 블록 제목으로 나가, 결과 화면의 카드 머리에 「능력-흥미 불일치」가 섰다.
+   */
+  title: string;
   /** 학력(과목 점수) 쪽 */
   paper: Side | null;
   /** 재능(축 점수) 쪽 */
@@ -443,6 +465,17 @@ export type CrossCellRule = {
  * 학력은 「이 점수 미만이면 부진」, 재능은 「이 점수 이상이면 강세」다. 부등호 방향이 서로
  * 반대인 까닭은 두 축이 재는 것이 달라서다 — 학력은 낮은 쪽이, 재능은 높은 쪽이 이 화면에서
  * 손이 가는 자리다.
+ *
+ * ── 두 점수가 무엇인가 ──
+ *   학력  이 아이가 본 과목 점수의 평균
+ *   재능  가장 높게 나온 축의 점수
+ *
+ * 전체 점수는 낮은데 한 축만 높은 아이(잠재-발현 갭)와, 전체는 고른데 어느 축도 높지 않은
+ * 아이를 가르는 셈이다. 본 과목이 하나뿐이면 두 값이 같아져 견줄 것이 없으므로 교차 해석을
+ * 붙이지 않는다(lib/reportAssembly.ts).
+ *
+ * ⚠ 내가 정한 셈이다. 판정 협진은 학력을 지필, 재능을 설문 · 관찰 · 면담으로 본다. 조립할 때는
+ *   사람이 확정한 값이 아직 없어 지필 점수 둘로 대신한다 — 의뢰인이 확인해 줄 자리다.
  */
 export type CrossCuts = { paper: number; talent: number };
 
@@ -462,6 +495,7 @@ export const seedCross: CrossCellRule[] = [
   {
     id: "confirm",
     label: "강신호 확증",
+    title: "과목 점수와 재능이 만나는 자리",
     paper: "high",
     talent: "high",
     desc: "학력 우수 × 재능 강세",
@@ -472,6 +506,7 @@ export const seedCross: CrossCellRule[] = [
   {
     id: "gap",
     label: "잠재-발현 갭",
+    title: "학력과 재능이 어긋난 자리",
     paper: "low",
     talent: "high",
     desc: "학력 부진 × 재능 강세",
@@ -482,6 +517,7 @@ export const seedCross: CrossCellRule[] = [
   {
     id: "mismatch",
     label: "능력-흥미 불일치",
+    title: "점수와 흥미가 다른 자리",
     paper: "high",
     talent: "low",
     desc: "학력 우수 × 재능 약세",
@@ -492,6 +528,7 @@ export const seedCross: CrossCellRule[] = [
   {
     id: "later",
     label: "현시점 비우선",
+    title: "다음 회차에 다시 볼 자리",
     paper: "low",
     talent: "low",
     desc: "학력 부진 × 재능 약세",
@@ -502,6 +539,7 @@ export const seedCross: CrossCellRule[] = [
   {
     id: "excluded-high",
     label: "배제영역 고신호",
+    title: "재지 않은 축에서 보인 모습",
     paper: null,
     talent: null,
     desc: "재지 않은 다섯 축에서 강한 신호",
@@ -512,6 +550,7 @@ export const seedCross: CrossCellRule[] = [
   {
     id: "excluded-none",
     label: "배제영역 무신호",
+    title: "재지 않은 축",
     paper: null,
     talent: null,
     desc: "재지 않은 축에도 별다른 신호 없음",
@@ -537,17 +576,29 @@ export type RuleCond =
   | { kind: "always" }
   /** 가장 높게 나온 축에 붙는다 */
   | { kind: "topAxis" }
-  /** 가장 낮게 나온 축에 붙는다. 측정된 축이 둘 이상일 때만 */
-  | { kind: "lowAxis" }
+  /**
+   * 가장 낮게 나온 축에 붙는다 — 측정한 축이 둘 이상이고, 가장 높은 축보다 gap점 이상 낮을 때만.
+   *
+   * 한동안 축이 둘 이상이기만 하면 붙였다. 그러면 88 · 85 · 82점을 받은 아이의 82점짜리 축에
+   * 「이번 회차에서 낮게 측정되었습니다」가 나간다. 낮다고 말하려면 실제로 차이가 나야 한다.
+   * gap이 없는 것은 이 값이 생기기 전에 고쳐 둔 규칙이다 — 기본값(LOW_GAP)으로 읽는다.
+   */
+  | { kind: "lowAxis"; gap?: number }
   /** 관찰 설문이 n건 미만일 때 붙는다 */
   | { kind: "sourcesBelow"; n: number }
   /**
-   * 걸린 교차 셀에 붙는다.
+   * 걸린 교차 셀에 붙는다 — 본 과목이 둘 이상이고, 걸린 칸이 켜져 있을 때.
    *
    * 점수 둘을 이 조건 안에 들고 있던 것을 걷어 냈다. 컷은 셀 격자가 들고(CrossCuts), 어느
    * 칸이 걸렸는지도 격자가 정한다 — 조건이 제 컷을 따로 들면 격자에서 옮긴 컷과 갈린다.
    */
   | { kind: "cross" };
+
+/** 「지금은 낮게 나온 축」을 붙이는 점수 차의 기본값 */
+export const LOW_GAP = 10;
+
+/** 이 규칙이 요구하는 점수 차 — 낮은 축 규칙이 아니면 기본값 */
+export const lowGapOf = (c: RuleCond) => (c.kind === "lowAxis" ? (c.gap ?? LOW_GAP) : LOW_GAP);
 
 export type Rule = {
   /** R-01 · R-04 … 리포트 블록에 근거로 적히는 번호 */
@@ -560,7 +611,7 @@ export type Rule = {
   cond: RuleCond;
   /** 리포트 안에서 서는 차례. 작을수록 위 */
   order: number;
-  /** 끄면 이 블록이 다음 조립부터 빠진다 */
+  /** 끄면 이 문단이 발행 전 리포트와 그 뒤에 조립하는 리포트에서 빠진다 */
   on: boolean;
   /**
    * 끌 수 없는 규칙이면 그 까닭.
@@ -589,7 +640,7 @@ export const seedRules: Rule[] = [
   {
     id: "R-01",
     label: "유형 판정",
-    desc: "측정된 축 가운데 상위 두 축의 조합으로 유형을 정한다",
+    desc: "가장 높은 축으로 유형을 정한다. 유형 코드는 높은 차례대로 축의 글자를 잇는다",
     slot: "type",
     cond: { kind: "topAxis" },
     order: 10,
@@ -599,7 +650,7 @@ export const seedRules: Rule[] = [
   {
     id: "R-04",
     label: "강하게 나타난 축",
-    desc: "최상위 축에 그 축의 발현 밴드 문구를 붙인다",
+    desc: "가장 높은 축에 그 축의 발현 밴드 문구를 붙인다",
     slot: "top",
     cond: { kind: "topAxis" },
     order: 20,
@@ -608,16 +659,16 @@ export const seedRules: Rule[] = [
   {
     id: "R-05",
     label: "지금은 낮게 나온 축",
-    desc: "최하위 축에 붙는 해석 블록. 능력 부족으로 서술하지 않는다",
+    desc: "가장 낮은 축이 가장 높은 축보다 정해 둔 점수 이상 낮을 때 붙인다. 능력 부족으로 서술하지 않는다",
     slot: "low",
-    cond: { kind: "lowAxis" },
+    cond: { kind: "lowAxis", gap: LOW_GAP },
     order: 30,
     on: true,
   },
   {
     id: "R-31",
     label: "교차 해석",
-    desc: "해당하는 교차 셀의 문구를 붙인다",
+    desc: "본 과목이 둘 이상일 때, 학력 × 재능에서 해당하는 교차 셀의 문구를 붙인다",
     slot: "cross",
     cond: { kind: "cross" },
     order: 40,
@@ -626,7 +677,7 @@ export const seedRules: Rule[] = [
   {
     id: "R-09",
     label: "미측정 축 안내",
-    desc: "1단계 진단에서 재지 않은 다섯 축에 늘 붙는 고정 블록",
+    desc: "이번 진단에서 재지 않은 다섯 축에 늘 붙는 고정 블록",
     slot: "unmeasured",
     cond: { kind: "always" },
     order: 50,
@@ -637,7 +688,7 @@ export const seedRules: Rule[] = [
   {
     id: "R-20",
     label: "정보원 구성",
-    desc: "관찰 설문이 들어오지 않았을 때 해석의 폭을 밝히는 블록",
+    desc: "관찰 설문이 정해 둔 건수보다 적을 때 해석의 폭을 밝힌다",
     slot: "sources",
     cond: { kind: "sourcesBelow", n: 1 },
     order: 60,
@@ -646,7 +697,7 @@ export const seedRules: Rule[] = [
   {
     id: "R-12",
     label: "집에서 해 볼 것",
-    desc: "최상위 축 × 학년대로 활동 모듈을 뽑는다",
+    desc: "가장 높은 축 × 학년으로 활동을 고른다",
     slot: "activity",
     cond: { kind: "topAxis" },
     order: 70,
@@ -654,20 +705,40 @@ export const seedRules: Rule[] = [
   },
 ];
 
-/** 조건을 사람이 읽는 한 줄로 — 규칙 목록과 미리보기가 같은 글자를 쓴다 */
+/**
+ * 조건을 사람이 읽는 한 줄로 — 규칙 목록과 리포트의 조립 내역이 같은 글자를 쓴다.
+ *
+ * 조건은 「언제 넣는가」만 말한다. 「어느 문구를 넣는가」는 sourceText가 따로 말한다 — 둘을
+ * 한 줄에 섞어 두면 「가장 높은 축」이 조건인지 고르는 기준인지가 흐려진다.
+ */
 export function condText(c: RuleCond): string {
   switch (c.kind) {
     case "always":
-      return "늘 붙는다";
+      return "모든 리포트";
     case "topAxis":
-      return "가장 높은 축";
+      return "측정한 축이 있을 때";
     case "lowAxis":
-      return "가장 낮은 축";
+      return `가장 낮은 축이 가장 높은 축보다 ${lowGapOf(c)}점 이상 낮을 때`;
     case "sourcesBelow":
-      return `관찰 설문이 ${c.n}건 미만일 때 붙는다`;
+      return `관찰 설문이 ${c.n}건 미만일 때`;
     case "cross":
-      return "해당하는 교차 셀";
+      return "본 과목이 둘 이상이고 해당하는 교차 셀이 켜져 있을 때";
   }
+}
+
+/**
+ * 이 규칙이 넣는 문구가 어디서 오는가 — 「해석 템플릿 · 강하게 나타난 축 (축 × 밴드 × 학년)」.
+ *
+ * 규칙은 조건 하나와 문구가 오는 자리 하나의 짝이다. 조건만 적어 두면 「그래서 무슨 글이
+ * 붙나」를 알려고 해석 템플릿을 따로 열어야 한다.
+ */
+export function sourceText(rule: Pick<Rule, "slot" | "cond">): string {
+  if (rule.slot === "cross") return "교차 셀의 문구 (학력 × 재능)";
+  const s = slotOf(rule.slot);
+  if (!s) return "해석 템플릿";
+  const axis = !s.byAxis ? null : rule.cond.kind === "lowAxis" ? "가장 낮은 축" : "가장 높은 축";
+  const by = [axis, s.byBand ? "그 축의 발현 밴드" : null, "학년"].filter(Boolean).join(" × ");
+  return `해석 템플릿 「${s.label}」 (${by})`;
 }
 
 /** 학년대 이름 — 화면이 여러 곳에서 쓴다 */
