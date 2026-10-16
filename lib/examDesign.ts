@@ -1,3 +1,4 @@
+import { fitSlots } from "./answerSlots";
 import {
   examOrderOf,
   flattenSets,
@@ -17,7 +18,7 @@ import {
  * 문항은 보여 주려고 임의로 적은 것이다. 답은 이 화면 안에만 있고 응시 기록에 남지 않는다.
  */
 
-export type DesignKind = "listen" | "speak" | "short" | "file" | "match";
+export type DesignKind = "listen" | "speak" | "short" | "file" | "match" | "slots";
 
 type Design = {
   id: DesignKind;
@@ -89,6 +90,68 @@ export const matchBank: Bank = (() => {
     ...questions.filter((q) => q.subject !== "science"),
     ...head,
     matchQuestion,
+    ...science.slice(head.length, -1),
+  ];
+})();
+
+/**
+ * 답 칸 표지로 쓴 독립 문항 — 출제할 때 문항 글에 「( [정답1] )」 · 「{서술형1}」을 적은 것
+ * (lib/answerSlots.ts). 괄호 자리에 짧은 칸이, 「이유를 쓰시오.」 아래에 쓰는 칸이 선다.
+ *
+ * 「ㄱ = 단답형, 이유 = 서술형」을 한 문항에 둔 꼴이다. 출제 화면 디자인(/design/admin2/items/IT-2701)도
+ * 같은 문항을 쓴다.
+ */
+export const SLOT_STEM = [
+  "다음은 물이 끓을 때 생기는 거품을 두고 두 친구가 나눈 대화입니다.",
+  "민서: 물이 끓을 때 생기는 거품은 물속에 녹아 있던 공기야.",
+  "준호: 아니야, 거품은 ( ㄱ )(이)야.",
+  "(1) ㄱ에 들어갈 알맞은 말을 쓰시오. ( [정답1] )",
+  "(2) 준호의 말이 옳은 이유를 물의 상태 변화와 관련지어 쓰시오. {서술형1}",
+].join("\n");
+
+/** 그 문항의 서술형 예시 답 */
+export const SLOT_WHY =
+  "물이 끓으면 물속에서도 물이 수증기로 변한다. 이 수증기가 모여 거품이 되어 물 위로 올라오므로 거품은 공기가 아니라 수증기이다.";
+
+const slotFit = fitSlots(SLOT_STEM, { response: { kind: "blanks", blanks: [] }, answers: [] }, {
+  정답1: "수증기, 수증기(기체), 기체 상태의 물",
+  서술형1: SLOT_WHY,
+});
+
+export const slotSet: ExamSet = {
+  id: "design-slots",
+  subject: "science",
+  material: { blocks: [] },
+  nodes: [
+    {
+      id: "design-slots-1",
+      level: "S3",
+      stem: SLOT_STEM,
+      response: slotFit.response,
+      points: 3,
+      scoring: [
+        "(1) 수증기 — 1점",
+        "(2) 물이 수증기로 변한다는 것과 그 수증기가 거품이 된다는 것을 모두 쓰면 2점, 하나만 쓰면 1점",
+      ],
+      sampleAnswer: slotFit.answers,
+    },
+  ],
+};
+
+/** 그 독립 문항 하나 — 시험지에 끼워 넣을 때 쓴다 */
+export const slotQuestion: Question = flattenSets([slotSet])[0];
+
+/**
+ * 답 칸 표지 문항이 든 시험지 — 선 잇기 시험지(matchBank)와 같은 자리, 과학 첫 세트(문항 1~4) 다음
+ * 5번에 넣었다. 과학의 끝 문항 하나가 빠진다.
+ */
+export const slotBank: Bank = (() => {
+  const science = examOrderOf("science");
+  const head = science.filter((q) => q.setId === science[0].setId);
+  return [
+    ...questions.filter((q) => q.subject !== "science"),
+    ...head,
+    slotQuestion,
     ...science.slice(head.length, -1),
   ];
 })();
@@ -245,6 +308,12 @@ export const designs: Design[] = [
     name: "선 잇기 (독립 문항)",
     desc: "함께 읽는 자료가 없는 독립 문항 — 왼쪽 2개와 오른쪽 5개를 선으로 잇습니다",
     set: matchSet,
+  },
+  {
+    id: "slots",
+    name: "답 칸 표시",
+    desc: "출제할 때 [정답1] · {서술형1}로 적은 문항 — 괄호 자리에 짧은 칸, 「이유를 쓰시오」 아래에 쓰는 칸",
+    set: slotSet,
   },
 ];
 

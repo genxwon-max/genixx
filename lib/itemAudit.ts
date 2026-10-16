@@ -1,6 +1,7 @@
 import { checkStandardCode, levelAllowed, subskillsOf, tagBCoord } from "./blueprint";
 import {
   levelTypesText,
+  slotted,
   typeFitsLevel,
   typeLabel,
   type ItemDraft,
@@ -145,7 +146,9 @@ export function auditItem(item: ItemDraft): AuditResult {
       });
     }
 
-    if (q.type === "choice") {
+    /* 답 칸 표지로 쓴 문항(「[선택1]」 · 「[정답1]」)은 보기 칸 · 허용 답안 칸을 쓰지 않는다 — 정답은
+       칸마다 있고, 빠진 정답은 제출 문턱이 칸 이름으로 짚는다(lib/itemStore.ts missingContent) */
+    if (q.type === "choice" && !slotted(q)) {
       const filled = q.choices.map((c) => c.trim()).filter(Boolean);
       if (filled.length !== new Set(filled).size) {
         content.push({
@@ -183,7 +186,7 @@ export function auditItem(item: ItemDraft): AuditResult {
       }
     }
 
-    if (q.type === "short") {
+    if (q.type === "short" && !slotted(q)) {
       const answers = q.shortAnswers
         .split(",")
         .map((x) => x.trim())

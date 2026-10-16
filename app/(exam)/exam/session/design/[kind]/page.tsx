@@ -9,6 +9,7 @@ import { designOf, designs, isDesignKind } from "@/lib/examDesign";
  *   listen  음성 듣기      speak  음성 말하기
  *   short   단답형         file   파일 첨부
  *   match   선 잇기 — 자료가 없는 독립 문항
+ *   slots   답 칸 표지 — 출제할 때 [정답1] · {서술형1}로 적은 문항
  *
  * 응시 화면에서 유형 하나만 떼어 세운다. 실제 서비스의 메뉴에는 두지 않는다.
  */

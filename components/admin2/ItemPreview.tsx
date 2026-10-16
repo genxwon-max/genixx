@@ -11,7 +11,8 @@ import {
   type Question as ExamQuestion,
 } from "@/lib/exam";
 import { questionsIn, type ContentQuestion } from "@/lib/content";
-import { choicesOf, contentFor, type ItemDraft, type Question } from "@/lib/itemStore";
+import { blankTitle } from "@/lib/answerSlots";
+import { choicesOf, contentFor, slotted, type ItemDraft, type Question } from "@/lib/itemStore";
 import { BriefPanel, QuestionBody, ScreenColumn } from "@/components/exam/ExamSession";
 
 /**
@@ -287,7 +288,9 @@ function RevealNotes({
   matchKey?: string;
 }) {
   const choices = choicesOf(q);
-  const picks = q.type === "choice" || q.type === "ox";
+  /* 답 칸 표지로 쓴 문항(「[선택1]」 · 「[OX1]」)은 형식이 객관식 · OX여도 정답이 칸마다 있다 */
+  const marked = slotted(q);
+  const picks = (q.type === "choice" || q.type === "ox") && !marked;
   const blanks = cq?.response.kind === "blanks" ? cq.response.blanks : [];
   const answers = cq?.sampleAnswer ?? [];
   return (
@@ -300,7 +303,7 @@ function RevealNotes({
         </Keyed>
       )}
       {/* 오답 의도 — 이 오답이 무슨 오개념을 잡으려는 것인가 */}
-      {q.type === "choice" && q.distractorIntent.some((d, i) => i !== q.answer && d.trim()) && (
+      {picks && q.type === "choice" && q.distractorIntent.some((d, i) => i !== q.answer && d.trim()) && (
         <Keyed label="오답 의도">
           {q.distractorIntent
             .map((d, i) => (i !== q.answer && d.trim() ? `${i + 1}번 — ${d.trim()}` : ""))
@@ -312,7 +315,7 @@ function RevealNotes({
       {blanks.length > 0 && answers.some((a) => a.trim()) && (
         <Keyed label="칸마다 정답 · 예시 답">
           {blanks
-            .map((b, i) => `${b.label || `칸 ${i + 1}`} : ${answers[i]?.trim() || "—"}`)
+            .map((b, i) => `${blankTitle(b) || `칸 ${i + 1}`} : ${answers[i]?.trim() || "—"}`)
             .join(NL)}
         </Keyed>
       )}

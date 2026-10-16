@@ -22,6 +22,7 @@ import { pickSample } from "./itemBank";
 import type { DetailMode } from "./richText";
 import {
   isGroup,
+  patchQuestion,
   questionsIn,
   type Block,
   type ContentNode,
@@ -32,6 +33,17 @@ import {
 } from "./content";
 import { examSets } from "./examQuestions";
 import { buildCardReport, reportVerdict, sectionName } from "./cardReport";
+import {
+  fitSlots,
+  hasAnswerArea,
+  hasSlots,
+  legacySlots,
+  oldAnswerArea,
+  scanSlots,
+  slotGaps,
+  slotPlain,
+  slotType,
+} from "./answerSlots";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
@@ -2222,7 +2234,9 @@ function syncAuthored(content: ContentSet, item: ItemDraft): ContentSet {
       ...cq,
       stem: q.stemMode === "text" ? q.stem : cq.stem,
       level: q.level,
-      response: hasChoices(q.type) ? responseOf(q) : cq.response,
+      /* 답 칸 표지로 쓴 문항은 형식이 객관식 · OX여도(「[선택1]」 · 「[OX1]」) 칸이 블록에 있다 —
+         보기 칸에서 다시 지으면 표지마다 적은 정답이 사라진다(lib/answerSlots.ts) */
+      response: hasChoices(q.type) && !slotted(q) ? responseOf(q) : cq.response,
     };
   };
   const nodes = content.nodes.flatMap((n): ContentNode[] => {
@@ -2266,16 +2280,29 @@ function contentQuestionOf(q: Question, figure: (src: string) => Figure): Conten
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
+  /* 표지는 있는데 칸을 블록에 짓기 전인 문항 — 표지대로 빈 칸을 세운다. 출제 화면에서 고치기
+     시작하면 블록으로 쓴 문항이 된다(contentAuthored) */
+  const marked = slotted(q);
   const out: ContentQuestion = {
     id: q.id,
     level: q.level,
     stem: plain ? q.stem : "",
-    response: responseOf(q),
+    response: marked ? fitSlots(q.stem, { response: responseOf(q), answers: [] }).response : responseOf(q),
   };
   if (blocks.length > 0) out.blocks = blocks;
   if (q.rubric.trim()) out.scoring = lines(q.rubric);
-  if (!hasChoices(q.type) && q.explain.trim()) out.sampleAnswer = [q.explain.trim()];
+  if (!hasChoices(q.type) && !marked && q.explain.trim()) out.sampleAnswer = [q.explain.trim()];
   return out;
+}
+
+/**
+ * 답 칸 표지로 쓴 문항인가 — 발문이 글이고 그 안에 표지가 있다(lib/answerSlots.ts).
+ *
+ * ⚠ function으로 둔다. 파일 위쪽의 SEED가 fill → derive로 이 셈을 부르는 때에는 아래쪽 const가
+ *   아직 서지 않는다.
+ */
+export function slotted(q: Pick<Question, "stem" | "stemMode">) {
+  return q.stemMode === "text" && hasSlots(q.stem);
 }
 
 /** 출제 유형을 답하는 방식으로 */
@@ -2390,12 +2417,55 @@ function read(): ItemDraft[] {
   cacheRaw = raw;
   try {
     cacheValue = raw
-      ? withCodes(mergeSeed((JSON.parse(raw) as Partial<ItemDraft>[]).map(fill)))
+      ? withCodes(mergeSeed((JSON.parse(raw) as Partial<ItemDraft>[]).map((r) => withSlots(fill(r)))))
       : SEED;
   } catch {
     cacheValue = SEED;
   }
   return cacheValue;
+}
+
+/**
+ * 예전 방식으로 만든 답 칸을 표시로 옮겨 읽는다 — 고칠 수 있는 문항(작성 중 · 반려됨)만 (2026-10-16 요청).
+ *
+ * 출제 화면은 답 칸을 문항 글의 표시로 다룬다(lib/answerSlots.ts). 승인된 세트를 「새 버전으로 수정」한
+ * 판(IT-2629 …)처럼 예전 「답 칸 편집기」로 만든 칸을 그대로 가진 문항을 열 때마다 「표시로 바꾸기」를
+ * 누르게 하면, 고칠 문항이 늘 옛 모양으로 열린다. 그래서 읽을 때 옮겨 둔다 — 문항 글 끝에 표시를 잇고
+ * 칸마다 적어 둔 정답을 그대로 담는다(legacySlots). 저장소에는 고쳐서 저장할 때 들어간다.
+ *
+ * 옮기지 않는 것 —
+ *   잠긴 문항(검수 대기 · 승인됨 · 사용 중지)   승인된 문항은 회차에 들어가 아이들이 답을 냈을 수 있고, 답은
+ *                                              칸 차례로 담긴다. 문장 속 괄호 하나가 짧은 칸 둘로 나뉘면 낸
+ *                                              답의 차례가 어긋난다. 출제 화면은 요약으로만 보인다
+ *   형식에 따라 저절로 선 빈 칸                  출제자가 만든 칸이 아니다(oldAnswerArea) — 새 문항을 저장했더니
+ *                                              표시가 저절로 붙으면 고르지도 않은 칸이 선다
+ *   발문이 비었거나 그림 · 서식 글인 문항        표시를 이을 글이 없다
+ */
+export function withSlots(item: ItemDraft): ItemDraft {
+  if (item.state !== "draft" && item.state !== "rejected") return item;
+  const candidates = item.questions.filter(
+    (q) => q.stemMode === "text" && q.stem.trim() !== "" && !hasChoices(q.type) && !hasSlots(q.stem),
+  );
+  if (candidates.length === 0) return item;
+  let content = contentFor(item);
+  const shown = new Map(questionsIn(content).map((cq) => [cq.id, cq]));
+  let moved = false;
+  const questions = item.questions.map((q) => {
+    const cq = shown.get(q.id);
+    if (!candidates.includes(q) || !cq || !oldAnswerArea(cq.response)) return q;
+    const next = legacySlots(q.stem, q.type, { response: cq.response, answers: cq.sampleAnswer ?? [] });
+    const marks = scanSlots(next.stem).marks;
+    if (marks.length === 0) return q;
+    moved = true;
+    content = patchQuestion(content, q.id, (c) => ({
+      ...c,
+      stem: next.stem,
+      response: next.response,
+      sampleAnswer: next.answers.some((a) => a.trim()) ? next.answers : undefined,
+    }));
+    return { ...q, stem: next.stem, type: slotType(marks) ?? q.type };
+  });
+  return moved ? derive({ ...item, questions, content, contentAuthored: true }) : item;
 }
 
 /**
@@ -3693,10 +3763,25 @@ export function missingContent(i: ItemDraft) {
 
   /* 분류는 문항마다 본다. 세트 안에서 단계가 갈리는 것이 세트를 두는 까닭이라,
      문항 한 벌만 보면 2번 문항의 빈 성취기준을 아무도 못 잡는다 */
+  /* 답 칸 표지로 쓴 문항의 정답은 칸마다 학생이 보는 모양(content)에 있다 — 그쪽에서 센다.
+     보기를 고르지 않는 문항은 학생이 답할 칸이 있는지도 그쪽에서 본다(표지를 모두 지운 문항) */
+  const shown = i.questions.some((q) => slotted(q) || !hasChoices(q.type))
+    ? new Map(questionsIn(contentFor(i)).map((cq) => [cq.id, cq]))
+    : null;
   for (const [n, q] of i.questions.entries()) {
     /* 단일이면 「발문」, 세트면 「2번 발문」 — 어느 문항가 비었는지 알아야 고칠 수 있다 */
     const tag = i.form === "set" ? `${n + 1}번 ` : "";
     out.push(...missingInQuestion(q, tag, i.band));
+    const cq = shown?.get(q.id);
+    if (cq && slotted(q)) {
+      out.push(
+        ...slotGaps(q.stem, { response: cq.response, answers: cq.sampleAnswer ?? [] }).map(
+          (g) => `${tag}${g}`,
+        ),
+      );
+    } else if (cq && !hasChoices(q.type) && !hasAnswerArea(cq.response)) {
+      out.push(`${tag}답 칸`);
+    }
   }
 
   return out;
@@ -3718,7 +3803,8 @@ export function stemSummary(q: Question): string {
   if (q.stemMode === "images") {
     return q.stemImages.length > 0 ? `그림 ${q.stemImages.length}장` : "";
   }
-  return q.stem
+  /* 답 칸 표지는 「□」로 — 아래에서 대괄호를 걷으면 「[정답1]」이 「정답1」로 남는다 */
+  return slotPlain(q.stem)
     .replace(/<[^>]*>/g, " ")
     .replace(/[#*`>_[\]]/g, "")
     .replace(/\s+/g, " ")
@@ -3745,7 +3831,10 @@ function missingInQuestion(q: Question, tag: string, band: GradeBand): string[] 
   if (stemIsEmpty(q)) out.push(`${tag}발문`);
   if (!q.explain.trim()) out.push(`${tag}모범답안`);
 
-  if (q.type === "choice") {
+  /* 「[선택1]」 · 「{선잇기1}」로 쓴 문항도 형식은 객관식이지만 보기 칸을 쓰지 않는다 — 고를 것 ·
+     정답은 칸마다 있고 missingContent가 칸 이름으로 짚는다 */
+  const marked = slotted(q);
+  if (q.type === "choice" && !marked) {
     if (!q.choices.every((c) => c.trim())) out.push(`${tag}보기`);
     // 오답마다 어떤 오개념을 잡는지 적지 않으면 변별도가 죽는다(§1.1)
     const bad = q.choices.some(
@@ -3755,12 +3844,13 @@ function missingInQuestion(q: Question, tag: string, band: GradeBand): string[] 
   }
   /* 정답 번호가 보기 안에 있는가. 객관식으로 네 번째를 정답으로 두고 OX로 돌리면 번호가 그대로
      남아(retypeQuestion은 OX로 갈 때만 줄인다) 어느 쪽도 정답이 아닌 문항이 제출을 지나갔다 */
-  if (hasChoices(q.type) && (q.answer < 0 || q.answer >= choicesOf(q).length)) {
+  if (hasChoices(q.type) && !marked && (q.answer < 0 || q.answer >= choicesOf(q).length)) {
     out.push(`${tag}정답`);
   }
   /* OX는 오답 의도를 받지 않는다. 틀린 쪽이 하나뿐이라 「어떤 오개념을 잡는가」가
      곧 발문이 묻는 것과 같아진다 — 같은 말을 두 번 적게 하는 칸이 된다 */
-  if (q.type === "short" && !q.shortAnswers.trim()) out.push(`${tag}허용 답안`);
+  /* 답 칸 표지로 쓴 문항은 정답이 칸마다 있다 — missingContent가 칸 이름으로 짚는다(slotGaps) */
+  if (q.type === "short" && !marked && !q.shortAnswers.trim()) out.push(`${tag}허용 답안`);
   if (needsRubric(q.type) && !q.rubric.trim()) out.push(`${tag}부분점수`);
   return out;
 }

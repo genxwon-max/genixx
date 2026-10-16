@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowRight } from "@/components/Icons";
 import { lineScreens } from "@/lib/answerKey";
+import { blankTitle } from "@/lib/answerSlots";
 import {
   answerKind,
   autoGraded,
@@ -414,7 +415,8 @@ function GradeNotes({
             <ul className="space-y-1">
               {q.sampleAnswer.map((a, k) => (
                 <li key={k}>
-                  {q.blanks?.[k]?.label ? `${q.blanks[k].label} : ` : ""}
+                  {/* 표지로 세운 칸은 「정답 1」 · 「서술형 1」 — 출제 화면에서 부르던 이름이다 */}
+                  {q.blanks?.[k] && blankTitle(q.blanks[k]) ? `${blankTitle(q.blanks[k])} : ` : ""}
                   {a}
                   {q.blanks?.[k]?.suffix ?? ""}
                 </li>

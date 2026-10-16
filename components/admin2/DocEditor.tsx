@@ -1,9 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  nextSlotNo,
+  numberSlots,
+  oxOf,
+  scanSlots,
+  slotName,
+  slotSpec,
+  slotSpecs,
+  slotToken,
+  type SlotKind,
+  type SlotScan,
+} from "@/lib/answerSlots";
 import { IMPORT_ACCEPT, importDocument } from "@/lib/docImport";
 import { shrinkImage } from "@/lib/productStore";
 import { sanitizeHtml } from "@/lib/richText";
+import { SlotGuide } from "./SlotFields";
 
 /**
  * 문서 편집기 — 지문 · 문항을 한글 · 워드처럼 한 장에 이어 쓰는 팝업 (2026-09-22 요청).
@@ -21,12 +34,67 @@ import { sanitizeHtml } from "@/lib/richText";
  * 붙여 넣기도 같은 거르개를 지난다(sanitizeHtml) — 한글 · 워드에서 복사한 글은 글꼴 · 색 서식을
  * 잔뜩 달고 온다.
  *
+ * ── 문항이면 「답 칸」 단추 ──
+ * 답이 들어갈 자리에 표지(「[정답1]」 · 「{서술형1}」 …)를 넣는다(lib/answerSlots.ts). 번호는 그 표지의
+ * 다음 번호를 붙인다. **글자를 끌어 고르고 누르면 고른 글자가 그 칸의 정답이 된다** — 다 쓴 문장
+ * 「강물은 A보다 B에서 …」에서 A를 고르고 [정답]을 누르면 「[정답1: A]」로 바뀐다. 시험지에서
+ * 빈칸을 뚫듯이 출제한다. 서술 · 논술은 고른 글이 예시 답이 되고, 그 밖의 칸은 고른 글자 뒤에
+ * 표지를 넣는다. 지문에 「( ㄱ )」 빈칸이 있으면 「지문 빈칸」이 한 줄씩 정답 칸을 넣어 준다.
+ *
+ * 표지는 쓰는 동안 색으로 보인다(CSS Custom Highlight — 글을 감싸지 않아 쓰는 데 걸리지 않는다).
+ * 칸이 서지 않는 표지는 붉다. 상태 줄이 지금 선 칸을 차례로 읽는다.
+ *
  * ⚠ document.execCommand를 쓴다. 표준에서 내려갔지만 모든 브라우저가 여전히 지원하고, 되돌리기
  *   (Ctrl+Z)가 이것으로 한 변경만 기억한다. 편집기 라이브러리를 들이는 것은 이 화면이 그 이상을
  *   요구할 때 한다.
  */
 
 const CONSONANTS = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ";
+
+/** 브라우저의 칠하기 목록(CSS Custom Highlight) — 없는 브라우저에서는 칠하지 않는다 */
+type HighlightRegistry = { set(name: string, h: unknown): void; delete(name: string): void };
+const highlights = () =>
+  typeof CSS === "undefined" ? undefined : (CSS as unknown as { highlights?: HighlightRegistry }).highlights;
+const HighlightOf = () =>
+  (globalThis as unknown as { Highlight?: new (...ranges: Range[]) => unknown }).Highlight;
+
+/**
+ * 표지를 칠한다 — 글 조각(text 노드)을 이어 붙여 한 번에 훑고, 찾은 자리를 조각의 자리로 되돌린다.
+ * 한 표지가 두 조각에 걸치면(일부만 굵게 한 것) 칠하지 않는다.
+ */
+function paintSlots(root: HTMLElement) {
+  const reg = highlights();
+  const Highlight = HighlightOf();
+  if (!reg || !Highlight) return;
+  const nodes: Text[] = [];
+  const starts: number[] = [];
+  let full = "";
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    nodes.push(n as Text);
+    starts.push(full.length);
+    full += n.textContent ?? "";
+  }
+  const good: Range[] = [];
+  const bad: Range[] = [];
+  const nodeAt = (pos: number) => {
+    let i = 0;
+    while (i + 1 < starts.length && starts[i + 1] <= pos) i += 1;
+    return i;
+  };
+  for (const t of scanSlots(full).tokens) {
+    const i = nodeAt(t.at);
+    if (nodeAt(t.end - 1) !== i) continue;
+    const r = document.createRange();
+    r.setStart(nodes[i], t.at - starts[i]);
+    r.setEnd(nodes[i], t.end - starts[i]);
+    (t.mark ? good : bad).push(r);
+  }
+  reg.set("a2-slot", new Highlight(...good));
+  reg.set("a2-slot-bad", new Highlight(...bad));
+}
+
+const escText = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 type Ctx = { inTable: boolean; box: HTMLElement | null };
 
@@ -64,14 +132,20 @@ export default function DocEditor({
   title,
   initialHtml,
   mode,
+  passageMarks = [],
+  startGuide = false,
   onApply,
   onClose,
 }: {
   /** 머리에 서는 이름 — 「지문 — 260810-3-K-C-S2-001」 */
   title: string;
   initialHtml: string;
-  /** 문항이면 상태 줄에 발문 · 보기를 가르는 규칙을 적는다 */
+  /** 문항이면 「답 칸」 단추를 세우고 상태 줄에 선 칸을 읽는다 */
   mode: "passage" | "question";
+  /** 지문의 빈칸 표지(「( ㄱ )」) — 문항이면 「지문 빈칸」 단추가 한 줄씩 정답 칸을 넣는다 */
+  passageMarks?: string[];
+  /** 「표지 안내」를 편 채로 연다 — 디자인 보기만 넘긴다 */
+  startGuide?: boolean;
   onApply: (html: string) => void;
   onClose: () => void;
 }) {
@@ -87,17 +161,42 @@ export default function DocEditor({
   const [drag, setDrag] = useState(false);
   /* 선택이 편집 영역 밖(리본 단추)으로 나가도 되돌려 놓을 자리 */
   const saved = useRef<Range | null>(null);
+  const question = mode === "question";
+  /** 지금 글의 표지 — 적용할 때 붙을 번호까지 매긴 것(numberSlots) */
+  const [slots, setSlots] = useState<SlotScan | null>(null);
+  /** 표지 안내표를 폈는가 */
+  const [guide, setGuide] = useState(startGuide);
+
+  /** 글이 바뀔 때마다 — 글자 수 · 표지 · 칠하기 */
+  const reread = () => {
+    const el = page.current;
+    if (!el) return;
+    setChars(el.innerText.replace(/\s/g, "").length);
+    if (!question) return;
+    setSlots(scanSlots(numberSlots(el.innerText)));
+    paintSlots(el);
+  };
 
   /* 처음 한 번만 채운다 — 그 뒤로는 편집 영역이 스스로 들고 있다(제어하지 않는 편집 영역) */
   useEffect(() => {
     if (page.current) {
       page.current.innerHTML = initialHtml || "<p><br></p>";
-      setChars(page.current.innerText.replace(/\s/g, "").length);
+      reread();
       page.current.focus();
     }
     /* 한 문단 단위를 <p>로 — 브라우저마다 기본이 <div>라 블록으로 되접을 때 갈래가 흔들린다 */
     document.execCommand("defaultParagraphSeparator", false, "p");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 펼 글이 바뀔 때만 다시 채운다
   }, [initialHtml]);
+
+  /* 칠한 것은 닫을 때 걷는다 — 칠하기 목록은 문서 전체에 하나라 다음 화면에 남는다 */
+  useEffect(
+    () => () => {
+      highlights()?.delete("a2-slot");
+      highlights()?.delete("a2-slot-bad");
+    },
+    [],
+  );
 
   const close = () => {
     if (dirty && !window.confirm("적용하지 않은 편집이 있습니다. 닫으면 사라집니다.\n\n닫을까요?")) return;
@@ -131,7 +230,7 @@ export default function DocEditor({
 
   const touched = () => {
     setDirty(true);
-    setChars(page.current?.innerText.replace(/\s/g, "").length ?? 0);
+    reread();
   };
 
   /** 리본 단추 — 편집 영역에 커서를 되돌린 뒤 명령 */
@@ -256,6 +355,43 @@ export default function DocEditor({
     cmd("insertText", `( ${next} )`);
   };
 
+  /**
+   * 답 칸 표지 넣기 — 그 표지의 다음 번호로.
+   *
+   * 글자를 고른 채 누르면, 정답 · 선택 · 서술 · 논술은 고른 글자가 표지 안의 정답(예시 답)이 되어
+   * 그 자리를 차지한다(「A」 → 「[정답1: A]」). OX는 고른 글자가 O · X이면 정답으로 담고, 아니면
+   * 고른 글자를 두고 그 뒤에 넣는다 — 문장 하나를 고르고 OX를 눌렀다고 문장이 사라지면 안 된다.
+   * 그리기 · 사진 · 선 잇기도 고른 글자 뒤에 넣는다.
+   */
+  const insertSlot = (kind: SlotKind) => {
+    restore();
+    const sel = document.getSelection();
+    const picked =
+      sel && !sel.isCollapsed && page.current?.contains(sel.anchorNode) ? sel.toString() : "";
+    const no = nextSlotNo(numberSlots(page.current?.innerText ?? ""), kind);
+    const spec = slotSpec(kind);
+    const ox = kind === "ox" ? oxOf(picked) : null;
+    let token = slotToken(kind, no);
+    if (picked.trim() && spec.pick === "answer") token = slotToken(kind, no, picked);
+    else if (ox) token = slotToken(kind, no, ox);
+    else {
+      if (picked) sel!.collapseToEnd();
+      /* 앞 글자에 바짝 붙지 않게 한 칸 띄운다 — 「쓰시오.{서술형1}」은 문서에서 읽기 어렵다 */
+      const at = sel?.anchorNode;
+      const before = at?.nodeType === 3 ? (at.textContent ?? "")[(sel?.anchorOffset ?? 0) - 1] : undefined;
+      if (before && !/[\s(（[]/.test(before)) token = ` ${token}`;
+    }
+    document.execCommand("insertText", false, token);
+    touched();
+  };
+
+  /** 지문 빈칸마다 한 줄 — 「( ㄱ ) : [정답3]」 */
+  const insertMarks = () => {
+    let no = nextSlotNo(numberSlots(page.current?.innerText ?? ""), "short");
+    const lines = passageMarks.map((m) => `<p>${escText(m)} : ${escText(slotToken("short", no++))}</p>`);
+    cmd("insertHTML", lines.join(""));
+  };
+
   const apply = () => {
     onApply(page.current?.innerHTML ?? "");
     onClose();
@@ -365,6 +501,46 @@ export default function DocEditor({
           <span className="a2-doc-group-name">넣기</span>
         </div>
 
+        {/* 문항이면 답 칸 표지 — 대괄호는 문장 안의 짧은 칸, 중괄호는 따로 서는 큰 칸이다 */}
+        {question && (
+          <div className="a2-doc-group">
+            <div className="a2-doc-tools">
+              {slotSpecs.map((s) => (
+                <Btn
+                  key={s.kind}
+                  wide
+                  label={s.open === "[" ? `[${s.label}]` : `{${s.label}}`}
+                  title={`${s.name} 칸 넣기 — ${s.shows}. ${
+                    s.kind === "write" || s.kind === "essay"
+                      ? "글을 고른 채 누르면 고른 글이 예시 답이 됩니다"
+                      : s.pick
+                        ? "글자를 고른 채 누르면 고른 글자가 정답이 됩니다"
+                        : s.kind === "ox"
+                          ? "O나 X를 고른 채 누르면 그것이 정답이 됩니다"
+                          : "글자를 고른 채 누르면 그 뒤에 넣습니다"
+                  }`}
+                  on={() => insertSlot(s.kind)}
+                />
+              ))}
+              {passageMarks.length > 0 && (
+                <Btn
+                  wide
+                  label="지문 빈칸"
+                  title={`지문의 빈칸 ${passageMarks.join(" ")}마다 정답 칸을 한 줄씩 넣기`}
+                  on={insertMarks}
+                />
+              )}
+              <Btn
+                wide
+                label={guide ? "안내 닫기" : "표시 안내"}
+                title="답 칸 표시 안내 — 표시마다 학생 화면과 정답 적는 것"
+                on={() => setGuide((g) => !g)}
+              />
+            </div>
+            <span className="a2-doc-group-name">답 칸 — 답이 될 글자를 고르고 누르면 그 글자가 정답</span>
+          </div>
+        )}
+
         {/* 커서 자리에 따라 서는 도구 */}
         {ctx.inTable && (
           <div className="a2-doc-group a2-doc-group-ctx">
@@ -396,6 +572,18 @@ export default function DocEditor({
           </div>
         )}
       </div>
+
+      {/* 표지 안내 — 리본 아래에 띠로 편다. 떠 있는 상자로 두면 리본 오른쪽 끝에서 열 때 화면 밖으로 나간다 */}
+      {question && guide && (
+        <div className="a2-doc-guidebar">
+          <SlotGuide />
+          <p className="a2-doc-guidebar-note">
+            번호는 표시마다 따로 셉니다(정답1 · 정답2 · 서술형1). 번호 없이 써도 적용할 때 비어 있는 번호가
+            붙습니다. 「[정답1: A]」처럼 쌍점 뒤에 적은 것은 그 칸의 정답으로 들어갑니다. 사진 · 선 잇기는
+            한 문항에 하나만, 다른 표시 없이 씁니다.
+          </p>
+        </div>
+      )}
 
       {/* 책상 — 가운데에 A4 한 장 */}
       <div
@@ -433,10 +621,19 @@ export default function DocEditor({
         <span>글자 {chars.toLocaleString("ko-KR")}</span>
         {msg ? (
           <span style={{ color: msg.tone === "danger" ? "#b42318" : "#1a7f37" }}>{msg.text}</span>
+        ) : question && slots && slots.tokens.length > 0 ? (
+          /* 지금 선 칸을 차례로 — 적용하면 이 차례로 정답 줄이 생긴다 */
+          <span
+            title={slots.issues.join("\n") || undefined}
+            style={slots.issues.length > 0 ? { color: "#b42318" } : undefined}
+          >
+            답 칸 {slots.marks.length}개 — {slots.marks.map((m) => slotName(m.key)).join(" · ") || "없음"}
+            {slots.issues.length > 0 && ` · 칸이 생기지 않는 표시 ${slots.issues.length}개`}
+          </span>
         ) : (
           <span className="opacity-80">
-            {mode === "question"
-              ? "첫 줄부터 발문, 줄 맨 앞의 ① ② ③ …은 보기로 나뉩니다. 「정답: ③」 줄은 정답으로 읽습니다. 표 · 그림 · 상자는 발문 아래 자료로 들어갑니다."
+            {question
+              ? "답이 들어갈 자리에 [정답1] · {서술형1} 같은 표시를 넣습니다. 표시가 없으면 줄 맨 앞의 ① ② ③ …을 보기로, 「정답: ③」 줄을 정답으로 읽습니다. 표 · 그림 · 상자는 발문 아래 자료로 들어갑니다."
               : "한글 · 워드 파일을 이 창에 끌어다 놓아도 불러옵니다. 글꼴 · 크기 · 색은 응시 화면 서식으로 바뀝니다."}
           </span>
         )}

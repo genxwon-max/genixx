@@ -390,6 +390,20 @@ export const designScreens: DesignScreen[] = [
       { slug: "done", name: "모두 이은 뒤", who: "학생 · 유료", note: "문항 이동판과 「응답」 수에 답한 문항으로 표시된다" },
     ],
   },
+  /* ── 진단 응시 — 출제할 때 답 칸 표시로 쓴 문항(2026-10-16). 칸이 문항 글의 그 자리에 선다 ── */
+  {
+    id: "exam-slots",
+    zone: "exam",
+    name: "답 칸 표시로 쓴 문항",
+    wbs: "없음",
+    real: "/exam/session/paid/[과목]",
+    base: "/exam/session/slots",
+    states: [
+      { slug: "", name: "쓰기 전", who: "학생 · 유료", note: "괄호 자리에 짧은 칸 · 「이유를 쓰시오」 아래 쓰는 칸 · 직접 써 보는 화면은 /exam/session/design/slots" },
+      { slug: "doing", name: "짧은 칸만 쓴 뒤", who: "학생 · 유료", note: "칸을 다 채우지 않아 아직 답한 문항으로 세지 않는다" },
+      { slug: "done", name: "모두 쓴 뒤", who: "학생 · 유료", note: "문항 이동판과 「응답」 수에 답한 문항으로 표시된다" },
+    ],
+  },
 
   /* ── 접수 · 응시 · 정답과 해설 · 결과를 학생 대시보드로 모은 것 ── */
   {
@@ -459,6 +473,8 @@ export const designScreens: DesignScreen[] = [
       { slug: "2026-3/e4/coach", name: "맞춤 학습 창", who: "학생 · 유료", popup: true },
       { slug: "2026-3/e4/match", name: "정오표 · 선 잇기 문항이 든 과학", who: "학생 · 유료", note: "과학 5번이 선 잇기 독립 문항 · 정답과 내 답이 글로 적힌다" },
       { slug: "2026-3/e4/match/review", name: "답안 풀이 보기 창 · 선 잇기 오답", who: "학생 · 유료", popup: true, note: "바르게 이은 선 · 잘못 이은 선 · 잇지 않은 정답 · 왼쪽 자료 칸이 없다" },
+      { slug: "2026-3/e4/slots", name: "정오표 · 답 칸 표시로 쓴 문항이 든 과학", who: "학생 · 유료", note: "과학 5번 · 서술 칸이 있어 「채점 중」" },
+      { slug: "2026-3/e4/slots/review", name: "답안 풀이 보기 창 · 답 칸 표시로 쓴 문항", who: "학생 · 유료", popup: true, note: "괄호 자리 · 「이유를 쓰시오」 아래에 낸 답이 그 자리에 그대로" },
       { slug: "2026-2/e4", name: "진단 한 건 · 정오표", who: "학생 · 무료", note: "20문항" },
       { slug: "2026-4/e4", name: "진단 한 건 · 최종 제출 전", who: "학생", note: "정답이 아직 열리지 않았다" },
     ],
@@ -603,6 +619,7 @@ export const designScreens: DesignScreen[] = [
       { slug: "2026-3-0412/grade/short", name: "채점하기 창 · 단답형", who: "채점자", popup: true, note: "묶인 두 문항" },
       { slug: "2026-3-0412/grade/last", name: "채점하기 창 · 마지막 문항", who: "채점자", popup: true, note: "「확인하고 마치기」" },
       { slug: "2026-3-0412/grade/match", name: "채점하기 창 · 선 잇기", who: "채점자", popup: true, note: "선 잇기 문항이 든 시험지 · 기계가 먼저 채점 · 선의 색으로 맞고 틀린 것이 보인다" },
+      { slug: "2026-3-0412/grade/slots", name: "채점하기 창 · 답 칸 표시로 쓴 문항", who: "채점자", popup: true, note: "괄호 자리의 짧은 칸 · 「이유를 쓰시오」 아래 쓰는 칸에 낸 답이 그 자리에 · 예시 답은 칸 이름(정답 1 · 서술형 1)으로" },
     ],
   },
   {
@@ -698,6 +715,55 @@ export const designScreens: DesignScreen[] = [
       { slug: "plain", name: "독립 문항 · 정답과 해설 끔", who: "검토자", popup: true, note: "아이가 보는 그대로" },
       { slug: "match", name: "독립 문항 · 선 잇기", who: "검토자", popup: true, note: "선을 긋는 칸으로 보인다 · 정답은 검수자에게만 글로" },
       { slug: "match/plain", name: "독립 문항 · 선 잇기 · 정답과 해설 끔", who: "검토자", popup: true },
+    ],
+  },
+  /* ── 문항 출제 — 답 칸을 문항 글의 표시로 만든다(2026-10-16). 형식도 표시에서 정해진다 ── */
+  {
+    id: "item-slots",
+    zone: "admin2",
+    name: "문항 상세 · 답 칸 표시로 칸 만들기",
+    wbs: "ADM-04-1",
+    real: "/admin2/items/[문항]",
+    base: "/admin2/items/IT-2701",
+    states: [
+      { slug: "", name: "쓰기 전", who: "전문가 · 출제자", note: "형식 「정해지지 않음」 · 정답 줄 자리에 표시를 쓰는 법" },
+      { slug: "doc", name: "문서 편집기 · 원고를 붙여 넣은 뒤", who: "전문가 · 출제자", popup: true, note: "리본의 「답 칸」 단추 여덟 · 답이 그 자리에 적힌 원고" },
+      { slug: "doc/slots", name: "문서 편집기 · 답을 골라 표시로 바꾼 뒤", who: "전문가 · 출제자", popup: true, note: "「수증기」를 골라 [정답] → [정답1: 수증기] · 모범 답 문단을 골라 {서술형} · 상태 줄 「답 칸 2개」" },
+      { slug: "doc/guide", name: "문서 편집기 · 표시 안내를 편 모습", who: "전문가 · 출제자", popup: true, note: "표시 여덟 가지와 객관식 — 학생 화면 · 정답 적는 것 · 예" },
+      { slug: "slots", name: "표시를 넣고 적용한 뒤 · 정답 비어 있음", who: "전문가 · 출제자", note: "문항 상자에 노란 이름표 「정답 1 · 정답 없음」 · 표시마다 정답 줄 · 형식은 서술형으로 정해짐" },
+      { slug: "slots/filled", name: "칸마다 정답을 적은 뒤", who: "전문가 · 출제자", note: "이름표에 정답이 함께 · 단답 정답 여럿은 쉼표로" },
+      { slug: "slots/check", name: "칸이 생기지 않는 표시", who: "전문가 · 출제자", note: "사진을 다른 표시와 함께 씀(붉은 이름표) · 원고의 문제 이름표 「[서술형 2]」는 칸으로 읽지 않음" },
+      { slug: "preview", name: "미리보기 창 · 학생 화면", who: "전문가 · 출제자", popup: true, note: "괄호 자리에 짧은 칸 · 「이유를 쓰시오」 아래 쓰는 칸 · 칸마다 정답" },
+      { slug: "preview/plain", name: "미리보기 창 · 정답과 해설 끔", who: "전문가 · 출제자", popup: true, note: "아이가 보는 그대로" },
+      { slug: "preview/types", name: "미리보기 창 · 유형 아홉 가지", who: "전문가 · 출제자", popup: true, note: "단답형 · OX · 선택형 · 서술형 · 논술형 · 그리기 · 사진 · 선 잇기 · 객관식" },
+      { slug: "types/short", name: "유형 · 단답형 [정답1]", who: "전문가 · 출제자", note: "정답 여럿은 쉼표로 · 단위" },
+      { slug: "types/ox", name: "유형 · OX [OX1]", who: "전문가 · 출제자", note: "한 문항에 OX 칸 둘" },
+      { slug: "types/pick", name: "유형 · 선택형 [선택1]", who: "전문가 · 출제자", note: "고를 것과 그중 정답" },
+      { slug: "types/write", name: "유형 · 서술형 {서술형1}", who: "전문가 · 출제자", note: "예시 답" },
+      { slug: "types/essay", name: "유형 · 논술형 {논술형1}", who: "전문가 · 출제자", note: "예시 답 · 학생 화면은 긴 글 칸과 글자 수" },
+      { slug: "types/draw", name: "유형 · 그리기 {그리기1}", who: "전문가 · 출제자", note: "밑그림 · 채점 메모 · 비워 두어도 됨" },
+      { slug: "types/photo", name: "유형 · 사진 {사진1}", who: "전문가 · 출제자", note: "한 문항에 하나, 다른 표시 없이" },
+      { slug: "types/match", name: "유형 · 선 잇기 {선잇기1}", who: "전문가 · 출제자", note: "왼쪽 · 오른쪽 항목과 정답인 선" },
+      { slug: "types/choice", name: "유형 · 객관식 ① ② ③ …", who: "전문가 · 출제자", note: "표시 없이 줄 맨 앞의 보기 번호로 정해짐" },
+      { slug: "legacy", name: "예전 방식으로 만든 문항 · 승인됨", who: "전문가 · 출제자", note: "잠긴 문항은 지금 칸을 요약만 한다 — 응시 기록의 칸 차례를 지키려고 옮기지 않는다" },
+      { slug: "legacy/converted", name: "그 문항을 새 버전으로 수정한 판", who: "전문가 · 출제자", note: "열자마자 표시로 옮겨져 있다 · 문장 속 괄호 → ( [정답1] ) ( [정답2] ) · 「이유」 칸 → {서술형1} · 적어 둔 정답은 그대로" },
+    ],
+  },
+  /* ── 세트를 「새 버전으로 수정」한 판 — 예전 방식의 칸이 열자마자 표시로 옮겨져 있다(2026-10-16) ── */
+  {
+    id: "item-slots-set",
+    zone: "admin2",
+    name: "세트 문항 상세 · 새 버전으로 수정한 판(표시로 옮겨짐)",
+    wbs: "ADM-04-1",
+    real: "/admin2/items/[문항]",
+    base: "/admin2/items/IT-2629",
+    states: [
+      { slug: "", name: "세트 · 문항 목록", who: "전문가 · 출제자", note: "승인된 세트(IT-SET-04 · 영월 한반도 지형)의 새 버전 · 유형 칸은 표시에서 정해진 형식" },
+      { slug: "q1", name: "문항 1 · 문장 속 괄호와 이유", who: "전문가 · 출제자", note: "강물은 ( [정답1] )보다 ( [정답2] )에서 … · ○ 이유 : {서술형1} · 정답 A · B가 그대로" },
+      { slug: "q2", name: "문항 2 · 흐르는 방향과 이유", who: "전문가 · 출제자", note: "○ 강물이 흐르는 방향 : 강물은 ( [정답1] )에서 ( [정답2] )쪽으로 흐른다." },
+      { slug: "q3", name: "문항 3 · 이유와 그림(비워 두어도 됨)", who: "전문가 · 출제자", note: "{서술형1} · {그리기1}" },
+      { slug: "q4", name: "문항 4 · 그림 둘", who: "전문가 · 출제자", note: "{그리기1} · {그리기2} · 밑그림이 그대로 · 형식은 이미지 첨부" },
+      { slug: "preview", name: "미리보기 창 · 세트 학생 화면", who: "전문가 · 출제자", popup: true, note: "왼쪽 지문 · 오른쪽 문항 1~4 — 괄호 자리 칸 · 이유 칸 · 그림 칸" },
     ],
   },
   {

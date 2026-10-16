@@ -17,6 +17,7 @@ import {
   hasChoices,
   levelTypesText,
   needsRubric,
+  slotted,
   typeFitsLevel,
   typeLabel,
   type ItemDraft,
@@ -224,7 +225,10 @@ function questionSections(
     w: ReportFinding[] = [],
   ) => out.push(section({ key: at(id), label, question, tier, written }, f, w));
 
-  const choice = q.type === "choice";
+  /* 답 칸 표지로 쓴 문항(「[선택1]」 · 「[OX1]」)은 형식이 객관식 · OX여도 보기 칸을 쓰지 않는다 —
+     정답은 칸마다 예시 답(sample)에 있다 */
+  const marked = slotted(q);
+  const choice = q.type === "choice" && !marked;
 
   /* 인지단계 */
   {
@@ -346,7 +350,7 @@ function questionSections(
       if (a > 0 && a === Math.max(...lens) && a > Math.min(...lens) * 1.6) {
         w.push({ text: "정답 보기가 가장 깁니다. 내용을 몰라도 길이로 고를 수 있습니다.", fix: "보기 길이를 서로 비슷하게 맞춰 주세요." });
       }
-    } else if (q.type === "ox") {
+    } else if (q.type === "ox" && !marked) {
       written = `정답 ${q.answer === 0 ? "O" : "X"}`;
     } else {
       const answers = (sample ?? []).filter((s) => s.trim());
@@ -371,7 +375,7 @@ function questionSections(
       const got = q.choices.filter((c, k) => c.trim() && k !== q.answer && q.distractorIntent[k]?.trim()).length;
       written = `오답 ${need}개 중 ${got}개 적음`;
       if (got < need) f.push({ text: "오답 의도가 적히지 않은 보기가 있습니다.", fix: "오답 보기마다 잡으려는 오개념을 한 줄씩 적어 주세요." });
-    } else if (!hasChoices(q.type)) {
+    } else if (!hasChoices(q.type) || marked) {
       written = q.wrongIntent.trim() ? clip(q.wrongIntent) : "없음";
       if (!q.wrongIntent.trim()) w.push({ text: "예상 오답을 적지 않았습니다.", fix: "학생이 흔히 틀리는 답과 그 이유를 적어 주세요." });
     } else {
