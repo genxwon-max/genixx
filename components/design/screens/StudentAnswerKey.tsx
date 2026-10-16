@@ -18,6 +18,7 @@ import {
   flowGrades,
   flowMatch,
   flowRecords,
+  flowSlots,
   flowRegs,
   flowStudent,
 } from "./studentFlow";
@@ -48,7 +49,15 @@ import {
  * 선 잇기 문항은 기본 문항에 아직 없다. 그 문항이 든 시험지로 같은 답안을 다시 편 화면을 따로
  * 두었다(…/match) — 과학 5번이 선 잇기 독립 문항이고, 정오표의 그 줄에는 정답과 내 답이 글로
  * 적힌다. 답안 풀이 창에서는 바르게 이은 선 · 잘못 이은 선 · 잇지 않은 정답이 선으로 보인다.
+ *
+ * 출제할 때 답 칸 표지(「( [정답1] )」 · 「{서술형1}」)로 쓴 문항도 같은 자리에 넣어 따로 두었다
+ * (…/slots, 2026-10-16). 답안 풀이 창에서 괄호 자리의 짧은 칸과 「이유를 쓰시오」 아래 쓰는 칸에
+ * 낸 답이 그 자리에 그대로 보인다. 서술 칸이 있어 정오표에서는 「채점 중」이다.
  */
+
+/** 기본 문항에 없는 문항을 넣은 시험지 — 주소의 꼬리(…/match · …/slots)가 고른다 */
+const altFlows = { match: flowMatch, slots: flowSlots };
+type Alt = keyof typeof altFlows;
 
 const to = designLinks("student-answers");
 const frame = { who: "student", unread: 2, bellHref: "/design/student/alerts" } as const;
@@ -130,9 +139,10 @@ export function StudentAnswersScreen({ state }: { state: string }) {
   if (state.startsWith("2026-2/e4")) return <FreeSheet />;
 
   const tail = state.replace(/^2026-3\/e4\/?/, "");
-  if (tail.startsWith("match")) {
-    /* 선 잇기 문항이 든 시험지 — 과학을 편 정오표와, 그 문항을 편 답안 풀이 창 */
-    return <PaidSheet key={state} match reviewAt={tail === "match/review" ? flowMatch.at : null} />;
+  const alt = (Object.keys(altFlows) as Alt[]).find((k) => tail.startsWith(k));
+  if (alt) {
+    /* 선 잇기 · 답 칸 표지 문항이 든 시험지 — 과학을 편 정오표와, 그 문항을 편 답안 풀이 창 */
+    return <PaidSheet key={state} alt={alt} reviewAt={tail === `${alt}/review` ? altFlows[alt].at : null} />;
   }
   if (tail.startsWith("graded")) {
     /* 채점이 끝난 뒤 — 2점 만점에 1점을 받아 부분 정답이 된 문항(국어 3번)을 창이 편다 */
@@ -197,7 +207,7 @@ function PaidSheet({
   coachOpen = false,
   reviewAt,
   graded = false,
-  match = false,
+  alt,
 }: {
   /** 처음 펴 둘 과목 — 사진 답안과 긴 글이 있는 수학을 바로 여는 주소가 따로 있다 */
   subject?: SubjectId;
@@ -205,14 +215,15 @@ function PaidSheet({
   reviewAt: ReviewAt | null;
   /** 전문가의 채점이 끝난 뒤인가 — 점수가 들어와 「채점 중」이 정답 · 부분 정답 · 오답으로 바뀐다 */
   graded?: boolean;
-  /** 선 잇기 문항이 든 시험지로 편다 — 과학 5번이 그 문항이다 */
-  match?: boolean;
+  /** 선 잇기 · 답 칸 표지 문항이 든 시험지로 편다 — 과학 5번이 그 문항이다 */
+  alt?: Alt;
 }) {
   const router = useRouter();
   const reg = flowRegs.q3;
   const fact = flowFacts.q3;
-  /* 채점이 끝난 뒤의 화면과 선 잇기 화면은 제 주소(…/graded · …/match) 아래에서 창을 여닫는다 */
-  const base = graded ? `${here}/graded` : match ? `${here}/match` : here;
+  /* 채점이 끝난 뒤의 화면과 선 잇기 · 표지 문항 화면은 제 주소(…/graded · …/match · …/slots) 아래에서 창을 여닫는다 */
+  const flow = alt ? altFlows[alt] : null;
+  const base = graded ? `${here}/graded` : alt ? `${here}/${alt}` : here;
 
   return (
     <DashFrame {...frame} at="/student/answers">
@@ -223,14 +234,14 @@ function PaidSheet({
       />
       <AnswerSheet
         row={reg}
-        record={match ? flowMatch.record : flowRecords.q3}
-        bank={match ? flowMatch.bank : undefined}
+        record={flow ? flow.record : flowRecords.q3}
+        bank={flow ? flow.bank : undefined}
         grades={graded ? flowGrades : undefined}
         student={flowStudent.name}
         submitted={fact.finalized}
-        initialSubject={match ? flowMatch.at.subject : subject}
+        initialSubject={flow ? flow.at.subject : subject}
         coach={
-          graded || match
+          graded || flow
             ? undefined
             : {
                 open: coachOpen,
@@ -240,7 +251,7 @@ function PaidSheet({
         }
         review={{
           at: reviewAt,
-          onOpen: (want) => router.push(graded || match ? `${base}/review` : reviewHref(want)),
+          onOpen: (want) => router.push(graded || flow ? `${base}/review` : reviewHref(want)),
           onClose: () => router.push(base),
         }}
       />

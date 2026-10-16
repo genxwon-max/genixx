@@ -121,6 +121,11 @@ export type Material = {
  */
 export type Blank = {
   label: string;
+  /**
+   * 문항 글에 적은 답 칸 표지의 이름 — 「정답1」 · 「서술형1」(lib/answerSlots.ts).
+   * 있으면 이 칸은 아래 목록이 아니라 문항 글의 그 자리에 선다.
+   */
+  slot?: string;
   placeholder?: string;
   options?: string[];
   short?: boolean;

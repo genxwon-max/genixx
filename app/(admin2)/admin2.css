@@ -2304,4 +2304,117 @@
     border-color: #1d2330;
     color: #fff;
   }
+
+  /* ── 답 칸 표지 (lib/answerSlots.ts · components/admin2/SlotFields.tsx) ──
+     문항 상자 안의 이름표와 정답 줄 머리의 이름표가 같은 모양이라 어느 괄호의 정답인지 짝이 맞는다.
+     짧은 칸은 정답을 함께 적고, 정답이 비었으면 노랗게, 칸이 서지 않는 표지는 붉게 선다 */
+  .a2-slot-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 2px;
+    padding: 1px 7px;
+    border: 1px solid var(--a2-accent-line);
+    border-radius: 3px;
+    background: var(--a2-accent-soft);
+    color: var(--a2-accent-2);
+    font-family: var(--font-sans, sans-serif);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+    vertical-align: 0.08em;
+  }
+  .a2-slot-answer {
+    padding-left: 6px;
+    border-left: 1px solid var(--a2-accent-line);
+    color: #1d2330;
+    font-weight: 600;
+  }
+  .a2-slot-chip.is-empty {
+    border-color: #f2c46d;
+    background: #fff7e6;
+    color: #8a4b08;
+  }
+  .a2-slot-chip.is-empty .a2-slot-answer {
+    border-left-color: #f2c46d;
+    color: #8a4b08;
+    font-weight: 500;
+  }
+  .a2-slot-chip.is-bad {
+    border-color: #f1a7a1;
+    background: #fdecea;
+    color: #b42318;
+  }
+  /* 문장 아래에 따로 서는 큰 칸 — 학생 화면에서 칸이 서는 자리를 점선 상자로 */
+  .a2-slot-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    padding: 10px 12px;
+    border: 1px dashed var(--a2-accent-line);
+    border-radius: 3px;
+    background: #f7f9fe;
+    font-family: var(--font-sans, sans-serif);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--a2-ink-3);
+  }
+  .a2-slot-block .a2-slot-chip {
+    margin: 0;
+  }
+  .a2-slot-block-memo {
+    margin-left: auto;
+    color: var(--a2-ink-4);
+  }
+  /* 표지 안내표 — 문서 편집기의 「표지 안내」 띠 */
+  .a2-slot-guide {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    color: #1d2330;
+  }
+  .a2-slot-guide th,
+  .a2-slot-guide td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #dde2ea;
+    text-align: left;
+    vertical-align: top;
+  }
+  .a2-slot-guide th {
+    color: #4a5261;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .a2-slot-guide td:first-child {
+    white-space: nowrap;
+    color: #1f4e8c;
+  }
+  .a2-slot-guide-ex {
+    color: #4a5261;
+  }
+  .a2-doc-guidebar {
+    max-height: 40vh;
+    overflow: auto;
+    padding: 8px 18px 10px;
+    background: #fff;
+    border-bottom: 1px solid #cfd5de;
+  }
+  .a2-doc-guidebar-note {
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #4a5261;
+  }
+  /* 문서 편집기에서 쓰는 동안 표지를 칠한다(CSS Custom Highlight — DocEditor의 paintSlots) */
+  ::highlight(a2-slot) {
+    background-color: #dbe7fd;
+    color: #1d4ed8;
+  }
+  ::highlight(a2-slot-bad) {
+    background-color: #fde2df;
+    color: #b42318;
+  }
 }

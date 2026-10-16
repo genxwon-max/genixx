@@ -505,8 +505,10 @@ export function answerText(q: Question, value: number | string | undefined): str
   if (!q.blanks) return value.trim();
   const parts = splitBlanks(value, q.blanks.length);
   if (parts.every((p) => !p.trim())) return "";
+  /* 이름 없는 칸이 여럿이면(답 칸 표지로 쓴 문항) 차례를 붙인다 — 「답 : … / 답 : …」은 어느 칸인지 모른다 */
+  const many = q.blanks.filter((b) => !b.label).length > 1;
   return q.blanks
-    .map((b, i) => `${b.label || "답"} : ${blankText(b, parts[i]) || "(빈칸)"}`)
+    .map((b, i) => `${b.label || (many ? `답 ${i + 1}` : "답")} : ${blankText(b, parts[i]) || "(빈칸)"}`)
     .join("\n");
 }
 
@@ -663,6 +665,8 @@ export function answerKind(q: Question): AnswerKind {
   if (q.upload) return "사진";
   if (q.match) return "선 잇기";
   if (!q.blanks) return "논술형";
+  /* 답 칸 표지로 쓴 문항은 긴 글 칸도 괄호 칸 하나다(「{논술형1}」, lib/answerSlots.ts) */
+  if (q.blanks.some((b) => b.slot?.startsWith("논술형"))) return "논술형";
   return autoGraded(q) ? "단답형" : "서술형";
 }
 

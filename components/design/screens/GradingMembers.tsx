@@ -10,7 +10,7 @@ import GradeSheet from "@/components/admin2/GradeSheet";
 import type { GradeAt } from "@/components/exam/GradeDialog";
 import { Body, PageHead, Panel, Tab } from "@/components/admin2/ui";
 import ConsoleFrame, { type ConsoleMe } from "../ConsoleFrame";
-import { flowFacts, flowMarks, flowMatch, flowSeat, flowSheet } from "./studentFlow";
+import { flowFacts, flowMarks, flowMatch, flowSeat, flowSheet, flowSlots } from "./studentFlow";
 
 /**
  * 회원 채점 (실제 주소 /admin2/grading/members · /admin2/grading/members/[답안지]) — 디자인.
@@ -34,6 +34,10 @@ import { flowFacts, flowMarks, flowMatch, flowSeat, flowSheet } from "./studentF
  * 선 잇기 문항은 기본 문항에 아직 없어, 그 문항이 든 시험지로 같은 답안지를 다시 편 채점 창을
  * 따로 두었다(…/grade/match — ./studentFlow.ts의 flowMatch). 기계가 채점하는 문항이라 AI 점수가
  * 바로 나오고, 채점자는 선의 색으로 무엇을 잘못 이었는지 보고 점수를 고칠 수 있다.
+ *
+ * 출제할 때 답 칸 표지(「( [정답1] )」 · 「{서술형1}」)로 쓴 문항이 든 시험지의 채점 창도 같은 자리에
+ * 두었다(…/grade/slots, 2026-10-16). 아이가 낸 답이 괄호 자리 · 「이유를 쓰시오」 아래에 그대로
+ * 보이고, 문항 아래 예시 답은 칸 이름(정답 1 · 서술형 1)으로 적힌다.
  */
 
 const to = designLinks("grading-members");
@@ -61,7 +65,7 @@ const phasePath: Record<Phase, string> = { none: here, some: `${here}/grading`, 
  * 채점 창이 열린 상태 — 주소의 꼬리 → 창이 펴 둘 문항과, 그때 채점이 어디까지 갔는가.
  * 문항 유형마다 한 건씩 골랐다.
  */
-const benches: Record<string, { at: GradeAt; phase: Phase; match?: boolean }> = {
+const benches: Record<string, { at: GradeAt; phase: Phase; alt?: "match" | "slots" }> = {
   /* 객관식 — AI가 정답으로 채점했다. 확인만 하면 된다 */
   grade: { at: at("korean", "kor-1"), phase: "none" },
   /* 2점 만점에 2점이던 답을 1점으로 낮췄다 — 부분 정답 */
@@ -79,7 +83,9 @@ const benches: Record<string, { at: GradeAt; phase: Phase; match?: boolean }> = 
   /* 마지막 문항 — 「확인하고 마치기」 */
   "grade/last": { at: at("science", "sci-20"), phase: "done" },
   /* 선 잇기 — 그 문항이 든 시험지의 과학 5번. 다섯 가운데 하나를 잘못 이어 AI가 0점을 줬다 */
-  "grade/match": { at: flowMatch.at, phase: "some", match: true },
+  "grade/match": { at: flowMatch.at, phase: "some", alt: "match" },
+  /* 답 칸 표지로 쓴 문항 — 짧은 칸 · 쓰는 칸이 한 문항에. 서술 칸이 있어 채점자가 매긴다 */
+  "grade/slots": { at: flowSlots.at, phase: "some", alt: "slots" },
 };
 
 /** 정오표에서 누른 문항에 맞는 채점 창 주소 — 그 문항과 유형이 같은 예시로 간다 */
@@ -111,7 +117,7 @@ export default function GradingMembers({ state }: { state: string }) {
           key={state}
           phase={benches[tail]?.phase ?? phases[tail] ?? "none"}
           gradeAt={benches[tail]?.at ?? null}
-          match={!!benches[tail]?.match}
+          alt={benches[tail]?.alt}
         />
       )}
     </ConsoleFrame>
@@ -123,12 +129,12 @@ export default function GradingMembers({ state }: { state: string }) {
 function Sheet({
   phase,
   gradeAt,
-  match = false,
+  alt,
 }: {
   phase: Phase;
   gradeAt: GradeAt | null;
-  /** 선 잇기 문항이 든 시험지로 편다 */
-  match?: boolean;
+  /** 선 잇기 · 답 칸 표지 문항이 든 시험지로 편다 */
+  alt?: "match" | "slots";
 }) {
   const router = useRouter();
   /* 점수 단추가 눌리는 모습을 보이려고 이 화면 안에서만 들고 있다 — 저장하지 않는다 */
@@ -150,7 +156,7 @@ function Sheet({
       seat={flowSeat.seat}
       grade={flowSeat.grade}
       roundName={roundName}
-      subjects={match ? flowMatch.sheet : flowSheet}
+      subjects={alt === "match" ? flowMatch.sheet : alt === "slots" ? flowSlots.sheet : flowSheet}
       marks={marks}
       back={
         <Link href={to()} className="a2-btn">

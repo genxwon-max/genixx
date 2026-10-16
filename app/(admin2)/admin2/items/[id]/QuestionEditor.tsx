@@ -7,15 +7,28 @@ import {
   difficultyPicked,
   formatIssue,
   hasChoices,
-  itemTypes,
   needsRubric,
   questionStandardIssue,
-  retypeQuestion,
+  slotted,
+  stemIsEmpty,
   stemSummary,
   typeLabel,
-  type ItemType,
   type Question,
 } from "@/lib/itemStore";
+import {
+  fitSlots,
+  hasAnswerArea,
+  hasSlots,
+  legacySlots,
+  numberSlots,
+  oldAnswerArea,
+  scanSlots,
+  slotName,
+  slotType,
+  takeSlotAnswers,
+  withSlotAnswers,
+  type SlotAnswer,
+} from "@/lib/answerSlots";
 import {
   LEVELS,
   cardExamples,
@@ -32,7 +45,7 @@ import {
 } from "@/lib/blueprint";
 import { toneColor } from "@/lib/admin2";
 import { splitPastedItem } from "@/lib/choicePaste";
-import AnswerEditor from "@/components/admin2/AnswerEditor";
+import { LegacyAnswers, SlotAnswers, SlotStart, SlotText } from "@/components/admin2/SlotFields";
 import DocEditor from "@/components/admin2/DocEditor";
 import DocBox from "@/components/admin2/DocBox";
 import { BlockList, WithBlanks } from "@/components/exam/ExamSession";
@@ -41,14 +54,7 @@ import { htmlToQuestion, questionToHtml, textToHtml } from "@/lib/docBlocks";
 import type { Block } from "@/lib/content";
 import type { ContentQuestion } from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
-import {
-  CellLine,
-  FormBlock,
-  FormRow,
-  FormRowPair,
-  SubRow,
-  SubRows,
-} from "@/components/admin2/ui";
+import { CellLine, FormRow, FormRowPair, SubRow, SubRows } from "@/components/admin2/ui";
 
 /**
  * 문항 상세의 본문 — 세트의 문항 목록 · 문항 하나의 분류 줄 · 문항 줄.
@@ -238,6 +244,42 @@ export function QuestionList({
 
 const talentName = (id: TalentId) => talents.find((t) => t.id === id)?.name ?? id;
 
+/** 형식이 아직 정해지지 않았는가 — 발문도 보기도 쓰지 않은 문항 */
+const typeUnset = (q: Question) => !slotted(q) && stemIsEmpty(q) && !q.choices.some((c) => c.trim());
+
+/**
+ * 형식 칸 — 문항에 쓴 것에서 읽은 형식과 그 근거.
+ *
+ * 형식은 문항을 쓰면 정해진다 — 답 칸 표지가 있으면 표지가(칸이 여럿이면 사람이 채점하는 칸이),
+ * 줄 맨 앞에 ① ② ③ …이 있으면 객관식이다(QuestionContentRows의 applyDoc). 아직 아무것도 쓰지
+ * 않은 문항은 「정해지지 않음」으로 둔다 — 새 문항이 처음 받는 형식(typeForLevel)을 그대로 적으면
+ * 쓰지도 않은 형식이 정해진 것처럼 읽힌다.
+ */
+function TypeLine({ q }: { q: Question }) {
+  const marks = slotted(q) ? scanSlots(q.stem).marks : [];
+  const empty = typeUnset(q);
+  const why =
+    marks.length > 0
+      ? `답 칸 표시로 정해집니다 — ${marks.map((m) => slotName(m.key)).join(" · ")}`
+      : empty
+        ? "문항에 [정답1] · {서술형1} 같은 답 칸 표시를 넣거나 ① ② ③ … 보기를 쓰면 정해집니다"
+        : q.type === "choice"
+          ? "줄 맨 앞의 ① ② ③ … 보기로 정해집니다"
+          : q.type === "ox"
+            ? "맞다 · 아니다 두 보기로 정해집니다"
+            : "아직 답 칸 표시가 없습니다 — 문항에 [정답1] · {서술형1} 같은 표시를 넣으면 표시에 맞게 정해집니다";
+  return (
+    <div className="a2-cell-pad flex flex-wrap items-center gap-x-3 gap-y-1">
+      {empty ? (
+        <span className="a2-t-md text-(--a2-ink-4)">정해지지 않음</span>
+      ) : (
+        <b className="a2-t-md text-(--a2-ink)">{typeLabel(q.type)}</b>
+      )}
+      <span className="a2-t-sm text-(--a2-ink-3)">{why}</span>
+    </div>
+  );
+}
+
 /** 칸 아래 경고 한 줄 — 막는 것은 빨강, 봐 둘 것은 노랑 */
 const Danger = ({ children }: { children: React.ReactNode }) => (
   <span style={{ color: toneColor.danger }}>{children}</span>
@@ -281,7 +323,9 @@ export function QuestionClassRows({
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
   const std = questionStandardIssue(q, band);
   const outOfRange = withLevel && !levelAllowed(q.talent, q.level);
-  const format = formatIssue(q);
+  /* 아직 형식이 정해지지 않은 문항(아무것도 안 쓴 새 문항)에는 고정 매핑을 따지지 않는다 — 처음 받은
+     형식으로 「선택 1점입니다」를 띄우면 고르지도 않은 형식을 나무란다 */
+  const format = typeUnset(q) ? "" : formatIssue(q);
   const talent = talentOf(q.talent);
 
   /* 치는 중인 글자. 바깥에서 배점이 바뀌면(취소 · 다른 문항) 그 글자는 버리고 값을 그린다 —
@@ -442,24 +486,14 @@ export function QuestionClassRows({
         </div>
       </FormRow>
 
-      {/* 형식은 단계를 따라 바꾸지 않는다. 적어 둔 보기가 날아가는 사고가 났던 자리라
-          (retypeQuestion) 사람이 고르고, 고정 매핑에서 벗어나면 여기와 체크리스트에 적는다 */}
+      {/* 형식은 고르지 않는다 — 문항에 쓴 것이 정한다(2026-10-16 요청). 답 칸 표지([정답1] ·
+          {서술형1} …)를 쓰면 표지가, 줄 맨 앞에 ① ② ③ …을 쓰면 객관식이 된다(lib/answerSlots.ts).
+          한동안은 여기서 형식을 고르고 그 형식에 맞는 답 칸을 문항 아래에 따로 만들었는데, 형식을 바꿀
+          때마다 답 칸이 통째로 바뀌었고 문항 글과 칸이 떨어져 있었다. 단계와 어긋나면(고정 매핑)
+          여기와 체크리스트에 적는 것은 그대로다 */}
       {withLevel && (
         <FormRow label="형식" req hint={format ? <Danger>{format}</Danger> : undefined}>
-          <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
-            {itemTypes.map((t) => (
-              <label key={t.id} className="a2-choice">
-                <input
-                  type="radio"
-                  name={`type-${q.id}`}
-                  checked={q.type === t.id}
-                  disabled={disabled}
-                  onChange={() => onChange(retypeQuestion(q, t.id as ItemType))}
-                />
-                {t.label}
-              </label>
-            ))}
-          </div>
+          <TypeLine q={q} />
         </FormRow>
       )}
 
@@ -536,29 +570,83 @@ export function QuestionContentRows({
   disabled,
   onChange,
   onContent,
+  startDoc,
+  startGuide = false,
 }: {
   q: Question;
   /** 이 문항을 학생이 보는 모양 — 발문 아래 자료와 답 칸이 여기 담긴다(lib/content.ts) */
   content?: ContentQuestion;
-  /** 지문에 적힌 빈칸 표지 — 답 칸 이름으로 불러온다 */
+  /** 지문에 적힌 빈칸 표지(「( ㄱ )」) — 문서 편집기가 한 줄씩 정답 칸으로 넣어 준다 */
   marks?: string[];
   disabled: boolean;
   onChange: (next: Question) => void;
   onContent?: (next: ContentQuestion) => void;
+  /**
+   * 문서 편집기를 연 채로 그린다 — 넘긴 글이 편집기에 펴진다. 디자인 보기가 「편집기에 표지를
+   * 넣는 중」을 주소로 굳힐 때만 넘긴다. 실제 화면은 넘기지 않는다.
+   */
+  startDoc?: string;
+  /** 문서 편집기의 「표지 안내」를 편 채로 연다 — startDoc과 함께, 디자인 보기만 */
+  startGuide?: boolean;
 }) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
-  const choice = q.type === "choice";
-  const picks = hasChoices(q.type);
+  /* 답 칸 표지로 쓴 문항 — 형식이 객관식 · OX여도(「[선택1]」 · 「[OX1]」) 보기 칸은 쓰지 않는다 */
+  const marked = slotted(q);
+  const choice = q.type === "choice" && !marked;
+  const picks = hasChoices(q.type) && !marked;
+  /** 지금 답 칸과 칸마다의 정답 — 학생이 보는 모양에 담겨 있다 */
+  const fit: SlotAnswer = {
+    response: content?.response ?? { kind: "blanks", blanks: [] },
+    answers: content?.sampleAnswer ?? [],
+  };
+  /*
+    표지 없이 만든 답 칸이 있는 문항 — 표지로 옮긴 꼴(legacySlots). 「표지로 바꾸기」가 이것을 담고,
+    문서 편집기도 이 꼴로 연다(적용하면 바뀐다). 아직 아무것도 쓰지 않은 새 문항은 옮기지 않는다 —
+    처음 받은 형식(typeForLevel)으로 표지를 미리 넣어 두면 고르지도 않은 칸이 선다.
+  */
+  /* 잠긴 문항은 칸이 있으면 무엇이든 요약하고(옛 문항이다), 고칠 수 있는 문항은 예전 답 칸 편집기로 만든
+     칸만 요약한다 — 형식에 따라 저절로 선 빈 칸뿐인 새 문항에는 표시 쓰는 법을 세운다(oldAnswerArea).
+     고칠 수 있는 옛 문항은 대개 읽을 때 이미 표시로 옮겨져 온다(lib/itemStore.ts withSlots) */
+  const oldArea =
+    !marked &&
+    !hasChoices(q.type) &&
+    !stemIsEmpty(q) &&
+    (disabled ? hasAnswerArea(fit.response) : oldAnswerArea(fit.response));
+  const legacy = oldArea && q.stemMode === "text" ? legacySlots(q.stem, q.type, fit) : null;
+  const putFit = (next: SlotAnswer) =>
+    content &&
+    onContent?.({
+      ...content,
+      response: next.response,
+      sampleAnswer: next.answers.some((a) => a.trim()) ? next.answers : undefined,
+    });
 
-  /* 문항을 문서 편집기로 열었는가 — 발문 · 보기 · 발문 아래 자료를 한 장에 편다 */
-  const [doc, setDoc] = useState<{ html: string; atoms: Block[] } | null>(null);
+  /*
+    문항을 문서 편집기로 열었는가 — 발문 · 보기 · 발문 아래 자료를 한 장에 편다.
+    base는 표지마다 적어 둔 것(정답 · 예시 답 · 밑그림 · 고를 것)을 옮겨 올 답 칸이다 — 옛 문항이면
+    표지로 옮긴 꼴이다. 적용할 때 표지 이름이 같은 칸에 그것을 그대로 담는다(fitSlots).
+  */
+  const [doc, setDoc] = useState<{ html: string; atoms: Block[]; base?: SlotAnswer } | null>(
+    startDoc !== undefined ? { html: startDoc, atoms: [] } : null,
+  );
   const stemHtml =
     q.stemMode === "text"
       ? ""
       : q.stemMode === "images"
         ? q.stemImages.map((src) => `<img src="${src}" alt="">`).join("")
         : renderDetail(q.stemMode, q.stem, q.stemImages);
-  const openDoc = () =>
+  const openDoc = () => {
+    if (marked || legacy) {
+      /* 짧은 칸의 정답은 표지 안에 펴 둔다(「[정답1: A]」) — 문서에서 바로 고치고 적용한다 */
+      const base = legacy ?? fit;
+      const body = questionToHtml(
+        textToHtml(withSlotAnswers(legacy ? legacy.stem : q.stem, base)),
+        [],
+        content?.blocks ?? [],
+      );
+      setDoc({ ...body, base });
+      return;
+    }
     setDoc(
       questionToHtml(
         /* 그림으로 쓴 발문은 그림을 문서에 펴 둔다 — 적용하면 발문 아래 자료로 들어간다 */
@@ -567,20 +655,45 @@ export function QuestionContentRows({
         content?.blocks ?? [],
       ),
     );
+  };
 
   /**
-   * 문서 → 문항. 글은 붙여 넣기 규칙으로 발문 · 보기 · 정답을 가르고(객관식만), 표 · 그림 · 상자는
-   * 발문 아래 자료로 보낸다. 보기가 바뀌면 보기마다 적은 오답 설계 의도는 옛 보기를 가리키므로 비운다.
+   * 문서 → 문항.
+   *
+   *   표지가 있으면   표지마다 칸을 세운다. 번호 없는 표지 · 겹친 번호에는 빈 번호를 주고
+   *                   (numberSlots), 표지 안에 적은 정답을 그 칸에 담고(takeSlotAnswers), 형식을
+   *                   표지에서 읽는다(slotType)
+   *   ① ② ③ … 이면   붙여 넣기 규칙으로 발문 · 보기 · 정답을 가르고 객관식이 된다
+   *   둘 다 없으면    발문만 바꾼다
+   *
+   * 표 · 그림 · 상자는 발문 아래 자료로 보낸다. 보기가 바뀌면 보기마다 적은 오답 설계 의도는 옛
+   * 보기를 가리키므로 비운다.
    */
   const applyDoc = (html: string) => {
     if (!doc) return;
     const { text, extra } = htmlToQuestion(html, doc.atoms);
-    const split = choice ? splitPastedItem(text) : null;
+    const blocks = extra.length > 0 ? extra : undefined;
+    if (hasSlots(text)) {
+      const { text: stem, given } = takeSlotAnswers(numberSlots(text));
+      const next = fitSlots(stem, doc.base ?? fit, given);
+      set({ stemMode: "text", stem: stem.trim(), type: slotType(scanSlots(stem).marks) ?? q.type });
+      if (content && onContent) {
+        onContent({
+          ...content,
+          blocks,
+          response: next.response,
+          sampleAnswer: next.answers.some((a) => a.trim()) ? next.answers : undefined,
+        });
+      }
+      return;
+    }
+    const split = splitPastedItem(text);
     if (split) {
       const same = split.choices.join("\n") === q.choices.join("\n");
       set({
         stemMode: "text",
         stem: split.stem,
+        type: "choice",
         choices: split.choices,
         answer: split.answer ?? Math.min(q.answer, split.choices.length - 1),
         distractorIntent: same ? q.distractorIntent : [],
@@ -588,26 +701,47 @@ export function QuestionContentRows({
     } else {
       set({ stemMode: "text", stem: text.trim() });
     }
-    if (content && onContent) onContent({ ...content, blocks: extra.length > 0 ? extra : undefined });
+    /* 표지를 모두 지운 문항 — 표지로 세웠던 칸도 걷는다. 이름 없는 칸만 남기면 아이 화면에 어느
+       괄호의 것인지 모를 칸이 줄줄이 선다. 칸이 없으면 제출 문턱이 「답 칸」으로 짚는다 */
+    const orphan = fit.response.kind === "blanks" && fit.response.blanks.some((b) => b.slot);
+    if (content && onContent) {
+      onContent({
+        ...content,
+        blocks,
+        ...(orphan ? { response: { kind: "blanks" as const, blanks: [] }, sampleAnswer: undefined } : {}),
+      });
+    }
+  };
+
+  /** 「표지로 바꾸기」 — 옛 답 칸을 표지로 옮겨 문항 글 끝에 붙인다 */
+  const convert = () => {
+    if (!legacy) return;
+    set({ stemMode: "text", stem: legacy.stem, type: slotType(scanSlots(legacy.stem).marks) ?? q.type });
+    putFit(legacy);
   };
 
   return (
     <>
       {/* 문항은 상자 하나 — 발문 · 발문 아래 자료 · 보기를 응시 화면 차례 그대로 그린다(2026-09-22 요청).
           쓰는 곳은 문서 편집기다. 발문 칸 · 보기 칸 넷 · 자료 칸을 따로 두던 때는 한글 원고를 칸마다
-          나눠 옮겨 적어야 했다. 정답은 아래 「정답 및 채점기준」에서 고른다 */}
+          나눠 옮겨 적어야 했다. 답 칸은 문항 글에 적은 표지가 세우고(2026-10-16 요청), 상자는 표지
+          자리에 이름표와 정답을 그린다. 정답은 아래 「정답 및 채점기준」에서도 고친다 */}
       <FormRow label="문항" req>
         <DocBox
           label="문항"
-          empty="비어 있습니다. 눌러서 문서 편집기로 발문과 보기(① ② ③ …)를 씁니다."
+          empty="비어 있습니다. 눌러서 문서 편집기로 문항을 씁니다 — 답이 들어갈 자리에는 [정답1] · {서술형1} 같은 표시를, 객관식은 보기(① ② ③ …)를 씁니다."
           disabled={disabled}
           filled={!!q.stem.trim() || q.stemImages.length > 0 || q.choices.some((c) => c.trim())}
           onOpen={openDoc}
         >
           {q.stemMode === "text" ? (
-            <p className="whitespace-pre-line font-semibold">
-              <WithBlanks text={q.stem} />
-            </p>
+            marked ? (
+              <SlotText text={q.stem} fit={fit} />
+            ) : (
+              <p className="whitespace-pre-line font-semibold">
+                <WithBlanks text={q.stem} />
+              </p>
+            )
           ) : (
             <div className="font-semibold" dangerouslySetInnerHTML={{ __html: stemHtml }} />
           )}
@@ -629,34 +763,27 @@ export function QuestionContentRows({
         </DocBox>
       </FormRow>
 
-      {/* 답 칸 — 보기를 고르지 않는 문항이 학생에게 여는 칸과 칸마다의 정답 */}
-      {content && onContent && !picks && (
-        <FormBlock title="답 칸 — 학생이 채우는 칸과 칸마다의 정답" req>
-          <AnswerEditor
-            response={
-              content.response.kind === "choice"
-                ? { kind: "blanks", blanks: [{ label: "" }] }
-                : content.response
-            }
-            answers={content.sampleAnswer ?? []}
-            marks={marks}
-            disabled={disabled}
-            onChange={({ response, answers }) =>
-              onContent({
-                ...content,
-                response,
-                sampleAnswer: answers.some((a) => a.trim()) ? answers : undefined,
-              })
-            }
-          />
-        </FormBlock>
-      )}
+      {/* 「답 칸 — 학생이 채우는 칸과 칸마다의 정답」 판(AnswerEditor)은 걷었다(2026-10-16 요청).
+          답하는 방식 → 칸 추가 → 칸 이름 → 칸 모양 → 정답을 차례로 골라야 칸 하나가 섰고, 형식을 바꾸면
+          칸이 통째로 바뀌었다. 칸은 문항 글의 표지가 세우고, 정답은 바로 아래 줄에서 표지마다 적는다 */}
 
       {/* 정답 · 채점 기준도 다른 칸처럼 이름을 왼쪽에, 값을 오른쪽에 둔다(2026-09-22 요청). 머리 띠를
           위에 얹던 때는 이 덩이만 다른 모양이라 카드를 훑는 눈이 여기서 한 번 끊겼다 */}
       {/* 정답과 모범답안은 한 줄 「정답 및 채점기준」으로 합친다(2026-09-22 요청). 고르는 문항은 칸 안
-          첫 줄에 고른 정답을 읽기로 세우고, 그 아래에 모범답안을 적는다 */}
+          첫 줄에 고른 정답을 읽기로 세우고, 표지로 쓴 문항은 표지마다 한 줄, 그 아래에 모범답안을 적는다 */}
       <FormRow label="정답 및 채점기준" req>
+        {content && onContent && marked && (
+          <SlotAnswers stem={q.stem} fit={fit} disabled={disabled} onChange={putFit} />
+        )}
+        {content &&
+          onContent &&
+          !marked &&
+          !picks &&
+          (oldArea ? (
+            <LegacyAnswers fit={fit} canConvert={!!legacy} disabled={disabled} onConvert={convert} />
+          ) : (
+            <SlotStart />
+          ))}
         {picks && (
           <CellLine label="정답">
             {/* 보기 칸이 문항 상자로 들어가면서 정답은 여기서 고른다. 문서 편집기에서 「정답: ③」 줄을
@@ -719,7 +846,9 @@ export function QuestionContentRows({
           불인정 예 칸은 걷었다(2026-09-21 협의). 채점 기준과 인정 예가 이미 경계를 긋고, 불인정
           예를 두 개씩 채우는 일이 출제 시간만 늘렸다. 옛 문항에 적혀 있던 불인정 예(rejectExamples)는
           지우지 않고 저장분에 남는다 */}
-      <FormRow label="인정 예 (2개 이상)" req={!picks}>
+      {/* 필수 표시는 제출 문턱(missingCard)과 같은 셈 — 기계가 채점하는 형식(객관식 · OX)은 묻지 않는다.
+          「[선택1]」 · 「[OX1]」만 쓴 문항도 형식이 그것이라 같다 */}
+      <FormRow label="인정 예 (2개 이상)" req={!hasChoices(q.type)}>
         <GrowTextarea
           className="a2-textarea a2-textarea-lg"
           rows={5}
@@ -807,9 +936,11 @@ export function QuestionContentRows({
 
       {doc && (
         <DocEditor
-          title="문항 — 발문 · 보기 · 발문 아래 자료"
+          title="문항 — 발문 · 답 칸 표시 · 보기 · 발문 아래 자료"
           initialHtml={doc.html}
           mode="question"
+          passageMarks={marks}
+          startGuide={startGuide}
           onClose={() => setDoc(null)}
           onApply={applyDoc}
         />

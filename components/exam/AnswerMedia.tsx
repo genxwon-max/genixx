@@ -283,29 +283,52 @@ export function DictateBar({
   );
 }
 
+/** 문장 안 빈칸 옆에 붙는 작은 단추 — 글줄 높이를 넘지 않게 */
+const btnSmall =
+  "inline-flex h-7 shrink-0 cursor-pointer select-none items-center justify-center gap-1 rounded-[2px] border px-2 align-middle text-[12px] font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-exam-text";
+
 /** 괄호 칸 옆의 음성 입력 단추 — 짧은 칸 · 쓰는 칸 */
 export function DictateButton({
   onText,
   label,
+  compact = false,
 }: {
   onText: (text: string) => void;
   /** 칸 이름 — 낭독기가 어느 칸의 단추인지 읽는다 */
   label?: string;
+  /**
+   * 문장 안 빈칸 옆에 붙인다(답 칸 표지 문항의 SlotStem) — 글줄 높이에 맞춘 작은 단추.
+   * 글자는 그대로 「음성 입력」이다(2026-10-09 아이콘만 두던 것을 글자로 바꾼 약속).
+   */
+  compact?: boolean;
 }) {
   const d = useDictation(onText);
   if (!d.supported) return null;
   const name = `${label ? `${label} ` : ""}음성 입력${d.listening ? " 끝내기" : ""}`;
+  const look = compact
+    ? `${btnSmall} ${
+        d.listening
+          ? "border-exam-text bg-exam-text text-white"
+          : "border-exam-line bg-white text-exam-text hover:border-exam-muted hover:bg-exam-raised"
+      }`
+    : `${d.listening ? btnInk : btnLine} whitespace-nowrap px-3`;
   return (
-    <span className="relative z-20 ml-auto shrink-0 font-sans">
+    <span className={`relative z-20 shrink-0 font-sans ${compact ? "mx-1 inline-block" : "ml-auto"}`}>
       <button
         type="button"
         onClick={d.toggle}
+        /* 문장 안 빈칸 옆 단추 — 누르는 순간 빈칸의 초점을 빼앗지 않는다(어느 빈칸에 받아 적는지가 그 초점이다) */
+        onMouseDown={compact ? (e) => e.preventDefault() : undefined}
         aria-pressed={d.listening}
         aria-label={name}
         title={d.listening ? "음성 입력 끝내기" : "음성 입력"}
-        className={`${d.listening ? btnInk : btnLine} whitespace-nowrap px-3`}
+        className={look}
       >
-        {d.listening ? <StopIcon className="h-4 w-4" /> : <MicIcon className="h-4 w-4" />}
+        {d.listening ? (
+          <StopIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+        ) : (
+          <MicIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+        )}
         {/* 칸 옆이라 자리가 좁다 — 듣는 중에는 「끝내기」만 적는다 */}
         {d.listening ? "끝내기" : "음성 입력"}
       </button>

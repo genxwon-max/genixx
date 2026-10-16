@@ -17,7 +17,7 @@ import {
   type Question,
 } from "@/lib/exam";
 import { evalName } from "@/lib/examCatalog";
-import { matchBank, matchQuestion } from "@/lib/examDesign";
+import { matchBank, matchQuestion, slotBank, slotQuestion } from "@/lib/examDesign";
 import { designLinks } from "@/lib/designScreens";
 import { ArrowRight } from "@/components/Icons";
 import {
@@ -412,6 +412,61 @@ export function ExamMatch({ state }: { state: string }) {
         }}
         lastLabel="제출하기"
         matchPick={pick}
+      />
+    </ExamFrame>
+  );
+}
+
+/* ───────────────────────── 답 칸 표지로 쓴 독립 문항 ───────────────────────── */
+
+/**
+ * 출제할 때 문항 글에 「( [정답1] )」 · 「{서술형1}」을 적은 문항의 응시 화면(lib/answerSlots.ts).
+ * 괄호 자리에 짧은 칸이, 「이유를 쓰시오.」 아래에 쓰는 칸이 선다. 선 잇기 화면과 같은 시험지 자리
+ * (과학 5번 — lib/examDesign.ts의 slotBank)에 넣었다. 직접 써 보는 화면은 /exam/session/design/slots다.
+ */
+const slotOrder = tierQuestions("paid", MATCH_SUBJECT, null, slotBank);
+const slotScreens = screensOf(MATCH_SUBJECT, slotBank)
+  .map((sc) => sc.filter((q) => slotOrder.includes(q)))
+  .filter((sc) => sc.length > 0);
+const slotAt = slotScreens.findIndex((sc) => sc.includes(slotQuestion));
+const slotBefore: Record<string, number | string> = Object.fromEntries(
+  slotOrder
+    .slice(0, slotOrder.indexOf(slotQuestion))
+    .map((q) => [q.id, joinBlanks(q.sampleAnswer ?? [])]),
+);
+
+/** 상태마다 쓴 답 — 칸 차례대로(정답 1 · 서술형 1) */
+const slotStates: Record<string, string[]> = {
+  "": [],
+  doing: ["수증기", ""],
+  done: [
+    "수증기",
+    "물이 끓으면 물이 수증기로 변하는데, 그 수증기가 모여서 거품이 되어 위로 올라오기 때문이다.",
+  ],
+};
+
+export function ExamSlots({ state }: { state: string }) {
+  const paid = designLinks("exam-paid");
+  const values = slotStates[state] ?? slotStates[""];
+  return (
+    <ExamFrame
+      name={NAME}
+      subject={matchMeta.name}
+      clock={{ remain: MATCH_REMAIN, limitMin: matchMeta.limitMin }}
+      exitHref={paid("exit")}
+    >
+      <Sheet
+        key={state}
+        order={slotOrder}
+        open={slotOrder}
+        padList={slotOrder}
+        screens={slotScreens}
+        at={slotAt}
+        answers={{
+          ...slotBefore,
+          ...(values.length > 0 ? { [slotQuestion.id]: joinBlanks(values) } : {}),
+        }}
+        lastLabel="제출하기"
       />
     </ExamFrame>
   );

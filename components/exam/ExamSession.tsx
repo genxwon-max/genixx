@@ -53,6 +53,7 @@ import {
   type ExamStatus,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
+import { hasSlots, slotFlows, slotKindOf, type SlotMark, type SlotRun } from "@/lib/answerSlots";
 import { renderDetail } from "@/lib/richText";
 import { useExamConfig } from "@/lib/roundStore";
 import { quarterLabel, seasonOf, trackOf } from "@/lib/examCatalog";
@@ -2001,6 +2002,16 @@ export function QuestionBody({
   matchPick?: MatchPick | null;
 }) {
   const review = graded !== undefined;
+  /* 답 칸 표지로 쓴 문항 — 칸이 발문의 그 자리에 선다(SlotStem). 보기 고르기는 표지를 쓰지 않는다 */
+  if (q.type !== "choice" && hasSlots(q.stem)) {
+    return (
+      <section className="font-myeongjo relative isolate px-6 py-7 lg:px-10 lg:py-9">
+        {graded && <GradeTag mark={graded} />}
+        <SlotStem q={q} num={num} value={value} onAnswer={onAnswer} readOnly={review} matchPick={matchPick} />
+        {watermark && <ItemWatermark text={watermark} />}
+      </section>
+    );
+  }
   return (
     <section className="font-myeongjo relative isolate px-6 py-7 lg:px-10 lg:py-9">
       {graded && <GradeTag mark={graded} />}
@@ -2098,6 +2109,262 @@ export function QuestionBody({
 
       {watermark && <ItemWatermark text={watermark} />}
     </section>
+  );
+}
+
+/* ───────────────────────── 답 칸 표지 ───────────────────────── */
+
+/** 칸 너비 — 쓴 만큼 늘어난다. 한글은 한 글자가 1em, 숫자 · 영문은 그 반쯤이다 */
+const slotWidth = (v: string) => {
+  const len = [...v].reduce((n, c) => n + (/[ㄱ-힝]/.test(c) ? 1 : 0.6), 0);
+  return `${Math.min(Math.max(4.5, len + 1.6), 22)}em`;
+};
+
+/**
+ * 답 칸 표지로 쓴 문항 — 발문의 표지 자리에 칸을 세운다(lib/answerSlots.ts).
+ *
+ * 「강물은 ( [정답1] )보다 …」의 자리에는 문장 안의 짧은 칸이, 「이유를 쓰시오. {서술형1}」의
+ * 자리에는 쓰는 칸이 선다. 이름 붙은 칸을 발문 아래에 늘어놓는 괄호 칸(BlankFields)과 달리 칸이
+ * 글 안에 있어, 아이가 어느 괄호에 무엇을 쓰는지 다시 맞춰 보지 않는다.
+ *
+ *   문장 안     정답 — 짧은 칸 · OX — O · X 단추 · 선택 — 고르는 단추
+ *   따로 서는   서술형 — 몇 줄 쓰는 칸 · 논술형 — 긴 글 칸 · 그리기 · 사진 · 선 잇기
+ *
+ * 답은 괄호 칸과 같은 꼴로 담는다 — 칸 차례대로(joinBlanks). 사진 · 선 잇기는 문항 하나에 하나뿐이라
+ * 그 칸의 답을 그대로 담는다. 채점 · 정오표 · 답안 풀이가 그대로 읽는다.
+ *
+ * ── 문장 안 칸의 음성 입력 ──
+ * 칸마다 단추를 세우면 한 문장에 「음성 입력」이 둘셋 끼어 문장이 읽히지 않는다. 단추는 하나만,
+ * 마지막으로 누른 빈칸(없으면 첫 빈칸) 바로 옆에 붙인다 — 다른 빈칸을 누르면 그 옆으로 옮겨 간다.
+ * 발문 아래에 한 줄로 따로 두었을 때는 쓰는 칸의 음성 입력 줄과 나란히 서서 어느 칸 것인지 헷갈렸다.
+ */
+function SlotStem({
+  q,
+  num,
+  value,
+  onAnswer,
+  readOnly,
+  matchPick,
+}: {
+  q: Question;
+  num: number;
+  value: number | string | undefined;
+  onAnswer: (value: number | string) => void;
+  readOnly: boolean;
+  matchPick?: MatchPick | null;
+}) {
+  const flows = slotFlows(q.stem);
+  const blanks = q.blanks ?? [];
+  const values = splitBlanks(value, blanks.length);
+  const put = (i: number, v: string) => {
+    const next = values.slice();
+    next[i] = v;
+    onAnswer(joinBlanks(next));
+  };
+  const indexOf = (m: SlotMark) => blanks.findIndex((b) => b.slot === m.key);
+  const placed = new Set(
+    flows.flatMap((f) =>
+      "block" in f ? [indexOf(f.block)] : f.line.flatMap((r) => ("mark" in r ? [indexOf(r.mark)] : [])),
+    ),
+  );
+  /* 발문에 자리가 없는 칸 — 표지를 지운 뒤 칸만 남은 옛 문항. 예전처럼 발문 아래에 늘어놓는다 */
+  const loose = blanks.map((_, i) => i).filter((i) => !placed.has(i));
+
+  /* 음성 입력이 받아 적을 문장 안 짧은 칸 */
+  const shorts = blanks.flatMap((b, i) => (placed.has(i) && slotKindOf(b.slot) === "short" ? [i] : []));
+  const [target, setTarget] = useState<number | null>(null);
+  const aim = target ?? shorts.find((i) => !values[i].trim()) ?? shorts[0] ?? null;
+
+  const inline = (m: SlotMark, key: number) => {
+    const i = indexOf(m);
+    if (i < 0) return null;
+    const b = blanks[i];
+    const v = values[i];
+    if (m.kind === "short") {
+      return (
+        <span key={key} className="relative z-20 mx-0.5 inline-flex items-baseline gap-1">
+          {readOnly ? (
+            <span
+              className="inline-block min-w-[4.5em] border-b border-exam-text px-2 text-center font-bold"
+              style={{ minWidth: slotWidth(v) }}
+            >
+              {v.trim() || " "}
+            </span>
+          ) : (
+            <input
+              value={v}
+              onChange={(e) => put(i, e.target.value)}
+              onFocus={() => setTarget(i)}
+              placeholder={b.placeholder}
+              aria-label={`${num}번 ${i + 1}번째 빈칸`}
+              style={{ width: slotWidth(v || b.placeholder || "") }}
+              className="h-9 max-w-full border-b border-exam-text/50 bg-transparent px-1.5 text-center text-[15px] font-bold text-exam-text outline-none transition-colors placeholder:font-normal placeholder:text-exam-muted/50 focus:border-exam-text"
+            />
+          )}
+          {b.suffix && <span>{b.suffix}</span>}
+          {!readOnly && aim === i && (
+            <DictateButton
+              compact
+              label={`${i + 1}번째 빈칸`}
+              onText={(t) => {
+                put(i, t.trim());
+                /* 받아 적은 빈칸에 단추를 붙들어 둔다 — 그대로 두면 다음 빈칸으로 옮겨 가 듣던 것이 끊긴다 */
+                setTarget(i);
+              }}
+            />
+          )}
+        </span>
+      );
+    }
+    const options = (m.kind === "ox" ? ["O", "X"] : (b.options ?? [])).filter((o) => o.trim());
+    return (
+      <span
+        key={key}
+        role="radiogroup"
+        aria-label={`${num}번 ${i + 1}번째 ${m.kind === "ox" ? "O · X" : "고르는 칸"}`}
+        className="relative z-20 mx-0.5 inline-flex flex-wrap items-center gap-1.5 align-middle"
+      >
+        {options.map((o) => {
+          const on = v === o;
+          return (
+            <label
+              key={o}
+              className={`relative inline-flex items-center justify-center border text-[14px] transition-colors ${
+                m.kind === "ox" ? "h-8 w-8 rounded-full font-bold" : "rounded-[2px] px-3 py-1"
+              } ${
+                on
+                  ? "border-exam-text bg-exam-text font-bold text-white"
+                  : `border-exam-line text-exam-text ${readOnly ? "" : "hover:border-exam-muted"}`
+              } ${readOnly ? "cursor-default" : "cursor-pointer"} has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-exam-text`}
+            >
+              <input
+                type="radio"
+                name={`${q.id}-slot-${i}`}
+                checked={on}
+                disabled={readOnly}
+                /* 같은 것을 다시 누르면 지운다 — 잘못 고른 것을 되돌릴 길 */
+                onClick={() => put(i, on ? "" : o)}
+                onChange={() => {}}
+                className="sr-only"
+              />
+              {o}
+            </label>
+          );
+        })}
+      </span>
+    );
+  };
+
+  const line = (runs: SlotRun[]) =>
+    runs.map((r, k) =>
+      "mark" in r ? inline(r.mark, k) : "text" in r ? <WithBlanks key={k} text={r.text} /> : null,
+    );
+
+  const block = (m: SlotMark) => {
+    if (m.kind === "photo") {
+      return q.upload ? <ImageAnswer value={value} onAnswer={onAnswer} readOnly={readOnly} /> : null;
+    }
+    if (m.kind === "match") {
+      return q.match ? (
+        <MatchAnswer
+          match={q.match}
+          value={value}
+          onAnswer={onAnswer}
+          readOnly={readOnly}
+          answer={readOnly ? q.match.pairs : undefined}
+          pick={matchPick}
+        />
+      ) : null;
+    }
+    const i = indexOf(m);
+    if (i < 0) return null;
+    const b = blanks[i];
+    const v = values[i];
+    if (m.kind === "draw") {
+      return (
+        <div className="mt-5">
+          <DrawPad
+            background={b.draw ?? ""}
+            value={v}
+            onChange={(x) => put(i, x)}
+            label={`${i + 1}번째`}
+            readOnly={readOnly}
+            inset={false}
+          />
+        </div>
+      );
+    }
+    const long = m.kind === "essay";
+    return (
+      <div className="mt-5">
+        {readOnly ? (
+          <p
+            className={`relative z-20 whitespace-pre-wrap rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text [overflow-wrap:anywhere] ${
+              long ? "min-h-[6.5rem]" : "min-h-[4.5rem]"
+            }`}
+          >
+            {v.trim() ? (
+              v
+            ) : (
+              <span className="font-sans text-[13px] text-exam-muted">쓰지 않았습니다.</span>
+            )}
+          </p>
+        ) : (
+          <>
+            <textarea
+              rows={long ? 9 : 4}
+              value={v}
+              onChange={(e) => put(i, e.target.value)}
+              placeholder={b.placeholder ?? "여기에 쓰세요"}
+              aria-label={`${num}번 ${i + 1}번째 ${long ? "논술형" : "서술형"} 답 칸`}
+              className="relative z-20 w-full rounded-[2px] border border-exam-line bg-exam-panel px-4 py-3.5 text-[14px] leading-[1.9] text-exam-text outline-none transition-colors placeholder:text-exam-muted/60 focus:border-exam-text"
+            />
+            <DictateBar onText={(t) => put(i, addSpoken(v, t))}>{v.trim().length}자</DictateBar>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const [head, ...rest] = flows;
+  const opening = head && "line" in head ? head.line : [];
+  const after = head && "block" in head ? flows : rest;
+
+  /* 두 칸 격자 — 번호 | 글. 발문 뒤에 이어지는 글줄(「(2) …」 · 「○ 이유 :」)도 둘째 칸에 서서 발문
+     글과 같은 자리에서 시작하고, 칸(쓰는 칸 · 그림 칸 · 자료)은 두 칸을 다 쓴다 — 다른 문항의 답 칸과
+     같은 폭이다 */
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 text-[15px] leading-[1.7] text-exam-text">
+      <span aria-hidden className="font-bold tabular-nums">
+        {num}.
+      </span>
+      <h1 className="min-w-0 whitespace-pre-line">
+        <span className="sr-only">{num}. </span>
+        {line(opening)}
+      </h1>
+
+      {q.blocks && q.blocks.length > 0 && (
+        <div className="col-span-2">
+          <BlockList blocks={q.blocks} className="mt-6" />
+        </div>
+      )}
+
+      {after.map((f, k) => (
+        <Fragment key={k}>
+          {"block" in f ? (
+            <div className="col-span-2 min-w-0">{block(f.block)}</div>
+          ) : (
+            <p className="col-start-2 mt-5 min-w-0 whitespace-pre-line">{line(f.line)}</p>
+          )}
+        </Fragment>
+      ))}
+
+      {loose.length > 0 && (
+        <div className="col-span-2">
+          <BlankFields q={q} blanks={blanks} value={value} onAnswer={onAnswer} readOnly={readOnly} only={loose} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2256,6 +2523,7 @@ function BlankFields({
   value,
   onAnswer,
   readOnly = false,
+  only,
 }: {
   q: Question;
   blanks: Blank[];
@@ -2266,6 +2534,11 @@ function BlankFields({
    * 쓰는 칸은 글이 길어도 모두 보이도록 칸 대신 글로 세운다.
    */
   readOnly?: boolean;
+  /**
+   * 이 차례의 칸만 세운다 — 답 칸 표지로 쓴 문항에서 발문에 자리가 없는 칸(SlotStem).
+   * 답은 칸 전체의 차례로 담으므로 칸을 걸러 넘기지 않고 차례만 넘긴다.
+   */
+  only?: number[];
 }) {
   const values = splitBlanks(value, blanks.length);
   const put = (i: number, v: string) => {
@@ -2276,6 +2549,7 @@ function BlankFields({
   return (
     <ul className="mt-7 space-y-5">
       {blanks.map((b, i) => {
+        if (only && !only.includes(i)) return null;
         const id = `${q.id}-blank-${i}`;
         const label = (sep: string) => (
           <>
@@ -2479,6 +2753,7 @@ function DrawPad({
   onChange,
   label,
   readOnly = false,
+  inset = true,
 }: {
   background: string;
   value: string;
@@ -2486,6 +2761,8 @@ function DrawPad({
   label: string;
   /** 그린 것을 보기만 한다(답안 풀이) — 펜 · 지우개를 걷고 그림만 세운다 */
   readOnly?: boolean;
+  /** 칸 이름 아래로 들여 세우는가 — 발문의 표지 자리에 서는 그림 칸(SlotStem)은 들이지 않는다 */
+  inset?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -2546,7 +2823,7 @@ function DrawPad({
 
   if (readOnly) {
     return (
-      <div className="mt-2.5 pl-6">
+      <div className={inset ? "mt-2.5 pl-6" : "mt-2.5"}>
         <div
           className="relative aspect-square w-full max-w-[20rem] overflow-hidden rounded-[2px] border border-exam-text/60 bg-white bg-cover bg-center"
           style={background ? { backgroundImage: `url(${background})` } : undefined}
@@ -2569,7 +2846,7 @@ function DrawPad({
   }
 
   return (
-    <div className="mt-2.5 pl-6">
+    <div className={inset ? "mt-2.5 pl-6" : "mt-2.5"}>
       <div
         className="relative aspect-square w-full max-w-[20rem] overflow-hidden rounded-[2px] border border-exam-text/60 bg-white bg-cover bg-center"
         style={background ? { backgroundImage: `url(${background})` } : undefined}

@@ -15,6 +15,7 @@ import {
   ExamFree,
   ExamMatch,
   ExamPaid,
+  ExamSlots,
   ExamTrial,
 } from "@/components/design/screens/ExamSessions";
 import ExpertSignup from "@/components/design/screens/ExpertSignup";
@@ -23,6 +24,7 @@ import GradingAnswers from "@/components/design/screens/GradingAnswers";
 import GradingMembers from "@/components/design/screens/GradingMembers";
 import InterviewDetail from "@/components/design/screens/InterviewDetail";
 import ItemPreviewScreen from "@/components/design/screens/ItemPreviewScreen";
+import ItemSlots, { ItemSlotsSet } from "@/components/design/screens/ItemSlots";
 import InterviewRecord from "@/components/design/screens/InterviewRecord";
 import Mails from "@/components/design/screens/Mails";
 import Metrics from "@/components/design/screens/Metrics";
@@ -81,6 +83,7 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "exam-free": ExamFree,
   "exam-paid": ExamPaid,
   "exam-match": ExamMatch,
+  "exam-slots": ExamSlots,
   "interview-detail": InterviewDetail,
   "counselor-detail": CounselorDetail,
   "settings-interview": SettingsInterview,
@@ -94,6 +97,8 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "report-templates": ReportTemplates,
   privacy: Privacy,
   "item-preview": ItemPreviewScreen,
+  "item-slots": ItemSlots,
+  "item-slots-set": ItemSlotsSet,
   schedulers: Schedulers,
   "privacy-purge": PrivacyPurge,
   "my-counsel": MyCounselStatus,

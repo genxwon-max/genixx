@@ -18,7 +18,7 @@ import {
   type SubjectId,
 } from "@/lib/exam";
 import { evalName, trackOf, type Availability, type TrackId } from "@/lib/examCatalog";
-import { matchBank, matchQuestion } from "@/lib/examDesign";
+import { matchBank, matchQuestion, slotBank, slotQuestion } from "@/lib/examDesign";
 import type { ExamRecord, SubjectRecord } from "@/lib/examStore";
 import { gradesOf, type GradeLine, type GradeMarks, type GradeSubject } from "@/lib/gradeSheet";
 import type { TicketUse, UseTier, Wallet } from "@/lib/ticketStore";
@@ -470,5 +470,46 @@ export const flowMatch = {
   at: {
     subject: "science" as SubjectId,
     no: tierQuestions("paid", "science", null, matchBank).indexOf(matchQuestion) + 1,
+  },
+};
+
+/* ───────────────────────── 답 칸 표지 문항이 든 답안지 ───────────────────────── */
+
+/**
+ * 답 칸 표지로 쓴 문항(lib/examDesign.ts의 slotQuestion)에 낸 답 — 칸 차례대로(정답 1 · 서술형 1).
+ * 짧은 칸은 맞혔고, 이유는 수증기가 모여 거품이 된다는 것까지 썼다. 서술 칸이 있어 문항은 통째로
+ * 전문가가 채점한다(채점 중).
+ */
+const slotAnswer = [
+  "수증기",
+  "물이 끓으면 물이 수증기로 변하는데, 그 수증기가 모여서 거품이 되어 위로 올라오기 때문이다.",
+];
+
+const slotRecord: ExamRecord = {
+  ...flowRecords.q3,
+  subjects: {
+    ...flowRecords.q3.subjects,
+    science: {
+      ...flowRecords.q3.subjects.science,
+      answers: {
+        ...flowRecords.q3.subjects.science.answers,
+        [slotQuestion.id]: joinBlanks(slotAnswer),
+      },
+    },
+  },
+};
+
+/**
+ * 답 칸 표지 문항이 든 3분기 답안지 — 정답과 해설 · 회원 채점 디자인의 표지 문항 화면이 쓴다.
+ * 선 잇기 답안지(flowMatch)와 같은 자리, 과학 5번에 그 문항을 넣은 시험지(slotBank)로 편 것이다.
+ */
+export const flowSlots = {
+  bank: slotBank,
+  record: slotRecord,
+  sheet: sheetOf(slotRecord, slotBank),
+  /** 그 문항의 과목과 번호 */
+  at: {
+    subject: "science" as SubjectId,
+    no: tierQuestions("paid", "science", null, slotBank).indexOf(slotQuestion) + 1,
   },
 };
