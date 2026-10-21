@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { themeOf } from "@/lib/authVariant";
 import { designLinks } from "@/lib/designScreens";
-import { phaseTone, subjectTone } from "@/lib/progress";
+import { phaseTone, subjectTone, type Phase, type SubjectState } from "@/lib/progress";
 import SectionTitle from "@/components/exam/SectionTitle";
 import { AccHead, card, listTd, listTh } from "@/components/account/ui";
 import { Head, btnGo, btnQuiet, cardBox } from "@/components/student/self";
 import { Button } from "@/components/ui/button";
 import DashFrame, { AlertRow, BellPanel, type Alert } from "../DashFrame";
+import { photoFlow } from "./photoFlow";
 
 /**
  * 알림 — 머리글의 종 · 알림 목록 · 알림 전체 보기 (WBS 7.1.1 · M.2.14) — 디자인.
@@ -21,6 +22,10 @@ import DashFrame, { AlertRow, BellPanel, type Alert } from "../DashFrame";
  *
  * 학생에게는 진단 · 결과 · 설문 알림만 간다. 결제와 면담 알림은 만 14세 이상 학생에게만 간다 —
  * 그 메뉴가 만 14세 이상에게만 있기 때문이다.
+ *
+ * 사진 다시 받기(2026-10-21) — 운영자가 답 사진을 다시 올려 달라고 요청하면 보호자와 학생의 종에 그
+ * 요청이 맨 위에 서고, 홈에도 할 일로 선다(…/photo). 이 상태만은 예시 사람이 다르다 — 학생 이서준과
+ * 그 보호자 이정민이다(./photoFlow.ts). 보호자 홈의 다른 상태는 김지은의 홈 그대로다.
  */
 
 const t = themeOf(2);
@@ -56,10 +61,40 @@ const teenAlerts: Alert[] = [
   { kind: "설문", title: "학생 설문을 모두 제출했습니다", body: "설문 3개를 모두 작성했습니다.", at: "10.06" },
 ];
 
+/* ── 사진 다시 받기 — 이서준의 보호자 이정민과 이서준이 받는 알림 ── */
+
+const { question, request } = photoFlow;
+
+const parentPhotoAlerts: Alert[] = [
+  {
+    kind: "진단",
+    title: `${photoFlow.student.name} 학생의 수학 답 사진을 다시 올려 주세요`,
+    body: `사진이 흐려서 채점자가 답을 읽지 못했습니다. ${request.dueShort} 23:59까지 다시 찍어 올려 주세요.`,
+    at: "방금 전",
+    unread: true,
+  },
+  { kind: "진단", title: "이서준 학생이 최종 제출을 마쳤습니다", body: "2026 4분기 초4 진단 · 결과가 발행되면 알려 드립니다.", at: "10.12" },
+  { kind: "설문", title: "보호자 설문이 아직 남아 있습니다", body: "이서준 학생의 설문 3개 가운데 1개가 제출되었습니다.", at: "10.10" },
+  { kind: "결과", title: "이서준 학생의 진단 결과가 발행되었습니다", body: "2026 3분기 초4 진단 결과를 확인할 수 있습니다.", at: "10.02" },
+];
+
+const studentPhotoAlerts: Alert[] = [
+  {
+    kind: "진단",
+    title: `${question.label} 사진을 다시 올려 주세요`,
+    body: `사진이 흐려서 답을 읽지 못했습니다. ${request.dueShort}까지 처음 쓴 종이를 다시 찍어 올려 주세요.`,
+    at: "방금 전",
+    unread: true,
+  },
+  { kind: "진단", title: "최종 제출을 마쳤습니다", body: "2026 4분기 초4 진단 · 결과가 나오면 알려 드립니다.", at: "10.12" },
+  { kind: "결과", title: "진단 결과가 나왔습니다", body: "2026 3분기 초4 진단 결과를 볼 수 있습니다.", at: "10.02" },
+];
+
 /* ───────────────────────── 보호자 ───────────────────────── */
 
 export function MyBell({ state }: { state: string }) {
   const to = designLinks("my-bell");
+  if (state === "photo" || state === "photo/alerts") return <MyBellPhoto open={state === "photo/alerts"} />;
   const open = state === "alerts" || state === "alerts-empty";
   const none = state === "alerts-empty" || state === "read";
   return (
@@ -84,19 +119,85 @@ export function MyBell({ state }: { state: string }) {
   );
 }
 
-const children = [
-  { name: "김도현", age: 10, grade: "초등 4학년", code: "H7KM-2QXP", subjects: ["완료", "완료", "완료"] as const, surveys: 3, phase: "최종제출" as const },
-  { name: "김서아", age: 9, grade: "초등 3학년", code: "R4TN-8WCE", subjects: ["완료", "진행중", "미완료"] as const, surveys: 1, phase: "응시중" as const },
+/** 사진 요청이 온 보호자의 홈 — 종에 새 알림 한 건, 홈 맨 위에 할 일 한 줄 */
+function MyBellPhoto({ open }: { open: boolean }) {
+  const to = designLinks("my-bell");
+  return (
+    <DashFrame
+      who="parent"
+      person={{ name: photoFlow.guardian.name, chip: { k: "등록 학생", v: "1명" } }}
+      at="/my"
+      unread={1}
+      bellHref={to(open ? "photo" : "photo/alerts")}
+      bellOpen={open}
+      panel={
+        open ? (
+          <BellPanel alerts={parentPhotoAlerts} allHref="/design/my/notifications" settingsHref="/my/account/notification" />
+        ) : undefined
+      }
+    >
+      <ParentHomeCopy name={photoFlow.guardian.name} kids={photoKids} todo={<PhotoTodo />} />
+    </DashFrame>
+  );
+}
+
+/** 보호자 홈 맨 위의 할 일 — 누르면 알림톡의 링크와 같은 사진 다시 올리기 화면이 열린다 */
+function PhotoTodo() {
+  return (
+    <section className="mt-7 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-amber-200 bg-amber-50 p-5 sm:p-6">
+      <div className="min-w-[15rem] flex-1">
+        <p className="text-[16px] font-bold text-amber-950">
+          {photoFlow.student.name} 학생 · {question.label} 답 사진을 다시 올려 주세요
+        </p>
+        <p className="mt-1 text-[13.5px] leading-[1.7] text-amber-900">
+          사진이 흐려서 채점자가 답을 읽지 못했습니다. {request.dueText}까지 처음 쓴 종이를 다시 찍어 올려 주세요.
+          올리면 채점을 이어서 합니다.
+        </p>
+      </div>
+      <Link href="/design/answer/photo" className={t.btnAction}>
+        사진 다시 올리기
+      </Link>
+    </section>
+  );
+}
+
+type Kid = {
+  name: string;
+  age: number;
+  grade: string;
+  code: string;
+  subjects: readonly SubjectState[];
+  surveys: number;
+  phase: Phase;
+};
+
+const children: Kid[] = [
+  { name: "김도현", age: 10, grade: "초등 4학년", code: "H7KM-2QXP", subjects: ["완료", "완료", "완료"], surveys: 3, phase: "최종제출" },
+  { name: "김서아", age: 9, grade: "초등 3학년", code: "R4TN-8WCE", subjects: ["완료", "진행중", "미완료"], surveys: 1, phase: "응시중" },
+];
+
+/** 이정민이 등록한 학생 — 4분기 진단을 최종 제출했다(학생 설문만 냈다) */
+const photoKids: Kid[] = [
+  { name: photoFlow.student.name, age: 10, grade: photoFlow.student.grade, code: photoFlow.student.code, subjects: ["완료", "완료", "완료"], surveys: 1, phase: "최종제출" },
 ];
 
 /** 보호자 홈(/my)을 예시 값으로 옮긴 것 — components/account/ParentHome.tsx와 같은 표 */
-function ParentHomeCopy() {
+function ParentHomeCopy({
+  name = "김지은",
+  kids = children,
+  todo,
+}: {
+  name?: string;
+  kids?: Kid[];
+  /** 머리와 학생 표 사이에 세울 할 일 */
+  todo?: React.ReactNode;
+}) {
   return (
     <>
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-soft-line pb-5">
         <div className="min-w-[16rem] flex-1">
           <h1 className="text-[26px] font-bold tracking-tight text-soft-ink sm:text-[28px]">
-            김지은님, 안녕하세요
+            {name}님, 안녕하세요
           </h1>
         </div>
         <div className="flex flex-wrap gap-2.5">
@@ -109,6 +210,8 @@ function ParentHomeCopy() {
         </div>
       </header>
 
+      {todo}
+
       <section className="mt-7">
         <SectionTitle
           right={
@@ -117,7 +220,7 @@ function ParentHomeCopy() {
             </Button>
           }
         >
-          등록 학생 2명
+          등록 학생 {kids.length}명
         </SectionTitle>
 
         <div className={`${t.card} overflow-x-auto`}>
@@ -136,7 +239,7 @@ function ParentHomeCopy() {
               </tr>
             </thead>
             <tbody>
-              {children.map((c) => {
+              {kids.map((c) => {
                 const tone = phaseTone[c.phase];
                 return (
                   <tr key={c.name}>
@@ -271,35 +374,36 @@ export function MyNotifications({ state }: { state: string }) {
 export function StudentBell({ state }: { state: string }) {
   const to = designLinks("student-bell");
   const teen = state.startsWith("teen");
+  /** 운영자가 답 사진을 다시 올려 달라고 요청한 뒤 */
+  const photo = state.startsWith("photo");
   const open = state.endsWith("alerts") || state === "alerts-empty";
   const none = state === "alerts-empty";
-  const openSlug = teen ? "teen/alerts" : none ? "alerts-empty" : "alerts";
-  const closedSlug = teen ? "teen" : "";
+  const openSlug = teen ? "teen/alerts" : photo ? "photo/alerts" : none ? "alerts-empty" : "alerts";
+  const closedSlug = teen ? "teen" : photo ? "photo" : "";
 
   return (
     <DashFrame
       who={teen ? "teen" : "student"}
       at="/student"
-      unread={none ? 0 : 2}
+      unread={none ? 0 : photo ? 1 : 2}
       bellHref={to(open ? closedSlug : openSlug)}
       bellOpen={open}
       panel={
         open ? (
-          <BellPanel alerts={none ? [] : teen ? teenAlerts : studentAlerts} />
+          <BellPanel alerts={none ? [] : teen ? teenAlerts : photo ? studentPhotoAlerts : studentAlerts} />
         ) : undefined
       }
     >
-      <StudentHomeCopy teen={teen} />
+      <StudentHomeCopy teen={teen} photo={photo} />
     </DashFrame>
   );
 }
 
 /** 학생 홈(/student)을 예시 값으로 옮긴 것 — components/student/StudentHome.tsx와 같은 구성 */
-function StudentHomeCopy({ teen }: { teen: boolean }) {
-  const subjects = teen
-    ? (["완료", "완료", "완료"] as const)
-    : (["완료", "진행중", "미완료"] as const);
-  const phase = teen ? ("최종제출" as const) : ("응시중" as const);
+function StudentHomeCopy({ teen, photo = false }: { teen: boolean; photo?: boolean }) {
+  const done = teen || photo;
+  const subjects: readonly SubjectState[] = done ? ["완료", "완료", "완료"] : ["완료", "진행중", "미완료"];
+  const phase: Phase = done ? "최종제출" : "응시중";
   const tone = phaseTone[phase];
 
   return (
@@ -318,18 +422,32 @@ function StudentHomeCopy({ teen }: { teen: boolean }) {
           <div className="min-w-[15rem] flex-1">
             <p className="text-[12.5px] font-semibold text-soft-muted">지금 할 일</p>
             <p className="mt-2 text-[17px] font-bold leading-[1.6] text-soft-ink sm:text-[18px]">
-              {teen ? "최종 제출을 마쳤습니다. 결과는 「진단 결과」에서 봅니다." : "2과목이 남았습니다."}
+              {photo
+                ? `${question.label} 사진을 다시 올려 주세요. 처음 올린 사진이 흐려서 답을 읽지 못했습니다.`
+                : teen
+                  ? "최종 제출을 마쳤습니다. 결과는 「진단 결과」에서 봅니다."
+                  : "2과목이 남았습니다."}
             </p>
             <p className="mt-2 text-[13px] text-soft-muted">
-              {teen ? "2026 3분기 중2 진단" : "2026 4분기 초4 진단"}
+              {photo
+                ? `2026 4분기 초4 진단 · ${request.dueText}까지`
+                : teen
+                  ? "2026 3분기 중2 진단"
+                  : "2026 4분기 초4 진단"}
             </p>
           </div>
-          {/* 누르면 가는 곳도 디자인 화면이다 — 결과 목록 · 지금 응시하는 진단 */}
+          {/* 누르면 가는 곳도 디자인 화면이다 — 사진 다시 올리기 · 결과 목록 · 지금 응시하는 진단 */}
           <Link
-            href={teen ? "/design/student/results" : "/design/student/exams/2026-4/e4/doing"}
+            href={
+              photo
+                ? "/design/student/exams/2026-4/e4/photo/upload"
+                : teen
+                  ? "/design/student/results"
+                  : "/design/student/exams/2026-4/e4/doing"
+            }
             className={btnGo}
           >
-            {teen ? "결과 보기" : "진단 보기"} →
+            {photo ? "사진 다시 올리기" : teen ? "결과 보기" : "진단 보기"} →
           </Link>
         </div>
       </section>

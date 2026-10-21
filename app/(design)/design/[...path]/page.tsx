@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { designPaths, findDesign } from "@/lib/designScreens";
+import Alimtalk from "@/components/design/screens/Alimtalk";
 import Approvals from "@/components/design/screens/Approvals";
 import AuditInterview from "@/components/design/screens/AuditInterview";
 import { MyBell, MyNotifications, StudentBell } from "@/components/design/screens/Bells";
@@ -21,6 +22,7 @@ import {
 import ExpertSignup from "@/components/design/screens/ExpertSignup";
 import Experts from "@/components/design/screens/Experts";
 import GradingAnswers from "@/components/design/screens/GradingAnswers";
+import GradingChecks from "@/components/design/screens/GradingChecks";
 import GradingMembers from "@/components/design/screens/GradingMembers";
 import InterviewDetail from "@/components/design/screens/InterviewDetail";
 import ItemPreviewScreen from "@/components/design/screens/ItemPreviewScreen";
@@ -32,6 +34,7 @@ import MyCounselStatus from "@/components/design/screens/MyCounselStatus";
 import MyInterview, { StudentInterview } from "@/components/design/screens/MyInterview";
 import NotificationSettings from "@/components/design/screens/NotificationSettings";
 import PaymentsCounsel from "@/components/design/screens/PaymentsCounsel";
+import PhotoAgainLink from "@/components/design/screens/PhotoAgain";
 import Privacy from "@/components/design/screens/PrivacyList";
 import PrivacyPurge from "@/components/design/screens/PrivacyPurge";
 import ReportAnswers from "@/components/design/screens/ReportAnswers";
@@ -91,6 +94,7 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "payments-counsel": PaymentsCounsel,
   "audit-interview": AuditInterview,
   "grading-answers": GradingAnswers,
+  "grading-checks": GradingChecks,
   "grading-members": GradingMembers,
   "report-approval": ReportApproval,
   "report-rules": ReportRules,
@@ -112,6 +116,8 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "student-answers": StudentAnswersScreen,
   "student-result-wait": StudentResultWait,
   "report-answers": ReportAnswers,
+  "answer-photo": PhotoAgainLink,
+  alimtalk: Alimtalk,
 };
 
 export const dynamicParams = false;

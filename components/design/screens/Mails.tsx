@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogoLockup } from "@/components/Logo";
 import { company } from "@/lib/site";
+import { photoFlow, retakeTips } from "./photoFlow";
 
 /**
  * 이메일 알림 본문 (WBS Q3 1.1 「이메일」 · v4/ns/7.1.2) — 디자인.
@@ -15,7 +16,23 @@ import { company } from "@/lib/site";
  *
  * 콘솔에서 일하는 사람은 운영자가 계정을 만들어 주지 않고 전문가로 가입해 승인을 받는다 —
  * 그래서 「계정 발급」 메일은 없고, 가입 신청 접수 · 승인 · 반려 세 가지가 있다.
+ *
+ * 답 사진 다시 올리기 세 가지(2026-10-21) — 운영자의 요청 · 기한 하루 전 안내 · 다시 올린 사진을
+ * 받았다는 안내. 받는 사람은 이서준의 보호자 이정민이다(./photoFlow.ts). 앞의 둘은 결과가 늦어지는
+ * 일이라 수신 설정과 관계없이 보낸다. 같은 내용을 알림톡으로도 보낸다(./Alimtalk.tsx).
  */
+
+const photoTo = `${photoFlow.guardian.name} <${photoFlow.guardian.email}>`;
+const photoRows: [string, string][] = [
+  ["진단", photoFlow.diag.name],
+  ["학생", `${photoFlow.student.name} · ${photoFlow.student.grade}`],
+  ["문항", `${photoFlow.question.label} · 사진으로 답하는 문항`],
+];
+/** 「밝은 곳에서 · 종이 전체가 들어오게 · 위에서 똑바로」 */
+const tipLine = retakeTips
+  .slice(0, 3)
+  .map((tip) => tip.head)
+  .join(" · ");
 
 type Mail = {
   /** 받은편지함에 보이는 제목 */
@@ -169,6 +186,59 @@ const mails: Record<string, Mail> = {
     ],
     cta: { label: "진단 결과 보기", href: "/exam/result" },
     notes: ["결과에는 점수와 재능 유형이 담겨 있어 메일에는 적지 않습니다. 로그인한 뒤 확인해 주세요."],
+  },
+  "photo-request": {
+    subject: `[GENIXX] ${photoFlow.student.name} 학생의 수학 답 사진을 다시 올려 주세요 (${photoFlow.request.dueShort}까지)`,
+    preview: "사진이 흐려서 채점자가 답을 읽지 못했습니다. 처음 쓴 종이를 다시 찍어 올려 주세요.",
+    to: photoTo,
+    title: "답 사진을 다시 올려 주세요",
+    body: [
+      `${photoFlow.student.name} 학생이 ${photoFlow.diag.name}의 ${photoFlow.question.label} 답으로 올린 사진이 흐려서, 채점자가 답을 읽지 못했습니다.`,
+      "학생이 처음에 쓴 종이를 밝은 곳에서 다시 찍어 올려 주세요. 답을 고치거나 새로 쓰지 말고 그 종이를 그대로 찍어 주셔야 합니다.",
+    ],
+    rows: [
+      ...photoRows,
+      ["다시 올릴 이유", photoFlow.flagged.reason],
+      ["다시 찍는 법", tipLine],
+      ["올릴 기한", `2026.10.17(토) 23:59까지`],
+    ],
+    cta: { label: "사진 다시 올리기", href: `/design${photoFlow.request.link}` },
+    notes: [
+      "버튼은 로그인하지 않아도 열리며, 기한까지만 쓸 수 있습니다. 학생 대시보드의 「내 진단」에서도 올릴 수 있고, 둘 중 한 곳에서만 올리면 됩니다.",
+      "기한까지 올리지 않으면 지금 사진으로 채점합니다. 글씨를 읽을 수 없으면 이 문항은 점수를 받지 못할 수 있습니다.",
+      "다른 문항의 답은 고칠 수 없습니다.",
+    ],
+    required: true,
+  },
+  "photo-remind": {
+    subject: "[GENIXX] 내일까지 답 사진을 다시 올려 주세요",
+    preview: `${photoFlow.student.name} 학생 · ${photoFlow.question.label} · ${photoFlow.request.dueText}까지`,
+    to: photoTo,
+    title: "답 사진 올릴 기한이 하루 남았습니다",
+    body: [
+      `${photoFlow.student.name} 학생의 ${photoFlow.question.label} 답 사진이 아직 올라오지 않았습니다.`,
+      "내일 밤 23:59까지 올려 주시면 채점을 이어서 합니다. 처음에 쓴 종이를 그대로 찍어 주세요.",
+    ],
+    rows: [...photoRows, ["올릴 기한", "2026.10.17(토) 23:59까지 · 하루 남음"]],
+    cta: { label: "사진 다시 올리기", href: `/design${photoFlow.request.link}` },
+    notes: [
+      "기한까지 올리지 않으면 지금 사진으로 채점합니다. 글씨를 읽을 수 없으면 이 문항은 점수를 받지 못할 수 있습니다.",
+      "이미 올리셨다면 이 메일은 무시해 주세요. 올리신 뒤에는 이 안내가 가지 않습니다.",
+    ],
+    required: true,
+  },
+  "photo-received": {
+    subject: "[GENIXX] 다시 올리신 답 사진을 받았습니다",
+    preview: `${photoFlow.student.name} 학생 · ${photoFlow.question.label} · 채점을 이어서 합니다.`,
+    to: photoTo,
+    title: "다시 올리신 사진을 받았습니다",
+    body: [
+      "보내 주신 사진으로 채점을 이어서 합니다.",
+      `채점이 모두 끝나면 ${photoFlow.student.name} 학생의 진단 결과가 발행되고, 발행되면 다시 알려 드립니다.`,
+    ],
+    rows: [...photoRows, ["받은 때", "2026.10.15(목) 20:12"]],
+    /* 받았다는 안내라 할 일이 없다 — 단추를 두지 않는다 */
+    notes: ["사진을 잘못 보내셨다면 기한(10.17 토 23:59) 안에 1:1 문의로 알려 주세요."],
   },
   "counsel-confirmed": {
     subject: "[GENIXX] 면담 예약이 확정되었습니다 (10.15 목 14:00)",

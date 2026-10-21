@@ -10,7 +10,7 @@ import GradeSheet from "@/components/admin2/GradeSheet";
 import type { GradeAt } from "@/components/exam/GradeDialog";
 import { Body, PageHead, Panel, Tab } from "@/components/admin2/ui";
 import ConsoleFrame, { type ConsoleMe } from "../ConsoleFrame";
-import { flowFacts, flowMarks, flowMatch, flowSeat, flowSheet, flowSlots } from "./studentFlow";
+import { flowBlur, flowFacts, flowMarks, flowMatch, flowSeat, flowSheet, flowSlots } from "./studentFlow";
 
 /**
  * 회원 채점 (실제 주소 /admin2/grading/members · /admin2/grading/members/[답안지]) — 디자인.
@@ -38,6 +38,11 @@ import { flowFacts, flowMarks, flowMatch, flowSeat, flowSheet, flowSlots } from 
  * 출제할 때 답 칸 표지(「( [정답1] )」 · 「{서술형1}」)로 쓴 문항이 든 시험지의 채점 창도 같은 자리에
  * 두었다(…/grade/slots, 2026-10-16). 아이가 낸 답이 괄호 자리 · 「이유를 쓰시오」 아래에 그대로
  * 보이고, 문항 아래 예시 답은 칸 이름(정답 1 · 서술형 1)으로 적힌다.
+ *
+ * 사진을 알아볼 수 없을 때(2026-10-21) — 같은 답안지를 수학 3번에 흐린 사진을 낸 것으로 다시 편
+ * 화면이다(./studentFlow.ts의 flowBlur). 채점 창의 점수 칸 아래에서 「알아볼 수 없음」을 골라 운영자
+ * 확인으로 넘긴 모습(…/grade/unreadable)과, 그 뒤의 정오표 — 채점 중(…/held) · 나머지를 다 확인했는데
+ * 그 한 문항 때문에 채점이 끝나지 않은 때(…/held/done). 운영자 쪽은 ./GradingChecks.tsx.
  */
 
 const to = designLinks("grading-members");
@@ -65,7 +70,9 @@ const phasePath: Record<Phase, string> = { none: here, some: `${here}/grading`, 
  * 채점 창이 열린 상태 — 주소의 꼬리 → 창이 펴 둘 문항과, 그때 채점이 어디까지 갔는가.
  * 문항 유형마다 한 건씩 골랐다.
  */
-const benches: Record<string, { at: GradeAt; phase: Phase; alt?: "match" | "slots" }> = {
+type Alt = "match" | "slots" | "blur";
+
+const benches: Record<string, { at: GradeAt; phase: Phase; alt?: Alt; close?: string }> = {
   /* 객관식 — AI가 정답으로 채점했다. 확인만 하면 된다 */
   grade: { at: at("korean", "kor-1"), phase: "none" },
   /* 2점 만점에 2점이던 답을 1점으로 낮췄다 — 부분 정답 */
@@ -86,7 +93,12 @@ const benches: Record<string, { at: GradeAt; phase: Phase; alt?: "match" | "slot
   "grade/match": { at: flowMatch.at, phase: "some", alt: "match" },
   /* 답 칸 표지로 쓴 문항 — 짧은 칸 · 쓰는 칸이 한 문항에. 서술 칸이 있어 채점자가 매긴다 */
   "grade/slots": { at: flowSlots.at, phase: "some", alt: "slots" },
+  /* 사진이 흐려 「알아볼 수 없음」을 골랐다 — 닫으면 그 뒤의 정오표(채점 중)로 */
+  "grade/unreadable": { at: flowBlur.at, phase: "some", alt: "blur", close: `${here}/held` },
 };
+
+/** 수학 3번 사진이 흐린 답안지의 정오표 — 주소의 꼬리 → 채점이 어디까지 갔는가 */
+const blurPhases: Record<string, Phase> = { held: "some", "held/done": "done" };
 
 /** 정오표에서 누른 문항에 맞는 채점 창 주소 — 그 문항과 유형이 같은 예시로 간다 */
 function benchHref(want: GradeAt) {
@@ -108,6 +120,8 @@ function benchHref(want: GradeAt) {
 
 export default function GradingMembers({ state }: { state: string }) {
   const tail = state === flowSeat.key ? "" : state.replace(`${flowSeat.key}/`, "");
+  const bench = benches[tail];
+  const blur = blurPhases[tail];
   return (
     <ConsoleFrame at="/admin2/grading/members" me={grader} meHref="/design/admin2/me/grader" only={graderMenu}>
       {state === "" ? (
@@ -115,9 +129,10 @@ export default function GradingMembers({ state }: { state: string }) {
       ) : (
         <Sheet
           key={state}
-          phase={benches[tail]?.phase ?? phases[tail] ?? "none"}
-          gradeAt={benches[tail]?.at ?? null}
-          alt={benches[tail]?.alt}
+          phase={bench?.phase ?? blur ?? phases[tail] ?? "none"}
+          gradeAt={bench?.at ?? null}
+          alt={bench?.alt ?? (blur ? "blur" : undefined)}
+          closeTo={bench?.close}
         />
       )}
     </ConsoleFrame>
@@ -130,23 +145,30 @@ function Sheet({
   phase,
   gradeAt,
   alt,
+  closeTo,
 }: {
   phase: Phase;
   gradeAt: GradeAt | null;
-  /** 선 잇기 · 답 칸 표지 문항이 든 시험지로 편다 */
-  alt?: "match" | "slots";
+  /** 선 잇기 · 답 칸 표지 문항이 든 시험지, 수학 3번 사진이 흐린 답안지로 편다 */
+  alt?: Alt;
+  /** 채점 창을 닫으면 가는 곳 — 없으면 그 채점 단계의 정오표 */
+  closeTo?: string;
 }) {
   const router = useRouter();
   /* 점수 단추가 눌리는 모습을 보이려고 이 화면 안에서만 들고 있다 — 저장하지 않는다 */
-  const [marks, setMarks] = useState<GradeMarks>(flowMarks[phase]);
+  const [marks, setMarks] = useState<GradeMarks>(
+    alt === "blur" ? flowBlur.marks[phase === "done" ? "done" : "some"] : flowMarks[phase],
+  );
 
   const onMark = (edits: GradeEdit[]) =>
     setMarks((cur) => {
       const next = { ...cur };
       for (const e of edits) {
         const comment = e.comment.trim();
-        if (e.points === null && !comment) delete next[e.id];
-        else next[e.id] = { points: e.points ?? undefined, comment: comment || undefined };
+        /* 점수와 「알아볼 수 없음」은 함께 두지 않는다 — 저장소(lib/sheetMarkStore.ts)와 같은 규칙 */
+        const unreadable = e.points === null ? (e.unreadable ?? undefined) : undefined;
+        if (e.points === null && !comment && !unreadable) delete next[e.id];
+        else next[e.id] = { points: e.points ?? undefined, comment: comment || undefined, unreadable };
       }
       return next;
     });
@@ -156,7 +178,9 @@ function Sheet({
       seat={flowSeat.seat}
       grade={flowSeat.grade}
       roundName={roundName}
-      subjects={alt === "match" ? flowMatch.sheet : alt === "slots" ? flowSlots.sheet : flowSheet}
+      subjects={
+        alt === "match" ? flowMatch.sheet : alt === "slots" ? flowSlots.sheet : alt === "blur" ? flowBlur.sheet : flowSheet
+      }
       marks={marks}
       back={
         <Link href={to()} className="a2-btn">
@@ -167,8 +191,15 @@ function Sheet({
       /* 채점이 끝나면 이 답안지의 리포트가 만들어진다 — 9월 25일에 끝났고 스케줄러는 7일이다
          (리포트 승인 디자인의 맨 아래 줄이 이 답안지다) */
       doneNote="이 답안지의 리포트가 「리포트 승인」 목록에 있습니다. 발행 예정일은 2026-10-02입니다."
-      onOpen={(want) => router.push(benchHref(want))}
-      onClose={() => router.push(phasePath[phase])}
+      onOpen={(want) =>
+        router.push(
+          /* 흐린 사진을 낸 답안지에서 사진 문항을 누르면 「알아볼 수 없음」을 고른 창으로 */
+          alt === "blur" && want.subject === flowBlur.at.subject && want.no === flowBlur.at.no
+            ? `${here}/grade/unreadable`
+            : benchHref(want),
+        )
+      }
+      onClose={() => router.push(closeTo ?? phasePath[phase])}
       onMark={onMark}
     />
   );

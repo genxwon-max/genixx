@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { seedGraded, seedMarksOf } from "./gradedSeed";
+import type { GradeEdit, Unreadable } from "./gradeSheet";
 
 /**
  * 전문가가 응시 원본 위에 손본 것 (EXP-04-1).
@@ -27,6 +28,12 @@ export type QuestionMark = {
   points?: number;
   /** 아이와 학부모가 읽는 해설 */
   comment?: string;
+  /**
+   * 사진을 알아볼 수 없어 운영자 확인으로 넘긴 것 — 이유와 운영자에게 남긴 말(lib/gradeSheet.ts).
+   * ⚠ 운영자 확인 화면은 아직 디자인(/design/admin2/grading/checks)에만 있다. 붙일 때는 이 표시가 그
+   *   목록에 오르고, 사진이 다시 올라오면 지워져 「확인 전」으로 돌아온다.
+   */
+  unreadable?: Unreadable;
   at: string;
   by: string;
 };
@@ -138,11 +145,7 @@ export function useSheetMarks(sheetKey: string): Record<string, QuestionMark> {
  * 손댄 것이 없어진 문항은 열쇠째 지운다. 빈 값을 들고 있으면 목록이 「고침」이라고 말하고,
  * 나중에 AI 점수가 바뀌어도 그 문항만 옛 값에 붙들린다.
  */
-export function saveSheetMarks(
-  sheetKey: string,
-  edits: { id: string; points: number | null; comment: string }[],
-  by: string,
-) {
+export function saveSheetMarks(sheetKey: string, edits: GradeEdit[], by: string) {
   const cur = read();
   const next = { ...cur };
   const at = now();
@@ -153,7 +156,9 @@ export function saveSheetMarks(
     const was = cur[k];
     const points = e.points ?? undefined;
     const comment = e.comment.trim();
-    const empty = points === undefined && comment === "";
+    /* 점수와 「알아볼 수 없음」은 함께 두지 않는다 — 점수가 있으면 그 표시는 버린다 */
+    const unreadable = points === undefined ? (e.unreadable ?? undefined) : undefined;
+    const empty = points === undefined && comment === "" && !unreadable;
 
     if (empty) {
       if (was) {
@@ -162,8 +167,14 @@ export function saveSheetMarks(
       }
       continue;
     }
-    if (was && was.points === points && (was.comment ?? "") === comment) continue;
-    next[k] = { points, comment: comment || undefined, at, by };
+    if (
+      was &&
+      was.points === points &&
+      (was.comment ?? "") === comment &&
+      JSON.stringify(was.unreadable ?? null) === JSON.stringify(unreadable ?? null)
+    )
+      continue;
+    next[k] = { points, comment: comment || undefined, unreadable, at, by };
     touched += 1;
   }
 
