@@ -21,6 +21,11 @@ import {
  * 정오(정답 · 부분 정답 · 오답 · 미응답)는 따로 매기지 않는다. 지금 점수에서 읽는다
  * (lib/exam.ts markOfPoints) — 만점이면 정답, 0점이면 오답, 그 사이는 부분 정답이다.
  *
+ * 사진으로 낸 답을 알아볼 수 없으면(흐림 · 잘림 · 빛 반사 …) 채점자는 점수를 매기지 않고
+ * 「알아볼 수 없음」을 고른다(2026-10-21). 그 문항은 **운영자 확인**으로 넘어가 확인한 문항으로
+ * 세지 않는다 — 운영자가 보호자에게 사진을 다시 받아 오거나 지금 사진으로 채점하라고 돌려보내기
+ * 전까지 답안지 채점은 끝나지 않고, 리포트도 조립되지 않는다.
+ *
  * ⚠ 지시자("use client")를 붙이지 않는다. 콘솔의 화면과 디자인 보기, 학생 화면이 함께 읽는다.
  */
 
@@ -48,24 +53,44 @@ export type GradeLine = {
 /** 과목 한 벌 — 그 과목의 문항을 푼 차례대로 */
 export type GradeSubject = { id: SubjectId; short: string; lines: GradeLine[] };
 
-/** 채점자가 손본 것 — 문항 ID → 점수와 해설. 점수가 적혀 있으면 확인한 문항이다 */
-export type GradeMarks = Record<string, { points?: number; comment?: string }>;
+/**
+ * 사진을 알아볼 수 없어 점수를 매기지 않고 운영자 확인으로 넘긴 것 — 사진으로 낸 답에만 있다.
+ * reason은 아래 unreadableReasons 가운데 하나, memo는 운영자에게 남기는 말이다(아이에게는 보이지 않는다).
+ */
+export type Unreadable = { reason: string; memo?: string };
 
-/** 채점자가 화면에서 고친 것 한 건 — 저장소(lib/sheetMarkStore.ts)가 받는 꼴 */
-export type GradeEdit = { id: string; points: number | null; comment: string };
+/** 「알아볼 수 없는 이유」 — 진단 채점 · 회원 채점 · 운영자 확인이 같은 말을 쓴다 */
+export const unreadableReasons = [
+  "사진이 흐립니다",
+  "답의 일부가 잘렸습니다",
+  "너무 어둡거나 빛이 반사됩니다",
+  "문항과 관계없는 사진입니다",
+  "빈 종이입니다",
+];
+
+/** 채점자가 손본 것 — 문항 ID → 점수와 해설. 점수가 적혀 있으면 확인한 문항이다 */
+export type GradeMarks = Record<string, { points?: number; comment?: string; unreadable?: Unreadable }>;
+
+/**
+ * 채점자가 화면에서 고친 것 한 건 — 저장소(lib/sheetMarkStore.ts)가 받는 꼴.
+ * unreadable은 점수와 함께 있을 수 없다 — 점수를 매기면 지우고, 「알아볼 수 없음」을 고르면 점수를 지운다.
+ */
+export type GradeEdit = { id: string; points: number | null; comment: string; unreadable?: Unreadable | null };
 
 /**
  * 문항의 채점 상태.
  *   ai       AI의 점수만 있다 — 채점자가 아직 확인하지 않았다
  *   checked  채점자가 AI의 점수 그대로 확인했다
  *   edited   채점자가 점수를 고쳤다
+ *   held     사진을 알아볼 수 없어 운영자 확인으로 넘겼다 — 점수가 없고, 확인한 문항으로 세지 않는다
  */
-export type GradeState = "ai" | "checked" | "edited";
+export type GradeState = "ai" | "checked" | "edited" | "held";
 
 export const gradeStateLabel: Record<GradeState, string> = {
   ai: "확인 전",
   checked: "확인",
   edited: "수정",
+  held: "운영자 확인",
 };
 
 /**
@@ -76,28 +101,36 @@ export const gradeStateLabel: Record<GradeState, string> = {
  */
 export function gradeOf(line: GradeLine, marks: GradeMarks) {
   const m = marks[line.q.id];
+  /* 운영자 확인으로 넘긴 사진 — 점수를 매기면 그 표시는 지워지지만, 둘이 함께 남아 있으면 점수가 이긴다 */
+  const held = !!m?.unreadable && m.points === undefined;
   const scored = m?.points !== undefined || line.ai !== null;
   const points = m?.points ?? line.ai ?? 0;
-  const state: GradeState =
-    m?.points === undefined
+  const state: GradeState = held
+    ? "held"
+    : m?.points === undefined
       ? "ai"
       : line.ai === null || m.points === line.ai
         ? "checked"
         : "edited";
-  const mark: Mark = scored ? markOfPoints(line.q, line.value, points) : "pending";
-  return { points, scored, state, comment: m?.comment ?? "", mark };
+  const mark: Mark = scored && !held ? markOfPoints(line.q, line.value, points) : "pending";
+  return { points, scored, state, comment: m?.comment ?? "", mark, unreadable: held ? m?.unreadable : undefined };
 }
 
-/** 답안지 한 장의 채점 진척과 점수 — 목록과 상세가 같은 셈을 쓴다 */
+/**
+ * 답안지 한 장의 채점 진척과 점수 — 목록과 상세가 같은 셈을 쓴다.
+ * 운영자 확인으로 넘긴 문항(held)은 확인한 문항(done)에 넣지 않는다 — 넣으면 사진을 다시 받기 전에
+ * 답안지가 「채점 완료」가 되어 리포트가 조립된다.
+ */
 export function gradeStat(subjects: GradeSubject[], marks: GradeMarks) {
-  const out = { done: 0, total: 0, got: 0, max: 0, edited: 0, comments: 0 };
+  const out = { done: 0, total: 0, got: 0, max: 0, edited: 0, held: 0, comments: 0 };
   for (const s of subjects) {
     for (const line of s.lines) {
       const g = gradeOf(line, marks);
       out.total += 1;
       out.max += line.max;
       out.got += g.points;
-      if (g.state !== "ai") out.done += 1;
+      if (g.state === "held") out.held += 1;
+      else if (g.state !== "ai") out.done += 1;
       if (g.state === "edited") out.edited += 1;
       if (g.comment) out.comments += 1;
     }

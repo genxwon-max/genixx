@@ -136,7 +136,8 @@ export default function MembersView() {
         },
         cell: (s) => {
           const v = of(s);
-          const left = v.total - v.done;
+          /* 운영자 확인으로 넘긴 사진은 채점자가 볼 것이 아니다 — 남은 문항과 따로 적는다 */
+          const left = v.total - v.done - v.held;
           return (
             <span className="inline-flex flex-col">
               <span className="a2-num a2-t-sm text-(--a2-ink)">
@@ -145,6 +146,11 @@ export default function MembersView() {
               {left > 0 && (
                 <span className="a2-t-xs font-semibold" style={{ color: "var(--a2-warn)" }}>
                   {n(left)}문항 남음
+                </span>
+              )}
+              {v.held > 0 && (
+                <span className="a2-t-xs font-semibold" style={{ color: "var(--a2-danger)" }}>
+                  운영자 확인 {n(v.held)}
                 </span>
               )}
             </span>

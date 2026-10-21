@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const zones: DesignZone[] = ["account", "exam", "admin2", "my", "student", "report", "site", "mail"];
+const zones: DesignZone[] = ["account", "exam", "admin2", "my", "student", "report", "site", "mail", "message"];
 
 /**
  * 디자인 화면 목록 (/design) — 상태마다 나눈 주소를 한 장에 모은다.

@@ -20,6 +20,9 @@ import DashFrame from "../DashFrame";
  *  · 「필수」는 결제 완료와 면담 안내 둘이다. 결제와 예약은 꼭 알려야 하는 거래 안내라 이메일을
  *    끌 수 없게 고정했다(이메일 알림 디자인의 「수신 설정과 관계없이 보내 드립니다」와 같은 규칙).
  *    나머지 세 곳은 고를 수 있다.
+ *  · 2026-10-21 「답 사진 다시 올리기」를 더해 아홉이 되었다 — 채점자가 읽지 못한 답 사진을 다시
+ *    올려 달라는 요청과 기한 하루 전 안내. 놓치면 결과가 늦어지거나 점수를 받지 못해 필수로 두었다
+ *    (./photoFlow.ts).
  *  · 앱 알림은 기기에서 알림을 허용해야 받는다. 기기에서 꺼져 있으면 그 열을 고를 수 없게 막고
  *    켜는 방법을 안내한다(push-off). 골라 둔 값은 지우지 않는다 — 기기에서 켜면 그대로 다시 받는다.
  *  · 저장한 뒤의 안내(saved).
@@ -51,6 +54,7 @@ const kinds: Kind[] = [
   { id: "open", label: "응시 시작", desc: "접수한 진단의 응시 기간이 시작되는 날 알려 드립니다.", on: [true, true, false, false] },
   { id: "remind", label: "응시 미완료", desc: "응시 마감이 다가오는데 끝내지 않은 과목이 있으면 알려 드립니다.", on: [true, true, false, false] },
   { id: "done", label: "진단 완료", desc: "학생이 모든 과목을 최종 제출하면 알려 드립니다.", on: [true, false, false, false] },
+  { id: "photo", label: "답 사진 다시 올리기", desc: "올린 답 사진을 채점자가 읽지 못하면 다시 올려 달라고 알려 드립니다. 기한 하루 전에도 한 번 더 알려 드립니다.", required: true, on: [true, true, false, true] },
   { id: "report", label: "리포트 발행", desc: "전문가가 확정한 진단 보고서가 발행되면 알려 드립니다.", on: [true, true, false, true] },
   { id: "result", label: "결과 공개", desc: "결과 화면에서 점수와 재능 유형 요약을 볼 수 있게 되면 알려 드립니다.", on: [true, true, false, false] },
   { id: "counsel", label: "면담 안내", desc: "면담 예약 확정 · 일정 변경 · 취소와 면담 하루 전 안내를 보내 드립니다.", required: true, on: [true, true, true, true] },
@@ -192,8 +196,8 @@ export default function NotificationSettings({ state }: { state: string }) {
 
         <ul className="mt-2 space-y-1.5 border-t border-soft-line pt-5 text-[13px] leading-[1.75] text-soft-muted">
           <li>
-            · <b className="text-soft-ink">「필수」 소식</b>은 결제와 면담 예약처럼 꼭 알려 드려야 하는 내용이라
-            이메일로 항상 보내 드립니다. 앱 알림 · 카카오 알림톡 · 문자로도 받을지는 고르실 수 있습니다.
+            · <b className="text-soft-ink">「필수」 소식</b>은 결제 · 면담 예약 · 답 사진 다시 올리기처럼 꼭 알려 드려야
+            하는 내용이라 이메일로 항상 보내 드립니다. 앱 알림 · 카카오 알림톡 · 문자로도 받을지는 고르실 수 있습니다.
           </li>
           <li>
             · 카카오 알림톡과 문자는 <b className="tabular-nums text-soft-ink">010-4821-7730</b>, 이메일은{" "}

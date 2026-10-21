@@ -31,6 +31,8 @@ import {
 } from "@/components/student/diag";
 import { Head, btnGo, btnQuiet, cardBox } from "@/components/student/self";
 import DashFrame from "../DashFrame";
+import { PhotoAgainBody, type AgainStage } from "./PhotoAgain";
+import { photoFlow } from "./photoFlow";
 import { flowFacts, flowRecords, flowRegs } from "./studentFlow";
 
 /**
@@ -56,6 +58,11 @@ import { flowFacts, flowRecords, flowRegs } from "./studentFlow";
  *
  * 응시 단추(진단 시작 · 이어서)는 실제처럼 응시 화면을 새 창으로 연다 — 여는 것은 디자인의
  * 응시 화면이다. 그 밖의 단추는 창을 여닫는 것과 다음 상태로 가는 것만 눌린다.
+ *
+ * 사진 다시 올리기(2026-10-21) — 최종 제출한 뒤 운영자가 「다시 올려 달라고 요청」을 보내면 진단 한 건
+ * 맨 위에 요청이 서고(…/2026-4/e4/photo), 「사진 다시 올리기」가 그 진단 아래의 화면
+ * (/student/exams/[회차]/[학년]/photo)을 연다. 화면의 몸통은 보호자가 링크로 여는 화면과 같다
+ * (./PhotoAgain.tsx · 예시 ./photoFlow.ts).
  */
 
 const to = designLinks("student-exams");
@@ -164,6 +171,8 @@ type View = {
   result?: { type: string; tagline: string };
   board: BoardData;
   popup?: "sms" | "final";
+  /** 운영자가 답 사진을 다시 올려 달라고 요청해 둔 진단 — 맨 위에 요청이 선다 */
+  photo?: boolean;
 };
 
 /* ── 2026 4분기 초4 진단 · 유료 — 지금 응시하는 진단 ── */
@@ -348,6 +357,7 @@ const views: Record<string, View> = {
   "2026-4/e4/final": { ...complete, popup: "final" },
   "2026-4/e4/final/missing": { ...submitted, popup: "final" },
   "2026-4/e4/reviewing": reviewing,
+  "2026-4/e4/photo": { ...reviewing, photo: true },
   "2026-4/e4/free": freeReady,
   "2026-4/e4/free/submitted": freeSubmitted,
   /* 보호자에게는 응시 칸이 「열람 불가」로 바뀐다. 과목과 설문의 진행은 「한 과목 제출」과 같다 */
@@ -422,8 +432,17 @@ function nowOf(v: View): [string, string] {
 
 /* ───────────────────────── 화면 ───────────────────────── */
 
+/** 사진 다시 올리기 화면의 상태 — 주소 꼬리 → 화면의 단계 */
+const againStages: Record<string, AgainStage> = {
+  "2026-4/e4/photo/upload": "before",
+  "2026-4/e4/photo/picked": "picked",
+  "2026-4/e4/photo/sent": "sent",
+};
+
 export default function StudentExamBoard({ state }: { state: string }) {
   if (state === "empty") return <List empty />;
+  const again = againStages[state];
+  if (again) return <PhotoPage stage={again} />;
   const view = views[state];
   /* 상태가 바뀌면 문자 창에 적던 번호와 펴 둔 판도 그 상태의 처음 모양으로 돌아가야 한다 */
   return view ? <Detail key={state} view={view} /> : <List />;
@@ -504,19 +523,38 @@ function Detail({ view }: { view: View }) {
     .join(" · ");
 
   return (
-    <DashFrame {...frame}>
+    <DashFrame {...(view.photo ? photoFrame : frame)}>
       <Head back={back} title={diag.name} lead={lead} right={<StageTag stage={stage} />} />
+
+      {/* 운영자가 답 사진을 다시 올려 달라고 요청했다 — 이 진단에서 지금 할 일은 이것 하나다 */}
+      {view.photo && (
+        <section className="mt-7 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-amber-200 bg-amber-50 p-5 sm:p-6">
+          <div className="min-w-[15rem] flex-1">
+            <p className="text-[16.5px] font-bold text-amber-950">
+              {photoFlow.question.label} 사진을 다시 올려 주세요
+            </p>
+            <p className="mt-1 text-[13.5px] leading-[1.7] text-amber-900">
+              처음 올린 사진이 흐려서 채점자가 답을 읽지 못했습니다. {photoFlow.request.dueText}까지 다시
+              올리면 채점을 이어서 합니다. 보호자에게도 같은 요청이 갔습니다.
+            </p>
+          </div>
+          <Link href={to("2026-4/e4/photo/upload")} className={btnGo}>
+            사진 다시 올리기 →
+          </Link>
+        </section>
+      )}
 
       {/* 지금 어디까지 했는가 — 굵은 한 줄과 할 일 한 줄 */}
       <section
-        className={`${cardBox} mt-7 flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6`}
+        className={`${cardBox} ${view.photo ? "mt-4" : "mt-7"} flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6`}
       >
         <div className="min-w-[15rem] flex-1">
           <p className="text-[16.5px] font-bold text-soft-ink">{head}</p>
           <p className="mt-1 text-[13.5px] leading-[1.7] text-soft-muted">{body}</p>
         </div>
         {stage === "reviewing" && (
-          <Link href={answersHref} className={btnGo}>
+          /* 사진 요청이 있으면 그쪽이 지금 할 일이다 — 이 단추는 한 단계 낮춘다 */
+          <Link href={answersHref} className={view.photo ? btnQuiet : btnGo}>
             정답과 해설 보기 →
           </Link>
         )}
@@ -567,6 +605,39 @@ function Detail({ view }: { view: View }) {
           onSend={noop}
         />
       )}
+    </DashFrame>
+  );
+}
+
+/* ───────────────────────── 사진 다시 올리기 ───────────────────────── */
+
+/** 사진 요청이 온 뒤의 껍데기 — 종에 새 알림 한 건, 누르면 그 요청이 맨 위에 있는 알림 목록 */
+const photoFrame = { ...frame, unread: 1, bellHref: "/design/student/photo/alerts" } as const;
+
+/**
+ * 사진 다시 올리기 (실제 주소 /student/exams/[회차]/[학년]/photo).
+ * 몸통은 보호자가 링크로 여는 화면과 같다 — 다른 것은 껍데기와 머리, 다 보낸 뒤 돌아가는 곳뿐이다.
+ */
+function PhotoPage({ stage }: { stage: AgainStage }) {
+  return (
+    <DashFrame {...photoFrame}>
+      <Head
+        back={{ href: to("2026-4/e4/photo"), label: q4.diag.name }}
+        title="사진 다시 올리기"
+        lead={`${photoFlow.question.label} · ${photoFlow.request.dueText}까지`}
+      />
+      <div className="mt-7 max-w-[40rem]">
+        <PhotoAgainBody
+          stage={stage}
+          who="student"
+          links={{
+            picked: to("2026-4/e4/photo/picked"),
+            before: to("2026-4/e4/photo/upload"),
+            sent: to("2026-4/e4/photo/sent"),
+            out: { href: to("2026-4/e4/reviewing"), label: "내 진단으로" },
+          }}
+        />
+      </div>
     </DashFrame>
   );
 }

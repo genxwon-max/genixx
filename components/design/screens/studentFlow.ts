@@ -513,3 +513,50 @@ export const flowSlots = {
     no: tierQuestions("paid", "science", null, slotBank).indexOf(slotQuestion) + 1,
   },
 };
+
+/* ───────────────────────── 사진이 흐린 답안지 ───────────────────────── */
+
+/** 사진으로 답하는 수학 문항 */
+const PHOTO_ID = "math-12";
+
+const blurRecord: ExamRecord = {
+  ...flowRecords.q3,
+  subjects: {
+    ...flowRecords.q3.subjects,
+    math: {
+      ...flowRecords.q3.subjects.math,
+      answers: {
+        ...flowRecords.q3.subjects.math.answers,
+        [PHOTO_ID]: joinUpload({ media: "image", key: "/images/answers/answer-math-12-blur.svg" }),
+      },
+    },
+  },
+};
+
+/** 채점 상태에서 사진 문항만 「알아볼 수 없음」으로 바꾼다 — 점수와 함께 둘 수 없어 점수를 걷는다 */
+function heldOf(marks: GradeMarks): GradeMarks {
+  return {
+    ...marks,
+    [PHOTO_ID]: {
+      unreadable: { reason: "사진이 흐립니다", memo: "글씨가 전혀 보이지 않습니다. 그림의 봉지 수도 셀 수 없습니다." },
+    },
+  };
+}
+
+/**
+ * 수학 3번 사진이 흐린 3분기 답안지 — 회원 채점 디자인의 「알아볼 수 없음」 화면이 쓴다(2026-10-21).
+ *
+ * 같은 학생의 같은 답안지를, 수학 3번(사진으로 답하는 문항)에 흐린 사진을 낸 것으로 다시 편 것이다.
+ * 채점자는 그 문항에 「알아볼 수 없음」을 골라 운영자 확인으로 넘겼다. 나머지 문항의 답과 점수는
+ * 위의 3분기 기록 · flowMarks와 같다.
+ */
+export const flowBlur = {
+  sheet: sheetOf(blurRecord),
+  /** 채점 중(국어를 다 보고 수학 3번에서 넘김) · 나머지를 모두 확인한 뒤 */
+  marks: { some: heldOf(flowMarks.some), done: heldOf(flowMarks.done) },
+  /** 그 문항의 과목과 번호 */
+  at: {
+    subject: "math" as SubjectId,
+    no: tierQuestions("paid", "math").findIndex((q) => q.id === PHOTO_ID) + 1,
+  },
+};

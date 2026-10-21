@@ -28,6 +28,7 @@ export const dashPeople = {
 
 export default function DashFrame({
   who,
+  person,
   at,
   unread,
   bellHref,
@@ -36,6 +37,11 @@ export default function DashFrame({
   children,
 }: {
   who: DashWho;
+  /**
+   * 머리에 적을 사람 — 넘기지 않으면 그 종류의 예시 사람(dashPeople)이다.
+   * 다른 보호자의 화면을 그릴 때 넘긴다(사진 다시 받기 디자인의 이서준 보호자 이정민).
+   */
+  person?: { name: string; chip: { k: string; v: string } };
   /** 레일에서 켜 둘 항목의 주소 */
   at: string;
   /** 읽지 않은 알림 수 — 0이면 종에 숫자를 달지 않는다 */
@@ -48,7 +54,7 @@ export default function DashFrame({
   children: React.ReactNode;
 }) {
   const menu = menus[who];
-  const me = dashPeople[who];
+  const me = person ?? dashPeople[who];
 
   return (
     <div className="flex min-h-full bg-[#f4f6fb] text-soft-ink">

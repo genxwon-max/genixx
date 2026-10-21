@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { ROUTE_CUT, rubric, type RubricLevel } from "@/lib/expertStore";
 import { designLinks } from "@/lib/designScreens";
+import { unreadableReasons } from "@/lib/gradeSheet";
 import { PageSaveBar } from "@/components/admin2/EditGuard";
-import { Body, FormRow, PageHead, Panel, Tag } from "@/components/admin2/ui";
+import { Body, FormRow, PageHead, Panel, Status, Tag } from "@/components/admin2/ui";
 import ConsoleFrame, { ConsoleDialog, type ConsoleMe } from "../ConsoleFrame";
+import AnswerPhoto from "./AnswerPhoto";
+import { photoFlow } from "./photoFlow";
 
 /**
  * 채점 상세의 음성 입력 답 · 사진 답안 (실제 주소 /admin2/grading/[id] · WBS Q.1.6) — 디자인.
@@ -21,6 +24,10 @@ import ConsoleFrame, { ConsoleDialog, type ConsoleMe } from "../ConsoleFrame";
  *
  * 그래서 「문항」 판에 답하는 방식을 적고, 사진 답안은 「학생 답」 판이 사진을 보여 준다.
  * 사진을 알아볼 수 없을 때는 점수를 매기지 않고 운영자 확인으로 넘긴다.
+ *
+ * 넘긴 뒤의 길(2026-10-21) — 운영자가 보호자에게 사진을 다시 올려 달라고 요청하는 동안 이 응답은
+ * 「운영자 확인 중」으로 잠기고(file/waiting), 사진이 다시 올라오면 채점 대기로 돌아와 처음 사진과
+ * 나란히 보인다(file/reuploaded). 운영자의 화면은 ./GradingChecks.tsx, 예시는 ./photoFlow.ts.
  *
  * 판의 차례와 루브릭은 지금의 채점대 그대로다.
  */
@@ -168,25 +175,50 @@ function Voice() {
 
 /* ───────────────────────── 사진 답안 ───────────────────────── */
 
+/** 사진 한 장의 이름표 — 「다시 올린 사진 · 2026-10-15 20:12 · 1,600 × 1,200 · 431KB」 */
+function PhotoCaption({ name, at, size, tone }: { name?: string; at: string; size: string; tone?: string }) {
+  return (
+    <figcaption className="a2-t-xs text-(--a2-ink-4)">
+      {name && (
+        <b className="mr-1" style={{ color: tone ?? "var(--a2-ink-2)" }}>
+          {name}
+        </b>
+      )}
+      <span className="a2-mono">{at}</span> · <span className="a2-mono">{size}</span>
+    </figcaption>
+  );
+}
+
 function Photo({ state }: { state: string }) {
   const scored = state === "file/scored";
   const unreadable = state === "file/unreadable";
+  /** 「알아볼 수 없음」으로 넘긴 뒤 — 운영자가 보호자에게 다시 올려 달라고 요청해 둔 때 */
+  const waiting = state === "file/waiting";
+  /** 보호자가 사진을 다시 올려 채점 대기로 돌아온 때 */
+  const again = state === "file/reuploaded";
+  const { first, flagged, request } = photoFlow;
 
   return (
     <>
       <PageHead title="0418 · 수학" back={back} actions={nextTask} />
       <Body>
         <div className="grid gap-3">
+          {again && (
+            <p className="a2-note" style={{ borderLeftColor: "var(--a2-ok)" }}>
+              <span>
+                <b>사진이 다시 올라와 채점 대기로 돌아온 응답입니다.</b> 처음 올린 사진과 같은 종이인지
+                확인한 뒤 채점해 주세요. 답을 새로 쓴 종이로 보이면 메모에 적어 주세요.
+              </span>
+            </p>
+          )}
+
           <Panel title="문항" meta="초4 · 수리·논리" flush>
             <div className="a2-form">
               <FormRow label="발문">
-                <span className="a2-t-sm text-(--a2-ink)">
-                  구슬 84개를 한 봉지에 7개씩 담는 모습을 종이에 그림이나 식으로 나타내고, 사진을
-                  찍어 올려 보세요.
-                </span>
+                <span className="a2-t-sm text-(--a2-ink)">{photoFlow.question.stem}</span>
               </FormRow>
               <FormRow label="응답 ID">
-                <span className="a2-mono a2-t-sm text-(--a2-ink-3)">SC-2610-0164</span>
+                <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{photoFlow.response}</span>
               </FormRow>
               <FormRow label="답한 방식" hint="종이에 쓰거나 그린 것을 찍어 올린 답입니다. 한 문항에 한 장입니다.">
                 <Tag accent>사진 올리기</Tag>
@@ -194,43 +226,65 @@ function Photo({ state }: { state: string }) {
             </div>
           </Panel>
 
-          <Panel title="학생 답" meta="사진 1장" flush>
-            <div className="grid gap-3 px-3 py-3 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-              <Link
-                href={to("file/zoom")}
-                aria-label="사진 크게 보기"
-                className="block overflow-hidden rounded-(--a2-radius) border border-(--a2-line) bg-(--a2-raised)"
-              >
-                <AnswerPhoto blurred={unreadable} />
-              </Link>
-              <div className="grid content-start gap-2.5">
-                <dl className="grid gap-1 a2-t-sm">
-                  <div className="flex gap-2">
-                    <dt className="w-16 shrink-0 text-(--a2-ink-4)">올린 시각</dt>
-                    <dd className="a2-mono text-(--a2-ink-2)">2026-10-04 10:42</dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt className="w-16 shrink-0 text-(--a2-ink-4)">크기</dt>
-                    <dd className="a2-mono text-(--a2-ink-2)">1,600 × 1,200 · 412KB</dd>
-                  </div>
-                </dl>
-                <div className="flex flex-wrap gap-1.5">
-                  <Link href={to("file/zoom")} className="a2-btn a2-btn-sm">
-                    크게 보기
+          <Panel title="학생 답" meta={again ? "사진 2장 · 다시 올린 사진과 처음 올린 사진" : "사진 1장"} flush>
+            {again ? (
+              <div className="grid gap-3 px-3 py-3 md:grid-cols-2">
+                <figure className="grid content-start gap-1.5">
+                  <Link
+                    href={to("file/zoom")}
+                    aria-label="다시 올린 사진 크게 보기"
+                    className="block overflow-hidden rounded-(--a2-radius) border-2 border-(--a2-ok) bg-(--a2-raised)"
+                  >
+                    <AnswerPhoto />
                   </Link>
-                  <button type="button" className="a2-btn a2-btn-sm">
-                    왼쪽으로 돌리기
-                  </button>
-                  <button type="button" className="a2-btn a2-btn-sm">
-                    오른쪽으로 돌리기
-                  </button>
-                </div>
-                <p className="a2-hint">
-                  아이가 올린 사진 그대로입니다. 돌리기는 이 화면에서 보는 방향만 바꾸고 사진을
-                  고치지 않습니다.
-                </p>
+                  <PhotoCaption name="다시 올린 사진" at={photoFlow.again.at} size={photoFlow.again.size} tone="var(--a2-ok)" />
+                </figure>
+                <figure className="grid content-start gap-1.5">
+                  <span className="block overflow-hidden rounded-(--a2-radius) border border-(--a2-line) bg-(--a2-raised)">
+                    <AnswerPhoto look="blurred" />
+                  </span>
+                  <PhotoCaption name="처음 올린 사진" at={first.at} size={first.size} />
+                </figure>
               </div>
-            </div>
+            ) : (
+              <div className="grid gap-3 px-3 py-3 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+                <Link
+                  href={to("file/zoom")}
+                  aria-label="사진 크게 보기"
+                  className="block overflow-hidden rounded-(--a2-radius) border border-(--a2-line) bg-(--a2-raised)"
+                >
+                  <AnswerPhoto look={unreadable || waiting ? "blurred" : "clear"} />
+                </Link>
+                <div className="grid content-start gap-2.5">
+                  <dl className="grid gap-1 a2-t-sm">
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 text-(--a2-ink-4)">올린 시각</dt>
+                      <dd className="a2-mono text-(--a2-ink-2)">{first.at}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 text-(--a2-ink-4)">크기</dt>
+                      <dd className="a2-mono text-(--a2-ink-2)">{first.size}</dd>
+                    </div>
+                  </dl>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Link href={to("file/zoom")} className="a2-btn a2-btn-sm">
+                      크게 보기
+                    </Link>
+                    <button type="button" className="a2-btn a2-btn-sm">
+                      왼쪽으로 돌리기
+                    </button>
+                    <button type="button" className="a2-btn a2-btn-sm">
+                      오른쪽으로 돌리기
+                    </button>
+                  </div>
+                  <p className="a2-hint">
+                    {waiting
+                      ? "보호자가 사진을 다시 올리면 이 자리에 새 사진이 처음 사진과 나란히 보입니다."
+                      : "아이가 올린 사진 그대로입니다. 돌리기는 이 화면에서 보는 방향만 바꾸고 사진을 고치지 않습니다."}
+                  </p>
+                </div>
+              </div>
+            )}
           </Panel>
 
           <Panel title="AI 1차 채점" flush>
@@ -245,50 +299,68 @@ function Photo({ state }: { state: string }) {
           </Panel>
 
           <Panel title="채점" flush>
-            <div className="a2-form a2-form-lg">
-              <FormRow label="루브릭" req>
-                <span className="grid w-full gap-1.5">
-                  <Rubric picked={scored ? "full" : undefined} />
-                  <label className="a2-choice items-start border-t border-(--a2-line) pt-1.5">
-                    <input type="radio" name="rubric-level" defaultChecked={unreadable} />
-                    <span className="grid gap-0.5">
-                      <span className="font-semibold text-(--a2-ink)">알아볼 수 없음 · 점수 없음</span>
-                      <span className="a2-t-xs text-(--a2-ink-3)">
-                        사진이 흐리거나 잘려서 답을 읽을 수 없습니다. 점수를 매기지 않고 운영자
-                        확인으로 넘깁니다.
-                      </span>
-                    </span>
-                  </label>
-                </span>
-              </FormRow>
-
-              {unreadable && (
-                <FormRow label="알아볼 수 없는 이유" req>
-                  <select aria-label="알아볼 수 없는 이유" className="a2-select max-w-72" defaultValue="사진이 흐립니다">
-                    <option>사진이 흐립니다</option>
-                    <option>답의 일부가 잘렸습니다</option>
-                    <option>너무 어둡거나 빛이 반사됩니다</option>
-                    <option>문항과 관계없는 사진입니다</option>
-                    <option>빈 종이입니다</option>
-                  </select>
+            {waiting ? (
+              /* 운영자 확인 중 — 점수를 매기지 않는다. 사진이 올라오면 채점 대기로 돌아와 다시 열린다 */
+              <div className="a2-form">
+                <FormRow label="상태">
+                  <Status tone="warn">운영자 확인 중 · 점수 없음</Status>
+                  <span className="a2-t-sm w-full text-(--a2-ink-2)">
+                    운영자가 보호자에게 사진을 다시 올려 달라고 요청했습니다({request.dueShort} 23:59까지). 사진이
+                    올라오면 이 응답이 채점 대기로 돌아오고, 그때 채점합니다.
+                  </span>
                 </FormRow>
-              )}
+                <FormRow label="알아볼 수 없는 이유">
+                  <span className="a2-t-sm text-(--a2-ink)">{flagged.reason}</span>
+                </FormRow>
+                <FormRow label="메모">
+                  <span className="a2-t-sm text-(--a2-ink-2)">{flagged.memo}</span>
+                </FormRow>
+              </div>
+            ) : (
+              <div className="a2-form a2-form-lg">
+                <FormRow label="루브릭" req>
+                  <span className="grid w-full gap-1.5">
+                    <Rubric picked={scored ? "full" : undefined} />
+                    <label className="a2-choice items-start border-t border-(--a2-line) pt-1.5">
+                      <input type="radio" name="rubric-level" defaultChecked={unreadable} />
+                      <span className="grid gap-0.5">
+                        <span className="font-semibold text-(--a2-ink)">알아볼 수 없음 · 점수 없음</span>
+                        <span className="a2-t-xs text-(--a2-ink-3)">
+                          사진이 흐리거나 잘려서 답을 읽을 수 없습니다. 점수를 매기지 않고 운영자
+                          확인으로 넘깁니다.
+                        </span>
+                      </span>
+                    </label>
+                  </span>
+                </FormRow>
 
-              <FormRow label="메모">
-                <textarea
-                  className="a2-textarea"
-                  rows={2}
-                  defaultValue={
-                    scored
-                      ? "식과 그림이 맞고, 7개씩 12봉지라는 것을 그림으로 확인했습니다."
-                      : unreadable
-                        ? "글씨가 전혀 보이지 않습니다. 그림의 봉지 수도 셀 수 없습니다."
-                        : ""
-                  }
-                  placeholder="사진에서 무엇을 보고 그렇게 채점했는지 적어 둡니다."
-                />
-              </FormRow>
-            </div>
+                {unreadable && (
+                  <FormRow label="알아볼 수 없는 이유" req>
+                    <select aria-label="알아볼 수 없는 이유" className="a2-select max-w-72" defaultValue={flagged.reason}>
+                      {/* 회원 채점의 채점 창 · 운영자 확인과 같은 목록이다 */}
+                      {unreadableReasons.map((r) => (
+                        <option key={r}>{r}</option>
+                      ))}
+                    </select>
+                  </FormRow>
+                )}
+
+                <FormRow label="메모">
+                  <textarea
+                    className="a2-textarea"
+                    rows={2}
+                    defaultValue={
+                      scored
+                        ? "식과 그림이 맞고, 7개씩 12봉지라는 것을 그림으로 확인했습니다."
+                        : unreadable
+                          ? flagged.memo
+                          : ""
+                    }
+                    placeholder="사진에서 무엇을 보고 그렇게 채점했는지 적어 둡니다."
+                  />
+                </FormRow>
+              </div>
+            )}
           </Panel>
 
           {unreadable && (
@@ -309,13 +381,48 @@ function Photo({ state }: { state: string }) {
                     {rubric.full.label}
                   </span>
                   <span className="a2-t-xs text-(--a2-ink-4)">
-                    <span className="a2-mono">2026-10-12 11:20</span> · 서민정
+                    <span className="a2-mono">{flagged.at}</span> · {flagged.by}
                   </span>
                   <span className="a2-t-xs text-(--a2-ink-4)">사진을 직접 확인해 채점함</span>
                   <span className="a2-t-sm w-full text-(--a2-ink-2)">
                     식과 그림이 맞고, 7개씩 12봉지라는 것을 그림으로 확인했습니다.
                   </span>
                 </FormRow>
+              </div>
+            </Panel>
+          )}
+
+          {(waiting || again) && (
+            <Panel title="채점 기록" flush>
+              <div className="a2-form">
+                <FormRow label="1차">
+                  <span className="a2-t-sm font-semibold text-(--a2-ink)">알아볼 수 없음</span>
+                  <span className="a2-t-xs text-(--a2-ink-4)">
+                    <span className="a2-mono">{flagged.at}</span> · {flagged.by}
+                  </span>
+                  <span className="a2-t-sm w-full text-(--a2-ink-2)">
+                    {flagged.reason} — {flagged.memo}
+                  </span>
+                </FormRow>
+                <FormRow label="운영자 확인">
+                  <span className="a2-t-sm font-semibold text-(--a2-ink)">다시 올려 달라고 요청</span>
+                  <span className="a2-t-xs text-(--a2-ink-4)">
+                    <span className="a2-mono">{request.at}</span> · 운영자 {request.by}
+                  </span>
+                  <span className="a2-t-sm w-full text-(--a2-ink-2)">
+                    보호자에게 요청 · 기한 <span className="a2-mono">{request.due}</span>
+                  </span>
+                </FormRow>
+                {again && (
+                  <FormRow label="다시 올라옴">
+                    <span className="a2-t-sm font-semibold" style={{ color: "var(--a2-ok)" }}>
+                      채점 대기로 돌아옴
+                    </span>
+                    <span className="a2-t-xs text-(--a2-ink-4)">
+                      <span className="a2-mono">{photoFlow.again.at}</span> · 보호자가 올림
+                    </span>
+                  </FormRow>
+                )}
               </div>
             </Panel>
           )}
@@ -331,7 +438,11 @@ function Photo({ state }: { state: string }) {
               ? "확정한 응답입니다. 다시 채점하면 기록에 남습니다."
               : unreadable
                 ? "저장하면 운영자 확인으로 넘어갑니다."
-                : "사진을 확인한 뒤 루브릭에서 하나를 골라 주세요."
+                : waiting
+                  ? "운영자 확인 중이라 지금은 채점할 수 없습니다. 사진이 올라오면 다시 열립니다."
+                  : again
+                    ? "다시 올라온 사진을 확인한 뒤 루브릭에서 하나를 골라 주세요."
+                    : "사진을 확인한 뒤 루브릭에서 하나를 골라 주세요."
           }
         />
       </Body>
@@ -361,66 +472,10 @@ function Photo({ state }: { state: string }) {
             <AnswerPhoto />
           </span>
           <span className="mt-2 block a2-t-xs text-(--a2-ink-4)">
-            <span className="a2-mono">0418 · 수학 · SC-2610-0164</span> — 2026-10-04 10:42에 올린 사진
+            <span className="a2-mono">0418 · 수학 · {photoFlow.response}</span> — {first.at}에 올린 사진
           </span>
         </ConsoleDialog>
       )}
     </>
-  );
-}
-
-/**
- * 아이가 올린 사진의 예시 — 공책에 봉지 열두 개와 식을 적은 종이.
- * 실제로는 올린 사진이 그대로 보인다. 시안에 쓸 사진이 없어 그림으로 대신한다.
- */
-function AnswerPhoto({ blurred = false }: { blurred?: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 400 300"
-      role="img"
-      aria-label={
-        blurred
-          ? "학생이 올린 사진 — 흐려서 알아볼 수 없습니다"
-          : "학생이 올린 사진 — 공책에 구슬 봉지 열두 개를 그리고 84 ÷ 7 = 12 라고 적었습니다"
-      }
-      className="block h-auto w-full"
-      style={blurred ? { filter: "blur(5px) brightness(0.72)" } : undefined}
-    >
-      <rect width="400" height="300" fill="#8c8377" />
-      <g transform="rotate(-2.5 200 150)">
-        <rect x="26" y="20" width="348" height="262" rx="3" fill="#fbf9f2" />
-        {Array.from({ length: 10 }, (_, i) => (
-          <line key={i} x1="26" x2="374" y1={52 + i * 24} y2={52 + i * 24} stroke="#cfd9e6" strokeWidth="1" />
-        ))}
-        <line x1="62" x2="62" y1="20" y2="282" stroke="#f0b4b4" strokeWidth="1" />
-        {/* 봉지 열두 개 — 여섯 개씩 두 줄 */}
-        {Array.from({ length: 12 }, (_, i) => {
-          const x = 84 + (i % 6) * 46;
-          const y = 62 + Math.floor(i / 6) * 64;
-          return (
-            <g key={i} stroke="#2b3550" strokeWidth="1.6" fill="none" strokeLinecap="round">
-              <path d={`M${x} ${y + 8} q-4 18 2 34 q14 6 28 0 q6 -16 2 -34 z`} />
-              <path d={`M${x + 4} ${y + 8} q12 -9 24 0`} />
-              {[0, 1, 2, 3, 4, 5, 6].map((k) => (
-                <circle
-                  key={k}
-                  cx={x + 7 + (k % 3) * 9}
-                  cy={y + 19 + Math.floor(k / 3) * 8}
-                  r="2.6"
-                  fill="#2b3550"
-                  stroke="none"
-                />
-              ))}
-            </g>
-          );
-        })}
-        <text x="84" y="222" fontSize="26" fontStyle="italic" fill="#2b3550" fontFamily="var(--font-noto-kr), sans-serif">
-          84 ÷ 7 = 12
-        </text>
-        <text x="84" y="256" fontSize="17" fontStyle="italic" fill="#2b3550" fontFamily="var(--font-noto-kr), sans-serif">
-          7개씩 12봉지, 남는 구슬 없음
-        </text>
-      </g>
-    </svg>
   );
 }

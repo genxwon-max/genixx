@@ -19,6 +19,10 @@
  * (2026-10-12). 응시 존 헤더의 네 탭이 없어지고 그 화면들이 /student 아래로 옮겨 갔다 —
  * 진단 접수 · 내 진단 · 정답과 해설 · 진단 결과. 응시 존에 남은 첫 화면(진단 둘러보기)도 함께 둔다.
  * 네 화면은 같은 학생의 같은 진단을 말한다(components/design/screens/studentFlow.ts).
+ *
+ * 넷째 묶음은 **알아볼 수 없는 사진 답안을 다시 받는 길**이다(2026-10-21). 채점자가 「알아볼 수
+ * 없음」을 고른 뒤의 운영자 확인 목록 · 요청 단추 · 최종 제출 뒤 보호자와 학생이 사진을 다시 올리는
+ * 화면 · 메일 · 알림톡 · 알림 종. 모두 같은 학생의 같은 답을 말한다(components/design/screens/photoFlow.ts).
  */
 
 export type DesignZone =
@@ -29,7 +33,8 @@ export type DesignZone =
   | "student"
   | "report"
   | "site"
-  | "mail";
+  | "mail"
+  | "message";
 
 export const zoneLabel: Record<DesignZone, string> = {
   account: "가입 · 로그인",
@@ -40,6 +45,7 @@ export const zoneLabel: Record<DesignZone, string> = {
   report: "진단 보고서",
   site: "공개 사이트",
   mail: "이메일",
+  message: "알림톡 · 문자",
 };
 
 export type DesignState = {
@@ -271,6 +277,8 @@ export const designScreens: DesignScreen[] = [
       { slug: "alerts", name: "알림 목록 열림", who: "보호자", popup: true },
       { slug: "alerts-empty", name: "알림 목록 열림 · 알림 없음", who: "보호자", popup: true },
       { slug: "read", name: "새 알림 없음", who: "보호자" },
+      { slug: "photo", name: "새 알림 있음 · 답 사진을 다시 올려 달라는 요청", who: "보호자", note: "이서준의 보호자 이정민 · 홈 맨 위에 할 일과 「사진 다시 올리기」" },
+      { slug: "photo/alerts", name: "알림 목록 열림 · 답 사진을 다시 올려 달라는 요청", who: "보호자", popup: true },
     ],
   },
   {
@@ -298,6 +306,24 @@ export const designScreens: DesignScreen[] = [
       { slug: "alerts-empty", name: "알림 목록 열림 · 알림 없음", who: "학생 (만 14세 미만)", popup: true },
       { slug: "teen", name: "새 알림 있음", who: "학생 (만 14세 이상)" },
       { slug: "teen/alerts", name: "알림 목록 열림", who: "학생 (만 14세 이상)", popup: true },
+      { slug: "photo", name: "새 알림 있음 · 답 사진을 다시 올려 달라는 요청", who: "학생 (만 14세 미만)", note: "홈의 「지금 할 일」에 요청 · 「사진 다시 올리기」" },
+      { slug: "photo/alerts", name: "알림 목록 열림 · 답 사진을 다시 올려 달라는 요청", who: "학생 (만 14세 미만)", popup: true },
+    ],
+  },
+  {
+    id: "answer-photo",
+    zone: "my",
+    name: "사진 다시 올리기 · 알림톡 · 메일로 받은 링크",
+    wbs: "Q.1.6",
+    real: "/answer/photo?req=[링크]",
+    base: "/answer/photo",
+    states: [
+      { slug: "", name: "올리기 전", who: "보호자", note: "로그인 없이 링크로 엶 · 다시 찍을 문항과 처음 사진 · 처음에 쓴 종이를 그대로 · 다시 찍는 법" },
+      { slug: "picked", name: "사진을 고른 뒤", who: "보호자", note: "보내기 전에 크게 보고 확인 · 돌리기 · 다른 사진으로 바꾸기" },
+      { slug: "error", name: "사진이 아닌 파일을 고름", who: "보호자" },
+      { slug: "sent", name: "보낸 뒤", who: "보호자", note: "채점을 이어서 하고 결과가 발행되면 알린다는 안내" },
+      { slug: "done", name: "이미 보낸 링크를 다시 엶", who: "보호자" },
+      { slug: "expired", name: "기한이 지난 링크", who: "보호자", note: "지금 올라와 있는 사진으로 채점한다는 안내" },
     ],
   },
   {
@@ -431,7 +457,7 @@ export const designScreens: DesignScreen[] = [
     zone: "student",
     name: "내 진단 (응시)",
     wbs: "v4/new/32 · v4/new/20 · v4/ns/5.1.2",
-    real: "/student/exams · /student/exams/[회차]/[학년]",
+    real: "/student/exams · /student/exams/[회차]/[학년] · …/[학년]/photo",
     base: "/student/exams",
     states: [
       { slug: "", name: "목록", who: "학생", note: "예전 응시 존의 「응시하기」 탭" },
@@ -443,6 +469,10 @@ export const designScreens: DesignScreen[] = [
       { slug: "2026-4/e4/final", name: "최종 제출 확인 창", who: "학생 · 유료", popup: true },
       { slug: "2026-4/e4/final/missing", name: "최종 제출 확인 창 · 내지 않은 설문 있음", who: "학생 · 유료", popup: true },
       { slug: "2026-4/e4/reviewing", name: "진단 한 건 · 최종 제출 뒤", who: "학생 · 유료", note: "「정답과 해설 보기」" },
+      { slug: "2026-4/e4/photo", name: "진단 한 건 · 답 사진을 다시 올려 달라는 요청", who: "학생 · 유료", note: "최종 제출 뒤 운영자가 요청 · 맨 위에 요청과 「사진 다시 올리기」" },
+      { slug: "2026-4/e4/photo/upload", name: "사진 다시 올리기 · 올리기 전", who: "학생 · 유료", note: "다시 찍을 문항과 처음 사진 · 처음에 쓴 종이를 그대로 · 다시 찍는 법" },
+      { slug: "2026-4/e4/photo/picked", name: "사진 다시 올리기 · 사진을 고른 뒤", who: "학생 · 유료", note: "보내기 전에 크게 보고 확인 · 보낸 뒤에는 바꿀 수 없다" },
+      { slug: "2026-4/e4/photo/sent", name: "사진 다시 올리기 · 보낸 뒤", who: "학생 · 유료", note: "채점을 이어서 한다는 안내 · 「내 진단으로」" },
       { slug: "2026-4/e4/free", name: "진단 한 건 · 시작 전", who: "학생 · 무료", note: "20문항을 한 번에 응시" },
       { slug: "2026-4/e4/free/submitted", name: "진단 한 건 · 20문항 제출", who: "학생 · 무료" },
       { slug: "2026-4/e4/guardian", name: "진단 한 건 · 보호자가 학생 접속코드로 들어옴", who: "보호자", note: "학부모 설문만 한다" },
@@ -580,7 +610,7 @@ export const designScreens: DesignScreen[] = [
       { slug: "", name: "전체 · 새 기록 포함" },
       { slug: "interview", name: "면담 기록만" },
       { slug: "expert", name: "전문가 활동만" },
-      { slug: "rest", name: "그 외 기록만", note: "스케줄러 변경 · 조립 규칙 변경 · 리포트 자동 발행 기록이 여기에 표시된다" },
+      { slug: "rest", name: "그 외 기록만", note: "스케줄러 변경 · 조립 규칙 변경 · 리포트 자동 발행 · 사진 다시 올리기 요청 · 기한 늘림 · 채점으로 돌려보냄 기록이 여기에 표시된다" },
     ],
   },
   {
@@ -591,11 +621,40 @@ export const designScreens: DesignScreen[] = [
     real: "/admin2/grading/[id]",
     base: "/admin2/grading/answers",
     states: [
-      { slug: "voice", name: "음성으로 입력한 답", note: "말한 것을 받아 적은 글을 채점한다" },
-      { slug: "file", name: "사진 답안 · 확인 전" },
-      { slug: "file/zoom", name: "사진 크게 보기 창", popup: true },
-      { slug: "file/scored", name: "사진 답안 · 채점함" },
-      { slug: "file/unreadable", name: "사진 답안 · 알아볼 수 없음", note: "다시 올려 달라고 요청" },
+      { slug: "voice", name: "음성으로 입력한 답", who: "채점자", note: "말한 것을 받아 적은 글을 채점한다" },
+      { slug: "file", name: "사진 답안 · 확인 전", who: "채점자" },
+      { slug: "file/zoom", name: "사진 크게 보기 창", who: "채점자", popup: true },
+      { slug: "file/scored", name: "사진 답안 · 채점함", who: "채점자" },
+      { slug: "file/unreadable", name: "사진 답안 · 알아볼 수 없음", who: "채점자", note: "저장하면 운영자 확인으로 넘어간다" },
+      { slug: "file/waiting", name: "사진 답안 · 운영자 확인 중", who: "채점자", note: "보호자에게 다시 올려 달라고 요청한 동안 점수 칸이 잠긴다" },
+      { slug: "file/reuploaded", name: "사진 답안 · 다시 올라온 사진", who: "채점자", note: "채점 대기로 돌아옴 · 처음 사진과 나란히 보고 같은 종이인지 확인" },
+    ],
+  },
+  /* ── 채점자가 「알아볼 수 없음」으로 넘긴 사진 답안 — 운영자가 보호자에게 다시 올려 달라고 요청한다(2026-10-21) ── */
+  {
+    id: "grading-checks",
+    zone: "admin2",
+    name: "운영자 확인 · 알아볼 수 없는 사진 답안",
+    wbs: "Q.1.6",
+    real: "/admin2/grading/checks · /admin2/grading/checks/[응답]",
+    base: "/admin2/grading/checks",
+    states: [
+      { slug: "", name: "목록 · 확인 대기", who: "최상위 관리자", note: "왼쪽 메뉴 채점 관리의 「운영자 확인」 · 채점자가 넘긴 이유와 넘긴 때" },
+      { slug: "requested", name: "목록 · 다시 올리기 요청함", who: "최상위 관리자", note: "기한 · 보호자가 알림톡을 읽었는지" },
+      { slug: "expired", name: "목록 · 기한 지남", who: "최상위 관리자" },
+      { slug: "done", name: "목록 · 처리 완료", who: "최상위 관리자", note: "다시 올라와 채점 대기로 돌아간 것 · 다시 받지 않고 채점으로 돌려보낸 것" },
+      { slug: "empty", name: "목록 · 확인할 응답 없음", who: "최상위 관리자" },
+      { slug: "SC-2610-0164", name: "상세 · 확인 대기 · 흐린 사진", who: "최상위 관리자", note: "채점자가 넘긴 이유와 메모 · 사진 · 학생과 보호자 · 「다시 올려 달라고 요청」" },
+      { slug: "SC-2610-0164/request", name: "다시 올려 달라고 요청하는 창", who: "최상위 관리자", popup: true, note: "이유 · 보호자에게 보낼 말 · 올릴 기한 3일 · 보낼 곳(알림톡 · 이메일 · 앱 알림)" },
+      { slug: "SC-2610-0164/requested", name: "상세 · 요청한 뒤 · 다시 올라오기를 기다림", who: "최상위 관리자", note: "알림 발송 내역 · 기한 하루 전 안내 예정 · 「다시 알리기」" },
+      { slug: "SC-2610-0164/remind", name: "다시 알리기 창", who: "최상위 관리자", popup: true },
+      { slug: "SC-2610-0164/uploaded", name: "상세 · 사진이 다시 올라온 뒤", who: "최상위 관리자", note: "처음 사진과 다시 올린 사진 · 운영자를 거치지 않고 채점 대기로 돌아감" },
+      { slug: "SC-2610-0139", name: "상세 · 기한 지남 · 빛이 비친 사진", who: "최상위 관리자", note: "보호자가 알림톡을 읽지 않음 · 「기한 늘리기」 · 「지금 사진으로 채점」(빈 종이 상세의 돌려보내는 창과 같다)" },
+      { slug: "SC-2610-0139/extend", name: "기한 늘리기 창", who: "최상위 관리자", popup: true },
+      { slug: "SC-2610-0139/extended", name: "상세 · 기한을 늘린 뒤", who: "최상위 관리자", note: "늘렸다는 안내가 발송 내역에 · 다시 기다림" },
+      { slug: "SC-2610-0152", name: "상세 · 확인 대기 · 빈 종이", who: "최상위 관리자", note: "다시 받으면 답을 새로 쓸 수 있게 되어 「채점으로 돌려보내기」를 권한다" },
+      { slug: "SC-2610-0152/return", name: "채점으로 돌려보내는 창", who: "최상위 관리자", popup: true, note: "지금 사진으로 채점 · 사유 · 보호자에게 알릴지" },
+      { slug: "SC-2610-0152/returned", name: "상세 · 채점으로 돌려보낸 뒤", who: "최상위 관리자" },
     ],
   },
   {
@@ -613,7 +672,10 @@ export const designScreens: DesignScreen[] = [
       { slug: "2026-3-0412/grade", name: "채점하기 창 · 객관식", who: "채점자", popup: true, note: "응시 화면과 같은 틀 · 오른쪽 아래 점수 칸" },
       { slug: "2026-3-0412/grade/lowered", name: "채점하기 창 · 점수를 낮춤", who: "채점자", popup: true, note: "2점 만점에 2점 → 1점" },
       { slug: "2026-3-0412/grade/essay", name: "채점하기 창 · 논술형", who: "채점자", popup: true, note: "긴 글" },
-      { slug: "2026-3-0412/grade/photo", name: "채점하기 창 · 사진 답안", who: "채점자", popup: true, note: "AI는 채점하지 않는다" },
+      { slug: "2026-3-0412/grade/photo", name: "채점하기 창 · 사진 답안", who: "채점자", popup: true, note: "AI는 채점하지 않는다 · 점수 칸 아래 「알아볼 수 없음」" },
+      { slug: "2026-3-0412/grade/unreadable", name: "채점하기 창 · 사진 답안 · 알아볼 수 없음", who: "채점자", popup: true, note: "수학 3번에 흐린 사진을 낸 답안지 · 이유 · 운영자에게 남길 말 · 이동판에 붉게 「운영자 확인」" },
+      { slug: "2026-3-0412/held", name: "답안지 · 정오표 · 사진 답안을 운영자 확인으로 넘긴 뒤", who: "채점자", note: "「운영자 확인」 탭 · 채점 칸 · 응시 판의 안내 · 채점 중" },
+      { slug: "2026-3-0412/held/done", name: "답안지 · 정오표 · 운영자 확인 1문항만 남음", who: "채점자", note: "나머지를 모두 확인해도 채점이 끝나지 않고 리포트가 만들어지지 않는다" },
       { slug: "2026-3-0412/grade/written", name: "채점하기 창 · 서술형", who: "채점자", popup: true, note: "3점 만점" },
       { slug: "2026-3-0412/grade/drawing", name: "채점하기 창 · 그리기", who: "채점자", popup: true },
       { slug: "2026-3-0412/grade/short", name: "채점하기 창 · 단답형", who: "채점자", popup: true, note: "묶인 두 문항" },
@@ -822,7 +884,7 @@ export const designScreens: DesignScreen[] = [
     real: "/my/account/notification",
     base: "/my/account/notification",
     states: [
-      { slug: "", name: "알림 설정", who: "보호자", note: "받을 소식 8가지 · 앱 알림 추가" },
+      { slug: "", name: "알림 설정", who: "보호자", note: "받을 소식 9가지(답 사진 다시 올리기는 필수) · 앱 알림 추가" },
       { slug: "push-off", name: "이 기기의 앱 알림이 꺼져 있음", who: "보호자" },
       { slug: "saved", name: "저장 완료", who: "보호자" },
     ],
@@ -904,6 +966,9 @@ export const designScreens: DesignScreen[] = [
       { slug: "exam-open", name: "응시 시작 안내" },
       { slug: "exam-remind", name: "응시 미완료 안내" },
       { slug: "report-published", name: "진단 결과 발행" },
+      { slug: "photo-request", name: "답 사진 다시 올리기 요청", who: "보호자", note: "운영자가 요청을 보낼 때 · 「사진 다시 올리기」" },
+      { slug: "photo-remind", name: "답 사진 올릴 기한 하루 전", who: "보호자", note: "그때까지 올라오지 않았을 때만" },
+      { slug: "photo-received", name: "다시 올린 답 사진 받음", who: "보호자" },
       { slug: "counsel-confirmed", name: "면담 예약 확정" },
       { slug: "counsel-changed", name: "면담 일정 변경" },
       { slug: "counsel-remind", name: "면담 하루 전 안내" },
@@ -912,6 +977,19 @@ export const designScreens: DesignScreen[] = [
       { slug: "expert-applied", name: "전문가 가입 신청 접수" },
       { slug: "expert-approved", name: "전문가 가입 승인" },
       { slug: "expert-rejected", name: "전문가 가입 반려" },
+    ],
+  },
+  {
+    id: "alimtalk",
+    zone: "message",
+    name: "알림톡 · 문자",
+    wbs: "v4/ns/7.1.2",
+    real: "(알림톡 · 문자 본문)",
+    base: "/message",
+    states: [
+      { slug: "photo-request", name: "알림톡 · 답 사진 다시 올리기 요청", who: "보호자", note: "단추 「사진 다시 올리기」 · 로그인 없이 열리는 링크" },
+      { slug: "photo-request/sms", name: "문자 · 알림톡을 받을 수 없을 때", who: "보호자", note: "같은 내용을 장문 문자로 · 링크 주소를 글 안에" },
+      { slug: "photo-remind", name: "알림톡 · 답 사진 올릴 기한 하루 전", who: "보호자", note: "그때까지 올라오지 않았을 때만" },
     ],
   },
 ];

@@ -16,11 +16,13 @@ import {
   gradeOf,
   gradeStat,
   gradeStateLabel,
+  unreadableReasons,
   type GradeEdit,
   type GradeLine,
   type GradeMarks,
   type GradeState,
   type GradeSubject,
+  type Unreadable,
 } from "@/lib/gradeSheet";
 import { BriefPanel, QuestionBody, ScreenColumn, setRange } from "./ExamSession";
 import { watermarkOf } from "./ExamWatermark";
@@ -53,6 +55,11 @@ import { btnGhost, btnPrimary } from "./ui";
  * ── 사진으로 낸 답은 AI가 채점하지 않는다 ──
  * 그 문항에는 깔려 있는 점수가 없다. 채점자가 사진을 보고 점수를 눌러야 점수가 생기고, 누르지
  * 않고 넘기면 「확인 전」 · 「채점 중」으로 남는다.
+ *
+ * 사진이 흐리거나 잘려서 답을 읽을 수 없으면 점수 칸 아래의 「알아볼 수 없음」을 고른다
+ * (2026-10-21). 점수 없이 이유와 운영자에게 남길 말만 적고 **운영자 확인**으로 넘긴다 — 이동판과
+ * 정오표에 「운영자 확인」으로 남고, 확인한 문항으로 세지 않아 답안지 채점이 끝나지 않는다. 진단
+ * 채점 상세(/design/admin2/grading/answers/file/unreadable)의 같은 선택과 같은 말을 쓴다.
  */
 
 /** 창이 처음 펼 문항 — 과목과 그 과목 안의 번호 */
@@ -107,14 +114,22 @@ export default function GradeDialog({
   const isLast = at0 === subjects.length - 1 && index >= screens.length - 1;
   const watermark = watermarkOf(name);
 
-  /** 한 문항의 점수나 해설을 고친다 — 고치지 않은 쪽은 지금 값을 그대로 둔다 */
-  const put = (line: GradeLine, patch: { points?: number; comment?: string }) => {
+  /**
+   * 한 문항의 점수나 해설을 고친다 — 고치지 않은 쪽은 지금 값을 그대로 둔다.
+   * 점수와 「알아볼 수 없음」은 함께 두지 않는다: 점수를 매기면 그 표시를 지우고, 표시를 고르면 점수를 지운다.
+   */
+  const put = (
+    line: GradeLine,
+    patch: { points?: number; comment?: string; unreadable?: Unreadable | null },
+  ) => {
     const m = marks[line.q.id];
+    const unreadable = patch.unreadable !== undefined ? patch.unreadable : (m?.unreadable ?? null);
     onMark([
       {
         id: line.q.id,
-        points: patch.points ?? m?.points ?? null,
+        points: patch.points ?? (patch.unreadable ? null : (m?.points ?? null)),
         comment: patch.comment ?? m?.comment ?? "",
+        unreadable: patch.points !== undefined ? null : unreadable,
       },
     ]);
   };
@@ -167,6 +182,7 @@ export default function GradeDialog({
           <p className="hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
             확인 {stat.done} / {stat.total}문항 · 점수 {pointText(stat.got)} / {stat.max}점
             {stat.edited > 0 && ` · 수정 ${stat.edited}문항`}
+            {stat.held > 0 && ` · 운영자 확인 ${stat.held}문항`}
           </p>
           <div className="ml-auto flex items-center gap-2">
             <button
@@ -241,6 +257,7 @@ export default function GradeDialog({
               line={l}
               grade={gradeOf(l, marks)}
               onPoints={(points) => put(l, { points })}
+              onUnreadable={(unreadable) => put(l, { unreadable })}
             />
           ))}
         </section>
@@ -255,6 +272,7 @@ const stateTone: Record<GradeState, string> = {
   ai: "text-exam-muted",
   checked: "text-emerald-700",
   edited: "text-amber-700",
+  held: "text-rose-700",
 };
 
 /**
@@ -271,13 +289,18 @@ function ScoreBox({
   line,
   grade,
   onPoints,
+  onUnreadable,
 }: {
   line: GradeLine;
   grade: ReturnType<typeof gradeOf>;
   onPoints: (points: number) => void;
+  /** 사진으로 낸 답에만 — 「알아볼 수 없음」을 고르거나 거둔다 */
+  onUnreadable: (unreadable: Unreadable | null) => void;
 }) {
   const [raw, setRaw] = useState<string | null>(null);
   const chips = Array.from({ length: Math.floor(line.max) + 1 }, (_, i) => i);
+  /* 채점자가 매긴 점수만 눌린 단추로 그린다 — 운영자 확인으로 넘긴 문항에는 점수가 없다 */
+  const marked = grade.state === "checked" || grade.state === "edited";
 
   return (
     <div className="font-sans">
@@ -299,7 +322,7 @@ function ScoreBox({
 
       <div role="group" aria-label={`문항 ${line.no} 점수 고르기`} className="mt-2.5 flex gap-1.5">
         {chips.map((v) => {
-          const on = grade.state !== "ai" && grade.points === v;
+          const on = marked && grade.points === v;
           return (
             <button
               key={v}
@@ -350,14 +373,88 @@ function ScoreBox({
       </label>
 
       <p className={`mt-2 text-[12px] font-bold ${stateTone[grade.state]}`}>
-        {grade.state === "edited"
-          ? `수정 ${pointText(line.ai ?? 0)}점 → ${pointText(grade.points)}점 · ${markLabel[grade.mark]}`
-          : grade.state === "checked"
-            ? `확인 · ${markLabel[grade.mark]}`
-            : grade.scored
-              ? "아직 확인하지 않았습니다"
-              : "아직 점수가 없습니다"}
+        {grade.state === "held"
+          ? "운영자 확인 · 점수 없음"
+          : grade.state === "edited"
+            ? `수정 ${pointText(line.ai ?? 0)}점 → ${pointText(grade.points)}점 · ${markLabel[grade.mark]}`
+            : grade.state === "checked"
+              ? `확인 · ${markLabel[grade.mark]}`
+              : grade.scored
+                ? "아직 확인하지 않았습니다"
+                : "아직 점수가 없습니다"}
       </p>
+
+      {line.q.upload && <UnreadablePick value={grade.unreadable} onChange={onUnreadable} />}
+    </div>
+  );
+}
+
+/**
+ * 사진을 알아볼 수 없을 때 — 점수 칸 아래에 둔다. 사진으로 낸 답에만 선다.
+ *
+ * 고르면 점수가 지워지고 이유 · 운영자에게 남길 말을 적는 칸이 열린다. 운영자에게 남길 말은
+ * 해설(아이와 보호자가 읽는 글)과 다르다 — 운영자가 보호자에게 무엇을 다시 찍어 달라고 할지 정하는 데 쓴다.
+ * 다시 점수 단추를 누르면 이 표시는 지워진다(사진을 다시 보니 읽을 수 있을 때).
+ */
+function UnreadablePick({
+  value,
+  onChange,
+}: {
+  value: Unreadable | undefined;
+  onChange: (value: Unreadable | null) => void;
+}) {
+  const [memo, setMemo] = useState(value?.memo ?? "");
+  const field =
+    "mt-1 w-full rounded-[2px] border border-exam-line bg-white px-2 text-[13px] text-exam-text outline-none transition-colors focus:border-exam-text";
+
+  return (
+    <div className="mt-4 border-t border-exam-line pt-3.5">
+      <label className="flex cursor-pointer items-start gap-2">
+        <input
+          type="checkbox"
+          checked={!!value}
+          onChange={(e) => onChange(e.target.checked ? { reason: unreadableReasons[0] } : null)}
+          className="mt-[3px] h-4 w-4 accent-[#be123c]"
+        />
+        <span>
+          <span className="block text-[13px] font-bold text-exam-text">알아볼 수 없음 · 점수 없음</span>
+          <span className="mt-0.5 block text-[12px] leading-relaxed text-exam-muted">
+            사진이 흐리거나 잘려서 답을 읽을 수 없으면 점수를 매기지 않고 운영자 확인으로 넘깁니다.
+          </span>
+        </span>
+      </label>
+
+      {value && (
+        <div className="mt-3 space-y-2.5">
+          <label className="block text-[12px] font-bold text-exam-muted">
+            알아볼 수 없는 이유
+            <select
+              value={value.reason}
+              onChange={(e) => onChange({ ...value, reason: e.target.value })}
+              className={`${field} h-9`}
+            >
+              {unreadableReasons.map((r) => (
+                <option key={r}>{r}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[12px] font-bold text-exam-muted">
+            운영자에게 남길 말 <span className="font-normal">(선택)</span>
+            <textarea
+              rows={2}
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              onBlur={() => memo.trim() !== (value.memo ?? "") && onChange({ ...value, memo: memo.trim() || undefined })}
+              placeholder="무엇이 보이지 않는지 적어 둡니다."
+              className={`${field} py-1.5 leading-relaxed placeholder:text-exam-muted/60`}
+            />
+          </label>
+          <p className="text-[12px] leading-relaxed text-rose-700">
+            운영자 확인으로 넘겼습니다. 운영자가 보호자에게 사진을 다시 올려 달라고 요청하고, 다시 올라오면 이
+            문항이 「확인 전」으로 돌아옵니다.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -477,9 +574,11 @@ const padTone: Record<GradeState, string> = {
   /* 확인한 문항 — 응시 화면의 「답한 문항」처럼 밝은 회색으로 가라앉힌다. 남은 칸이 도드라진다 */
   checked: "border-exam-line bg-exam-raised font-medium text-exam-muted hover:bg-slate-200",
   edited: "border-amber-300 bg-amber-50 font-medium text-amber-800 hover:bg-amber-100",
+  /* 운영자 확인으로 넘긴 사진 — 사진이 다시 올라오기 전에는 채점을 마칠 수 없어 눈에 띄게 둔다 */
+  held: "border-rose-300 bg-rose-50 font-medium text-rose-700 hover:bg-rose-100",
 };
 
-const padOrder: GradeState[] = ["ai", "checked", "edited"];
+const padOrder: GradeState[] = ["ai", "checked", "edited", "held"];
 
 /**
  * 문항 이동판 — 응시 화면의 이동판과 같은 번호 칸. 채점 상태로 칠한다.

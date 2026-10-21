@@ -30,6 +30,10 @@ import { Body, FormRow, PageHead, Panel, Status, Tab, Tag } from "./ui";
  *
  * 표의 줄을 누르면 그 문항부터 채점 창이 열린다. 줄 끝에 단추를 따로 두지 않는다.
  *
+ * 사진을 알아볼 수 없어 채점 창에서 「알아볼 수 없음」을 고른 문항은 「운영자 확인」이다(2026-10-21).
+ * 탭 · 채점 칸 · 응시 판에 따로 세고, 확인한 문항으로 치지 않는다 — 그 문항이 남아 있는 동안
+ * 답안지 채점은 끝나지 않는다(lib/gradeSheet.ts의 gradeStat).
+ *
  * 값을 읽고 저장하는 일은 부르는 쪽이 한다 — 실제 화면(app/(admin2)/…/SheetView.tsx)은
  * 저장소를, 디자인 보기는 적어 둔 예시를 넘긴다. 채점 창을 여닫는 것도 부르는 쪽이 정한다
  * (디자인 보기는 창이 열린 화면을 주소로 가른다).
@@ -51,7 +55,8 @@ const markTone: Record<Mark, Tone> = {
   pending: "muted",
 };
 
-const stateTone: Record<GradeState, Tone> = { ai: "warn", checked: "ok", edited: "info" };
+/* 운영자 확인은 붉게 — 사진을 다시 받기 전에는 이 답안지의 채점이 끝나지 않는다 */
+const stateTone: Record<GradeState, Tone> = { ai: "warn", checked: "ok", edited: "info", held: "danger" };
 
 type TabId = "all" | GradeState;
 
@@ -110,7 +115,10 @@ export default function GradeSheet({
     { id: "ai", label: "확인 전", count: countOf("ai") },
     { id: "checked", label: "확인", count: countOf("checked") },
     { id: "edited", label: "수정", count: countOf("edited") },
+    { id: "held", label: "운영자 확인", count: stat.held },
   ];
+  /* 운영자 확인으로 넘긴 문항은 채점자가 더 볼 것이 없다 — 남은 문항에서 뺀다 */
+  const left = stat.total - stat.done - stat.held;
 
   return (
     <>
@@ -120,7 +128,7 @@ export default function GradeSheet({
         actions={
           start && (
             <button type="button" className="a2-btn a2-btn-primary" onClick={() => onOpen(start)}>
-              {stat.done === 0 ? "채점하기" : stat.done < stat.total ? "이어서 채점하기" : "다시 보기"}
+              {stat.done + stat.held === 0 ? "채점하기" : left > 0 ? "이어서 채점하기" : "다시 보기"}
             </button>
           )
         }
@@ -151,11 +159,20 @@ export default function GradeSheet({
                 {stat.done} / {stat.total}문항
               </span>
               <span className="a2-t-sm text-(--a2-ink-3)">
-                {stat.done < stat.total
-                  ? `확인 전 ${stat.total - stat.done}문항 · AI가 먼저 매긴 점수를 문항마다 확인합니다. 사진으로 낸 답은 AI가 채점하지 않습니다`
-                  : "모든 문항을 확인했습니다"}
+                {left > 0
+                  ? `확인 전 ${left}문항 · AI가 먼저 매긴 점수를 문항마다 확인합니다. 사진으로 낸 답은 AI가 채점하지 않습니다`
+                  : stat.held > 0
+                    ? "운영자 확인으로 넘긴 문항을 빼고 모두 확인했습니다"
+                    : "모든 문항을 확인했습니다"}
                 {stat.edited > 0 && ` · 수정 ${stat.edited}문항`}
               </span>
+              {stat.held > 0 && (
+                <span className="a2-hint" style={{ color: "var(--a2-danger)" }}>
+                  운영자 확인 {stat.held}문항 — 사진을 알아볼 수 없어 넘긴 문항입니다. 운영자가 보호자에게 사진을
+                  다시 받아 오거나 지금 사진으로 채점하라고 돌려보내면 「확인 전」으로 돌아옵니다. 그때까지 이 답안지의
+                  채점은 끝나지 않고 리포트도 만들어지지 않습니다.
+                </span>
+              )}
               {stat.done === stat.total && doneNote && (
                 <span className="a2-hint">{doneNote}</span>
               )}
@@ -167,7 +184,9 @@ export default function GradeSheet({
               {/* 아직 다 확인하지 않은 답안지의 총점은 **아직 총점이 아니다** */}
               {stat.done < stat.total && (
                 <span className="a2-t-sm text-(--a2-ink-3)">
-                  확인하지 않은 문항은 AI가 매긴 점수로 더했습니다
+                  {left > 0
+                    ? "확인하지 않은 문항은 AI가 매긴 점수로 더했습니다"
+                    : "운영자 확인으로 넘긴 문항은 점수 없이 더했습니다"}
                 </span>
               )}
             </FormRow>

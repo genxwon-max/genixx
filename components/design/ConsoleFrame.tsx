@@ -8,7 +8,7 @@ import { admin2Nav } from "@/lib/admin2";
  * 디자인 화면은 누가 열어도 같아야 하므로, 로그인한 사람과 메뉴의 건수를 여기 적어 둔다.
  * 모양은 같은 클래스(admin2.css)를 그대로 쓴다.
  *
- * 메뉴에는 새 화면 둘(운영 지표 · 면담 상품)이 들어가 있다 — 실제 메뉴(lib/admin2.ts)에는
+ * 메뉴에는 새 화면 셋(운영 지표 · 면담 상품 · 운영자 확인)이 들어가 있다 — 실제 메뉴(lib/admin2.ts)에는
  * 아직 없는 항목이다.
  *
  * 콘솔에 들어오는 사람은 두 부류다. **최상위 관리자**는 서비스를 열 때부터 있는 계정이고,
@@ -31,6 +31,12 @@ const added: Record<string, { after: string; item: NavItem }> = {
   "면담 관리": {
     after: "/admin2/counselors",
     item: { label: "면담 상품", href: "/design/admin2/consult-products" },
+  },
+  /* 채점자가 「알아볼 수 없음」으로 넘긴 사진 답안 — 운영자가 보호자에게 다시 올려 달라고 요청하는 자리.
+     채점 화면에서 넘어오는 일이라 채점 관리 그룹에 둔다. 진단 위원의 메뉴(only)에는 없다 */
+  "채점 관리": {
+    after: "/admin2/grading/members",
+    item: { label: "운영자 확인", href: "/design/admin2/grading/checks", count: 3 },
   },
 };
 
