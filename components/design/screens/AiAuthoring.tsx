@@ -12,8 +12,8 @@ import ConsoleFrame from "../ConsoleFrame";
  * AI 문항 출제(실제 주소 /admin2/authoring)와 문항 은행의 「비슷한 문항 만들기」(/admin2/items) — 디자인
  * (2026-10-28, /design2).
  *
- *   AI 출제 판   원안지 양식(10.22)의 칸 가운데 뽑기 전에 정할 수 있는 것(그림·삽화 사양 · 이 문항의 특성)과
- *                고정 배점 안내를 얹었다. 맨 위 「만드는 방법」으로 새로 만들기 / 비슷한 문항 만들기를 고른다
+ *   AI 출제 판   고정 배점 안내를 얹고, 맨 위 「만드는 방법」으로 새로 만들기 / 비슷한 문항 만들기를 고른다.
+ *                원안지 항목 판(그림·삽화 사양 · 이 문항의 특성)은 두었다가 사용자 지시로 걷었다(같은 날)
  *   문항 은행    줄을 체크로 여럿 고르고 「고른 N개로 비슷한 문항 만들기」 → AI 출제 판이 그 문항을 고른 채 열린다
  *
  * 화면은 실제 조각(app/(admin2)/admin2/authoring/Generator.tsx · items/ItemBank.tsx)이고, 문항은 저장소를
@@ -28,7 +28,6 @@ const picked = seedItems.filter((i) => i.state === "approved").slice(0, 3).map((
 
 const starts: Record<string, GenStart> = {
   "": {},
-  figure: { figure: "has" },
   similar: { mode: "similar" },
   "similar/picked": { mode: "similar", chosen: picked, per: 2 },
 };

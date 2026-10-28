@@ -37,7 +37,6 @@ import { QuestionClassRows } from "../items/[id]/QuestionEditor";
  *
  *   문항 구성   단일 · 세트 + 단계별 문항 수(LevelCounts)
  *   분류        학년 · 교과 단원(BandUnitRows) · Tag A · Tag B · 난이도(QuestionClassRows)
- *   원안지 항목  그림·삽화 사양 · 이 문항의 특성
  *   출제 지시
  *
  * 과목 줄은 없다. 교과 단원을 고르면 과목이 따라온다(문항 상세와 같다).
@@ -54,10 +53,10 @@ import { QuestionClassRows } from "../items/[id]/QuestionEditor";
  * 필요하면 뽑은 뒤 문항 상세에서 고친다.
  *
  * ── 원안지 양식(10.22)의 칸 (2026-10-28) ──
- * 문항 상세에 얹은 칸 가운데 **뽑기 전에 정할 수 있는 것**만 여기에도 둔다 — 그림·삽화 사양(그림 없음 /
- * 그림 있음)과 이 문항의 특성(선택). 배점은 원안지의 고정 배점(cardPoints)이라 고르지 않고 문항 구성 줄
- * 아래에 적어만 둔다. 인정 · 불인정 예, NCIC · 2022 확인, 체크리스트 12항은 뽑은 문항을 사람이 읽고
- * 채운다. Tag B는 문항 상세처럼 직접 적은 글이 그대로 넘어간다(talentText).
+ * 배점은 원안지의 고정 배점(cardPoints)이라 고르지 않고 문항 구성 줄 아래에 적어만 둔다. 그림·삽화 사양 ·
+ * 이 문항의 특성 · 인정 · 불인정 예, NCIC · 2022 확인, 체크리스트 12항은 뽑은 문항을 사람이 읽고 채운다 —
+ * 한때 그림 사양과 특성을 「원안지 항목」 판으로 여기 두었다가 사용자 지시로 걷었다(같은 날). Tag B는 문항
+ * 상세처럼 직접 적은 글이 그대로 넘어간다(talentText).
  *
  * ── 비슷한 문항 만들기 (2026-10-28) ──
  * 맨 위에서 「새로 만들기 / 비슷한 문항 만들기」를 고른다. 비슷한 문항은 문항 은행의 문항을 여럿 골라,
@@ -82,7 +81,6 @@ export type GenStart = {
   /** 비슷한 문항의 원본으로 골라 둔 문항 */
   chosen?: string[];
   per?: number;
-  figure?: "none" | "has";
 };
 
 /** 원안지(10.22)의 고정 배점 — 고르는 값이 아니라 적어만 둔다 */
@@ -109,8 +107,6 @@ export default function Generator({
   const [mode, setMode] = useState<GenMode>(start?.mode ?? "new");
   const [chosen, setChosen] = useState<string[]>(start?.chosen ?? []);
   const [per, setPer] = useState(start?.per ?? 1);
-  const [figure, setFigure] = useState<"none" | "has">(start?.figure ?? "none");
-  const [trait, setTrait] = useState("");
 
   const [form, setForm] = useState<ItemForm>("single");
   const [place, setPlace] = useState<BandUnit>({
@@ -150,8 +146,6 @@ export default function Generator({
     /* 형식 · 배점은 넘기지 않는다 — 단일도 세트도 단계마다 고정 매핑을 따른다(머리 주석) */
     counts,
     brief,
-    figure,
-    trait,
   };
 
   const pickQ = (next: Question) => {
@@ -309,48 +303,6 @@ export default function Generator({
               </div>
             </Panel>
 
-            {/* 원안지 양식(10.22)의 칸 가운데 뽑기 전에 정할 수 있는 것 */}
-            <Panel title="원안지 항목" flush>
-              <div className="a2-form a2-form-lg a2-card">
-                <FormRow
-                  label="그림·삽화 사양"
-                  hint={
-                    figure === "has"
-                      ? "그림이 들어갈 문항을 뽑습니다. 뽑은 뒤 그림을 넣고 확인 세 칸을 짚어야 검수로 낼 수 있습니다."
-                      : "그림 없이 글로만 묻는 문항을 뽑습니다."
-                  }
-                >
-                  <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
-                    {(
-                      [
-                        ["none", "그림 없음"],
-                        ["has", "그림 있음"],
-                      ] as const
-                    ).map(([id, label]) => (
-                      <label key={id} className="a2-choice">
-                        <input
-                          type="radio"
-                          name="gen-figure"
-                          checked={figure === id}
-                          onChange={() => setFigure(id)}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </FormRow>
-                <FormRow label="이 문항의 특성">
-                  <GrowTextarea
-                    className="a2-textarea"
-                    rows={1}
-                    value={trait}
-                    onChange={(e) => setTrait(e.target.value)}
-                    placeholder="선택 — 적으면 뽑은 문항마다 그대로 듭니다. 예 — 일상 속 소리를 비유로 표현해 보는 문항"
-                    aria-label="이 문항의 특성"
-                  />
-                </FormRow>
-              </div>
-            </Panel>
           </>
         )}
 
