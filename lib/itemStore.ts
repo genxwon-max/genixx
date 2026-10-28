@@ -7,6 +7,8 @@ import {
   bandOfGrade,
   checkStandardCode,
   gradeFrom,
+  cardPoints,
+  figureChecks,
   levelAllowed,
   levelSpecs,
   SUBJECT_LETTER,
@@ -320,6 +322,18 @@ export type Question = {
   wrongIntent: string;
   /** ④ Tag A 출제 의도 — 이 성취기준으로 무엇을 확인하려는가 */
   tagAIntent: string;
+  /** ④ Tag A — NCIC(국가교육과정정보센터) 원문 대조 완료 */
+  ncicChecked: boolean;
+  /** ④ Tag A — 2022 개정 코드 확인 */
+  code2022Checked: boolean;
+  /**
+   * ⑧ 그림·삽화 사양 — 그림 없음 · 그림 있음. 빈 글자면 아직 고르지 않았다.
+   * 그림 있음이면 figureChecks 세 칸(lib/blueprint.ts figureChecks)을 모두 짚어야 낸다.
+   */
+  figure: "" | "none" | "has";
+  figureChecks: string[];
+  /** ⑬ 이 문항의 특성 — 원안지(2026-10-22)에 새로 생긴 칸 */
+  trait: string;
 
   /* ── 분류 (발주서 §3 문항 카드 ③④⑤) ──────────────────────────────────────
    *
@@ -359,8 +373,8 @@ export type Question = {
   /**
    * ⑤ 배점 — 사람이 직접 적는다. 0이면 아직 안 적은 것이다.
    *
-   * 한동안 인지단계에서 따라오게 했다(§1 단계별 배점). 이제는 새 문항이 단계의 기본 배점
-   * (levelSpecs[level].points)으로 시작할 뿐, 단계를 바꿔도 적어 둔 값을 덮지 않는다.
+   * 한동안 인지단계에서 따라오게 했다(§1 단계별 배점). 이제는 새 문항이 원안지의 고정 배점
+   * (lib/blueprint.ts cardPoints)으로 시작할 뿐, 단계를 바꿔도 적어 둔 값을 덮지 않는다.
    */
   points: number;
 };
@@ -485,10 +499,10 @@ export type ItemDraft = {
   reviewRequest: string;
   /** ⑦ 오답마다 어떤 오개념을 잡는가 — 보기와 같은 순서 */
   distractorIntent: string[];
-  /** Ⅲ. 제출 전 자가 체크리스트에서 짚은 항목 id (lib/blueprint.ts submitChecklist) */
+  /** Ⅱ. 제출 전 자가 체크리스트에서 짚은 항목 id (lib/blueprint.ts submitChecklist) */
   checks: string[];
   /**
-   * 제출 확인 — 「위 14항을 모두 확인하였음」에 서명한 출제위원.
+   * 제출 확인 — 「위 12항을 모두 확인하였음」에 서명한 출제위원.
    *
    * 확인을 풀어도 이름은 남긴다. 다시 확인할 때마다 이름을 새로 치게 할 까닭이 없다.
    */
@@ -2091,6 +2105,11 @@ function questionOf(raw: Partial<ItemDraft>, n: number, tags: QuestionTags): Que
     perspectiveAbility: "",
     wrongIntent: "",
     tagAIntent: "",
+    ncicChecked: false,
+    code2022Checked: false,
+    figure: "",
+    figureChecks: [],
+    trait: "",
     ...tags,
   };
 }
@@ -2122,6 +2141,11 @@ function fillQuestion(q: Partial<Question>, n: number, tags: QuestionTags): Ques
     perspectiveAbility: q.perspectiveAbility ?? "",
     wrongIntent: q.wrongIntent ?? "",
     tagAIntent: q.tagAIntent ?? "",
+    ncicChecked: q.ncicChecked ?? false,
+    code2022Checked: q.code2022Checked ?? false,
+    figure: q.figure ?? "",
+    figureChecks: q.figureChecks ?? [],
+    trait: q.trait ?? "",
     standardCode: q.standardCode ?? tags.standardCode,
     standardText: q.standardText ?? tags.standardText,
     tagADetail: q.tagADetail ?? tags.tagADetail,
@@ -2807,7 +2831,6 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
 
   /** 뽑은 것 하나를 문항 한 칸으로 */
   const questionOf = (pick: { level: Level; k: number }, order: number) => {
-    const s = levelSpecs[pick.level];
     /* 단일에서 사람이 고른 형식 · 배점. 세트는 단계마다 고정 매핑을 따른다 — 한 벌의 형식을
        S1과 S4에 함께 씌우면 어느 한쪽은 반드시 매핑을 벗어난다 */
     const own = spec.form === "single";
@@ -2852,6 +2875,11 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         wrongIntent: "",
         /* 출제 의도는 사람이 생성 판에 적었을 때만 든다. AI가 채우지 않는 까닭은 위와 같다 */
         tagAIntent: spec.tagAIntent?.trim() ?? "",
+        ncicChecked: false,
+        code2022Checked: false,
+        figure: "" as const,
+        figureChecks: [],
+        trait: "",
         standardCode: spec.standardCode.trim(),
         standardText: spec.standardText?.trim() || sample.standardText,
         tagADetail: spec.tagADetail?.trim() || sample.tagADetail,
@@ -2861,7 +2889,7 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         /* 사람이 고른 난이도를 그대로 쓴다. 단계 앵커값을 몰래 넣어 두면 「아무도 안
            고른 것」과 구별되지 않는다(Question.b 주석) */
         b: spec.b,
-        points: own && spec.points !== undefined ? spec.points : s.points,
+        points: own && spec.points !== undefined ? spec.points : cardPoints[pick.level],
       },
     };
   };
@@ -3012,7 +3040,7 @@ export function blankQuestion(
      없거나 비워 두었으면 단계의 기본 배점으로 시작한다.
      ⚠ 문항 쪽에 실어 보낸다. fillQuestion은 태그 쪽 배점을 읽지 않는다 — 옛 납작한 문항을
        풀 때 그 자리에 세트 총점이 들어 있을 수 있어서다 */
-  const points = !opts.level && prev && prev.points > 0 ? prev.points : levelSpecs[level].points;
+  const points = !opts.level && prev && prev.points > 0 ? prev.points : cardPoints[level];
   return fillQuestion({ id: nextQuestionId(list), type, points }, list.length, {
     standardCode: prev?.standardCode ?? "",
     standardText: prev?.standardText ?? "",
@@ -3052,6 +3080,7 @@ export function questionHasContent(q: Question) {
     q.perspectiveAbility,
     q.wrongIntent,
     q.tagAIntent,
+    q.trait,
     ...q.choices,
     ...q.distractorIntent,
   ];
@@ -3630,7 +3659,7 @@ export function missingSubmit(i: ItemDraft) {
 }
 
 /**
- * 문항 카드의 나머지 칸 — 출제 의도 · 인정 예 · 재능 평가 관점.
+ * 문항 카드의 나머지 칸 — 출제 의도 · 인정 예 · 재능 평가 관점 · 그림·삽화 사양.
  *
  * 불인정 예는 묻지 않는다(2026-09-21 협의로 출제 화면에서 걷었다). 옛 문항에 적힌 것은 남는다.
  *
@@ -3650,6 +3679,11 @@ export function missingCard(i: ItemDraft) {
     if (!q.perspectiveHierarchy.trim() || !q.perspectiveAbility.trim()) {
       out.push(`${tag}재능 평가 관점`);
     }
+    /* ⑧ — 그림이 있으면 양식이 「아래 확인 필수」라고 적어 둔 세 칸까지 */
+    if (!q.figure) out.push(`${tag}그림·삽화 사양`);
+    else if (q.figure === "has" && figureChecks.some((c) => !q.figureChecks.includes(c.id))) {
+      out.push(`${tag}그림·삽화 확인`);
+    }
   }
   return out;
 }
@@ -3666,26 +3700,29 @@ export function missingAttest(i: ItemDraft) {
 /**
  * 형식 · 배점이 단계의 고정 매핑과 어긋나는 까닭. 맞으면 빈 글자.
  *
- *   S1 · S2   선택(객관식 · OX) 1점
- *   S3        단답 2점, 또는 서술 · 논술 3점
- *   S4        서술 · 논술 3점
- *   0.5점 단위는 없다
+ *   S1 · S2   선택형 2점
+ *   S3        단답 4점 (서술 · 논술로 내도 4점)
+ *   S4        서술 · 논술 6점
+ *   소수점 배점은 없다
  *
- * 체크리스트 한 줄과 형식 칸의 경고가 같은 것을 본다. 막지는 않는다 — 배점은 사람이 적는
- * 값이고(Question.points), 매핑을 벗어난 까닭을 검토 요청에 적고 낼 수도 있다.
+ * 원안지(2026-10-22)의 체크리스트 「형식·배점」 줄과 같은 매핑이다(lib/blueprint.ts cardPoints).
+ * 그 전의 매핑(선택 1점 · 단답 2점 · 서술 3점)으로 배점을 적어 둔 문항은 여기서 걸린다 — 막지는
+ * 않는다. 배점은 사람이 적는 값이고(Question.points), 매핑을 벗어난 까닭을 검토 요청에 적고 낼 수도 있다.
+ *
+ * 체크리스트 한 줄과 형식 칸의 경고가 같은 것을 본다.
  *
  * ⚠ 이미지 첨부는 매핑에 없다. 손으로 그리거나 써서 찍어 올리는 답이라 서술과 같이 센다.
  */
 export function formatIssue(q: Pick<Question, "level" | "type" | "points">): string {
-  if (q.points > 0 && !Number.isInteger(q.points)) return "배점에 0.5점 단위를 쓰지 않습니다.";
-  const low = q.level === "S1" || q.level === "S2";
-  const points = low ? 1 : q.type === "short" ? 2 : 3;
+  if (q.points > 0 && !Number.isInteger(q.points)) return "소수점 배점은 쓰지 않습니다.";
+  const points = cardPoints[q.level];
   if (typeFitsLevel(q.level, q.type) && q.points === points) return "";
-  const mapping = low
-    ? "선택 1점"
-    : q.level === "S3"
-      ? "단답 2점 또는 서술 · 논술 3점"
-      : "서술 · 논술 3점";
+  const mapping =
+    q.level === "S1" || q.level === "S2"
+      ? "선택형 2점"
+      : q.level === "S3"
+        ? "단답 4점"
+        : "서술 · 논술 6점";
   return `${q.level} 고정 매핑은 ${mapping}입니다.`;
 }
 

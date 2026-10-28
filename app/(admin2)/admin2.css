@@ -827,6 +827,315 @@
     padding-top: 1px;
   }
 
+  /* ── 원안지 (items/[id]/Paper.tsx) ──
+     문항 상세를 종이 「Genixx 지필 진단 문항 출제 원안지 양식」(2026-10-22 최종)처럼 그린다
+     (2026-10-28 요청). 흰 종이 한 장 위에 가운데 제목 · 파란 머리 · 장 제목 · 「1. 문항 S1」 표.
+
+     종이의 표는 검은 선이다. 판 안의 선(--a2-line)을 종이 안에서만 짙게 갈아, 문항 카드(.a2-card)의
+     선 · 칸 안의 선 · 체크리스트 표의 선이 한꺼번에 종이 선이 된다. 이름표 칸은 종이처럼 옅은 회색 면에
+     굵은 글. 종이 폭(A4)을 그대로 따르지 않고 화면 폭까지 넓힌다 — 모범답안 · 루브릭은 긴 글이라
+     좁히면 줄이 두 배로 접힌다. */
+  .a2-paper {
+    --a2-line: #5f6671;
+    --a2-paper-red: #e0261d;
+    --a2-paper-blue: #1d3fd0;
+    max-width: 1080px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 40px 44px 44px;
+    background: #fff;
+    border: 1px solid var(--a2-line-2);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgb(20 24 31 / 0.06);
+    color: var(--a2-ink);
+  }
+  @media (max-width: 640px) {
+    .a2-paper {
+      padding: 24px 16px 28px;
+    }
+  }
+  .a2-paper-head {
+    margin-bottom: 28px;
+    text-align: center;
+  }
+  .a2-paper-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--a2-ink);
+  }
+  .a2-paper-lead {
+    margin-top: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .a2-paper-chapter {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 10px;
+    font-size: 1.0625rem;
+    font-weight: 800;
+    color: var(--a2-ink);
+  }
+  .a2-paper-chapter-meta {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--a2-ink-4);
+  }
+  .a2-paper-item {
+    margin: 0 0 8px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--a2-ink);
+  }
+  .a2-paper-note {
+    margin: 0 0 10px;
+    font-size: 0.75rem;
+    color: var(--a2-ink-3);
+  }
+  /* 표 바깥 테두리 — 판 안에서는 판의 테두리가 그 노릇을 했지만 종이 위에서는 표가 혼자 선다 */
+  .a2-paper .a2-card {
+    border: 1px solid var(--a2-line);
+  }
+  .a2-paper .a2-card .a2-form-label {
+    background: #ececec;
+    color: var(--a2-ink);
+    font-size: 0.8125rem;
+  }
+  .a2-paper .a2-card .a2-form-block-head {
+    background: #ececec;
+    color: var(--a2-ink);
+  }
+  .a2-paper .a2-card .a2-block-part-head {
+    background: #f6f6f6;
+    color: var(--a2-ink);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+  .a2-paper .a2-card .a2-subrow-label {
+    background: #fff;
+    color: var(--a2-ink);
+  }
+  .a2-paper .a2-card .a2-cell-line-label {
+    color: var(--a2-ink);
+  }
+  .a2-paper .a2-card + .a2-paper-chapter,
+  .a2-paper .a2-paper-list + .a2-paper-check,
+  .a2-paper .a2-card + .a2-paper-check {
+    margin-top: 40px;
+  }
+  /* 세트의 문항 목록 — 공통 칸 표 아래에 붙인다 */
+  .a2-paper-list {
+    margin-top: 24px;
+    border: 1px solid var(--a2-line);
+  }
+
+  /* 원안지의 한 줄 — 「3원 좌표 : 재능 [ ] · 하위요소코드 [ ] · 단계 [S1]」 · 「형식: ☐ … 배점: 2점」.
+     고르개 · 체크가 글 사이에 선다 */
+  .a2-paper-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--a2-ink);
+  }
+  /* 글 사이의 고르개 · 배점 칸 — 테두리 없이 파란 값으로, 누르는 자리만 옅게 보인다 */
+  .a2-card .a2-paper-value {
+    height: 30px;
+    padding-inline: 6px;
+    border-radius: 3px;
+    background-color: #f3f6ff;
+    color: var(--a2-paper-blue, #1d3fd0);
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+  .a2-card select.a2-paper-value {
+    padding-right: 24px;
+  }
+  .a2-card .a2-paper-value:disabled {
+    background-color: transparent;
+    color: var(--a2-paper-blue, #1d3fd0);
+    opacity: 1;
+  }
+  .a2-paper-points {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .a2-card .a2-paper-points .a2-input {
+    width: 3.5rem;
+    text-align: right;
+  }
+
+  /* 원안지의 ☐ — 체크 상자 + 글. 인지단계 네 칸은 두 줄 두 칸, 그림·삽화 사양은 글처럼 이어 적는다 */
+  .a2-paper-boxes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 20px;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--a2-ink);
+  }
+  .a2-paper-boxes-2 {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    column-gap: 28px;
+  }
+  @media (max-width: 760px) {
+    .a2-paper-boxes-2 {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .a2-paper-flow {
+    gap: 4px 16px;
+    padding-block: 8px;
+  }
+  .a2-paper-box {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .a2-paper-box > input {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin-top: 4px;
+    accent-color: var(--a2-ink);
+  }
+  .a2-paper-box:has(input:disabled) {
+    cursor: default;
+    color: var(--a2-ink-4);
+  }
+  .a2-paper-box:has(input:disabled:checked) {
+    color: var(--a2-ink);
+  }
+  /* 형식 다섯 칸은 읽기만 한다 — 잠긴 체크라도 흐리지 않는다(켜진 것 · 꺼진 것이 또렷해야 한다) */
+  .a2-paper-box-read,
+  .a2-paper-box-read:has(input:disabled) {
+    color: var(--a2-ink);
+  }
+  .a2-paper-box-read > input:disabled {
+    opacity: 1;
+  }
+
+  /* ── 원안지의 안내 글 (components/admin2/Guide.tsx) ──
+     빈 칸 위에 겹쳐 그린다. 칸과 안내 글이 같은 격자 칸에 서서, 둘 중 큰 쪽만큼 칸이 자란다 */
+  .a2-guided {
+    display: grid;
+    min-width: 0;
+  }
+  .a2-guided > * {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+  .a2-guided > .a2-textarea,
+  .a2-guided > .a2-input {
+    align-self: stretch;
+  }
+  .a2-guide {
+    pointer-events: none;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: #a3aab6;
+    white-space: pre-line;
+  }
+  .a2-guide-red {
+    color: var(--a2-paper-red, #e0261d);
+    font-weight: 600;
+  }
+  .a2-guide-blue {
+    color: var(--a2-paper-blue, #1d3fd0);
+  }
+  .a2-docbox-empty .a2-guide-red {
+    font-weight: 500;
+  }
+
+  /* ── Ⅱ. 제출 전 자가 체크리스트 (items/[id]/SubmitChecklist.tsx) ──
+     원안지 마지막 쪽의 표 — 짙은 남색 머리 「확인 | 점검 항목」, 가운데 체크, 맨 아래 서명 · 접수 줄 */
+  .a2-paper-check-lead {
+    margin: 0 0 14px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+  }
+  .a2-paper-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--a2-ink);
+  }
+  .a2-paper-table th,
+  .a2-paper-table td {
+    border: 1px solid #c8ccd2;
+    padding: 8px 12px;
+    vertical-align: middle;
+  }
+  .a2-paper-table th {
+    background: #1f2d4f;
+    border-color: #1f2d4f;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+  }
+  .a2-paper-table td label {
+    display: block;
+    cursor: pointer;
+  }
+  .a2-paper-table-box {
+    text-align: center;
+  }
+  .a2-paper-table-box input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--a2-ink);
+    vertical-align: middle;
+  }
+  .a2-paper-table .a2-paper-sign {
+    background: #f6f6f6;
+    text-align: center;
+  }
+  .a2-paper-table .a2-paper-sign > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 10px;
+  }
+  .a2-paper-sign input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--a2-ink);
+  }
+  .a2-paper-table .a2-paper-office {
+    text-align: center;
+    color: var(--a2-ink-2);
+  }
+  .a2-paper-warn {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--a2-warn);
+  }
+  .a2-paper-notes {
+    margin-top: 20px;
+  }
+
+  /* 한 칸 안에 고르개를 나란히 — 원안지 ②의 학년 | 교과 단원. 사이에 선을 하나 긋는다 */
+  .a2-cell-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .a2-card .a2-cell-inline > * + * {
+    border-left: 1px solid var(--a2-line);
+  }
+
   @media (max-width: 640px) {
     .a2-form-lg .a2-form-row,
     .a2-form-lg .a2-form-pair {
