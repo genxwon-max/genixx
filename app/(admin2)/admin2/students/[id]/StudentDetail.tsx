@@ -5,7 +5,7 @@ import { useState } from "react";
 import { auditLog } from "@/lib/admin";
 import { examTone, studentAccountTone } from "@/lib/admin2";
 import { useAdminPrefs, useLocalAudit } from "@/lib/adminStore";
-import { GRADES, examStateLabel, findMember, type StudentRow } from "@/lib/adminUsers";
+import { examStateLabel, findMember, type StudentRow } from "@/lib/adminUsers";
 import { actOnAccount, patchInfo, reissueCode, usePatches } from "@/lib/directoryStore";
 import {
   FieldRow,
@@ -17,6 +17,8 @@ import {
 import { AccountStateBar } from "@/components/admin2/AccountActions";
 import { Body, FormRow, PageHead, Panel, Status } from "@/components/admin2/ui";
 import RecordList from "@/components/admin2/RecordList";
+import GradeOptions from "@/components/GradeOptions";
+import { gradeValue } from "@/lib/childOptions";
 
 /**
  * ADM-02-1-1 학생 상세.
@@ -134,11 +136,7 @@ export default function StudentDetail({ row }: { row: StudentRow }) {
                   disabled={gone}
                   onChange={(e) => info.set("grade", e.target.value)}
                 >
-                  {GRADES.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
+                  <GradeOptions valueOf={gradeValue.short} />
                 </select>
               </FormRow>
 

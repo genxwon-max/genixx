@@ -87,6 +87,7 @@ export default function RoundsTable() {
         nowrap: true,
         /* 정렬하지 않는다 — 대기중·진행중·마감은 크기 순서가 아니라 차례이고,
            그 차례는 기간 순으로 이미 보인다. 고르고 싶으면 위 거르개를 쓴다. */
+        csv: (r) => roundStates[planOf(plans, r.id).state].label,
         cell: (r) => {
           const st = planOf(plans, r.id).state;
           return <Status tone={roundTone[st]}>{roundStates[st].label}</Status>;
@@ -98,6 +99,7 @@ export default function RoundsTable() {
         width: "12rem",
         nowrap: true,
         value: (r) => planOf(plans, r.id).opensOn,
+        csv: (r) => `${planOf(plans, r.id).opensOn} – ${planOf(plans, r.id).closesOn}`,
         cell: (r) => {
           const p = planOf(plans, r.id);
           return (
@@ -112,6 +114,12 @@ export default function RoundsTable() {
         head: "편성",
         width: "7rem",
         nowrap: true,
+        csv: (r) => {
+          const mine = forms.filter((f) => f.round === r.id);
+          return mine.length === 0
+            ? "아직 없음"
+            : `${mine.filter((f) => f.state === "confirmed").length}/${mine.length} 확정`;
+        },
         cell: (r) => {
           const mine = forms.filter((f) => f.round === r.id);
           const ok = mine.filter((f) => f.state === "confirmed").length;

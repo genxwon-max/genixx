@@ -545,6 +545,7 @@ export default function FormSlot({
               pageSize={25}
               searchHint="문항 ID · 발문 · 단원"
               empty="담을 수 있는 승인 문항이 없습니다. 문항 은행에서 만들어 검수를 거쳐야 여기에 표시됩니다."
+              noExport
               selection={{
                 chosen,
                 onToggle: toggle,

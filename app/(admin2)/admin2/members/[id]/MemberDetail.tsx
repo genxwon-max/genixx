@@ -237,7 +237,7 @@ export default function MemberDetail(found: FoundMember) {
                 </Link>
               }
             >
-              <TableBox>
+              <TableBox download={"등록된 학생"}>
                 <table className="a2-table">
                   <thead>
                     <tr>

@@ -28,7 +28,7 @@ export default function LocalActions() {
       flush
       className="mt-3"
     >
-      <TableBox>
+      <TableBox download>
         <table className="a2-table">
           <thead>
             <tr>

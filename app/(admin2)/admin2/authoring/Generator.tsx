@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LEVELS, cardPoints, levelAllowed, type Level } from "@/lib/blueprint";
+import { LEVELS, cardPoints, gradeText, levelAllowed, type Level } from "@/lib/blueprint";
 import {
   GENERATE_MAX,
   SET_MAX,
@@ -377,8 +377,8 @@ const pickCols: Col<ItemDraft>[] = [
     head: "과목 · 학년",
     width: "8rem",
     nowrap: true,
-    value: (r) => `${r.subject} ${r.gradeNo}학년`,
-    cell: (r) => `${r.subject} · ${r.gradeNo}학년`,
+    value: (r) => `${r.subject} ${gradeText(r.gradeNo)}`,
+    cell: (r) => `${r.subject} · ${gradeText(r.gradeNo)}`,
   },
   {
     key: "level",
@@ -457,6 +457,7 @@ function SimilarPicker({
           searchHint="문항번호 · 발문 · 단원"
           empty="고를 수 있는 문항이 없습니다."
           pageSize={10}
+          noExport
           selection={{
             chosen,
             onToggle: toggle,

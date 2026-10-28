@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { ageFromBirth } from "@/lib/account";
+import { gradeOrder } from "@/lib/childOptions";
 import { formatCode, useRoster, type Student } from "@/lib/roster";
 import { subjects } from "@/lib/exam";
 import { getRecord, surveyKeys, useExamVersion, useHydrated } from "@/lib/examStore";
@@ -124,7 +125,7 @@ export default function ChildList() {
       sorted.sort(
         (a, b) =>
           (a.grade ? 0 : 1) - (b.grade ? 0 : 1) ||
-          (a.grade ?? "").localeCompare(b.grade ?? "", "ko") ||
+          gradeOrder(a.grade) - gradeOrder(b.grade) ||
           a.name.localeCompare(b.name, "ko"),
       );
     else sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));

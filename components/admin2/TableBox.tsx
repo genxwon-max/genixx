@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import ExportButtons, { readTable } from "./ExportButtons";
 
 /**
  * 표를 감싸는 상자 — 콘솔의 표 아홉 장이 전부 이것을 쓴다.
@@ -24,11 +25,18 @@ import { useEffect, useRef } from "react";
 export default function TableBox({
   label,
   className = "",
+  download,
   children,
 }: {
   /** 스크롤이 켜졌을 때 이 상자가 무엇의 목록인지 — 없으면 region으로 알리지 않는다 */
   label?: string;
   className?: string;
+  /**
+   * 손으로 짠 목록 표에 「CSV 다운로드」 · 「엑셀 다운로드」를 세운다(2026-10-28) — 값은 파일 이름 앞부분이고,
+   * true면 화면 제목을 쓴다. 화면에 보이는 글자를 그대로 읽는다(ExportButtons readTable). 목록 표(DataTable)는
+   * 스스로 세우므로 넘기지 않는다.
+   */
+  download?: string | true;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -55,7 +63,7 @@ export default function TableBox({
     return () => ro.disconnect();
   });
 
-  return (
+  const box = (
     <div
       ref={ref}
       role={label ? "region" : undefined}
@@ -64,5 +72,20 @@ export default function TableBox({
     >
       {children}
     </div>
+  );
+  if (!download) return box;
+  return (
+    <>
+      <div className="flex justify-end gap-1.5 border-b border-(--a2-line) px-3 py-1.5">
+        <ExportButtons
+          name={download === true ? undefined : download}
+          data={() => {
+            const table = ref.current?.querySelector("table");
+            return table ? readTable(table) : { head: [], rows: [] };
+          }}
+        />
+      </div>
+      {box}
+    </>
   );
 }

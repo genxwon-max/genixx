@@ -115,7 +115,7 @@ export default function PrivacyRecord({
 
           {/* ② 증빙 — 지난 것을 지우지 않고 쌓는다 */}
           <Panel title="동의 · 파기 이력" meta={`${events.length}건`} flush>
-            <TableBox>
+            <TableBox download={"동의 · 파기 이력"}>
               <table className="a2-table">
                 <thead>
                   <tr>

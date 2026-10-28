@@ -22,8 +22,10 @@ import {
   formatCode,
   grantGuardianConsent,
 } from "@/lib/roster";
+import { gradeLabels, gradeValue } from "@/lib/childOptions";
 import { useHydrated } from "@/lib/examStore";
 import { themeOf, type Variant } from "@/lib/authVariant";
+import GradeOptions from "@/components/GradeOptions";
 
 /**
  * ACC-03-1 법정대리인 동의 — 문자·알림톡으로 받은 링크가 도착하는 자리.
@@ -532,13 +534,19 @@ export default function GuardianConsent({
             <label htmlFor="c-grade" className={t.fieldLabel}>
               학년 <span className={`font-normal ${t.muted}`}>(선택)</span>
             </label>
-            <input
+            <select
               id="c-grade"
               value={child.grade}
               onChange={(e) => setChild((c) => ({ ...c, grade: e.target.value }))}
-              placeholder="초등 4학년"
               className={t.field}
-            />
+            >
+              <option value="">선택 안 함</option>
+              {/* 앞서 손으로 적어 둔 값도 잃지 않게 그대로 한 줄 세운다 */}
+              {child.grade && !gradeLabels.includes(child.grade) && (
+                <option value={child.grade}>{child.grade}</option>
+              )}
+              <GradeOptions valueOf={gradeValue.long} />
+            </select>
           </div>
         </div>
 

@@ -17,11 +17,19 @@
  * 둘 중 하나는 반드시 거짓말을 하게 된다.
  */
 
-export type SurveyBand = "e34" | "e56";
+/**
+ * 2026-10-28 사용자: 「모든 학년 선택은 초1~6 · 중1~3 · 고1~3」 — 학년대를 다섯으로 늘려 열두 학년이 모두 제
+ * 칸을 갖는다. 초1~2 · 중1~3 · 고1~3 칸도 처음에는 설문지 v1.0으로 시작한다(그 설문지가 초1~고3을 한 벌로
+ * 묻는다, lib/survey.ts). 학년대마다 말을 고르는 일은 관리자가 그 칸의 설문지에서 한다.
+ */
+export type SurveyBand = "e12" | "e34" | "e56" | "m13" | "h13";
 
 export const surveyBands: { id: SurveyBand; label: string; short: string }[] = [
+  { id: "e12", label: "초등 1~2학년", short: "초1~2" },
   { id: "e34", label: "초등 3~4학년", short: "초3~4" },
   { id: "e56", label: "초등 5~6학년", short: "초5~6" },
+  { id: "m13", label: "중학교 1~3학년", short: "중1~3" },
+  { id: "h13", label: "고등학교 1~3학년", short: "고1~3" },
 ];
 
 export const surveyBandIds: SurveyBand[] = surveyBands.map((b) => b.id);
@@ -33,19 +41,18 @@ export const isSurveyBand = (v: string): v is SurveyBand =>
   surveyBandIds.includes(v as SurveyBand);
 
 /**
- * 학생 명부에 손으로 적힌 학년 글자에서 학년대를 고른다.
+ * 학생 명부에 적힌 학년 글자에서 학년대를 고른다.
  *
- * 명부의 학년 칸은 자유 입력이라 「4학년」·「초4」·「6학년」이 섞여 들어온다. 숫자 하나만
- * 본다 — 5·6이면 위 칸, 나머지는 아래 칸이다.
+ * 명부의 학년 칸에는 「초등 4학년」 · 「초4」 · 「4학년」 · 「중등 2학년」이 섞여 들어온다. 「중」 · 「고」가
+ * 있으면 그 학교급의 칸, 아니면 숫자 하나로 초등 칸을 고른다.
  *
- * 못 읽으면 초등 3~4학년으로 둔다. 설문이 아예 안 나가는 것보다 낫고, 어린 쪽 문항은
- * 어느 학년이 읽어도 뜻이 통한다. 대상이 아닌 학년(중·고)이 명부에 들어와 있어도
- * 마찬가지다 — 접수는 학년 칸에서 이미 막힌다(lib/examCatalog.ts trackFromGrade).
+ * 못 읽으면 초등 3~4학년으로 둔다 — 진단 대상 학년의 가장 어린 칸이고, 설문이 아예 안 나가는 것보다 낫다.
  */
 export function bandFromGrade(grade?: string): SurveyBand {
   const t = (grade ?? "").trim();
   if (!t) return "e34";
-  if (t.includes("중") || t.includes("고")) return "e34";
+  if (t.includes("중")) return "m13";
+  if (t.includes("고")) return "h13";
   const n = Number(t.match(/\d/)?.[0] ?? "");
-  return n === 5 || n === 6 ? "e56" : "e34";
+  return n === 1 || n === 2 ? "e12" : n === 5 || n === 6 ? "e56" : "e34";
 }

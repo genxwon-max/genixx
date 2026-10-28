@@ -27,6 +27,40 @@ export const schoolLevels: { id: SchoolLevel; label: string; grades: number[] }[
 
 export const levelOf = (id: string) => schoolLevels.find((l) => l.id === id);
 
+/**
+ * 학년 열둘을 한 줄로 — 「초등 1학년」 … 「고등 3학년」. 학교급과 학년을 따로 고르지 않고 한 고르개로 받는
+ * 자리(회원가입 · 보호자 동의 · 기관 학생 등록)가 쓴다(2026-10-28 사용자: 「모든 학년 선택은 초1~6 · 중1~3 ·
+ * 고1~3」). 저장하는 글자는 한 명씩 등록(ChildNew)과 같다.
+ */
+export const gradeLabels = schoolLevels.flatMap((l) => l.grades.map((g) => `${l.id} ${g}학년`));
+
+/**
+ * 학년을 학교급 아래에 묶어 세운다 — 고르개가 「초등학교 ㄴ 1학년 ㄴ 2학년 … 중학교 ㄴ 1학년 …」으로 서게
+ * (2026-10-28 사용자 요청). 저장하는 값의 꼴은 자리마다 달라(「초3」 · 「초등 3학년」 · 문항 은행의 3) valueOf로
+ * 받는다. 그리는 것은 components/GradeOptions.tsx, 표의 거르개는 Filter 선택지의 group으로 같은 모양을 낸다.
+ */
+export function gradeGroups<V extends string | number>(valueOf: (level: SchoolLevel, n: number) => V) {
+  return schoolLevels.map((l) => ({
+    label: l.label,
+    options: l.grades.map((n) => ({ value: valueOf(l.id, n), label: `${n}학년` })),
+  }));
+}
+
+/** 학년 값의 세 가지 꼴 — 짧은 글자(관리자 학생 「초3」) · 긴 글자(명부 「초등 3학년」) · 문항 은행 번호(1~12) */
+export const gradeValue = {
+  short: (l: SchoolLevel, n: number) => `${l.slice(0, 1)}${n}`,
+  long: (l: SchoolLevel, n: number) => `${l} ${n}학년`,
+  no: (l: SchoolLevel, n: number) => (l === "초등" ? n : l === "중등" ? n + 6 : n + 9),
+};
+
+/** 초1 → 고3 차례. 「고 · 중 · 초」 가나다순으로는 학년이 뒤집힌다. 읽지 못한 글자는 맨 뒤 */
+export function gradeOrder(text: string | undefined) {
+  const t = text ?? "";
+  const n = Number(/(\d)/.exec(t)?.[1] ?? 0);
+  if (!n) return 99;
+  return /고/.test(t) ? 9 + n : /중/.test(t) ? 6 + n : n;
+}
+
 export const genders = ["남자", "여자"];
 
 export const interestAreas = [

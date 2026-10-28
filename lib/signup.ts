@@ -4,6 +4,7 @@
  *       사이트맵 ACC-01 ~ ACC-01-3.
  */
 
+import { gradeLabels } from "./childOptions";
 import type { MemberTypeId } from "./nav";
 
 export type FieldType = "text" | "tel" | "email" | "password" | "select" | "date";
@@ -164,7 +165,7 @@ export const fieldsByType: Record<MemberTypeId, Field[]> = {
       type: "select",
       required: true,
       half: true,
-      options: ["초등 3학년", "초등 4학년", "초등 5학년", "초등 6학년", "중등", "고등"],
+      options: gradeLabels,
     },
     {
       name: "school",

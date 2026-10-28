@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { GRADES } from "@/lib/adminUsers";
 import { designLinks } from "@/lib/designScreens";
 import { Body, FormRow, PageHead, Panel, Tag } from "@/components/admin2/ui";
 import ConsoleFrame, { ConsoleDialog } from "../ConsoleFrame";
+import GradeOptions from "@/components/GradeOptions";
+import { gradeValue } from "@/lib/childOptions";
 
 /**
  * 학생 등록 — 운영자가 대신 등록 (실제 주소 /admin2/students/new · WBS v4/new/students-new) — 디자인.
@@ -130,9 +131,7 @@ export default function StudentNew({ state }: { state: string }) {
             <FormRow label="학년" req>
               <select aria-label="학년" className="a2-select max-w-40" defaultValue={v.grade}>
                 <option value="">선택</option>
-                {GRADES.map((g) => (
-                  <option key={g}>{g}</option>
-                ))}
+                <GradeOptions valueOf={gradeValue.short} />
               </select>
             </FormRow>
           </div>

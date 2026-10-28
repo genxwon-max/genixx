@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { rounds } from "@/lib/admin";
 import { n } from "@/lib/admin2";
+import { gradeFilterOptions } from "@/lib/adminUsers";
 import { sheetsOf, useExpert, type Sheet } from "@/lib/expertStore";
 import { paperOf } from "@/lib/examSheet";
 import { gradeStat, type GradeMarks } from "@/lib/gradeSheet";
@@ -222,9 +223,8 @@ export default function MembersView() {
       {
         id: "grade",
         label: "학년",
-        options: [...new Set(sheets.map((s) => s.grade))]
-          .sort()
-          .map((v) => ({ value: v, label: v })),
+        /* 열두 학년을 모두 세운다(2026-10-28 — 초1~6 · 중1~3 · 고1~3) */
+        options: gradeFilterOptions(sheets.map((s) => s.grade)),
         match: (s, x) => s.grade === x,
       },
     ],

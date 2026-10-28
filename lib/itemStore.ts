@@ -7,6 +7,7 @@ import {
   bandOfGrade,
   checkStandardCode,
   gradeFrom,
+  gradeLong,
   cardPoints,
   figureChecks,
   levelAllowed,
@@ -2583,7 +2584,8 @@ export function patchItem(id: string, patch: Partial<ItemDraft>) {
  *   const는 아직 서지 않았다(TDZ). function 선언은 끌어올려진다.
  */
 export function gradeLabelOf(g: GradeNo) {
-  return `초등 ${g}학년`;
+  /* 중 · 고등학교는 7 ~ 12로 적는다(lib/blueprint.ts GradeNo) */
+  return gradeLong(g);
 }
 
 /**

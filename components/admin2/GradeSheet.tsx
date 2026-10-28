@@ -14,6 +14,7 @@ import {
 import type { Tone } from "@/lib/admin2";
 import { AnswerCell } from "@/components/exam/AnswerKey";
 import GradeDialog, { type GradeAt } from "@/components/exam/GradeDialog";
+import TableBox from "./TableBox";
 import { Body, FormRow, PageHead, Panel, Status, Tab, Tag } from "./ui";
 
 /**
@@ -206,7 +207,7 @@ export default function GradeSheet({
               meta={`${s.lines.length}문항 · ${pointText(sub.got)} / ${sub.max}점 · 확인 ${sub.done} / ${sub.total}`}
               flush
             >
-              <div className="a2-table-wrap">
+              <TableBox download={`${s.short} 정오표`}>
                 <table className="a2-table">
                   <thead>
                     <tr>
@@ -271,7 +272,7 @@ export default function GradeSheet({
                     })}
                   </tbody>
                 </table>
-              </div>
+              </TableBox>
             </Panel>
           );
         })}

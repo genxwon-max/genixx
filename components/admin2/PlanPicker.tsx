@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { grades, gradeText, type GradeNo } from "@/lib/blueprint";
+import { type GradeNo } from "@/lib/blueprint";
 import { planSubjects } from "@/lib/roundPlanStore";
 import type { ItemDraft } from "@/lib/itemStore";
 import { FormRow } from "@/components/admin2/ui";
+import GradeOptions from "@/components/GradeOptions";
+import { gradeValue } from "@/lib/childOptions";
 
 /**
  * 학년을 먼저 고르고, 평가 과목을 하나씩 넣는다.
@@ -84,11 +86,7 @@ export default function PlanPicker({
           disabled={disabled}
           onChange={(e) => onChange({ grade: Number(e.target.value) as GradeNo, subjects })}
         >
-          {grades.map((g) => (
-            <option key={g} value={g}>
-              {gradeText(g)}
-            </option>
-          ))}
+          <GradeOptions valueOf={gradeValue.no} />
         </select>
       </FormRow>
 

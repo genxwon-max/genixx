@@ -137,7 +137,7 @@ export default function GuardBoard({
           {log.length === 0 ? (
             <p className="p-3 a2-t-sm text-(--a2-ink-3)">아직 바꾼 적이 없습니다.</p>
           ) : (
-            <TableBox>
+            <TableBox download>
               <table className="a2-table">
                 <thead>
                   <tr>

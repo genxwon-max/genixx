@@ -23,7 +23,7 @@ import { Body, PageHead, Panel, Status } from "./ui";
  * ADM-14 설문지 — 목록.
  *
  * 설문지는 **계속 새로 만든다**(2026-10-28 사용자 요청 — 「2025 설문지 · 2026 설문지처럼 똑같아도 남겨 둘 수
- * 있게」). 응답자(학생 · 학부모 · 지도교사) × 학년대(초3~4 · 초5~6)마다 **사용 중**인 설문지가 하나 있고, 나머지는
+ * 있게」). 응답자(학생 · 학부모 · 지도교사) × 학년대(초1~2 · 초3~4 · 초5~6 · 중1~3 · 고1~3)마다 **사용 중**인 설문지가 하나 있고, 나머지는
  * 보관해 둔 지난 설문지다. 줄 하나가 설문지 한 벌이고, 누르면 그 설문지를 고치는 자리(/admin2/surveys/[열쇠])로
  * 간다. 「새 설문지」로 빈 설문지나 있는 설문지의 복사본을 만든다.
  *
@@ -112,6 +112,7 @@ const colsOf = (hrefOf: (id: SurveyDocId) => string): Col<Row>[] => [
     nowrap: true,
     hide: "lg",
     sort: (r) => r.items,
+    csv: (r) => `척도 ${r.items} · 고르기 ${r.choices} · 서술 ${r.opens}`,
     cell: (r) => (
       <span className="a2-t-sm tabular-nums">
         척도 {r.items} · 고르기 {r.choices} · 서술 {r.opens}

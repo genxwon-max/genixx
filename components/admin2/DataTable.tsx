@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 
-import { downloadCsv, type CsvCell } from "@/lib/csv";
+import { type CsvCell } from "@/lib/csv";
+import ExportButtons from "./ExportButtons";
 import TableBox from "./TableBox";
 
 /**
@@ -67,18 +68,26 @@ export type Col<T> = {
   detail?: boolean;
   /** 검색에 쓰는 글자. 사람이 화면에서 보는 그대로 적는다. 없으면 검색에 안 걸린다 */
   value?: (row: T) => string | number;
+  /**
+   * 내려받는 파일에만 쓰는 글자 — 검색 · 정렬에 쓰지 않는다(2026-10-28). value가 없는 칸(상태 꼬리표처럼
+   * 정렬을 일부러 끈 칸)도 파일에는 들어가야 해서 둔다. 없으면 value를 쓰고, 둘 다 없으면 파일에서 빠진다.
+   */
+  csv?: (row: T) => CsvCell;
   /** 세우는 순서. 없으면 value로 세운다. 둘 다 없으면 정렬 화살표를 달지 않는다 */
   sort?: (row: T) => string | number;
   cell: (row: T) => React.ReactNode;
 };
 
 /**
- * CSV 내려받기 — 도구 줄 오른쪽에 「CSV 다운로드」를 세운다.
+ * 내려받기 — 도구 줄 오른쪽의 「CSV 다운로드」 · 「엑셀 다운로드」(ExportButtons).
+ *
+ * 2026-10-28부터 **모든 목록 표에 늘 선다**(사용자: 「리스트 화면은 모두 CSV나 엑셀로 추출할 수 있게」). 이
+ * 값은 이름이나 칸을 따로 정할 때만 준다 — 주지 않으면 파일 이름은 화면 제목, 칸은 아래 규칙대로다.
  *
  * 내려받는 것은 **지금 걸린 조건의 결과 전부**다(쪽 넘김과 상관없이, 정렬한 차례대로).
  * 25줄만 받으려고 누르는 사람은 없고, 거르개를 걸고 누른 사람은 그 결과를 원한다.
  *
- * 칸은 따로 주지 않으면 표의 칸 중 value가 있는 것을 그대로 쓴다 — 화면에서 보는 글자가
+ * 칸은 따로 주지 않으면 표의 칸 중 csv나 value가 있는 것을 그대로 쓴다 — 화면에서 보는 글자가
  * 곧 파일의 글자다. 화면에 없는 값(전화 · 가입 경로 …)까지 넣어야 하면 cols로 준다.
  */
 export type CsvSpec<T> = {
@@ -90,7 +99,8 @@ export type CsvSpec<T> = {
 export type Filter<T> = {
   id: string;
   label: string;
-  options: { value: string; label: string }[];
+  /** group이 있으면 같은 group끼리 묶어 세운다(<optgroup>) — 학년을 「초등학교 ㄴ 1학년」으로 */
+  options: { value: string; label: string; group?: string }[];
   match: (row: T, value: string) => boolean;
 };
 
@@ -149,6 +159,17 @@ export function openRowLink(e: React.MouseEvent<HTMLTableRowElement>) {
   else link.click();
 }
 
+/** 이어지는 같은 group끼리 묶는다 — 차례는 흩지 않는다 */
+function groupOptions(options: Filter<unknown>["options"]) {
+  const out: [string | undefined, Filter<unknown>["options"]][] = [];
+  for (const o of options) {
+    const last = out[out.length - 1];
+    if (last && last[0] === o.group) last[1].push(o);
+    else out.push([o.group, [o]]);
+  }
+  return out;
+}
+
 const hideCls = {
   sm: "max-sm:hidden",
   md: "max-md:hidden",
@@ -168,6 +189,7 @@ export default function DataTable<T>({
   selection,
   rowLink = false,
   csv,
+  noExport = false,
   empty = "조건에 맞는 항목이 없습니다.",
 }: {
   rows: T[];
@@ -196,8 +218,10 @@ export default function DataTable<T>({
    *   그 링크이고, Tab으로 닿는 길도 그 링크뿐이다.
    */
   rowLink?: boolean;
-  /** 도구 줄에 CSV 내려받기를 세운다 */
+  /** 내려받는 파일의 이름 · 칸 — 없으면 화면 제목 · 표의 칸 */
   csv?: CsvSpec<T>;
+  /** 내려받기 단추를 끈다 — 목록이 아니라 고르는 자리로만 쓰는 표(검사지에 문항 담기 같은 곳) */
+  noExport?: boolean;
   empty?: string;
 }) {
   /* 실제로 걸린 조건 — 표는 이것만 본다 */
@@ -299,25 +323,23 @@ export default function DataTable<T>({
   /** 표에 실제로 그리는 칸 — detail 칸은 뺀다(검색 · CSV는 cols 전부를 읽는다) */
   const listed = useMemo(() => cols.filter((c) => !c.detail), [cols]);
 
-  const exportCsv = () => {
-    if (!csv) return;
+  const exportData = () => {
     const spec =
-      csv.cols ??
+      csv?.cols ??
       cols
-        .filter((c) => c.value && c.head.trim())
-        .map((c) => ({ head: c.head, value: (r: T) => c.value!(r) }));
-    downloadCsv(
-      csv.name,
-      spec.map((c) => c.head),
-      shown.map((r) => spec.map((c) => c.value(r))),
-    );
+        .filter((c) => (c.csv || c.value) && c.head.trim())
+        .map((c) => ({ head: c.head, value: (r: T) => (c.csv ?? c.value)!(r) }));
+    return {
+      head: spec.map((c) => c.head),
+      rows: shown.map((r) => spec.map((c) => c.value(r))),
+    };
   };
 
   /* 판 껍데기를 두르지 않는다 — 본문 전체가 이미 판 하나다(Shell). 도구 줄·쪽 넘김 줄의
      가로선은 그대로 남는다: 그것은 판 테두리가 아니라 칸막이다 */
   return (
     <div className="overflow-clip">
-      {(search || filters.length > 0 || toolbarExtra || csv) && (
+      {(search || filters.length > 0 || toolbarExtra || !noExport) && (
         <div className="a2-toolbar">
           {/* 이 띠가 무엇을 하는 자리인지 이름표로 못 박는다. 없을 때는 검색창과 고르개가
               표 바로 위에 떠 있어 처음 여는 사람이 표의 머리로 읽었다 */}
@@ -344,11 +366,23 @@ export default function DataTable<T>({
                 className="a2-select w-auto"
               >
                 <option value="">전체</option>
-                {f.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
+                {groupOptions(f.options).map(([group, opts], i) =>
+                  group ? (
+                    <optgroup key={`${group}-${i}`} label={group}>
+                      {opts.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : (
+                    opts.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))
+                  ),
+                )}
               </select>
             </label>
           ))}
@@ -387,19 +421,11 @@ export default function DataTable<T>({
             </span>
           )}
 
-          {(toolbarExtra || csv) && (
+          {(toolbarExtra || !noExport) && (
             <div className="ml-auto flex items-center gap-1.5">
               {toolbarExtra}
-              {csv && (
-                <button
-                  type="button"
-                  className="a2-btn a2-btn-sm"
-                  disabled={shown.length === 0}
-                  title={`지금 조건의 결과 ${shown.length.toLocaleString("ko-KR")}건을 CSV로 내려받습니다`}
-                  onClick={exportCsv}
-                >
-                  CSV 다운로드
-                </button>
+              {!noExport && (
+                <ExportButtons name={csv?.name} count={shown.length} data={exportData} />
               )}
             </div>
           )}

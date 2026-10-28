@@ -1,6 +1,6 @@
 "use client";
 
-import { bandOfGrade, grades, gradeText, type GradeNo } from "@/lib/blueprint";
+import { bandOfGrade, gradeText, type GradeNo } from "@/lib/blueprint";
 import {
   findUnit,
   termOf,
@@ -12,6 +12,8 @@ import {
 } from "@/lib/curriculumUnits";
 import { gradeLabelOf, type ItemDraft } from "@/lib/itemStore";
 import { FormRow } from "@/components/admin2/ui";
+import GradeOptions from "@/components/GradeOptions";
+import { gradeValue } from "@/lib/childOptions";
 
 /** 학년 · 교과 단원 두 줄이 읽고 쓰는 값 */
 export type BandUnit = Pick<
@@ -56,7 +58,7 @@ export default function BandUnitRows({
   /* 목록 밖이라는 안내 줄(「교과서 단원 목록에 없는 단원입니다…」 · 「고른 단원은 n학년
      교과서입니다…」)은 걷었다. 닫힌 고르개에 선 「(목록 밖)」이 같은 것을
      말하고, 생성 판은 checkSpec이 학년에 맞지 않는 단원을 막는다 */
-  const noListHint = `${value.gradeNo}학년 교과서 단원 목록은 아직 없어 직접 적습니다.`;
+  const noListHint = `${gradeText(value.gradeNo)} 교과서 단원 목록은 아직 없어 직접 적습니다.`;
 
   /* 학년은 하나씩 고른다 — 「3·4학년」으로 묶어 고르던 것을 1학년 ~ 6학년으로 폈다
      (lib/blueprint.ts grades). 학년군과 학년 글자는 따라온다(lib/itemStore.ts syncGrade).
@@ -72,11 +74,7 @@ export default function BandUnitRows({
         onChange({ gradeNo, band: bandOfGrade(gradeNo), grade: gradeLabelOf(gradeNo) });
       }}
     >
-      {grades.map((g) => (
-        <option key={g} value={g}>
-          {gradeText(g)}
-        </option>
-      ))}
+      <GradeOptions valueOf={gradeValue.no} />
     </select>
   );
 
