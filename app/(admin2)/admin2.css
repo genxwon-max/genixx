@@ -827,9 +827,19 @@
     padding-top: 1px;
   }
 
+  /* 한 칸 안에 고르개를 나란히 — 대상·교과·단원의 학년 | 교과 단원. 사이에 선을 하나 긋는다 */
+  .a2-cell-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .a2-card .a2-cell-inline > * + * {
+    border-left: 1px solid var(--a2-line);
+  }
+
   /* ── 원안지의 안내 글 (components/admin2/Guide.tsx) ──
      빈 칸 위에 겹쳐 그린다. 칸과 안내 글이 같은 격자 칸에 서서, 둘 중 큰 쪽만큼 칸이 자란다.
-     회색 예시 뒤에 원안지의 빨간 안내(「(지우고 사용)」 …)가 붙고, 적기 시작하면 둘 다 사라진다 */
+     회색 예시 뒤에 원안지의 빨간 안내가 붙고, 적기 시작하면 둘 다 사라진다. 「(지우고 사용)」은 2026-10-28 요청으로 걷었다 */
   .a2-guided {
     display: grid;
     min-width: 0;

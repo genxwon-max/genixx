@@ -25,6 +25,8 @@ import {
   stateLabel,
   submitItem,
   useItems,
+  unitStandards,
+  withUnitStandard,
   withdrawItem,
   type ItemComment,
   type ItemDraft,
@@ -345,7 +347,8 @@ export default function ItemDetail({ id }: { id: string }) {
             </span>
           ) : undefined
         }
-        onChange={set}
+        /* 학년 · 교과 단원을 고르면 성취기준 코드가 따라 들어간다(lib/itemStore.ts withUnitStandard) */
+        onChange={(patch) => set(withUnitStandard(view, patch))}
       />
     </>
   );
@@ -385,6 +388,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   key={`class-${qs[openIndex].id}`}
                   q={qs[openIndex]}
                   band={view.band}
+                  standards={unitStandards(view)}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(openIndex, next)}
                 />
@@ -656,6 +660,7 @@ export default function ItemDetail({ id }: { id: string }) {
                 <QuestionClassRows
                   q={qs[0]}
                   band={view.band}
+                  standards={unitStandards(view)}
                   disabled={locked}
                   onChange={(next: Question) => setQuestion(0, next)}
                 />

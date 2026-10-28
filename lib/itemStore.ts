@@ -46,6 +46,7 @@ import {
   slotPlain,
   slotType,
 } from "./answerSlots";
+import { findUnit, standardsOfUnit, type UnitStandard } from "./curriculumUnits";
 
 /**
  * 문항 초안 저장소 — 출제 워크벤치(EXP-02)와 검수 워크벤치(EXP-03)가 함께 쓴다.
@@ -3921,3 +3922,49 @@ export const stateTone: Record<ItemState, string> = {
   approved: "text-emerald-700",
   retired: "text-exam-muted",
 };
+
+/* ───────────────────────── 단원 → 성취기준 코드 ───────────────────────── */
+
+type UnitPlace = Pick<ItemDraft, "gradeNo" | "subject" | "unit" | "unitNo" | "unitTerm">;
+
+/** 고른 학년 · 교과 단원이 다루는 성취기준 — 목록 밖 단원이거나 짝을 모르면 빈 목록 */
+export function unitStandards(i: UnitPlace): UnitStandard[] {
+  /* 단원을 그 단원의 학년으로 찾는다(「3-1」 → 3학년). 학년을 먼저 옮기면 고른 단원이 새 학년 목록 밖이 되는데,
+     그때도 앞 단원이 넣어 둔 코드를 알아봐야 다음 단원을 고를 때 그 코드를 갈아 끼운다 */
+  const own = Number(i.unitTerm.split("-")[0]);
+  const u = findUnit(i, (own || i.gradeNo) as GradeNo);
+  return u ? standardsOfUnit(u) : [];
+}
+
+/** 그 단원의 대표 성취기준 — 단원을 고르면 코드 칸에 들어가는 것 */
+function unitStandardOf(i: UnitPlace): UnitStandard | null {
+  return unitStandards(i)[0] ?? null;
+}
+
+/**
+ * 학년 · 교과 단원을 고친 patch에 성취기준 코드를 얹는다(2026-10-28 요청) — 문항 상세 · 디자인 보기가 쓴다.
+ *
+ * 문항마다 코드 칸이 비었거나 **앞 단원이 넣어 둔 코드 그대로**일 때만 바꾼다. 출제위원이 손으로 고친
+ * 코드(같은 주제의 -02 · 다른 영역)는 단원을 바꿔도 덮지 않는다 — 덮으면 고친 것이 소리 없이 사라진다.
+ * 성취기준 내용도 같은 셈으로, 짝에 원문이 있을 때만 넣는다.
+ */
+export function withUnitStandard(
+  item: Pick<ItemDraft, "gradeNo" | "subject" | "unit" | "unitNo" | "unitTerm" | "questions">,
+  patch: Partial<ItemDraft>,
+): Partial<ItemDraft> {
+  const before = unitStandardOf(item);
+  const after = unitStandardOf({ ...item, ...patch });
+  if (!after || after.code === before?.code) return patch;
+  const auto = (now: string, prev: string | undefined) => !now.trim() || now === prev;
+  const questions = (patch.questions ?? item.questions).map((q) =>
+    auto(q.standardCode, before?.code)
+      ? {
+          ...q,
+          standardCode: after.code,
+          standardText:
+            after.text && auto(q.standardText, before?.text) ? after.text : q.standardText,
+        }
+      : q,
+  );
+  return { ...patch, questions };
+}

@@ -33,16 +33,15 @@ import {
 import {
   LEVELS,
   cardExamples,
+  cardLevelText,
   codeSamples,
   figureChecks,
   levelAllowed,
-  levelSpecs,
   perspectiveExamples,
   subskillsOf,
   talentOf,
   talents,
   type GradeBand,
-  type Level,
   type TalentId,
 } from "@/lib/blueprint";
 import { toneColor } from "@/lib/admin2";
@@ -55,6 +54,7 @@ import { renderDetail } from "@/lib/richText";
 import { htmlToQuestion, questionToHtml, textToHtml } from "@/lib/docBlocks";
 import type { Block } from "@/lib/content";
 import type { ContentQuestion } from "@/lib/content";
+import type { UnitStandard } from "@/lib/curriculumUnits";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
 import { Blue, Guided, Red } from "@/components/admin2/Guide";
 import { CellLine, FormRow, FormRowPair, SubRow, SubRows } from "@/components/admin2/ui";
@@ -310,6 +310,7 @@ export function QuestionClassRows({
   disabled,
   withLevel = true,
   guides = true,
+  standards = [],
   onChange,
 }: {
   q: Question;
@@ -327,6 +328,11 @@ export function QuestionClassRows({
    * 선다. 잠긴 문항과 생성 판(아직 문항이 없는 분류만 고른다)은 끈다.
    */
   guides?: boolean;
+  /**
+   * 고른 교과 단원이 다루는 성취기준(lib/curriculumUnits.ts standardsOfUnit). 단원을 고르면 첫 코드가 칸에
+   * 들어가고(withUnitStandard), 칸을 누르면 이 목록에서 같은 단원의 다른 코드를 고를 수 있다.
+   */
+  standards?: UnitStandard[];
   onChange: (next: Question) => void;
 }) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
@@ -367,21 +373,30 @@ export function QuestionClassRows({
     <>
       {withLevel && (
         <FormRow label="인지단계" req>
-          <select
-            className="a2-select a2-input-lg a2-select-fit"
-            value={q.level}
-            disabled={disabled}
-            onChange={(e) => set({ level: e.target.value as Level })}
-            aria-invalid={outOfRange}
-            aria-label="인지단계"
-          >
-            {LEVELS.map((l) => (
-              <option key={l} value={l} disabled={!levelAllowed(q.talent, l)}>
-                {l} {levelSpecs[l].name}
-                {levelAllowed(q.talent, l) ? "" : ` — ${talentName(q.talent)} 축은 출제 불가`}
-              </option>
-            ))}
-          </select>
+          {/* 네 단계를 다 펴 두고 하나만 고른다 — 난이도와 같은 꼴(2026-10-28 요청). 고르개에 접어 두면
+              단계마다 무엇을 하는지(원안지의 괄호 글)를 열어 봐야 알았다. 재능 축이 낼 수 없는 단계
+              (자기-성찰의 S4)는 잠근다 */}
+          <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
+            {LEVELS.map((l) => {
+              const allowed = levelAllowed(q.talent, l);
+              return (
+                <label
+                  key={l}
+                  className="a2-choice"
+                  title={allowed ? undefined : `${talentName(q.talent)} 축은 출제할 수 없습니다`}
+                >
+                  <input
+                    type="radio"
+                    name={`level-${q.id}`}
+                    checked={q.level === l}
+                    disabled={disabled || !allowed}
+                    onChange={() => set({ level: l })}
+                  />
+                  {l} {cardLevelText[l]}
+                </label>
+              );
+            })}
+          </div>
         </FormRow>
       )}
 
@@ -405,11 +420,28 @@ export function QuestionClassRows({
               className="a2-input a2-input-lg a2-mono self-center"
               value={q.standardCode}
               disabled={disabled}
-              onChange={(e) => set({ standardCode: e.target.value })}
+              list={standards.length > 0 ? `standards-${q.id}` : undefined}
+              onChange={(e) => {
+                /* 목록에서 고른 코드면 성취기준 내용도 따라 바꾼다 — 비었거나 목록의 다른 코드 원문일 때만.
+                   손으로 적은 내용은 덮지 않는다 */
+                const code = e.target.value;
+                const hit = standards.find((x) => x.code === code);
+                const auto = !q.standardText.trim() || standards.some((x) => x.text === q.standardText);
+                set(hit?.text && auto ? { standardCode: code, standardText: hit.text } : { standardCode: code });
+              }}
               placeholder={`예) ${codeSamples[band][0]}`}
               aria-invalid={!std.ok}
               aria-label="성취기준 코드"
             />
+            {standards.length > 0 && (
+              <datalist id={`standards-${q.id}`}>
+                {standards.map((x) => (
+                  <option key={x.code} value={x.code}>
+                    {x.text}
+                  </option>
+                ))}
+              </datalist>
+            )}
             <GrowTextarea
               line
               className="a2-textarea a2-textarea-lg"
@@ -918,7 +950,7 @@ export function QuestionContentRows({
             show={!disabled && !q.explain}
             guide={
               <>
-                정답과 해설을 적습니다. <Red>(지우고 사용)</Red>
+                정답과 해설을 적습니다.
               </>
             }
           >
@@ -964,7 +996,7 @@ export function QuestionContentRows({
             guide={
               <>
                 {"예) · 밝다 – 어둡다\n· 높다 – 낮다 "}
-                <Red>(지우고 사용)</Red>
+               
               </>
             }
           >
@@ -983,7 +1015,7 @@ export function QuestionContentRows({
             show={!disabled && !q.rejectExamples}
             guide={
               <>
-                예) · 밝다 – 맑다 (반대말이 아님) <Red>(지우고 사용)</Red>
+                예) · 밝다 – 맑다 (반대말이 아님)
               </>
             }
           >
@@ -1006,7 +1038,7 @@ export function QuestionContentRows({
               show={!disabled && !q.perspectiveHierarchy}
               guide={
                 <>
-                  예) {perspectiveExamples[q.level].hierarchy} <Red>(지우고 사용)</Red>
+                  예) {perspectiveExamples[q.level].hierarchy}
                 </>
               }
             >
@@ -1025,7 +1057,7 @@ export function QuestionContentRows({
               show={!disabled && !q.perspectiveAbility}
               guide={
                 <>
-                  예) {perspectiveExamples[q.level].ability} <Red>(지우고 사용)</Red>
+                  예) {perspectiveExamples[q.level].ability}
                 </>
               }
             >
@@ -1082,7 +1114,7 @@ export function QuestionContentRows({
             show={!disabled && !q.wrongIntent}
             guide={
               <>
-                예상되는 오답과 그 오답이 노리는 오개념을 적습니다. <Red>(지우고 사용)</Red>
+                예상되는 오답과 그 오답이 노리는 오개념을 적습니다.
               </>
             }
           >
