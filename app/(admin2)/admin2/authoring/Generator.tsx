@@ -198,7 +198,7 @@ export default function Generator({
               band={place.band}
               disabled={false}
               withLevel={false}
-              guides={false}
+              ncic={false}
               standards={unitStandards(place)}
               onChange={pickQ}
             />

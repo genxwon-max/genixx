@@ -837,38 +837,6 @@
     border-left: 1px solid var(--a2-line);
   }
 
-  /* ── 원안지의 안내 글 (components/admin2/Guide.tsx) ──
-     빈 칸 위에 겹쳐 그린다. 칸과 안내 글이 같은 격자 칸에 서서, 둘 중 큰 쪽만큼 칸이 자란다.
-     회색 예시 뒤에 원안지의 빨간 안내가 붙고, 적기 시작하면 둘 다 사라진다. 「(지우고 사용)」은 2026-10-28 요청으로 걷었다 */
-  .a2-guided {
-    display: grid;
-    min-width: 0;
-  }
-  .a2-guided > * {
-    grid-area: 1 / 1;
-    min-width: 0;
-  }
-  .a2-guided > .a2-textarea,
-  .a2-guided > .a2-input {
-    align-self: stretch;
-  }
-  .a2-guide {
-    pointer-events: none;
-    padding: 10px 12px;
-    font-size: 0.875rem;
-    line-height: 1.65;
-    color: #a3aab6;
-    white-space: pre-line;
-  }
-  .a2-guide-red {
-    color: #e0261d;
-    font-weight: 600;
-  }
-  .a2-guide-blue {
-    color: #1d3fd0;
-    font-weight: 600;
-  }
-
   @media (max-width: 640px) {
     .a2-form-lg .a2-form-row,
     .a2-form-lg .a2-form-pair {
