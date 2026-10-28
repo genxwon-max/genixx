@@ -2736,14 +2736,6 @@ export type GenerateSpec = {
   type?: ItemType;
   points?: number;
 
-  /* ── 원안지 양식(10.22)의 칸 — 생성 판에 사람이 고르거나 적었을 때만 든다(2026-10-28) ── */
-  /**
-   * 그림·삽화 사양 — 그림이 들어갈 문항을 뽑을지. 없으면 그림 없음이다. 「그림 있음」이면 뽑은 문항의
-   * 확인 세 칸(figureChecks)은 비어 있어 사람이 그림을 넣고 짚어야 낸다.
-   */
-  figure?: "none" | "has";
-  /** 이 문항의 특성 — 사람이 적었으면 뽑은 문항마다 그대로 든다 */
-  trait?: string;
   /** Tag B 재능 — 사람이 적은 글 그대로(문항 상세처럼 직접 적는다). 없으면 축 이름을 쓴다 */
   talentText?: string;
 };
@@ -2847,10 +2839,7 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         ? "· 세트입니다. 보기 하나를 함께 읽는 문항인지, 앞 문항의 답이 뒷 문항에 새지 않는지 볼 것"
         : "",
       !inSet && n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
-      spec.figure === "has"
-        ? "· 그림·삽화 — 그림이 들어갈 문항입니다. 그림을 넣고 그림·삽화 사양의 확인 세 칸을 짚을 것"
-        : "",
-      "· 원안지 칸 — 인정 · 불인정 예, NCIC · 2022 개정 코드 확인, 제출 전 자가 체크리스트 12항은 사람이 채울 것",
+      "· 원안지 칸 — 그림·삽화 사양, 이 문항의 특성, 인정 · 불인정 예, NCIC · 2022 개정 코드 확인, 제출 전 자가 체크리스트 12항은 사람이 채울 것",
       spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
     ]
       .filter(Boolean)
@@ -2905,11 +2894,9 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         tagAIntent: spec.tagAIntent?.trim() ?? "",
         ncicChecked: false,
         code2022Checked: false,
-        /* 그림 사양 · 특성은 사람이 생성 판에서 고르거나 적었을 때만 그 값이 든다. 그림 있음이어도
-           확인 세 칸은 비워 둔다 — 그림을 넣고 사람이 짚는 칸이다 */
-        figure: spec.figure ?? ("none" as const),
+        figure: "none" as const,
         figureChecks: [],
-        trait: spec.trait?.trim() ?? "",
+        trait: "",
         standardCode: spec.standardCode.trim(),
         standardText: spec.standardText?.trim() || sample.standardText,
         tagADetail: spec.tagADetail?.trim() || sample.tagADetail,
