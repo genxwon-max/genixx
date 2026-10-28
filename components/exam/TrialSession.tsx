@@ -28,6 +28,7 @@ import { clearSetTrial, setSetAnswer } from "@/lib/setStore";
 import { closeExamWindow } from "@/lib/popup";
 import { ArrowRight } from "@/components/Icons";
 import ExamCover from "./ExamCover";
+import ExamPrecheck from "./ExamPrecheck";
 import ExamWatermark, { watermarkOf } from "./ExamWatermark";
 import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
 import {
@@ -99,8 +100,8 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
       ? round.subjects.map((s) => s.id)
       : subjects.map((s) => s.id);
 
-  /** 어디까지 왔나 — 표지 · 묻는 두 문항 · 셋트 */
-  const [phase, setPhase] = useState<"cover" | "ask" | "run">("cover");
+  /** 어디까지 왔나 — 응시 전 점검 · 표지 · 묻는 두 문항 · 셋트 */
+  const [phase, setPhase] = useState<"check" | "cover" | "ask" | "run">("check");
   /** 묻는 두 문항 가운데 지금 선 것 — 0이 1번(학교와 학년), 1이 2번(흥미 있는 과목) */
   const [step, setStep] = useState<0 | 1>(0);
   const [grade, setGrade] = useState<GradePick>(() => gradeOfTrack(trackId));
@@ -124,13 +125,24 @@ export default function TrialSession({ roundId, trackId }: { roundId: string; tr
   );
   /* ESC · 헤더의 「나가기」 · 전체화면 해제 — 나갈지 묻는다. 1번 · 2번도 전체화면
      안이라 브라우저의 닫기 단추가 보이지 않는다 */
-  useExamExitRequest(phase !== "cover", () => setAskExit(true));
+  useExamExitRequest(phase !== "cover" && phase !== "check", () => setAskExit(true));
 
   /** 표지 첫 줄 — 「2026학년도 3분기」. 회차 목록을 못 읽었으면 회차 번호에서 뽑는다 */
   const { year, quarter } = seasonOf(round ?? { id: roundId, opensOn: "" });
   const season = `${year}학년도 ${quarterLabel(quarter)}`;
   /* 표지에 깔린 워터마크 — 넘긴 뒤의 1번 · 2번과 셋트에도 같은 것을 깐다 */
   const watermark = watermarkOf(season);
+
+  /* 응시 전 점검 — 표지보다 먼저. 셋트는 시간이 없어 제한 시간 안내를 빼고 묻는다 */
+  if (phase === "check") {
+    return (
+      <ExamPrecheck
+        limitText={null}
+        onDone={() => setPhase("cover")}
+        onSkip={() => setPhase("cover")}
+      />
+    );
+  }
 
   if (phase === "cover") {
     return (
