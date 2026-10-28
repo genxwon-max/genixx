@@ -2735,6 +2735,17 @@ export type GenerateSpec = {
    */
   type?: ItemType;
   points?: number;
+
+  /* ── 원안지 양식(10.22)의 칸 — 생성 판에 사람이 고르거나 적었을 때만 든다(2026-10-28) ── */
+  /**
+   * 그림·삽화 사양 — 그림이 들어갈 문항을 뽑을지. 없으면 그림 없음이다. 「그림 있음」이면 뽑은 문항의
+   * 확인 세 칸(figureChecks)은 비어 있어 사람이 그림을 넣고 짚어야 낸다.
+   */
+  figure?: "none" | "has";
+  /** 이 문항의 특성 — 사람이 적었으면 뽑은 문항마다 그대로 든다 */
+  trait?: string;
+  /** Tag B 재능 — 사람이 적은 글 그대로(문항 상세처럼 직접 적는다). 없으면 축 이름을 쓴다 */
+  talentText?: string;
 };
 
 /** 한 번에 뽑을 수 있는 최대 — 초안이 스물을 넘으면 사람이 손볼 수 없다 */
@@ -2836,6 +2847,10 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         ? "· 세트입니다. 보기 하나를 함께 읽는 문항인지, 앞 문항의 답이 뒷 문항에 새지 않는지 볼 것"
         : "",
       !inSet && n > 1 ? `· 이 단계 ${n}개 중 ${k + 1}번째. 소재가 서로 겹치지 않는지 볼 것` : "",
+      spec.figure === "has"
+        ? "· 그림·삽화 — 그림이 들어갈 문항입니다. 그림을 넣고 그림·삽화 사양의 확인 세 칸을 짚을 것"
+        : "",
+      "· 원안지 칸 — 인정 · 불인정 예, NCIC · 2022 개정 코드 확인, 제출 전 자가 체크리스트 12항은 사람이 채울 것",
       spec.brief.trim() ? `· 출제 지시 — ${spec.brief.trim()}` : "",
     ]
       .filter(Boolean)
@@ -2890,14 +2905,16 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         tagAIntent: spec.tagAIntent?.trim() ?? "",
         ncicChecked: false,
         code2022Checked: false,
-        figure: "none" as const,
+        /* 그림 사양 · 특성은 사람이 생성 판에서 고르거나 적었을 때만 그 값이 든다. 그림 있음이어도
+           확인 세 칸은 비워 둔다 — 그림을 넣고 사람이 짚는 칸이다 */
+        figure: spec.figure ?? ("none" as const),
         figureChecks: [],
-        trait: "",
+        trait: spec.trait?.trim() ?? "",
         standardCode: spec.standardCode.trim(),
         standardText: spec.standardText?.trim() || sample.standardText,
         tagADetail: spec.tagADetail?.trim() || sample.tagADetail,
         talent: spec.talent,
-        talentText: talentNameOf(spec.talent),
+        talentText: spec.talentText?.trim() || talentNameOf(spec.talent),
         subskill: spec.subskill,
         level: pick.level,
         /* 사람이 고른 난이도를 그대로 쓴다. 단계 앵커값을 몰래 넣어 두면 「아무도 안
@@ -2971,6 +2988,106 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         tagADetail: built.q.tagADetail,
         level: pick.level,
         guidance: guidanceOf(pick.level, pick.k, pick.n, false),
+      });
+      made.push({ ...item, ...syncTags(item) });
+    }
+  }
+
+  write([...made, ...list]);
+  return made;
+}
+
+/* ───────────────────────── 비슷한 문항 (EXP-02-2) ───────────────────────── */
+
+/** 비슷한 문항을 원본마다 몇 개까지 뽑나 */
+export const SIMILAR_MAX = 3;
+
+/**
+ * 고른 문항마다 비슷한 문항 초안을 per개씩 만든다 (2026-10-28 요청 — 「원래 있는 문항을 여럿 골라 비슷한
+ * 문항을 바로 만들 수 있게」).
+ *
+ * 원본의 분류(과목 · 학년 · 단원 · 성취기준 · Tag A · Tag B · 인지단계 · 난이도 · 형식 · 배점 · 그림 사양 ·
+ * 특성)를 그대로 물려받고, 내용은 AI가 소재 · 수치 · 보기를 바꿔 쓰게 된다(lib/aiPrompts.ts의 「비슷한
+ * 문항」 프롬프트). ⚠ 지금 이 콘솔은 모델을 부르지 않는다 — 그래서 원본의 내용을 그대로 옮겨 두고, 그
+ * 사실을 유의사항 맨 위에 적는다. 모델을 붙이면 이 자리에서 내용만 갈아 끼운다.
+ *
+ * 사람이 짚어야 하는 칸은 물려주지 않는다 — NCIC · 2022 확인, 그림 확인 세 칸, 인정 · 불인정 예(새 내용의
+ * 답에 맞춰 다시 적는 값). 앵커 · 공개 여부 · 정답률 · 검수 기록도 새 문항의 것이 아니다.
+ */
+export function generateSimilar(
+  sourceIds: string[],
+  per: number,
+  brief: string,
+  author: string,
+  authorName: string,
+): ItemDraft[] {
+  const list = read();
+  const sources = sourceIds
+    .map((id) => list.find((i) => i.id === id))
+    .filter((i): i is ItemDraft => !!i);
+  const n = Math.max(1, Math.min(SIMILAR_MAX, per));
+  if (sources.length === 0) return [];
+
+  const stamp = Date.now().toString(36).toUpperCase();
+  const made: ItemDraft[] = [];
+  let serial = 0;
+  for (const src of sources) {
+    const name = src.code || src.id;
+    for (let k = 0; k < n; k += 1) {
+      serial += 1;
+      const item = fill({
+        id: `IT-AI-${stamp}-S${serial}`,
+        code: "",
+        subject: src.subject,
+        grade: src.grade,
+        gradeNo: src.gradeNo,
+        band: src.band,
+        form: src.form,
+        passage: src.passage,
+        passageMode: src.passageMode,
+        passageImages: src.passageImages,
+        content: src.content,
+        contentAuthored: src.contentAuthored,
+        questions: src.questions.map((q) => ({
+          ...q,
+          ncicChecked: false,
+          code2022Checked: false,
+          figureChecks: [],
+          acceptExamples: "",
+          rejectExamples: "",
+        })),
+        assets: [],
+        version: 1,
+        unit: src.unit,
+        unitNo: src.unitNo,
+        unitTerm: src.unitTerm,
+        standardCode: src.standardCode,
+        standardText: src.standardText,
+        tagADetail: src.tagADetail,
+        talent: src.talent,
+        subskill: src.subskill,
+        subTalent: src.subTalent,
+        subSubskill: src.subSubskill,
+        b: src.b,
+        level: src.level,
+        anchor: false,
+        author,
+        authorName,
+        state: "draft",
+        origin: "ai",
+        aiBrief: brief.trim(),
+        comments: [],
+        reviews: [],
+        updatedAt: now(),
+        guidance: [
+          `원본 ${name} — 이 문항과 비슷하게 만든 AI 초안입니다${n > 1 ? ` (${n}개 중 ${k + 1}번째)` : ""}.`,
+          "⚠ 지금은 AI 모델을 부르지 않아 원본의 내용을 그대로 옮겨 두었습니다. 소재 · 수치 · 보기를 바꿔 원본과 겹치지 않게 고쳐 주세요.",
+          "· 분류(단원 · 성취기준 · Tag A · Tag B · 인지단계 · 형식 · 배점 · 그림 사양 · 특성)는 원본 그대로입니다. 내용이 바뀌면 맞는지 다시 볼 것",
+          "· 원안지 칸 — 인정 · 불인정 예, NCIC · 2022 개정 코드 확인, 그림 확인 칸, 제출 전 자가 체크리스트 12항은 다시 채울 것",
+          brief.trim() ? `· 출제 지시 — ${brief.trim()}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
       });
       made.push({ ...item, ...syncTags(item) });
     }

@@ -1032,6 +1032,35 @@ export const designScreens: DesignScreen[] = [
       { slug: "", name: "외부 설문을 여는 창", who: "보호자", note: "「설문 열기」(새 창) · 설문에 적을 학생 이름 · 접속코드 · 다 낸 뒤 「제출했어요」 → 제출완료로 표시" },
     ],
   },
+  /* ── AI 문항 출제 · 비슷한 문항 만들기(2026-10-28) — 원안지 양식(10.22)의 항목을 AI 출제에도 ── */
+  {
+    id: "ai-authoring",
+    area: "design2",
+    zone: "admin2",
+    name: "AI 문항 출제 · 원안지 항목과 비슷한 문항",
+    wbs: "EXP-02-2",
+    real: "/admin2/authoring (「AI 문항 출제」를 펼친 판)",
+    base: "/admin2/authoring",
+    states: [
+      { slug: "", name: "새로 만들기", who: "최상위 관리자", note: "맨 위 「만드는 방법」 · 문항 구성 아래 고정 배점(S1 · S2 2점 · S3 4점 · S4 6점) · 분류(대상·교과·단원 · Tag A · 출제 의도 · Tag B 직접 입력 · 난이도) · 새 판 「원안지 항목」 — 그림·삽화 사양 · 이 문항의 특성" },
+      { slug: "figure", name: "새로 만들기 · 그림 있음", who: "최상위 관리자", note: "뽑은 뒤 그림을 넣고 확인 세 칸을 짚어야 검수로 낼 수 있다는 안내" },
+      { slug: "similar", name: "비슷한 문항 만들기 · 원본 고르기 전", who: "최상위 관리자", note: "문항 은행 표에서 체크로 여럿 고름 · 과목 · 단계 거르개 · 원본마다 1~3개씩" },
+      { slug: "similar/picked", name: "비슷한 문항 만들기 · 원본 셋을 고른 뒤", who: "최상위 관리자", note: "3개 × 2개씩 = 6문항 · 고른 원본(누르면 뺌) · 「비슷한 문항 6개 만들기」 · 분류는 원본 그대로, 사람이 짚는 칸은 비움" },
+    ],
+  },
+  {
+    id: "item-bank-similar",
+    area: "design2",
+    zone: "admin2",
+    name: "문항 은행 · 여럿 골라 비슷한 문항 만들기",
+    wbs: "ADM-04 · EXP-02-2",
+    real: "/admin2/items",
+    base: "/admin2/items",
+    states: [
+      { slug: "select", name: "고르기 전", who: "최상위 관리자", note: "줄마다 체크 · 표 위 「비슷한 문항 만들기」는 고르기 전에 꺼져 있음" },
+      { slug: "select/picked", name: "세 줄을 고른 뒤", who: "최상위 관리자", note: "「고른 3개로 비슷한 문항 만들기」 → AI 출제 판이 그 셋을 고른 채 열림" },
+    ],
+  },
   {
     id: "item-rotation",
     area: "design2",

@@ -6,7 +6,16 @@ import { useMemo, useState } from "react";
 import { levelSpecs } from "@/lib/blueprint";
 import { itemTone, n } from "@/lib/admin2";
 import { useAdminPrefs } from "@/lib/adminStore";
-import { addItem, formTextOf, stateLabel, typeTextOf, useItems, type ItemDraft } from "@/lib/itemStore";
+import {
+  addItem,
+  formTextOf,
+  generateItems,
+  generateSimilar,
+  stateLabel,
+  typeTextOf,
+  useItems,
+  type ItemDraft,
+} from "@/lib/itemStore";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { PageHead, Status, Tab, Tag } from "@/components/admin2/ui";
 import Generator from "./Generator";
@@ -53,11 +62,12 @@ const STATE_ORDER: Record<string, number> = { rejected: 0, draft: 1 };
  */
 type TabId = "all" | "rejected" | "draft" | "ai" | "submitted";
 
-export default function AuthoringView() {
+export default function AuthoringView({ similar = [] }: { similar?: string[] }) {
   const items = useItems();
   const prefs = useAdminPrefs();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  /* 문항 은행에서 원본을 골라 왔으면 AI 출제 판을 「비슷한 문항 만들기」로 펼친 채 연다 */
+  const [open, setOpen] = useState(similar.length > 0);
   const [tab, setTab] = useState<TabId>("all");
 
   const mine = useMemo(
@@ -329,6 +339,12 @@ export default function AuthoringView() {
 
       {open && (
         <Generator
+          items={items}
+          make={(spec) => generateItems(spec, prefs.loginId ?? "", prefs.staffName || "운영자")}
+          makeSimilar={(ids, per, brief) =>
+            generateSimilar(ids, per, brief, prefs.loginId ?? "", prefs.staffName || "운영자")
+          }
+          start={similar.length > 0 ? { mode: "similar", chosen: similar } : undefined}
           onCancel={() => setOpen(false)}
           onDone={(made) => {
             setOpen(false);
