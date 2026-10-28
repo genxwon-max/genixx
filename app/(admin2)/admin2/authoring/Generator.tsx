@@ -193,7 +193,7 @@ export default function Generator({
               band={place.band}
               disabled={false}
               withLevel={false}
-              paper={false}
+              guides={false}
               onChange={pickQ}
             />
           </div>

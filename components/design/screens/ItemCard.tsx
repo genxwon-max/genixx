@@ -23,16 +23,10 @@ import {
 } from "@/lib/itemStore";
 import DocBox from "@/components/admin2/DocBox";
 import { PageSaveBar } from "@/components/admin2/EditGuard";
-import { Red } from "@/components/admin2/Guide";
 import { Body, FormRow, PageHead, Panel, Status, Switch } from "@/components/admin2/ui";
 import { BlockList } from "@/components/exam/ExamSession";
+import BandUnitRows from "@/app/(admin2)/admin2/items/[id]/BandUnitRows";
 import LevelCounts from "@/app/(admin2)/admin2/items/[id]/LevelCounts";
-import {
-  PaperChapter,
-  PaperHead,
-  PaperItemTitle,
-  SharedRows,
-} from "@/app/(admin2)/admin2/items/[id]/Paper";
 import {
   QuestionClassRows,
   QuestionContentRows,
@@ -42,21 +36,21 @@ import SubmitChecklist from "@/app/(admin2)/admin2/items/[id]/SubmitChecklist";
 import ConsoleFrame, { type ConsoleMe } from "../ConsoleFrame";
 
 /**
- * 문항 상세 · 원안지 (실제 주소 /admin2/items/[문항]) — 디자인 (2026-10-28 요청).
+ * 문항 상세 · 원안지 양식(10.22) 항목 (실제 주소 /admin2/items/[문항]) — 디자인 (2026-10-28 요청).
  *
- * 문항 상세를 종이 「Genixx 지필 진단 문항 출제 원안지 양식」(2026-10-22 최종)과 똑같이 세운 화면이다.
- * 제목 · 파란 머리 · 「Ⅰ. 문항 원안」 · 「1. 문항 S1」 표(① ~ ⑬) · 「Ⅱ. 제출 전 자가 체크리스트」.
- * 원안지의 빨간 글씨는 칸이 비어 있는 동안만 서고, 값을 넣으면 사라진다.
+ * 화면 모양은 그대로 두고, 종이 「Genixx 지필 진단 문항 출제 원안지 양식」(2026-10-22 최종)에서 달라진
+ * 항목만 얹은 모습이다 — Tag A의 NCIC · 2022 개정 코드 확인, 그림·삽화 사양, 인정 · 불인정 예, 이 문항의
+ * 특성, 열두 줄로 바뀐 제출 전 자가 체크리스트, 고정 배점(S1 · S2 2점 · S3 4점 · S4 6점). 원안지의 빨간
+ * 글씨는 칸이 비어 있는 동안만 서고, 값을 넣으면 사라진다.
  *
- *   빈 원안지         새 문항 — 칸마다 빨간 안내(「(지우고 사용)」 · 「(수정 사용)」 …)와 회색 예시
- *   채운 원안지       원안지의 예시 문항(3학년 국어 「빗방울 악단」 S1)을 칸마다 적은 뒤 — 안내가 모두 사라짐
- *   그림 있음         ⑧ 그림 있음을 짚고 아래 확인 칸이 하나 남은 모습 — 체크리스트 마지막 줄에 빨간 경고
- *   체크리스트 확인   열두 줄을 다 짚고 서명한 뒤 — 「검수로 제출」이 켜진다
- *   세트              공통 칸(① · ② · 지시문 · 보기·지문)과 문항 목록 「1. 문항 S1」 ~ 「4. 문항 S4」
- *   세트 · 문항 1/4   목록에서 들어간 「1. 문항 S1」 · 「4. 문항 S4」 카드
+ *   빈 문항           새 문항 — 칸마다 빨간 안내(「(지우고 사용)」 · 「(수정 사용)」 …)
+ *   채운 문항         원안지의 예시 문항(3학년 국어 「빗방울 악단」 S1)을 칸마다 적은 뒤 — 안내가 모두 사라짐
+ *   그림 있음         그림 있음을 짚고 아래 확인 칸이 하나 남은 모습 — 체크리스트 마지막 줄에 빨간 경고
+ *   체크리스트 확인   열두 줄을 다 짚고 확인한 뒤 — 「검수로 제출」이 켜진다
+ *   세트              문항 목록 「문항 1」 ~ 「문항 4」와 목록에서 들어간 문항 1 · 4
  *
- * 화면은 실제 조각(Paper.tsx · QuestionEditor · SubmitChecklist)이고 값만 여기 적었다. 칸은 실제처럼
- * 고쳐지고 안내 글도 실제처럼 사라지지만 저장되지 않는다 — 주소를 다시 열면 처음 모습이다.
+ * 화면은 실제 조각(QuestionEditor · SubmitChecklist)이고 값만 여기 적었다. 칸은 실제처럼 고쳐지고 안내 글도
+ * 실제처럼 사라지지만 저장되지 않는다 — 주소를 다시 열면 처음 모습이다.
  */
 
 const to = designLinks("item-card");
@@ -245,6 +239,13 @@ function Screen({ state }: { state: string }) {
     setItem((i) => ({ ...i, content: patchQuestion(contentFor(i), next.id, () => next), contentAuthored: true }));
   const cqOf = (id: string) => questionsIn(content).find((c) => c.id === id);
   const left = missingSubmit(item);
+  const idRow = (
+    <FormRow label="문항 ID">
+      <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
+        저장하면 부여됩니다
+      </span>
+    </FormRow>
+  );
 
   const head = (
     <PageHead
@@ -305,19 +306,25 @@ function Screen({ state }: { state: string }) {
       <ConsoleFrame at="/admin2/items" me={author} meHref="/design/admin2/me/author" only={authorMenu}>
         {head}
         <Body>
-          <div className="a2-paper">
-            <PaperHead item={item} />
-            <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
-            <PaperItemTitle no={at + 1} level={q.level} />
-            <p className="a2-paper-note">
-              ① 문항 ID · ② 대상·교과·단원은 세트 전체가 함께 씁니다. 여기서 고치면 같은 세트의 다른 문항에도
-              그대로 적용됩니다. 지문은 문항 목록 화면에 있습니다.
-            </p>
-            <div className="a2-form a2-form-lg a2-card">
-              <SharedRows item={item} disabled={false} onChange={setAny} />
-              <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
-              <QuestionContentRows q={q} content={cqOf(q.id)} disabled={false} onChange={setQ} onContent={setCq} />
-            </div>
+          <div className="grid gap-4">
+            <Panel title="분류" flush>
+              <p className="a2-note m-4 mb-0">
+                <span>
+                  문항 ID · 학년 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은 세트의 다른
+                  문항에도 그대로 적용됩니다. 그 아래는 이 문항만의 값입니다.
+                </span>
+              </p>
+              <div className="a2-form a2-form-lg a2-card mt-4">
+                {idRow}
+                <BandUnitRows value={item} disabled={false} onChange={setAny} />
+                <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
+              </div>
+            </Panel>
+            <Panel title="문항" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                <QuestionContentRows q={q} content={cqOf(q.id)} disabled={false} onChange={setQ} onContent={setCq} />
+              </div>
+            </Panel>
           </div>
           <PageSaveBar dirty={dirty} onSave={() => {}} onCancel={() => setItem(start)} />
         </Body>
@@ -358,45 +365,20 @@ function Screen({ state }: { state: string }) {
             </div>
           </Panel>
 
-          <div className="a2-paper">
-            <PaperHead item={item} />
-            <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
-            {item.form === "single" ? (
-              <>
-                <PaperItemTitle no={1} level={qs[0].level} />
-                <div className="a2-form a2-form-lg a2-card">
-                  <SharedRows item={item} disabled={false} onChange={setAny} />
-                  <QuestionClassRows q={qs[0]} band={item.band} disabled={false} onChange={setQ} />
-                  <QuestionContentRows
-                    q={qs[0]}
-                    content={cqOf(qs[0].id)}
-                    disabled={false}
-                    passage={
-                      <DocBox
-                        label="지문"
-                        empty={
-                          <Red>
-                            (지우고 사용) 지문이 있으면 눌러서 문서 편집기로 씁니다 — 첫 줄에는 「다음 글을 읽고 물음에
-                            답하시오.」 같은 지시문을 씁니다. 지문이 없는 문항은 비워 둡니다.
-                          </Red>
-                        }
-                        disabled={false}
-                        filled={passageFilled}
-                        onOpen={() => {}}
-                      >
-                        {content.material.lead && <p className="a2-docbox-lead">{content.material.lead}</p>}
-                        <BlockList blocks={content.material.blocks} />
-                      </DocBox>
-                    }
-                    onChange={setQ}
-                    onContent={setCq}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="a2-form a2-form-lg a2-card">
-                  <SharedRows item={item} disabled={false} onChange={setAny} />
+          {item.form === "single" && (
+            <Panel title="분류" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                {idRow}
+                <BandUnitRows value={item} disabled={false} onChange={setAny} />
+                <QuestionClassRows q={qs[0]} band={item.band} disabled={false} onChange={setQ} />
+              </div>
+            </Panel>
+          )}
+
+          <Panel title="문항" meta={item.form === "set" ? `${qs.length}문항` : undefined} flush>
+            <div className="a2-form a2-form-lg a2-card">
+              {item.form === "set" ? (
+                <>
                   <FormRow label="지시문">
                     <input className="a2-input" value={content.material.lead ?? ""} readOnly />
                   </FormRow>
@@ -405,23 +387,45 @@ function Screen({ state }: { state: string }) {
                       <BlockList blocks={content.material.blocks} />
                     </DocBox>
                   </FormRow>
-                </div>
-                <div className="a2-paper-list">
-                  <QuestionList
-                    questions={qs}
+                </>
+              ) : (
+                <FormRow label="지문">
+                  <DocBox
+                    label="지문"
+                    empty="비어 있습니다. 눌러서 문서 편집기로 쓰거나 한글 · 워드 파일을 불러옵니다."
                     disabled={false}
-                    max={SET_MAX}
-                    onOpen={(id) => router.push(to(`set/q${qs.findIndex((x) => x.id === id) + 1}`))}
-                    onMove={() => {}}
-                    onRemove={() => {}}
-                    onAdd={() => {}}
-                  />
-                </div>
-              </>
+                    filled={passageFilled}
+                    onOpen={() => {}}
+                  >
+                    {content.material.lead && <p className="a2-docbox-lead">{content.material.lead}</p>}
+                    <BlockList blocks={content.material.blocks} />
+                  </DocBox>
+                </FormRow>
+              )}
+              {item.form === "single" && (
+                <QuestionContentRows
+                  q={qs[0]}
+                  content={cqOf(qs[0].id)}
+                  disabled={false}
+                  onChange={setQ}
+                  onContent={setCq}
+                />
+              )}
+            </div>
+            {item.form === "set" && (
+              <QuestionList
+                questions={qs}
+                disabled={false}
+                max={SET_MAX}
+                onOpen={(id) => router.push(to(`set/q${qs.findIndex((x) => x.id === id) + 1}`))}
+                onMove={() => {}}
+                onRemove={() => {}}
+                onAdd={() => {}}
+              />
             )}
+          </Panel>
 
-            <SubmitChecklist item={item} signer={author.name} unsigned={false} disabled={false} onChange={setAny} />
-          </div>
+          <SubmitChecklist item={item} signer={author.name} unsigned={false} disabled={false} onChange={setAny} />
         </div>
         <PageSaveBar dirty={dirty} onSave={() => {}} onCancel={() => setItem(start)} />
       </Body>

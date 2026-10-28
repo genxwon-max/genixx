@@ -50,14 +50,13 @@ import {
   type ContentSet,
 } from "@/lib/content";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
-import { Red } from "@/components/admin2/Guide";
 import ItemPreview from "@/components/admin2/ItemPreview";
 import DocEditor from "@/components/admin2/DocEditor";
 import DocBox from "@/components/admin2/DocBox";
 import { BlockList } from "@/components/exam/ExamSession";
 import { blocksToHtml, htmlToBlocks, splitLeadHtml, textToHtml } from "@/lib/docBlocks";
+import BandUnitRows from "./BandUnitRows";
 import LevelCounts from "./LevelCounts";
-import { PaperChapter, PaperHead, PaperItemTitle, SharedRows } from "./Paper";
 import ReviewPanel from "./ReviewPanel";
 import SubmitChecklist from "./SubmitChecklist";
 import { QuestionClassRows, QuestionContentRows, QuestionList } from "./QuestionEditor";
@@ -73,15 +72,14 @@ const PARAGRAPH_GAP = String.fromCharCode(10, 10);
  * 쓰는 화면과 검수하는 화면을 가르지 않는다 — 「고쳐 놓고 바로 승인」이 한 화면에서
  * 끝나야 한다.
  *
- * ── 차례는 원안지의 차례 ──
+ * ── 차례는 문항 카드의 차례 ──
  * 맨 위에 검수 이력 — 무엇이 걸렸나. 기록이 없으면 서지 않는다.
- * 그 아래 문항 구성(단일인가 세트인가) 한 줄, 그리고 종이 원안지 한 장(2026-10-28 요청, Paper.tsx):
- *   머리        「Genixx 지필 진단 문항 출제 원안지 양식」과 파란 학년 · 과목 · 단원
- *   Ⅰ. 문항 원안  「1. 문항 S1」 카드 — ① 문항 ID · ② 대상·교과·단원 · ③ 인지단계 · ④ Tag A ·
- *               ⑤ Tag B · ⑥ 형식·배점·난이도 · ⑦ 문항(지문 포함) · ⑧ 그림·삽화 사양 ·
- *               ⑨ 정답 · 채점 기준 · ⑩ 인정 불인정 예 · ⑪ 재능 평가 관점 · ⑫ 오답 설계 의도 ·
- *               ⑬ 이 문항의 특성 (세트는 공통 칸 · 지문 아래 목록 → 문항마다 카드)
- *   Ⅱ. 제출 전 자가 체크리스트  열두 줄 · 제출 확인 · 출제자 유의|검토 요청
+ *   ① 문항 구성  단일인가 세트인가
+ *   ② 분류      단일일 때만. 문항 ID · 학년 · 교과 단원 · 인지단계 · Tag A · Tag B ·
+ *               형식 · 난이도|배점
+ *   ③ 문항      지문 · 문항 · 정답·채점 기준 · 인정 예 · 재능 평가 관점 ·
+ *               오답 설계 의도 (세트는 지문 아래 목록 → 문항 상세)
+ *   ④ 제출 전 자가 체크리스트  열두 줄 · 제출 확인 · 출제자 유의|검토 요청
  * 그 아래는 검수 대기일 때 검수판, 승인 뒤에는 앵커 판.
  * 사용 · 사용 중지는 판이 아니라 머리의 스위치가 맡는다.
  *
@@ -316,54 +314,40 @@ export default function ItemDetail({ id }: { id: string }) {
 
   const saveBar = editable ? <PageSaveBar dirty={dirty} onSave={save} onCancel={cancel} /> : null;
 
-  /* 단일 문항의 지문 — 원안지 ⑦ 칸 맨 위, 문항 상자 위에 선다. 지시문과 지문을 상자 하나에 담는다
-     (2026-09-22 요청) — 첫 줄이 지시문, 그 아래가 자료다. 편집기에서도 첫 줄로 펴고, 적용하면
-     「…답하시오.」 줄을 지시문으로 되돌린다. 지문 없이 잠긴 문항에는 빈 상자를 세우지 않는다 */
-  const passageFilled = !!content.material.lead || content.material.blocks.length > 0;
-  const passageBox =
-    locked && !passageFilled ? null : (
-      <DocBox
-        label="지문"
-        empty={
-          <Red>
-            (지우고 사용) 지문이 있으면 눌러서 문서 편집기로 씁니다 — 첫 줄에는 「다음 글을 읽고
-            물음에 답하시오.」 같은 지시문을 씁니다. 지문이 없는 문항은 비워 둡니다.
-          </Red>
-        }
-        disabled={locked}
-        filled={passageFilled}
-        onOpen={() => {
-          const body = blocksToHtml(content.material.blocks);
-          setDocOpen({
-            html: textToHtml(content.material.lead ?? "") + body.html,
-            atoms: body.atoms,
-            lead: true,
-          });
-        }}
-      >
-        {content.material.lead && <p className="a2-docbox-lead">{content.material.lead}</p>}
-        <BlockList blocks={content.material.blocks} />
-      </DocBox>
-    );
+  /* 세트가 통째로 함께 쓰는 칸 — 분류 판의 앞머리에 선다.
+     단일이면 문항 상세에, 세트면 문항 하나로 들어간 화면에 선다. 세트 바깥 화면에는
+     세우지 않는다. 거기서는 어느 문항의 분류인지 말할 수가 없다.
 
-  /* 세트가 통째로 함께 쓰는 칸 — 원안지의 ① 문항 ID · ② 대상·교과·단원(Paper.tsx).
-     단일이면 문항 카드 맨 위에, 세트면 바깥 화면의 공통 칸과 문항 하나로 들어간 화면 맨 위에 선다 */
+     과목 줄은 없다. 교과 단원을 고르면 과목이 따라온다 — 둘을 따로 고르게 두면
+     「수학 · 생생하게 표현해요」가 생길 수 있다. */
   const sharedRows = (
-    <SharedRows
-      item={view}
-      disabled={locked}
-      bandHint={
-        bandBroken > 0 ? (
-          <span style={{ color: "var(--a2-danger)" }}>
-            {view.form === "set"
-              ? `이 세트 문항의 성취기준 코드 ${bandBroken}개가`
-              : "아래 Tag A의 성취기준 코드가"}{" "}
-            이 학년 범위를 벗어납니다.
-          </span>
-        ) : undefined
-      }
-      onChange={set}
-    />
+    <>
+      {/* 손으로 적는 칸이 아니다. 코드에 담기는 것이 전부 이 화면의 다른 칸에
+          이미 있어서, 적게 하면 그 둘이 어긋나기만 한다(lib/itemStore.ts 문항 ID).
+          학년·과목·형식·단계를 바꾸면 저장할 때 번호가 다시 매겨지는데, 그 예고는 칸 아래에
+          적지 않는다 — 설명 줄을 걷어 낸 판이라 저장한 뒤 바뀐 번호가 이 칸에 선다 */}
+      <FormRow label="문항 ID">
+        <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
+          {view.code || "저장하면 부여됩니다"}
+        </span>
+      </FormRow>
+
+      <BandUnitRows
+        value={view}
+        disabled={locked}
+        bandHint={
+          bandBroken > 0 ? (
+            <span style={{ color: "var(--a2-danger)" }}>
+              {view.form === "set"
+                ? `이 세트 문항의 성취기준 코드 ${bandBroken}개가`
+                : "아래 Tag A의 성취기준 코드가"}{" "}
+              이 학년 범위를 벗어납니다.
+            </span>
+          ) : undefined
+        }
+        onChange={set}
+      />
+    </>
   );
 
   /* ── 세트에서 문항 하나로 들어간 화면 ──
@@ -387,34 +371,40 @@ export default function ItemDetail({ id }: { id: string }) {
           }
         />
         <Body>
-          {/* 세트의 문항 하나 — 원안지의 「2. 문항 S2」 한 장. 분류와 문항이 한 표로 이어진다 */}
-          <div className="a2-paper">
-            <PaperHead item={view} />
-            <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
-            <PaperItemTitle no={openIndex + 1} level={qs[openIndex].level} />
-            <p className="a2-paper-note">
-              ① 문항 ID · ② 대상·교과·단원은 세트 전체가 함께 씁니다. 여기서 고치면 같은 세트의 다른
-              문항에도 그대로 적용됩니다. 지문은 문항 목록 화면에 있습니다.
-            </p>
-            <div className="a2-form a2-form-lg a2-card">
-              {sharedRows}
-              <QuestionClassRows
-                key={`class-${qs[openIndex].id}`}
-                q={qs[openIndex]}
-                band={view.band}
-                disabled={locked}
-                onChange={(next: Question) => setQuestion(openIndex, next)}
-              />
-              <QuestionContentRows
-                key={`content-${qs[openIndex].id}`}
-                q={qs[openIndex]}
-                content={contentOfQ(qs[openIndex].id)}
-                marks={marks}
-                disabled={locked}
-                onChange={(next: Question) => setQuestion(openIndex, next)}
-                onContent={(next) => setContentOfQ(qs[openIndex].id, next)}
-              />
-            </div>
+          <div className="grid gap-4">
+            <Panel title="분류" flush>
+              <p className="a2-note m-4 mb-0">
+                <span>
+                  문항 ID · 학년 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은
+                  세트의 다른 문항에도 그대로 적용됩니다. 그 아래는 이 문항만의 값입니다.
+                </span>
+              </p>
+              <div className="a2-form a2-form-lg a2-card mt-4">
+                {sharedRows}
+                <QuestionClassRows
+                  key={`class-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
+                  band={view.band}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                />
+              </div>
+            </Panel>
+
+            {/* 지문은 세트가 함께 읽는 것이라 목록 화면에 있다 */}
+            <Panel title="문항" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                <QuestionContentRows
+                  key={`content-${qs[openIndex].id}`}
+                  q={qs[openIndex]}
+                  content={contentOfQ(qs[openIndex].id)}
+                  marks={marks}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(openIndex, next)}
+                  onContent={(next) => setContentOfQ(qs[openIndex].id, next)}
+                />
+              </div>
+            </Panel>
           </div>
           {saveBar}
         </Body>
@@ -655,48 +645,33 @@ export default function ItemDetail({ id }: { id: string }) {
             </div>
           </Panel>
 
-          {/* ── ② 원안지 ──
-              문항 구성 아래는 종이 원안지 한 장이다(2026-10-28 요청 — Paper.tsx). 머리 → Ⅰ. 문항 원안 →
-              문항 카드 → Ⅱ. 제출 전 자가 체크리스트.
+          {/* ── ② 분류 ──
+              단일일 때만 선다. 세트에서는 분류가 문항마다 다르므로(단계도 난이도도) 바깥에
+              한 벌 세워 두면 어느 문항의 것인지 말할 수 없는 값이 된다. 세트의 분류는 문항
+              하나로 들어간 화면에 있다 */}
+          {view.form === "single" && (
+            <Panel title="분류" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                {sharedRows}
+                <QuestionClassRows
+                  q={qs[0]}
+                  band={view.band}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(0, next)}
+                />
+              </div>
+            </Panel>
+          )}
 
-              단일이면 「1. 문항 S1」 카드 하나에 ①~⑬이 다 선다. 지문은 ⑦ 칸 맨 위다 — 원안지가 지시문 ·
-              지문 · 발문 · 보기를 한 칸에 이어 적는다.
-
-              세트면 바깥 화면에는 세트가 함께 쓰는 것(① · ② · 지시문 · 보기·지문)과 문항 목록만 선다.
-              분류는 문항마다 다르므로(단계도 난이도도) 바깥에 한 벌 세워 두면 어느 문항의 것인지 말할 수
-              없는 값이 된다 — 문항 하나로 들어간 화면에 「2. 문항 S2」 카드로 선다 */}
-          <div className="a2-paper">
-            <PaperHead item={view} />
-            <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
-            {view.form === "single" ? (
-              <>
-                <PaperItemTitle no={1} level={qs[0].level} />
-                <div className="a2-form a2-form-lg a2-card">
-                  {sharedRows}
-                  <QuestionClassRows
-                    q={qs[0]}
-                    band={view.band}
-                    disabled={locked}
-                    onChange={(next: Question) => setQuestion(0, next)}
-                  />
-                  <QuestionContentRows
-                    key={qs[0].id}
-                    q={qs[0]}
-                    content={contentOfQ(qs[0].id)}
-                    marks={marks}
-                    disabled={locked}
-                    passage={passageBox}
-                    onChange={(next: Question) => setQuestion(0, next)}
-                    onContent={(next) => setContentOfQ(qs[0].id, next)}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                {/* 보기 상자의 네모 테두리와 「[1~4]」 번호는 응시 화면이 그린다. 여기서는 상자 위
-                    지시문과 상자 안에 들어갈 것만 쓴다 */}
-                <div className="a2-form a2-form-lg a2-card">
-                  {sharedRows}
+          {/* ── ③ 무엇을 읽히고 무엇을 묻나 ──
+              단일이면 지문 → 문항 → 정답 · 채점 기준 → 오답 설계 의도가 한 줄기로 이어진다.
+              세트면 지문이 곧 「문항들이 함께 읽는 것」이라 목록 바로 위가 제자리다 */}
+          <Panel title="문항" meta={view.form === "set" ? `${qs.length}문항` : undefined} flush>
+            <div className="a2-form a2-form-lg a2-card">
+              {/* 보기 상자의 네모 테두리와 「[1~4]」 번호는 응시 화면이 그린다. 여기서는 상자 위
+                  지시문과 상자 안에 들어갈 것만 쓴다 */}
+              {view.form === "set" ? (
+                <>
                   <FormRow label="지시문">
                     <input
                       className="a2-input"
@@ -715,12 +690,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   <FormRow label="보기 · 지문" req>
                     <DocBox
                       label="보기 · 지문"
-                      empty={
-                        <Red>
-                          (지우고 사용) 눌러서 문서 편집기로 세트의 문항들이 함께 읽을 글을 쓰거나
-                          한글 · 워드 파일을 불러옵니다.
-                        </Red>
-                      }
+                      empty="비어 있습니다. 눌러서 문서 편집기로 쓰거나 한글 · 워드 파일을 불러옵니다."
                       disabled={locked}
                       filled={content.material.blocks.length > 0}
                       onOpen={() => setDocOpen({ ...blocksToHtml(content.material.blocks), lead: false })}
@@ -728,60 +698,101 @@ export default function ItemDetail({ id }: { id: string }) {
                       <BlockList blocks={content.material.blocks} />
                     </DocBox>
                   </FormRow>
-                </div>
-                <div className="a2-paper-list">
-                  <QuestionList
-                    questions={qs}
+                </>
+              ) : (
+                /* 독립 문항은 지시문과 지문을 상자 하나 「지문」에 담는다(2026-09-22 요청) — 첫 줄이 지시문,
+                   그 아래가 자료다. 편집기에서도 첫 줄로 펴고, 적용하면 「…답하시오.」 줄을 지시문으로 되돌린다.
+                   세트는 지시문이 「[1~4]」 묶음 머리라 칸을 따로 둔다 */
+                <FormRow label="지문">
+                  <DocBox
+                    label="지문"
+                    empty="비어 있습니다. 눌러서 문서 편집기로 쓰거나 한글 · 워드 파일을 불러옵니다."
                     disabled={locked}
-                    max={SET_MAX}
-                    onOpen={setOpenQ}
-                    onMove={(k, dir) => {
-                      const next = [...qs];
-                      [next[k + dir], next[k]] = [next[k], next[k + dir]];
-                      setQuestions(next);
+                    filled={!!content.material.lead || content.material.blocks.length > 0}
+                    onOpen={() => {
+                      const body = blocksToHtml(content.material.blocks);
+                      setDocOpen({
+                        html: textToHtml(content.material.lead ?? "") + body.html,
+                        atoms: body.atoms,
+                        lead: true,
+                      });
                     }}
-                    onRemove={(k) => setQuestions(qs.filter((_, n) => n !== k))}
-                    onAdd={() => {
-                      /* 더하고 바로 들어간다. 목록에 빈 줄만 하나 늘려 놓으면 그다음에 할 일이
-                         「수정하기를 누른다」 하나뿐이라, 그 한 번을 여기서 대신 누른다 */
-                      const made = blankQuestion(qs);
-                      setQuestions([...qs, made]);
-                      setOpenQ(made.id);
-                    }}
+                  >
+                    {content.material.lead && (
+                      <p className="a2-docbox-lead">{content.material.lead}</p>
+                    )}
+                    <BlockList blocks={content.material.blocks} />
+                  </DocBox>
+                </FormRow>
+              )}
+              {view.form === "single" && (
+                <QuestionContentRows
+                  key={qs[0].id}
+                  q={qs[0]}
+                  content={contentOfQ(qs[0].id)}
+                  marks={marks}
+                  disabled={locked}
+                  onChange={(next: Question) => setQuestion(0, next)}
+                  onContent={(next) => setContentOfQ(qs[0].id, next)}
+                />
+              )}
+            </div>
+            {view.form === "set" && (
+              <>
+                <QuestionList
+                  questions={qs}
+                  disabled={locked}
+                  max={SET_MAX}
+                  onOpen={setOpenQ}
+                  onMove={(k, dir) => {
+                    const next = [...qs];
+                    [next[k + dir], next[k]] = [next[k], next[k + dir]];
+                    setQuestions(next);
+                  }}
+                  onRemove={(k) => setQuestions(qs.filter((_, n) => n !== k))}
+                  onAdd={() => {
+                    /* 더하고 바로 들어간다. 목록에 빈 줄만 하나 늘려 놓으면 그다음에 할 일이
+                       「수정하기를 누른다」 하나뿐이라, 그 한 번을 여기서 대신 누른다 */
+                    const made = blankQuestion(qs);
+                    setQuestions([...qs, made]);
+                    setOpenQ(made.id);
+                  }}
+                />
+                {qs.length < 2 && (
+                  <p className="a2-note m-4 mt-0" style={{ borderLeftColor: "var(--a2-warn)" }}>
+                    <span>세트는 문항이 두 개 이상이어야 합니다.</span>
+                  </p>
+                )}
+                {/* 세트 안의 세트 — 이어진 문항을 묶어 한 화면에 세우고 자료를 더 얹는다 */}
+                {qs.length >= 2 && (
+                  <GroupEditor
+                    content={content}
+                    count={qs.length}
+                    disabled={locked}
+                    onChange={setContent}
                   />
-                  {qs.length < 2 && (
-                    <p className="a2-note m-4 mt-0" style={{ borderLeftColor: "var(--a2-warn)" }}>
-                      <span>세트는 문항이 두 개 이상이어야 합니다.</span>
-                    </p>
-                  )}
-                  {/* 세트 안의 세트 — 이어진 문항을 묶어 한 화면에 세우고 자료를 더 얹는다 */}
-                  {qs.length >= 2 && (
-                    <GroupEditor
-                      content={content}
-                      count={qs.length}
-                      disabled={locked}
-                      onChange={setContent}
-                    />
-                  )}
-                </div>
+                )}
               </>
             )}
+          </Panel>
 
-            {/* ── Ⅱ. 제출 전 자가 체크리스트 ──
-                단일이든 세트든 원안지 맨 끝에 한 벌. 서명은 문항 하나가 아니라 이 묶음 통째에 하는
-                것이다 — 세트의 「앞 문항이 뒤 문항의 답을 드러내지 않는가」는 문항 하나로 들어간
-                화면에서는 짚을 수가 없다. 무엇이 남았는지는 꺼진 「검수로 제출」 단추의 풍선 도움말이 말한다.
-                검수 대기 중에는 체크리스트를 걷는다. 검수자가 짚을 것은 아래 검수판이고, 출제위원이
-                짚은 열두 줄은 이미 제출 문턱에서 다 켜진 채 넘어온다. 출제자 유의 · 검토 요청만 남긴다 */}
-            <SubmitChecklist
-              item={view}
-              signer={by}
-              unsigned={unsigned}
-              disabled={locked}
-              reviewing={view.state === "submitted"}
-              onChange={set}
-            />
-          </div>
+          {/* ── ④ 제출 전 자가 체크리스트 ──
+              단일이든 세트든 바깥 화면 맨 아래에 한 벌. 서명은 문항 하나가 아니라 이 묶음
+              통째에 하는 것이다 — 세트의 「앞 문항이 뒤 문항의 답을 노출하지 않는가」는
+              문항 하나로 들어간 화면에서는 짚을 수가 없다 */}
+          {/* 「제출까지 남은 것」 줄은 걷었다. 체크리스트 판 바로 아래에서 칸 이름 열 개를 한 줄로
+              다시 읽혀, 판의 맨 끝이 안내문이 되었다. 무엇이 남았는지는 꺼진 「검수로 제출」
+              단추의 풍선 도움말이 말한다 */}
+          {/* 검수 대기 중에는 체크리스트를 걷는다. 검수자가 짚을 것은 아래 검수판이고, 출제위원이
+              짚은 열두 줄은 이미 제출 문턱에서 다 켜진 채 넘어온다. 출제자 유의 · 검토 요청만 남긴다 */}
+          <SubmitChecklist
+            item={view}
+            signer={by}
+            unsigned={unsigned}
+            disabled={locked}
+            reviewing={view.state === "submitted"}
+            onChange={set}
+          />
 
           {/* key를 붙여 문항이 바뀌면 검수판을 새로 세운다. 붙이지 않으면 앞 문항에서
               짚어 둔 3단 체크가 다음 문항에 그대로 남아 다른 문항을 승인하게 된다. */}
