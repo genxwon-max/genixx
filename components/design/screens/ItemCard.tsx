@@ -18,6 +18,8 @@ import {
   missingSubmit,
   seedItem,
   stateLabel,
+  unitStandards,
+  withUnitStandard,
   type ItemDraft,
   type Question,
 } from "@/lib/itemStore";
@@ -43,7 +45,7 @@ import ConsoleFrame, { type ConsoleMe } from "../ConsoleFrame";
  * 특성, 열두 줄로 바뀐 제출 전 자가 체크리스트, 고정 배점(S1 · S2 2점 · S3 4점 · S4 6점). 원안지의 빨간
  * 글씨는 칸이 비어 있는 동안만 서고, 값을 넣으면 사라진다.
  *
- *   빈 문항           새 문항 — 칸마다 빨간 안내(「(지우고 사용)」 · 「(수정 사용)」 …)
+ *   빈 문항           새 문항 — 칸마다 빨간 안내(「(수정 사용)」 · 「(해당하는 곳에 체크)」 …) · 인지단계 네 개 중 하나 · 학년 | 교과 단원 한 줄
  *   채운 문항         원안지의 예시 문항(3학년 국어 「빗방울 악단」 S1)을 칸마다 적은 뒤 — 안내가 모두 사라짐
  *   그림 있음         그림 있음을 짚고 아래 확인 칸이 하나 남은 모습 — 체크리스트 마지막 줄에 빨간 경고
  *   체크리스트 확인   열두 줄을 다 짚고 확인한 뒤 — 「검수로 제출」이 켜진다
@@ -233,6 +235,9 @@ function Screen({ state }: { state: string }) {
   const at = open ? Number(open[1]) - 1 : -1;
 
   const setAny = (patch: Partial<ItemDraft>) => setItem((i) => ({ ...i, ...patch }));
+  /* 학년 · 교과 단원을 고르면 성취기준 코드가 따라 들어간다 — 실제 화면과 같은 셈 */
+  const setPlace = (patch: Partial<ItemDraft>) =>
+    setItem((i) => ({ ...i, ...withUnitStandard(i, patch) }));
   const setQ = (next: Question) =>
     setItem((i) => ({ ...i, questions: i.questions.map((x) => (x.id === next.id ? next : x)) }));
   const setCq = (next: ContentQuestion) =>
@@ -316,8 +321,8 @@ function Screen({ state }: { state: string }) {
               </p>
               <div className="a2-form a2-form-lg a2-card mt-4">
                 {idRow}
-                <BandUnitRows value={item} disabled={false} onChange={setAny} />
-                <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
+                <BandUnitRows value={item} disabled={false} onChange={setPlace} />
+                <QuestionClassRows q={q} band={item.band} standards={unitStandards(item)} disabled={false} onChange={setQ} />
               </div>
             </Panel>
             <Panel title="문항" flush>
@@ -369,8 +374,8 @@ function Screen({ state }: { state: string }) {
             <Panel title="분류" flush>
               <div className="a2-form a2-form-lg a2-card">
                 {idRow}
-                <BandUnitRows value={item} disabled={false} onChange={setAny} />
-                <QuestionClassRows q={qs[0]} band={item.band} disabled={false} onChange={setQ} />
+                <BandUnitRows value={item} disabled={false} onChange={setPlace} />
+                <QuestionClassRows q={qs[0]} band={item.band} standards={unitStandards(item)} disabled={false} onChange={setQ} />
               </div>
             </Panel>
           )}

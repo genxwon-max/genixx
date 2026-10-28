@@ -11,6 +11,8 @@ import {
   countOf,
   generateItems,
   itemForms,
+  unitStandards,
+  withUnitStandard,
   type GenerateSpec,
   type ItemDraft,
   type ItemForm,
@@ -177,6 +179,9 @@ export default function Generator({
               value={place}
               disabled={false}
               onChange={(patch) => {
+                /* 단원을 고르면 성취기준 코드가 따라 들어간다 — 문항 상세와 같은 셈(withUnitStandard) */
+                const fit = withUnitStandard({ ...place, questions: [q] }, patch).questions;
+                if (fit) setQ(fit[0]);
                 setPlace((p) => ({
                   band: patch.band ?? p.band,
                   gradeNo: patch.gradeNo ?? p.gradeNo,
@@ -194,6 +199,7 @@ export default function Generator({
               disabled={false}
               withLevel={false}
               guides={false}
+              standards={unitStandards(place)}
               onChange={pickQ}
             />
           </div>
