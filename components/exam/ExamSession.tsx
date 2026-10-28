@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   answerText,
   assessment,
@@ -47,6 +56,7 @@ import {
   startSubject,
   submitFree,
   submitSubject,
+  toggleMark,
   useExamRecord,
   useHydrated,
   type ExamRecord,
@@ -63,8 +73,13 @@ import ExamCover from "./ExamCover";
 import { ItemWatermark, watermarkOf } from "./ExamWatermark";
 import { addSpoken, DictateBar, DictateButton, ImageAnswer, ListenClip } from "./AnswerMedia";
 import MatchAnswer, { type MatchPick } from "./MatchAnswer";
-import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/fullscreen";
-import { ArrowRight, CheckIcon } from "@/components/Icons";
+import {
+  askExamExit,
+  enterFullscreen,
+  leaveFullscreen,
+  useExamExitRequest,
+} from "@/lib/fullscreen";
+import { ArrowRight, CheckIcon, GearIcon } from "@/components/Icons";
 import { btnDanger, btnGhost, btnPrimary, eyebrow, panel } from "./ui";
 
 function pad(n: number) {
@@ -129,6 +144,8 @@ type Sheet = {
   /** 문항 이동판을 과목으로 갈라 세울까 — 과목이 섞인 판(무료 진단)만 그렇다 */
   grouped: boolean;
   answers: Record<string, number | string>;
+  /** 체크해 둔 문항 ID */
+  marks: string[];
   reflections: Record<string, string>;
   reflectionPicks: Record<string, string>;
   status: ExamStatus;
@@ -143,6 +160,8 @@ type Sheet = {
   forfeit: () => void;
   restart: () => void;
   answer: (q: Question, v: number | string) => void;
+  /** 문항 체크를 켜고 끈다 */
+  mark: (q: Question) => void;
   reflect: (q: Question, text: string) => void;
   pick: (q: Question, reasonId: string | null) => void;
   finish: () => void;
@@ -178,6 +197,7 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
       full: SUBJECT_IDS.flatMap((id) => examOrderOf(id)),
       screens,
       answers: merge((r) => r.answers),
+      marks: recs.flatMap((r) => r.marks),
       reflections: merge((r) => r.reflections),
       reflectionPicks: merge((r) => r.reflectionPicks),
       status: foldStatus(recs.map((r) => r.status)),
@@ -192,6 +212,7 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
       forfeit: () => forfeitFree(studentId),
       restart: () => restartFree(studentId),
       answer: (q, v) => setAnswer(studentId, q.subject, q.id, v),
+      mark: (q) => toggleMark(studentId, q.subject, q.id),
       reflect: (q, text) => setReflection(studentId, q.subject, q.id, text),
       pick: (q, reasonId) => setReflectionPick(studentId, q.subject, q.id, reasonId),
       finish: () => finishFreeReflection(studentId),
@@ -211,6 +232,7 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
       .map((sc) => sc.filter((q) => list.includes(q)))
       .filter((sc) => sc.length > 0),
     answers: rec.answers,
+    marks: rec.marks,
     reflections: rec.reflections,
     reflectionPicks: rec.reflectionPicks,
     status: rec.status,
@@ -224,6 +246,7 @@ function useSheet(studentId: string, scope: ExamScope, record: ExamRecord): Shee
     forfeit: () => forfeitSubject(studentId, subject),
     restart: () => restartSubject(studentId, subject),
     answer: (q, v) => setAnswer(studentId, subject, q.id, v),
+    mark: (q) => toggleMark(studentId, subject, q.id),
     reflect: (q, text) => setReflection(studentId, subject, q.id, text),
     pick: (q, reasonId) => setReflectionPick(studentId, subject, q.id, reasonId),
     finish: () => finishReflection(studentId, subject),
@@ -271,6 +294,8 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   const [elapsed, setElapsed] = useState(0);
   /** 안내 화면을 지나 실제 응시를 시작했는지 */
   const [entered, setEntered] = useState(false);
+  /** 화면 설정 — 글자 크기 · 바탕색(하단 바의 톱니바퀴) */
+  const view = useExamView();
 
   /**
    * 이 판이 여는 문항과 손잡이 — 과목 하나이거나 무료 진단 스물이다.
@@ -427,30 +452,37 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
 
   return (
     /* 머리는 응시 존 레이아웃이 한 줄로 세운다(ExamStatusBar) — 여기서 또 그리지 않는다 */
-    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
+    <div
+      className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-exam-bg"
+      style={paperStyle(view.paper)}
+    >
       {/* 본문 — 좌: 자료(보기) / 가운데: 문제 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
-        <BriefPanel
-          brief={question.brief}
-          range={setRange(order, question)}
-          watermark={watermark}
-        />
+        <TextZoomProvider scale={view.scale}>
+          <BriefPanel
+            brief={question.brief}
+            range={setRange(order, question)}
+            watermark={watermark}
+          />
 
-        <ScreenColumn
-          order={order}
-          screen={screen}
-          watermark={watermark}
-          renderQuestion={(q) => (
-            <QuestionBody
-              key={q.id}
-              q={q}
-              num={order.indexOf(q) + 1}
-              value={sheet.answers[q.id]}
-              onAnswer={(v) => sheet.answer(q, v)}
-              watermark={watermark}
-            />
-          )}
-        />
+          <ScreenColumn
+            order={order}
+            screen={screen}
+            watermark={watermark}
+            renderQuestion={(q) => (
+              <QuestionBody
+                key={q.id}
+                q={q}
+                num={order.indexOf(q) + 1}
+                value={sheet.answers[q.id]}
+                onAnswer={(v) => sheet.answer(q, v)}
+                watermark={watermark}
+                marked={sheet.marks.includes(q.id)}
+                onMark={() => sheet.mark(q)}
+              />
+            )}
+          />
+        </TextZoomProvider>
 
         <QuestionPad
           /**
@@ -472,58 +504,38 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
           isCurrent={(q) => screen.includes(q)}
           isDone={(q) => order.includes(q) && isAnswered(q, sheet.answers[q.id])}
           isLocked={(q) => !order.includes(q)}
+          isMarked={(q) => sheet.marks.includes(q.id)}
           onPick={(q) => {
             if (order.includes(q)) goTo(q);
           }}
-          doneLabel="답한 문항"
+          doneLabel="푼 문항"
           doneVerb="응답함"
-          footnote={
-            /* 무료 진단을 보는 아이에게 남은 문항을 숨기지 않는다. 다만 지금 풀 수 없다는
-               것을 점선과 이 줄로 함께 말한다 */
-            record.tier === "paid" || full.length === order.length
-              ? undefined
-              : scope.kind === "free"
-                ? "유료 진단으로 접수하면 과목마다 문항이 더 열립니다."
-                : "점선 번호는 유료 진단으로 접수하면 풀 수 있습니다."
-          }
+          leftLabel="안 푼 문항"
+          /* 「점선 번호는 … 풀 수 있습니다」 같은 판 아래 안내는 걷었다(2026-10-28 요청) — 점선
+             테두리만으로 지금 풀 수 없는 문항임을 말한다 */
         />
       </div>
 
-      {/* 하단 바 */}
-      <div className="shrink-0 border-t border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          {/* 나가기는 헤더 오른쪽 위에 있다(ExamStatusBar) — ESC도 같은 물음을 연다 */}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
-              응답 {doneCount}/{list.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              disabled={index === 0}
-              className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-40`}
-            >
-              이전
-            </button>
-
-            {isLast ? (
-              <button type="button" onClick={() => setAskSubmit(true)} className={btnPrimary}>
-                제출하기
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIndex((i) => Math.min(screens.length - 1, i + 1))}
-                className={btnPrimary}
-              >
-                다음
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* 하단 바 — 왼쪽 끝에 화면 설정(그 안에 나가기), 가운데에 이전 · 다음, 오른쪽 끝(이동판
+          아래)에 제출하기. ESC도 나갈지 묻는다 */}
+      <PageNav
+        settings={
+          <ExamSettings
+            open={view.open}
+            onOpenChange={view.setOpen}
+            scale={view.scale}
+            onScale={view.setScale}
+            paper={view.paper}
+            onPaper={view.setPaper}
+            onExit={() => setAskForfeit(true)}
+          />
+        }
+        onPrev={() => setIndex((i) => Math.max(0, i - 1))}
+        prevDisabled={index === 0}
+        onNext={() => setIndex((i) => Math.min(screens.length - 1, i + 1))}
+        nextDisabled={isLast}
+        submit={{ label: "제출하기", onClick: () => setAskSubmit(true) }}
+      />
 
       {askForfeit && (
         <ForfeitDialog
@@ -557,15 +569,20 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
 /* ───────────────────────── 문항 이동판 ───────────────────────── */
 
 /**
- * 오른쪽에 붙는 문항 이동판.
+ * 오른쪽에 붙는 문항 이동판(리모컨).
  *
  * 문항이 열 개가 되면 「이전·다음」만으로는 6번에서 2번으로 돌아갈 수가 없다. 번호를
  * 늘어놓아 아무 데나 바로 갈 수 있게 했다. S위계로 묶지 않는다 — 위계는 채점과 리포트가
  * 읽는 축이지 학생에게 보일 이름이 아니다.
  *
- * 답한 문항은 **밝은 회색**으로 깔린다 — 끝낸 칸이 가라앉고 남은 칸이 흰 바탕으로 도드라져,
- * 어디를 더 해야 하는지가 먼저 읽힌다. 색조가 아니라 밝기 차이라 색을 못 보는 아이도 같이
- * 읽히고, 낱낱의 상태는 번호마다 붙인 aria-label(「문항 3 응답함」)이 따로 말한다.
+ * ── 번호 칸의 세 모양 (2026-10-28) ──
+ *   푼 문항     검정으로 칠한다 — 한눈에 잘 보여야 한다(사용자 요청)
+ *   안 푼 문항  흰 바탕에 옅은 회색 번호
+ *   체크한 문항 칸 오른쪽 위에 체크 표시 — 푼 것 · 안 푼 것 어느 쪽에도 겹쳐 붙는다
+ * 지금 보고 있는 문항은 칸 바깥에 테두리를 한 겹 더 두른다. 칸을 칠하는 것은 「풀었는가」의
+ * 몫이라, 지금 자리까지 칠하면 지금 문항을 풀었는지가 판에서 안 보인다. 판 아래에 세 가지의
+ * 수를 그 모양의 견본과 함께 적어, 견본이 곧 범례가 된다. 낱낱의 상태는 번호마다 붙인
+ * aria-label(「문항 3 응답함 · 체크함」)이 따로 말한다.
  */
 export function QuestionPad({
   list,
@@ -574,9 +591,11 @@ export function QuestionPad({
   isCurrent,
   isDone,
   isLocked = () => false,
+  isMarked,
   onPick,
   doneLabel,
   doneVerb,
+  leftLabel = "남은 문항",
   footnote,
 }: {
   /** 판에 늘어놓을 문항 — 잠긴 것까지 모두. 푸는 차례 그대로다 */
@@ -603,9 +622,14 @@ export function QuestionPad({
   isDone: (q: Question) => boolean;
   /** 지금 갈래에서 아직 열리지 않은 문항 — 점선 테두리로 세운다 */
   isLocked?: (q: Question) => boolean;
+  /** 학생이 체크해 둔 문항인가 — 넘기지 않으면(해석 화면) 체크 표시와 그 수를 두지 않는다 */
+  isMarked?: (q: Question) => boolean;
   onPick: (q: Question) => void;
+  /** 판 아래 셈의 이름 — 「푼 문항」 · 「해석을 남긴 문항」 */
   doneLabel: string;
   doneVerb: string;
+  /** 채우지 않은 문항의 이름 — 「안 푼 문항」 */
+  leftLabel?: string;
   /** 판 맨 아래 안내 — 없으면 두지 않는다 */
   footnote?: string;
 }) {
@@ -618,6 +642,7 @@ export function QuestionPad({
    */
   const open = list.filter((q) => !isLocked(q));
   const doneCount = open.filter(isDone).length;
+  const markCount = isMarked ? open.filter(isMarked).length : 0;
 
   return (
     <aside
@@ -641,66 +666,388 @@ export function QuestionPad({
                 {group.label}
               </p>
             )}
-            <ol className="flex flex-wrap gap-1.5">
+            <ol className="flex flex-wrap gap-2">
               {group.items.map((q) => {
-            const i = list.indexOf(q);
-            const ok = isDone(q);
-            const here = isHere(q);
-            const current = isCurrent(q);
-            const lockedHere = isLocked(q);
-            const state = lockedHere
-              ? "회원가입 후 열림"
-              : ok
-                ? doneVerb
-                : "아직 " + doneVerb.replace("함", "하지 않음");
-            return (
-              <li key={q.id}>
-                <button
-                  type="button"
-                  onClick={() => onPick(q)}
-                  aria-current={current ? "step" : undefined}
-                  aria-label={`문항 ${i + 1} ${state}`}
-                  title={`문항 ${i + 1} · ${kindLabel(q)} · ${state}`}
-                  className={`flex h-9 w-9 items-center justify-center rounded-[2px] border text-[13px] tabular-nums transition-colors ${
-                    current
-                      ? "border-exam-text bg-exam-text font-bold text-white"
-                      : lockedHere
-                        ? "border-dashed border-exam-line font-medium text-exam-muted/60 hover:bg-exam-raised"
-                        : ok
-                          ? /* 답한 문항 — 밝은 회색을 깔아 「끝낸 칸」으로 보이게 한다. 남은
-                               칸이 흰 바탕으로 도드라져, 어디를 더 해야 하는지가 먼저 읽힌다 */
-                            "border-exam-line bg-exam-raised font-medium text-exam-muted hover:bg-slate-200"
-                          : here
-                            ? /* 같은 쪽에 함께 서 있는 문항 — 지금 보이지만 짚은 것은 아니다 */
-                              "border-exam-text font-bold text-exam-text hover:bg-exam-raised"
-                            : "border-exam-line font-medium text-exam-muted hover:bg-exam-raised"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              </li>
-            );
+                const i = list.indexOf(q);
+                const ok = isDone(q);
+                const here = isHere(q);
+                const current = isCurrent(q);
+                const lockedHere = isLocked(q);
+                const marked = !lockedHere && !!isMarked?.(q);
+                const state = lockedHere
+                  ? "회원가입 후 열림"
+                  : (ok ? doneVerb : "아직 " + doneVerb.replace("함", "하지 않음")) +
+                    (marked ? " · 체크함" : "");
+                return (
+                  <li key={q.id} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => onPick(q)}
+                      aria-current={current ? "step" : undefined}
+                      aria-label={`문항 ${i + 1} ${state}`}
+                      title={`문항 ${i + 1} · ${kindLabel(q)} · ${state}`}
+                      className={`flex h-9 w-9 items-center justify-center rounded-[2px] border text-[13px] tabular-nums transition-colors ${
+                        current ? "ring-2 ring-exam-text ring-offset-2 ring-offset-exam-panel" : ""
+                      } ${
+                        lockedHere
+                          ? "border-dashed border-exam-line font-medium text-exam-muted/50 hover:bg-exam-raised"
+                          : ok
+                            ? /* 푼 문항 — 검정으로 칠해 한눈에 보이게 한다 */
+                              "border-exam-text bg-exam-text font-bold text-white hover:bg-exam-text/85"
+                            : here || current
+                              ? /* 지금 쪽에 함께 서 있는 문항 — 테두리만 한 단 짙다 */
+                                "border-exam-muted bg-exam-panel font-medium text-exam-muted hover:bg-exam-raised"
+                              : /* 안 푼 문항 — 옅은 회색 */
+                                "border-exam-line bg-exam-panel font-medium text-exam-muted/60 hover:bg-exam-raised"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                    {marked && <MarkBadge className="absolute -top-1.5 -right-1.5" />}
+                  </li>
+                );
               })}
             </ol>
           </div>
         ))}
       </div>
 
-      <dl className="mt-6 border-t border-exam-line pt-4 text-[12px]">
-        <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-exam-muted">{doneLabel}</dt>
-          <dd className="font-semibold tabular-nums text-exam-text">
-            {doneCount} / {open.length}
-          </dd>
+      {/* 셈 — 견본 칸이 곧 범례다 */}
+      <dl className="mt-6 space-y-2 border-t border-exam-line pt-4 text-[12px]">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="h-3.5 w-3.5 shrink-0 rounded-[2px] border border-exam-text bg-exam-text"
+          />
+          <dt className="flex-1 text-exam-muted">{doneLabel}</dt>
+          <dd className="font-bold tabular-nums text-exam-text">{doneCount}</dd>
         </div>
-        <div className="mt-1.5 flex items-baseline justify-between gap-2">
-          <dt className="text-exam-muted">남은 문항</dt>
-          <dd className="font-semibold tabular-nums text-exam-text">{open.length - doneCount}</dd>
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="h-3.5 w-3.5 shrink-0 rounded-[2px] border border-exam-line bg-exam-panel"
+          />
+          <dt className="flex-1 text-exam-muted">{leftLabel}</dt>
+          <dd className="font-bold tabular-nums text-exam-text">{open.length - doneCount}</dd>
         </div>
+        {isMarked && (
+          <div className="flex items-center gap-2">
+            <MarkBadge className="shrink-0" />
+            <dt className="flex-1 text-exam-muted">체크한 문항</dt>
+            <dd className="font-bold tabular-nums text-exam-text">{markCount}</dd>
+          </div>
+        )}
       </dl>
 
       {footnote && <p className="mt-4 text-[11px] leading-relaxed text-exam-muted">{footnote}</p>}
     </aside>
+  );
+}
+
+const navBtn =
+  "inline-flex h-9 min-w-[4.5rem] items-center justify-center gap-1 rounded-[2px] border px-4 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+/** 하단 바의 작은 단추 — 이전 */
+export const navGhost = `${navBtn} border-exam-line bg-exam-panel text-exam-text enabled:hover:bg-exam-raised`;
+/** 하단 바의 작은 단추 — 다음 */
+export const navPrimary = `${navBtn} border-soft-primary bg-soft-primary text-white enabled:hover:bg-soft-primary-dark`;
+
+/**
+ * 응시 화면의 하단 바 (2026-10-28 요청).
+ *
+ * 왼쪽 끝에 화면 설정(톱니바퀴 — 그 안 맨 아래에 「나가기」), 「이전 · 다음」은 작게 줄여 가운데에,
+ * 「제출하기」는 같은 줄 오른쪽 끝 — 문항 이동판 칸(14rem)
+ * 바로 아래에 그 칸 폭으로 선다. 이동판에서 남은 문항을 보고 그 아래에서 낸다. 제출이 따로 있어
+ * 마지막 쪽에서도 「다음」은 이름이 바뀌지 않고 꺼질 뿐이다. 답한 수(「응답 5/11」)는 이동판 아래
+ * 셈과 겹쳐 걷었다.
+ */
+export function PageNav({
+  onPrev,
+  onNext,
+  prevDisabled = false,
+  nextDisabled = false,
+  next,
+  submit,
+  settings,
+}: {
+  onPrev: () => void;
+  onNext: () => void;
+  prevDisabled?: boolean;
+  nextDisabled?: boolean;
+  /** 「다음」 자리에 대신 세울 단추 — 셋트를 다 푼 뒤의 「회원가입」 · 「창 닫기」 */
+  next?: ReactNode;
+  /** 오른쪽 끝의 단추 — 「제출하기」. 없으면 두지 않는다 */
+  submit?: { label: string; onClick: () => void };
+  /** 왼쪽 끝의 톱니바퀴(ExamSettings) — 없으면 두지 않는다 */
+  settings?: ReactNode;
+}) {
+  return (
+    <div className="shrink-0 border-t border-exam-line bg-exam-panel">
+      <div className="relative mx-auto flex h-14 w-full max-w-[1600px] items-center justify-center gap-2 px-6 lg:px-10">
+        {settings && (
+          /* 넓은 화면에서는 왼쪽 끝에 붙인다 — 이전 · 다음은 그대로 가운데에 남는다 */
+          <div className="mr-auto lg:absolute lg:inset-y-0 lg:left-0 lg:mr-0 lg:flex lg:items-center lg:px-6">
+            {settings}
+          </div>
+        )}
+        <button type="button" onClick={onPrev} disabled={prevDisabled} className={navGhost}>
+          <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+          이전
+        </button>
+        {next ?? (
+          <button type="button" onClick={onNext} disabled={nextDisabled} className={navPrimary}>
+            다음
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {submit && (
+          /* 넓은 화면에서는 이동판 칸 아래에 붙인다 — 이전 · 다음은 그대로 가운데에 남는다 */
+          <div className="ml-2 lg:absolute lg:inset-y-0 lg:right-0 lg:ml-0 lg:flex lg:w-56 lg:items-center lg:border-l lg:border-exam-line lg:px-5">
+            <button type="button" onClick={submit.onClick} className={`${navPrimary} lg:w-full`}>
+              {submit.label}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 체크 표시 — 이동판의 번호 칸 귀퉁이와 판 아래 범례가 함께 쓴다 */
+function MarkBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none flex h-3.5 w-3.5 items-center justify-center rounded-full border border-exam-text bg-exam-panel text-exam-text ring-2 ring-exam-panel ${className}`}
+    >
+      <CheckIcon className="h-2.5 w-2.5" strokeWidth={3.5} />
+    </span>
+  );
+}
+
+/**
+ * 문항 체크 단추 — 문항 번호 바로 위의 작은 단추. 다시 볼 문항에 표시해 둔다(2026-10-28 요청).
+ *
+ * 답과는 상관이 없다 — 풀었든 안 풀었든 체크할 수 있고, 제출할 때 따로 묻지 않는다. 문항이
+ * 주인공이라 작게 둔다: 고딕 11px, 문항 칸의 위 여백 안에 들어가 발문을 밀어내지 않는다.
+ * 처음에는 오른쪽 위에 두었다가 번호 위로 옮겼다(같은 날 요청) — 종이 시험지에서 번호 옆에
+ * 표시하던 자리다.
+ */
+export function MarkToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={on}
+      title={on ? "체크 풀기" : "다시 볼 문항으로 체크"}
+      className={`absolute top-1 left-6 z-30 inline-flex h-[22px] items-center gap-1 rounded-[2px] border px-1.5 font-sans text-[11px] font-semibold transition-colors lg:top-2.5 lg:left-10 ${
+        on
+          ? "border-exam-text bg-exam-panel text-exam-text hover:bg-exam-raised"
+          : "border-exam-line bg-exam-panel text-exam-muted hover:border-exam-muted hover:text-exam-text"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`flex h-3 w-3 items-center justify-center rounded-[2px] border ${
+          on ? "border-exam-text bg-exam-text text-white" : "border-exam-muted/60 bg-exam-panel"
+        }`}
+      >
+        {on && <CheckIcon className="h-2.5 w-2.5" strokeWidth={3.5} />}
+      </span>
+      체크
+    </button>
+  );
+}
+
+/* ───────────────────────── 화면 설정 ───────────────────────── */
+
+/**
+ * 글자 크기 — 하단 바 왼쪽의 톱니바퀴에서 고른다(2026-10-28 요청).
+ *
+ * 자료 칸과 문항 칸만 키운다(BriefPanel · ScreenColumn이 TextZoom을 읽는다). 문항 이동판 · 하단 바는
+ * 그대로다 — 단추까지 커지면 문항 칸이 그만큼 좁아진다. 글자 크기를 칸마다 따로 적어 두었으므로
+ * 낱낱이 고치지 않고 칸 안쪽을 통째로 확대(CSS zoom)한다. 칸의 폭 · 높이는 그대로라 화면 틀은 흔들리지 않는다.
+ */
+export const examTextScales = [
+  { id: "base", label: "보통", zoom: 1 },
+  { id: "large", label: "크게", zoom: 1.15 },
+  { id: "xlarge", label: "아주 크게", zoom: 1.3 },
+] as const;
+export type ExamTextScale = (typeof examTextScales)[number]["id"];
+
+const TextZoom = createContext(1);
+
+/** 응시 화면이 자료 · 문항 칸을 감싸 글자 크기를 내려 보낸다 */
+export function TextZoomProvider({
+  scale,
+  children,
+}: {
+  scale: ExamTextScale;
+  children: ReactNode;
+}) {
+  const zoom = examTextScales.find((s) => s.id === scale)?.zoom ?? 1;
+  return <TextZoom.Provider value={zoom}>{children}</TextZoom.Provider>;
+}
+
+/** 칸 안쪽에 거는 확대 — 보통이면 아무것도 걸지 않는다 */
+function useZoomStyle(): CSSProperties | undefined {
+  const zoom = useContext(TextZoom);
+  return zoom === 1 ? undefined : { zoom };
+}
+
+/**
+ * 바탕색 — 흰 종이와 눈이 덜 부신 미색 종이. 응시 존의 색 토큰을 응시 화면 안에서만 덮는다
+ * (components/exam/skin.ts의 examPaper와 같은 방법). 머리 줄은 응시 존 레이아웃 몫이라 그대로 흰색이다.
+ */
+export const examPapers = [
+  { id: "white", label: "흰색", swatch: "#ffffff", vars: undefined },
+  {
+    id: "cream",
+    label: "미색",
+    swatch: "#f8f4e8",
+    vars: {
+      "--color-exam-bg": "#f8f4e8",
+      "--color-exam-panel": "#f8f4e8",
+      "--color-exam-raised": "#efe9d8",
+    } as CSSProperties,
+  },
+] as const;
+export type ExamPaper = (typeof examPapers)[number]["id"];
+
+export const paperStyle = (paper: ExamPaper): CSSProperties | undefined =>
+  examPapers.find((p) => p.id === paper)?.vars;
+
+/** 응시 화면이 들고 있는 설정 — 창을 닫으면 처음으로 돌아간다 */
+export function useExamView() {
+  const [scale, setScale] = useState<ExamTextScale>("base");
+  const [paper, setPaper] = useState<ExamPaper>("white");
+  const [open, setOpen] = useState(false);
+  return { scale, setScale, paper, setPaper, open, setOpen };
+}
+
+const settingChoice = (on: boolean) =>
+  `inline-flex h-9 items-center justify-center gap-1.5 rounded-[2px] border text-[12px] font-semibold transition-colors ${
+    on
+      ? "border-exam-text bg-exam-text text-white"
+      : "border-exam-line bg-exam-panel text-exam-text hover:bg-exam-raised"
+  }`;
+
+/**
+ * 하단 바 왼쪽 끝의 톱니바퀴와 그 위로 열리는 설정 창(2026-10-28 요청).
+ *
+ * 글자 크기 · 바탕색을 고르고, 맨 아래에 「나가기」가 있다. 머리 오른쪽 끝에 있던 「나가기」를 이리로
+ * 옮겼다. 누르면 예전처럼 나갈지 묻는 창이 뜬다(ESC도 같다 — lib/fullscreen.ts). 창 밖을 누르면 닫힌다.
+ */
+export function ExamSettings({
+  open,
+  onOpenChange,
+  scale,
+  onScale,
+  paper,
+  onPaper,
+  onExit = askExamExit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  scale: ExamTextScale;
+  onScale: (scale: ExamTextScale) => void;
+  paper: ExamPaper;
+  onPaper: (paper: ExamPaper) => void;
+  /** 「나가기」 — 넘기지 않으면 응시 화면에 나갈지 묻는 신호를 보낸다 */
+  onExit?: () => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const close = useRef(onOpenChange);
+  useEffect(() => {
+    close.current = onOpenChange;
+  });
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) close.current(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div ref={box} className="relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+        aria-label="화면 설정"
+        title="화면 설정"
+        className={`flex h-9 w-9 items-center justify-center rounded-[2px] border transition-colors ${
+          open
+            ? "border-exam-text bg-exam-raised text-exam-text"
+            : "border-exam-line bg-exam-panel text-exam-muted hover:bg-exam-raised hover:text-exam-text"
+        }`}
+      >
+        <GearIcon className="h-[18px] w-[18px]" />
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="화면 설정"
+          className="absolute bottom-full left-0 z-50 mb-2 w-64 rounded-[2px] border border-exam-line bg-exam-panel p-4 shadow-[0_8px_24px_rgba(26,34,66,0.14)]"
+        >
+          <p className="text-[13px] font-bold text-exam-text">화면 설정</p>
+
+          <fieldset className="mt-3.5">
+            <legend className="text-[12px] text-exam-muted">글자 크기</legend>
+            <div className="mt-1.5 grid grid-cols-3 gap-1">
+              {examTextScales.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-pressed={scale === s.id}
+                  onClick={() => onScale(s.id)}
+                  className={settingChoice(scale === s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset className="mt-3.5">
+            <legend className="text-[12px] text-exam-muted">바탕색</legend>
+            <div className="mt-1.5 grid grid-cols-2 gap-1">
+              {examPapers.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={paper === p.id}
+                  onClick={() => onPaper(p.id)}
+                  className={settingChoice(paper === p.id)}
+                >
+                  <span
+                    aria-hidden
+                    className="h-3 w-3 rounded-[2px] border border-exam-line"
+                    style={{ background: p.swatch }}
+                  />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="mt-4 border-t border-exam-line pt-3">
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                onExit();
+              }}
+              className="inline-flex h-9 w-full items-center justify-center rounded-[2px] border border-exam-line bg-exam-panel text-[13px] font-semibold text-exam-text transition-colors hover:bg-exam-raised"
+            >
+              나가기
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1109,7 +1456,7 @@ function order0(sheet: Sheet, q: Question) {
 
 /* ───────────────────────── 다이얼로그 ───────────────────────── */
 
-function SubmitDialog({
+export function SubmitDialog({
   subjectName,
   unanswered,
   onCancel,
@@ -1470,19 +1817,23 @@ export function BriefPanel({
    */
   watermark?: string;
 }) {
+  const zoom = useZoomStyle();
   if (standsAlone(brief)) return null;
   return (
     <section className="font-myeongjo order-2 border-b border-exam-line bg-exam-panel px-6 py-7 lg:order-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-10 lg:py-9">
-      {/* 시험지처럼 「[1~4] 다음 … 답하시오.」 한 줄로 연다 — 자료 이름표 · 제목 · 안내 문구는
+      {/* 글자 크기는 칸 안쪽만 키운다 — 칸의 폭 · 스크롤은 그대로(TextZoom) */}
+      <div style={zoom}>
+        {/* 시험지처럼 「[1~4] 다음 … 답하시오.」 한 줄로 연다 — 자료 이름표 · 제목 · 안내 문구는
           두지 않는다. 굵은 글씨는 번호에만 둔다(문항 머리와 같은 약속) */}
-      <p className="text-[15px] leading-[1.7] text-exam-text">
-        {range && <span className="mr-1.5 font-bold tabular-nums">[{range}]</span>}
-        {brief.lead ?? "다음을 읽고 물음에 답하시오."}
-      </p>
+        <p className="text-[15px] leading-[1.7] text-exam-text">
+          {range && <span className="mr-1.5 font-bold tabular-nums">[{range}]</span>}
+          {brief.lead ?? "다음을 읽고 물음에 답하시오."}
+        </p>
 
-      <div className="relative isolate mt-3 border border-exam-text/70 px-5 py-5 md:px-6">
-        <BriefBody brief={brief} />
-        {watermark && <ItemWatermark text={watermark} />}
+        <div className="relative isolate mt-3 border border-exam-text/70 px-5 py-5 md:px-6">
+          <BriefBody brief={brief} />
+          {watermark && <ItemWatermark text={watermark} />}
+        </div>
       </div>
     </section>
   );
@@ -1931,13 +2282,14 @@ export function ScreenColumn({
 }) {
   const groupBrief = screen[0].groupBrief;
   const alone = standsAlone(screen[0].brief);
+  const zoom = useZoomStyle();
   return (
     /* key — 화면이 바뀌면 칸을 새로 세워 스크롤이 맨 위에서 시작한다 */
     <div
       key={screen[0].id}
       className={`order-3 lg:order-2 lg:overflow-y-auto ${alone ? "lg:col-span-2" : ""}`}
     >
-      <div className={alone ? "mx-auto w-full max-w-[56rem]" : undefined}>
+      <div className={alone ? "mx-auto w-full max-w-[56rem]" : undefined} style={zoom}>
         {groupBrief && (
           <section className="font-myeongjo border-b border-exam-line px-6 pt-7 pb-6 lg:px-10">
             {/* 묶음 머리도 굵은 글씨는 번호에만 — 「[1~4] 다음을 읽고 물음에 답하시오.」 */}
@@ -1976,6 +2328,8 @@ export function QuestionBody({
   watermark,
   graded,
   matchPick,
+  marked = false,
+  onMark,
 }: {
   q: Question;
   /** 학생에게 보이는 문제 번호 — 푸는 차례로 매긴다 */
@@ -2000,14 +2354,27 @@ export function QuestionBody({
    * (null이면 아무것도 고르지 않은 채). 응시 화면은 넘기지 않는다.
    */
   matchPick?: MatchPick | null;
+  /** 학생이 체크해 둔 문항인가 */
+  marked?: boolean;
+  /** 넘기면 문항 번호 위에 체크 단추(MarkToggle)를 둔다 — 응시 화면만 넘긴다 */
+  onMark?: () => void;
 }) {
   const review = graded !== undefined;
+  const mark = onMark && !review ? <MarkToggle on={marked} onToggle={onMark} /> : null;
   /* 답 칸 표지로 쓴 문항 — 칸이 발문의 그 자리에 선다(SlotStem). 보기 고르기는 표지를 쓰지 않는다 */
   if (q.type !== "choice" && hasSlots(q.stem)) {
     return (
       <section className="font-myeongjo relative isolate px-6 py-7 lg:px-10 lg:py-9">
         {graded && <GradeTag mark={graded} />}
-        <SlotStem q={q} num={num} value={value} onAnswer={onAnswer} readOnly={review} matchPick={matchPick} />
+        {mark}
+        <SlotStem
+          q={q}
+          num={num}
+          value={value}
+          onAnswer={onAnswer}
+          readOnly={review}
+          matchPick={matchPick}
+        />
         {watermark && <ItemWatermark text={watermark} />}
       </section>
     );
@@ -2015,6 +2382,7 @@ export function QuestionBody({
   return (
     <section className="font-myeongjo relative isolate px-6 py-7 lg:px-10 lg:py-9">
       {graded && <GradeTag mark={graded} />}
+      {mark}
       {/*
         시험지처럼 **번호를 발문 왼쪽에** 붙인다.
         굵은 글씨는 번호에만 둔다 — 발문까지 굵으면 한 덩이가 통째로 강조되어, 무엇이 문항을
@@ -2433,7 +2801,7 @@ export function ChoiceList({
                 />
                 <span
                   aria-hidden
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold tabular-nums transition-colors ${
+                  className={`mt-px flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border text-[11.5px] font-bold tabular-nums transition-colors ${
                     miss
                       ? "border-rose-600 bg-rose-600 text-white"
                       : key

@@ -3,6 +3,7 @@ import { IBM_Plex_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { designPathsOf, findDesign } from "@/lib/designScreens";
 import ItemCard from "@/components/design/screens/ItemCard";
+import { CbtFree, CbtPaid, CbtTrial } from "@/components/design/screens/Cbt";
 import "@/app/(admin2)/admin2.css";
 
 /**
@@ -18,6 +19,9 @@ const mono = IBM_Plex_Mono({
 
 const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "item-card": ItemCard,
+  "cbt-trial": CbtTrial,
+  "cbt-free": CbtFree,
+  "cbt-paid": CbtPaid,
 };
 
 export const dynamicParams = false;
