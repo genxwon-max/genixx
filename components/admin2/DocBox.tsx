@@ -24,8 +24,8 @@ export default function DocBox({
 }: {
   /** 화면 낭독기가 읽는 이름 — 「지문」 · 「문항」 */
   label: string;
-  /** 비었을 때 상자에 서는 한 줄 — 원안지 칸은 빨간 안내(components/admin2/Guide.tsx Red)를 넘긴다 */
-  empty: React.ReactNode;
+  /** 비었을 때 상자에 서는 한 줄 */
+  empty: string;
   disabled: boolean;
   /** 그릴 것이 있는가 — 없으면 empty를 세운다 */
   filled: boolean;

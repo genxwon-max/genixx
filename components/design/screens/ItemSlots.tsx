@@ -26,14 +26,8 @@ import DocBox from "@/components/admin2/DocBox";
 import { PageSaveBar } from "@/components/admin2/EditGuard";
 import ItemPreview from "@/components/admin2/ItemPreview";
 import { Body, FormRow, PageHead, Panel, Status, Switch } from "@/components/admin2/ui";
-import { Red } from "@/components/admin2/Guide";
+import BandUnitRows from "@/app/(admin2)/admin2/items/[id]/BandUnitRows";
 import LevelCounts from "@/app/(admin2)/admin2/items/[id]/LevelCounts";
-import {
-  PaperChapter,
-  PaperHead,
-  PaperItemTitle,
-  SharedRows,
-} from "@/app/(admin2)/admin2/items/[id]/Paper";
 import {
   QuestionClassRows,
   QuestionContentRows,
@@ -61,8 +55,7 @@ import ConsoleFrame, { type ConsoleMe } from "../ConsoleFrame";
  * 화면은 실제 조각(QuestionEditor의 QuestionClassRows · QuestionContentRows, 문서 편집기, 미리보기
  * 창)이고 값만 여기 적었다. 칸은 실제처럼 고쳐지고 문서 편집기도 열리지만 저장되지 않는다 — 주소를
  * 다시 열면 처음 모습이다. 문항은 문항 은행의 과학 문항(IT-2603, 물의 상태 변화)을 바탕으로 했다.
- * 2026-10-28부터 문항 상세는 원안지 모양이다(실제 화면과 같은 Paper.tsx 조각). 제출 전 자가 체크리스트는
- * 원안지 디자인(ItemCard.tsx)이 보여 주고, 여기서는 뺐다.
+ * 제출 전 자가 체크리스트 판은 바뀐 것이 없어 이 디자인에서 뺐다.
  */
 
 const to = designLinks("item-slots");
@@ -389,41 +382,46 @@ function Screen({ state }: { state: string }) {
             </div>
           </Panel>
 
-          {/* 원안지 한 장 — 실제 문항 상세(ItemDetail)와 같은 조각 */}
-          <div className="a2-paper">
-            <PaperHead item={item} />
-            <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
-            <PaperItemTitle no={1} level={q.level} />
+          {item.form === "single" && (
+            <Panel title="분류" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                <FormRow label="문항 ID">
+                  <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
+                    저장하면 부여됩니다
+                  </span>
+                </FormRow>
+                <BandUnitRows value={item} disabled={false} onChange={(p) => setItem((i) => ({ ...i, ...p }))} />
+                <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
+              </div>
+            </Panel>
+          )}
+
+          <Panel title="문항" meta={item.form === "set" ? `${item.questions.length}문항` : undefined} flush>
             <div className="a2-form a2-form-lg a2-card">
-              <SharedRows item={item} disabled={false} onChange={(p) => setItem((i) => ({ ...i, ...p }))} />
-              <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
-              <QuestionContentRows
-                q={q}
-                content={cq}
-                disabled={false}
-                passage={
-                  <DocBox
-                    label="지문"
-                    empty={
-                      <Red>
-                        (지우고 사용) 지문이 있으면 눌러서 문서 편집기로 씁니다 — 첫 줄에는 「다음 글을 읽고 물음에
-                        답하시오.」 같은 지시문을 씁니다. 지문이 없는 문항은 비워 둡니다.
-                      </Red>
-                    }
-                    disabled={false}
-                    filled={false}
-                    onOpen={() => {}}
-                  >
-                    {null}
-                  </DocBox>
-                }
-                onChange={setQ}
-                onContent={setCq}
-                startDoc={start.doc}
-                startGuide={start.guide}
-              />
+              <FormRow label="지문">
+                <DocBox
+                  label="지문"
+                  empty="비어 있습니다. 눌러서 문서 편집기로 쓰거나 한글 · 워드 파일을 불러옵니다."
+                  disabled={false}
+                  filled={false}
+                  onOpen={() => {}}
+                >
+                  {null}
+                </DocBox>
+              </FormRow>
+              {item.form === "single" && (
+                <QuestionContentRows
+                  q={q}
+                  content={cq}
+                  disabled={false}
+                  onChange={setQ}
+                  onContent={setCq}
+                  startDoc={start.doc}
+                  startGuide={start.guide}
+                />
+              )}
             </div>
-          </div>
+          </Panel>
         </div>
         <PageSaveBar dirty={dirty} onSave={() => {}} onCancel={() => setItem(start.item)} />
       </Body>
@@ -525,25 +523,35 @@ function SetScreen({ state }: { state: string }) {
       {head}
       <Body>
         {q ? (
-          <div className="a2-paper">
-            <PaperHead item={item} />
-            <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
-            <PaperItemTitle no={at + 1} level={q.level} />
-            <p className="a2-paper-note">
-              ① 문항 ID · ② 대상·교과·단원은 세트 전체가 함께 씁니다. 여기서 고치면 같은 세트의 다른 문항에도
-              그대로 적용됩니다. 지문은 문항 목록 화면에 있습니다.
-            </p>
-            <div className="a2-form a2-form-lg a2-card">
-              <SharedRows item={item} disabled={false} onChange={(p) => setItem((i) => ({ ...i, ...p }))} />
-              <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
-              <QuestionContentRows
-                q={q}
-                content={questionsIn(content).find((c) => c.id === q.id)}
-                disabled={false}
-                onChange={setQ}
-                onContent={setCq}
-              />
-            </div>
+          <div className="grid gap-4">
+            <Panel title="분류" flush>
+              <p className="a2-note m-4 mb-0">
+                <span>
+                  문항 ID · 학년 · 교과 단원은 <b>세트 전체</b>가 함께 씁니다. 여기서 고치면 같은 세트의
+                  다른 문항에도 그대로 적용됩니다. 그 아래는 이 문항만의 값입니다.
+                </span>
+              </p>
+              <div className="a2-form a2-form-lg a2-card mt-4">
+                <FormRow label="문항 ID">
+                  <span className="a2-cell-pad flex items-center a2-mono a2-t-md font-bold text-(--a2-ink)">
+                    {item.code || "저장하면 부여됩니다"}
+                  </span>
+                </FormRow>
+                <BandUnitRows value={item} disabled={false} onChange={(p) => setItem((i) => ({ ...i, ...p }))} />
+                <QuestionClassRows q={q} band={item.band} disabled={false} onChange={setQ} />
+              </div>
+            </Panel>
+            <Panel title="문항" flush>
+              <div className="a2-form a2-form-lg a2-card">
+                <QuestionContentRows
+                  q={q}
+                  content={questionsIn(content).find((c) => c.id === q.id)}
+                  disabled={false}
+                  onChange={setQ}
+                  onContent={setCq}
+                />
+              </div>
+            </Panel>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -570,11 +578,8 @@ function SetScreen({ state }: { state: string }) {
                 </FormRow>
               </div>
             </Panel>
-            <div className="a2-paper">
-              <PaperHead item={item} />
-              <PaperChapter>Ⅰ. 문항 원안</PaperChapter>
+            <Panel title="문항" meta={`${qs.length}문항`} flush>
               <div className="a2-form a2-form-lg a2-card">
-                <SharedRows item={item} disabled={false} onChange={(p) => setItem((i) => ({ ...i, ...p }))} />
                 <FormRow label="지시문">
                   <input className="a2-input" value={content.material.lead ?? ""} readOnly placeholder="다음을 읽고 물음에 답하시오." />
                 </FormRow>
@@ -584,18 +589,16 @@ function SetScreen({ state }: { state: string }) {
                   </DocBox>
                 </FormRow>
               </div>
-              <div className="a2-paper-list">
-                <QuestionList
-                  questions={qs}
-                  disabled={false}
-                  max={SET_MAX}
-                  onOpen={(id) => router.push(toSet(`q${qs.findIndex((x) => x.id === id) + 1}`))}
-                  onMove={() => {}}
-                  onRemove={() => {}}
-                  onAdd={() => {}}
-                />
-              </div>
-            </div>
+              <QuestionList
+                questions={qs}
+                disabled={false}
+                max={SET_MAX}
+                onOpen={(id) => router.push(toSet(`q${qs.findIndex((x) => x.id === id) + 1}`))}
+                onMove={() => {}}
+                onRemove={() => {}}
+                onAdd={() => {}}
+              />
+            </Panel>
           </div>
         )}
         <PageSaveBar dirty={dirty} onSave={() => {}} onCancel={() => setItem(revised)} />
