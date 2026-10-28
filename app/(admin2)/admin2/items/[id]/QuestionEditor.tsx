@@ -8,7 +8,6 @@ import {
   formatIssue,
   hasChoices,
   needsRubric,
-  questionHasContent,
   questionStandardIssue,
   slotted,
   stemIsEmpty,
@@ -38,7 +37,6 @@ import {
   figureChecks,
   levelAllowed,
   perspectiveExamples,
-  subskillsOf,
   talentOf,
   talents,
   type GradeBand,
@@ -56,7 +54,6 @@ import type { Block } from "@/lib/content";
 import type { ContentQuestion } from "@/lib/content";
 import type { UnitStandard } from "@/lib/curriculumUnits";
 import GrowTextarea from "@/components/admin2/GrowTextarea";
-import { Blue, Guided, Red } from "@/components/admin2/Guide";
 import { CellLine, FormRow, FormRowPair, SubRow, SubRows } from "@/components/admin2/ui";
 
 /**
@@ -247,6 +244,14 @@ export function QuestionList({
 
 const talentName = (id: TalentId) => talents.find((t) => t.id === id)?.name ?? id;
 
+/** 적은 재능 글 → 축. 띄어쓰기 · 가운뎃점 · 줄표를 가리지 않고 이름 · 코드(LANG) · 영문 이름으로 알아본다 */
+const squash = (v: string) => v.replace(/[\s·・\-_]/g, "").toLowerCase();
+function talentByName(text: string): TalentId | null {
+  const v = squash(text);
+  if (!v) return null;
+  return talents.find((t) => [t.name, t.id, t.en].some((x) => squash(x) === v))?.id ?? null;
+}
+
 /** 형식이 아직 정해지지 않았는가 — 발문도 보기도 쓰지 않은 문항 */
 const typeUnset = (q: Question) => !slotted(q) && stemIsEmpty(q) && !q.choices.some((c) => c.trim());
 
@@ -309,7 +314,7 @@ export function QuestionClassRows({
   band,
   disabled,
   withLevel = true,
-  guides = true,
+  ncic = true,
   standards = [],
   onChange,
 }: {
@@ -324,10 +329,10 @@ export function QuestionClassRows({
    */
   withLevel?: boolean;
   /**
-   * 원안지의 빨간 안내(「(수정 사용)」 · 「(해당 과목에 따라 체크 및 입력 사용)」)를 세우는가. 칸이 빈 동안만
-   * 선다. 잠긴 문항과 생성 판(아직 문항이 없는 분류만 고른다)은 끈다.
+   * Tag A 칸에 NCIC 원문 대조 · 2022 개정 코드 확인 체크를 세우는가. 생성 판(아직 문항이 없는 분류만 고른다)은
+   * 끈다 — 확인은 문항을 쓰는 사람이 한다.
    */
-  guides?: boolean;
+  ncic?: boolean;
   /**
    * 고른 교과 단원이 다루는 성취기준(lib/curriculumUnits.ts standardsOfUnit). 단원을 고르면 첫 코드가 칸에
    * 들어가고(withUnitStandard), 칸을 누르면 이 목록에서 같은 단원의 다른 코드를 고를 수 있다.
@@ -336,13 +341,14 @@ export function QuestionClassRows({
   onChange: (next: Question) => void;
 }) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch });
-  const guide = guides && !disabled;
   const std = questionStandardIssue(q, band);
   const outOfRange = withLevel && !levelAllowed(q.talent, q.level);
   /* 아직 형식이 정해지지 않은 문항(아무것도 안 쓴 새 문항)에는 고정 매핑을 따지지 않는다 — 처음 받은
      형식으로 「선택 1점입니다」를 띄우면 고르지도 않은 형식을 나무란다 */
   const format = typeUnset(q) ? "" : formatIssue(q);
   const talent = talentOf(q.talent);
+  /* 적은 재능 글이 어느 축인지 모르겠는가 — 비었으면 묻지 않는다(필수 표시가 짚는다) */
+  const talentUnknown = !!q.talentText.trim() && !talentByName(q.talentText);
 
   /* 치는 중인 글자. 바깥에서 배점이 바뀌면(취소 · 다른 문항) 그 글자는 버리고 값을 그린다 —
      글자가 나타내는 수와 지금 배점이 같을 때만 글자를 믿는다 */
@@ -365,7 +371,6 @@ export function QuestionClassRows({
           <span className="a2-mono font-normal text-(--a2-ink-4)">b {d.b}</span>
         </label>
       ))}
-      {guide && !difficultyPicked(q.b) && <Red>(해당 과목에 따라 체크 및 입력 사용)</Red>}
     </div>
   );
 
@@ -464,7 +469,7 @@ export function QuestionClassRows({
             aria-label="학습 요소"
           />
         </CellLine>
-        {guides && (
+        {ncic && (
           <div className="a2-cell-pad flex flex-wrap items-center gap-x-5 gap-y-1">
             <label className="a2-choice">
               <input
@@ -492,76 +497,69 @@ export function QuestionClassRows({
           옮겨 적는 칸이지만 출제 의도는 출제자가 직접 쓰는 글이라, 한 칸 안에 끼워 두면 이름표가
           없는 셋째 줄처럼 읽히고 검수가 무엇을 봐야 하는지도 흐려진다 */}
       <FormRow label="출제 의도" req>
-        <Guided
-          show={guide && !q.tagAIntent}
-          guide={
-            <>
-              예) {cardExamples.tagAIntent} <Blue>반드시 기록하여 주세요.</Blue>
-            </>
-          }
-        >
-          <GrowTextarea
-            className="a2-textarea a2-textarea-lg"
-            rows={2}
-            value={q.tagAIntent}
-            disabled={disabled}
-            onChange={(e) => set({ tagAIntent: e.target.value })}
-            placeholder={guides ? undefined : `예) ${cardExamples.tagAIntent}`}
-            aria-label="출제 의도"
-          />
-        </Guided>
+        <GrowTextarea
+          className="a2-textarea a2-textarea-lg"
+          rows={2}
+          value={q.tagAIntent}
+          disabled={disabled}
+          onChange={(e) => set({ tagAIntent: e.target.value })}
+          placeholder={`예) ${cardExamples.tagAIntent}`}
+          aria-label="출제 의도"
+        />
       </FormRow>
 
-      {/* 칸 아래에는 축과 단계가 어긋났을 때만 적는다. 한동안 3원 좌표와 격자 지표를 늘
-          적어 두었는데, 두 고르개가 이미 그 값을 보여 주고 있어 같은 말을 한 번 더 하는 줄이었다 */}
+      {/* Tag B — 재능과 하위요소코드를 직접 적는다(2026-10-28 요청). 원안지가 「3원 좌표 : 재능 [언어·기호] ·
+          하위요소코드 [LANG-01] · 단계 [S1]」을 손으로 적는 칸이라 고르개를 걷었다. 단계는 위 인지단계를 그대로 읽는다.
+
+          적은 글은 그대로 남기고(talentText · subskill), 축(talent)은 알아볼 수 있을 때만 따라 바꾼다 — 재능 이름
+          (「언어-기호」 · 「언어 기호」)이나 코드 앞머리(「LANG-01」의 LANG)로. 축은 단계 제한 · 목록 · 리포트가 읽는
+          값이라, 알아보지 못한 글로 비워 두지 않는다. 칸 아래에는 알아보지 못했거나 축과 단계가 어긋났을 때만 적는다 */}
       <FormRow
         label="Tag B (재능)"
         req
         hint={
-          outOfRange ? (
+          talentUnknown ? (
+            <Danger>
+              재능 이름을 알아보지 못했습니다 — {talents.map((t) => t.name).join(" · ")} 중 하나로 적어 주세요.
+            </Danger>
+          ) : outOfRange ? (
             <Danger>
               {talent.name} 축은 {q.level}을 출제할 수 없습니다 — 인지단계를 다시 고르세요.
             </Danger>
-          ) : guide && !questionHasContent(q) ? (
-            /* 고르개는 늘 값이 있어 「빈 때」가 없다 — 새 문항은 앞 문항의 축을 물려받으므로, 아직 아무것도
-               적지 않은 문항에만 원안지의 안내를 세운다 */
-            <Red>(수정 사용)</Red>
           ) : undefined
         }
       >
         <div className="a2-cell-split">
-          <select
-            className="a2-select a2-input-lg"
-            value={q.talent}
-            disabled={disabled}
-            aria-invalid={outOfRange}
-            aria-label="재능"
-            onChange={(e) => {
-              /* 축을 바꾸면 하위요소는 그 축의 것으로 갈아 끼운다. 그대로 두면
-                 LANG-01이 수리-논리 문항에 붙어 좌표가 통째로 어긋난다. */
-              const next = e.target.value as TalentId;
-              set({ talent: next, subskill: subskillsOf(next)[0].code });
-            }}
-          >
-            {talents.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="a2-select a2-input-lg"
-            value={q.subskill}
-            disabled={disabled}
-            aria-label="하위요소"
-            onChange={(e) => set({ subskill: e.target.value })}
-          >
-            {subskillsOf(q.talent).map((sk) => (
-              <option key={sk.code} value={sk.code}>
-                {sk.code} {sk.name}
-              </option>
-            ))}
-          </select>
+          <CellLine label="재능">
+            <input
+              className="a2-input a2-input-lg"
+              value={q.talentText}
+              disabled={disabled}
+              aria-invalid={talentUnknown || outOfRange}
+              aria-label="재능"
+              placeholder="예) 언어-기호"
+              onChange={(e) => {
+                const text = e.target.value;
+                const hit = talentByName(text);
+                set(hit ? { talentText: text, talent: hit } : { talentText: text });
+              }}
+            />
+          </CellLine>
+          <CellLine label="하위요소코드">
+            <input
+              className="a2-input a2-input-lg a2-mono"
+              value={q.subskill}
+              disabled={disabled}
+              aria-label="하위요소코드"
+              placeholder="예) LANG-01"
+              onChange={(e) => {
+                const code = e.target.value.toUpperCase();
+                /* 코드 앞머리로 축을 알아보면 재능 칸도 그 이름으로 맞춘다 — 둘이 어긋난 좌표가 되지 않게 */
+                const hit = talents.find((t) => code.split("-")[0].trim() === t.id);
+                set(hit && hit.id !== q.talent ? { subskill: code, talent: hit.id, talentText: hit.name } : { subskill: code });
+              }}
+            />
+          </CellLine>
         </div>
       </FormRow>
 
@@ -842,21 +840,21 @@ export function QuestionContentRows({
         </DocBox>
       </FormRow>
 
-      {/* 그림·삽화 사양 — 원안지 양식(2026-10-22)에 생긴 칸. 그림 없음 · 그림 있음 중 하나를 짚고, 그림 있음이면
-          양식의 「아래 확인 필수」 세 칸을 모두 짚어야 낸다(lib/itemStore.ts missingCard). 다시 누르면 풀린다 */}
+      {/* 그림·삽화 사양 — 원안지 양식(2026-10-22)에 생긴 칸. 처음은 그림 없음이고(2026-10-28 요청), 그림 없음 ·
+          그림 있음은 늘 하나만 켜진다. 그림 있음이면 양식의 「아래 확인 필수」 세 칸을 모두 짚어야 낸다
+          (lib/itemStore.ts missingCard) */}
       <FormRow
         label="그림·삽화 사양"
         req
-        hint={!disabled && !q.figure ? <Red>(해당하는 곳에 체크)</Red> : undefined}
       >
         <div className="a2-cell-pad flex flex-col gap-1">
           <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
             <label className="a2-choice">
               <input
                 type="checkbox"
-                checked={q.figure === "none"}
+                checked={q.figure !== "has"}
                 disabled={disabled}
-                onChange={(e) => set({ figure: e.target.checked ? "none" : "" })}
+                onChange={() => set({ figure: "none" })}
               />
               그림 없음
             </label>
@@ -865,7 +863,7 @@ export function QuestionContentRows({
                 type="checkbox"
                 checked={q.figure === "has"}
                 disabled={disabled}
-                onChange={(e) => set({ figure: e.target.checked ? "has" : "" })}
+                onChange={(e) => set({ figure: e.target.checked ? "has" : "none" })}
               />
               그림 있음(별도 파일 첨부, 파일명=문항 ID) — 아래 확인 필수
             </label>
@@ -946,39 +944,27 @@ export function QuestionContentRows({
           </CellLine>
         )}
         <CellLine label="모범답안">
-          <Guided
-            show={!disabled && !q.explain}
-            guide={
-              <>
-                정답과 해설을 적습니다.
-              </>
-            }
-          >
-            <GrowTextarea
-              className="a2-textarea a2-textarea-lg"
-              rows={4}
-              value={q.explain}
-              disabled={disabled}
-              onChange={(e) => set({ explain: e.target.value })}
-              aria-label="모범답안"
-            />
-          </Guided>
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={4}
+            value={q.explain}
+            disabled={disabled}
+            onChange={(e) => set({ explain: e.target.value })}
+            placeholder="정답과 해설을 적습니다."
+            aria-label="모범답안"
+          />
         </CellLine>
       </FormRow>
       <FormRow label="부분점수/루브릭" req={needsRubric(q.type)}>
-        <Guided
-          show={!disabled && !q.rubric}
-          guide={<Red>S1, S2도 기록하고, S3, S4 문항은 상세하게 기록</Red>}
-        >
-          <GrowTextarea
-            className="a2-textarea a2-textarea-lg"
-            rows={5}
-            value={q.rubric}
-            disabled={disabled}
-            onChange={(e) => set({ rubric: e.target.value })}
-            aria-label="부분점수/루브릭"
-          />
-        </Guided>
+        <GrowTextarea
+          className="a2-textarea a2-textarea-lg"
+          rows={5}
+          value={q.rubric}
+          disabled={disabled}
+          onChange={(e) => set({ rubric: e.target.value })}
+          placeholder="S1, S2도 기록하고, S3, S4 문항은 상세하게 기록"
+          aria-label="부분점수/루브릭"
+        />
       </FormRow>
 
       {/* 「2개 이상」은 이름에 적고, 개수는 체크리스트가 사람에게 묻는다. 선택형이 아닌 문항에서 인정 예가
@@ -991,85 +977,52 @@ export function QuestionContentRows({
           「[선택1]」 · 「[OX1]」만 쓴 문항도 형식이 그것이라 같다 */}
       <FormRow label="인정 · 불인정 예 (2개 이상)" req={!hasChoices(q.type)}>
         <CellLine label="인정 예">
-          <Guided
-            show={!disabled && !q.acceptExamples}
-            guide={
-              <>
-                {"예) · 밝다 – 어둡다\n· 높다 – 낮다 "}
-               
-              </>
-            }
-          >
-            <GrowTextarea
-              className="a2-textarea a2-textarea-lg"
-              rows={4}
-              value={q.acceptExamples}
-              disabled={disabled}
-              onChange={(e) => set({ acceptExamples: e.target.value })}
-              aria-label="인정 예"
-            />
-          </Guided>
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={4}
+            value={q.acceptExamples}
+            disabled={disabled}
+            onChange={(e) => set({ acceptExamples: e.target.value })}
+            placeholder={"예) · 밝다 – 어둡다\n· 높다 – 낮다"}
+            aria-label="인정 예"
+          />
         </CellLine>
         <CellLine label="불인정 예">
-          <Guided
-            show={!disabled && !q.rejectExamples}
-            guide={
-              <>
-                예) · 밝다 – 맑다 (반대말이 아님)
-              </>
-            }
-          >
-            <GrowTextarea
-              className="a2-textarea a2-textarea-lg"
-              rows={2}
-              value={q.rejectExamples}
-              disabled={disabled}
-              onChange={(e) => set({ rejectExamples: e.target.value })}
-              aria-label="불인정 예"
-            />
-          </Guided>
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={2}
+            value={q.rejectExamples}
+            disabled={disabled}
+            onChange={(e) => set({ rejectExamples: e.target.value })}
+            placeholder="예) · 밝다 – 맑다 (반대말이 아님)"
+            aria-label="불인정 예"
+          />
         </CellLine>
       </FormRow>
 
       <FormRow label="재능 평가 관점" req>
         <SubRows>
           <SubRow label="인지 처리 위계 구체">
-            <Guided
-              show={!disabled && !q.perspectiveHierarchy}
-              guide={
-                <>
-                  예) {perspectiveExamples[q.level].hierarchy}
-                </>
-              }
-            >
-              <GrowTextarea
-                className="a2-textarea a2-textarea-lg"
-                rows={2}
-                value={q.perspectiveHierarchy}
-                disabled={disabled}
-                onChange={(e) => set({ perspectiveHierarchy: e.target.value })}
-                aria-label="인지 처리 위계 구체"
-              />
-            </Guided>
+            <GrowTextarea
+              className="a2-textarea a2-textarea-lg"
+              rows={2}
+              value={q.perspectiveHierarchy}
+              disabled={disabled}
+              onChange={(e) => set({ perspectiveHierarchy: e.target.value })}
+              placeholder={`예) ${perspectiveExamples[q.level].hierarchy}`}
+              aria-label="인지 처리 위계 구체"
+            />
           </SubRow>
           <SubRow label="인지 능력 관련 수준">
-            <Guided
-              show={!disabled && !q.perspectiveAbility}
-              guide={
-                <>
-                  예) {perspectiveExamples[q.level].ability}
-                </>
-              }
-            >
-              <GrowTextarea
-                className="a2-textarea a2-textarea-lg"
-                rows={2}
-                value={q.perspectiveAbility}
-                disabled={disabled}
-                onChange={(e) => set({ perspectiveAbility: e.target.value })}
-                aria-label="인지 능력 관련 수준"
-              />
-            </Guided>
+            <GrowTextarea
+              className="a2-textarea a2-textarea-lg"
+              rows={2}
+              value={q.perspectiveAbility}
+              disabled={disabled}
+              onChange={(e) => set({ perspectiveAbility: e.target.value })}
+              placeholder={`예) ${perspectiveExamples[q.level].ability}`}
+              aria-label="인지 능력 관련 수준"
+            />
           </SubRow>
         </SubRows>
       </FormRow>
@@ -1110,39 +1063,29 @@ export function QuestionContentRows({
             </div>
           ))
         ) : (
-          <Guided
-            show={!disabled && !q.wrongIntent}
-            guide={
-              <>
-                예상되는 오답과 그 오답이 노리는 오개념을 적습니다.
-              </>
-            }
-          >
-            <GrowTextarea
-              className="a2-textarea a2-textarea-lg"
-              rows={3}
-              value={q.wrongIntent}
-              disabled={disabled}
-              onChange={(e) => set({ wrongIntent: e.target.value })}
-              aria-label="오답 설계 의도"
-            />
-          </Guided>
+          <GrowTextarea
+            className="a2-textarea a2-textarea-lg"
+            rows={3}
+            value={q.wrongIntent}
+            disabled={disabled}
+            onChange={(e) => set({ wrongIntent: e.target.value })}
+            placeholder="예상되는 오답과 그 오답이 노리는 오개념을 적습니다."
+            aria-label="오답 설계 의도"
+          />
         )}
       </FormRow>
 
-      {/* 이 문항의 특성 — 원안지 양식(2026-10-22)에 새로 생긴 칸. 양식의 빨간 글을 그대로 안내로 둔다.
-          제출 문턱에는 넣지 않았다 — 무엇을 적는 칸인지 양식이 아직 정하지 않았다 */}
+      {/* 이 문항의 특성 — 원안지 양식(2026-10-22)에 새로 생긴 칸. 제출 문턱에는 넣지 않았다 — 무엇을 적는
+          칸인지 양식이 아직 정하지 않았다 */}
       <FormRow label="이 문항의 특성">
-        <Guided show={!disabled && !q.trait} guide={<Red>기존의 양식에는 없던 것인데 새로 신설됨</Red>}>
-          <GrowTextarea
-            className="a2-textarea a2-textarea-lg"
-            rows={2}
-            value={q.trait}
-            disabled={disabled}
-            onChange={(e) => set({ trait: e.target.value })}
-            aria-label="이 문항의 특성"
-          />
-        </Guided>
+        <GrowTextarea
+          className="a2-textarea a2-textarea-lg"
+          rows={2}
+          value={q.trait}
+          disabled={disabled}
+          onChange={(e) => set({ trait: e.target.value })}
+          aria-label="이 문항의 특성"
+        />
       </FormRow>
 
       {doc && (

@@ -15,6 +15,7 @@ import {
   submitChecklist,
   subskillsOf,
   tagBCoord,
+  talents,
   type GradeBand,
   type GradeNo,
   type Level,
@@ -357,6 +358,11 @@ export type Question = {
   tagADetail: string;
   /** ④ Tag B 주태그 — 재능 */
   talent: TalentId;
+  /**
+   * ④ Tag B — 출제위원이 적은 재능 글 그대로(「언어-기호」). 고르개를 걷고 손으로 적게 하면서 생겼다(2026-10-28).
+   * 알아볼 수 있는 이름이면 talent도 따라 바뀐다(QuestionEditor의 talentByName). 비어 있던 옛 문항은 축 이름으로 채운다.
+   */
+  talentText: string;
   /** ④ Tag B 주태그 — 하위요소 코드 (LANG-01 등) */
   subskill: string;
   /** S1 지각 · S2 이해 · S3 생성 · S4 창의 */
@@ -2108,10 +2114,11 @@ function questionOf(raw: Partial<ItemDraft>, n: number, tags: QuestionTags): Que
     tagAIntent: "",
     ncicChecked: false,
     code2022Checked: false,
-    figure: "",
+    figure: "none",
     figureChecks: [],
     trait: "",
     ...tags,
+    talentText: talentNameOf(tags.talent),
   };
 }
 
@@ -2144,13 +2151,15 @@ function fillQuestion(q: Partial<Question>, n: number, tags: QuestionTags): Ques
     tagAIntent: q.tagAIntent ?? "",
     ncicChecked: q.ncicChecked ?? false,
     code2022Checked: q.code2022Checked ?? false,
-    figure: q.figure ?? "",
+    /* 옛 문항 · 고르기 전 문항은 그림 없음으로 — 원안지의 처음 값(2026-10-28 요청) */
+    figure: q.figure || "none",
     figureChecks: q.figureChecks ?? [],
     trait: q.trait ?? "",
     standardCode: q.standardCode ?? tags.standardCode,
     standardText: q.standardText ?? tags.standardText,
     tagADetail: q.tagADetail ?? tags.tagADetail,
     talent: q.talent ?? tags.talent,
+    talentText: q.talentText ?? talentNameOf(q.talent ?? tags.talent),
     subskill: q.subskill ?? tags.subskill,
     level,
     b: q.b ?? tags.b,
@@ -2878,13 +2887,14 @@ export function generateItems(spec: GenerateSpec, author: string, authorName: st
         tagAIntent: spec.tagAIntent?.trim() ?? "",
         ncicChecked: false,
         code2022Checked: false,
-        figure: "" as const,
+        figure: "none" as const,
         figureChecks: [],
         trait: "",
         standardCode: spec.standardCode.trim(),
         standardText: spec.standardText?.trim() || sample.standardText,
         tagADetail: spec.tagADetail?.trim() || sample.tagADetail,
         talent: spec.talent,
+        talentText: talentNameOf(spec.talent),
         subskill: spec.subskill,
         level: pick.level,
         /* 사람이 고른 난이도를 그대로 쓴다. 단계 앵커값을 몰래 넣어 두면 「아무도 안
@@ -3922,6 +3932,11 @@ export const stateTone: Record<ItemState, string> = {
   approved: "text-emerald-700",
   retired: "text-exam-muted",
 };
+
+/** 축 이름 — Tag B 재능 칸의 처음 글(「언어-기호」) */
+function talentNameOf(id: TalentId) {
+  return talents.find((t) => t.id === id)?.name ?? id;
+}
 
 /* ───────────────────────── 단원 → 성취기준 코드 ───────────────────────── */
 
