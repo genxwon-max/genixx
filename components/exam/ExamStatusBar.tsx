@@ -17,7 +17,7 @@ import { useWallet } from "@/lib/ticketStore";
 import { useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { useExamConfig } from "@/lib/roundStore";
-import { askExamExit, useExamExitAvailable } from "@/lib/fullscreen";
+import { useExamExitAvailable } from "@/lib/fullscreen";
 import { closeExamWindow } from "@/lib/popup";
 import { CloseIcon } from "@/components/Icons";
 
@@ -79,6 +79,9 @@ function useTrialHeadValue() {
  * 전체화면을 끄는 단추는 두지 않는다 — 나가는 길은 「나가기」 하나고, ESC도 같은 물음을
  * 연다(lib/fullscreen.ts). 비회원 셋트 · 무료 진단 · 유료 진단이 모두 같은 말을 쓴다 —
  * 나가면 무슨 일이 생기는지는 갈래마다 달라, 그것은 눌렀을 때 뜨는 창이 말한다.
+ *
+ * 응시를 시작한 뒤의 「나가기」는 머리에 두지 않는다(2026-10-28 요청). 하단 바 왼쪽 끝의
+ * 톱니바퀴(화면 설정) 맨 아래로 옮겼다 — components/exam/ExamSession.tsx의 ExamSettings.
  *
  * ── 평가명은 어디서 오는가 ──
  * 셋트 창은 주소에 회차와 학년이 들어 있다(/exam/session/trial/2026-3/e4). 다만 학년은 창
@@ -164,9 +167,9 @@ export default function ExamStatusBar() {
       /* 이름은 셋트 창이 건넨 것이 먼저다 — 1번에서 학년을 바꾸면 주소의 학년과 갈린다.
          주소에서 읽은 이름은 창이 아직 건네기 전의 첫 그림에만 선다 */
       <HeadRow name={trial.name ?? examName} subject={trial.subject}>
-        {/* 시작하기 전(표지)에는 나갈 길이 「창 닫기」다. 시작한 뒤에는 전체화면이라
-            브라우저의 닫기 단추가 보이지 않으므로 「나가기」가 그 자리를 잇는다 */}
-        {canExit ? <ExitLink>나가기</ExitLink> : <CloseWindow fallback="/exam" />}
+        {/* 시작하기 전(표지)에는 나갈 길이 「창 닫기」다. 시작한 뒤에는 하단 바의 화면 설정
+            안에 「나가기」가 있다 */}
+        {canExit ? null : <CloseWindow fallback="/exam" />}
       </HeadRow>
     );
   }
@@ -207,9 +210,8 @@ export default function ExamStatusBar() {
 
   return (
     <HeadRow name={examName} subject={subjectText}>
+      {/* 나가기는 하단 바의 화면 설정(톱니바퀴) 안에 있다 */}
       <ExamClock remain={remain} limitMin={limitMin} low={low} />
-
-      {canExit && <ExitLink>나가기</ExitLink>}
     </HeadRow>
   );
 }
@@ -309,21 +311,9 @@ function CloseWindow({ fallback }: { fallback?: string }) {
   );
 }
 
-/** 「나가기」의 모양 — 버튼이 아니라 글 링크로 둔다. 시험 도중에 눈에 띄게 누를 자리가 아니다 */
+/**
+ * 예전 머리의 「나가기」 모양 — 글 링크. 실제 머리에서는 걷었고(하단 바의 화면 설정으로), 디자인 보기의
+ * 옛 응시 화면 사본(components/design/ExamFrame.tsx)만 쓴다
+ */
 export const exitLinkClass =
   "ml-2 cursor-pointer whitespace-nowrap text-[13px] font-medium text-exam-muted underline-offset-4 transition-colors hover:text-rose-600 hover:underline";
-
-function ExitLink({ children }: { children: string }) {
-  return (
-    <a
-      href="#"
-      onClick={(e) => {
-        e.preventDefault();
-        askExamExit();
-      }}
-      className={exitLinkClass}
-    >
-      {children}
-    </a>
-  );
-}

@@ -33,8 +33,14 @@ import { enterFullscreen, leaveFullscreen, useExamExitRequest } from "@/lib/full
 import {
   BriefPanel,
   ChoiceList,
+  ExamSettings,
+  PageNav,
   QuestionBody,
   QuestionPad,
+  TextZoomProvider,
+  navPrimary,
+  paperStyle,
+  useExamView,
   ScreenColumn,
   isAnswered,
   setRange,
@@ -527,6 +533,12 @@ function TrialRun({
 }) {
   /** 지금 화면의 차례 — 열린 화면 수(screens.length)에 이르면 끝 화면이다 */
   const [index, setIndex] = useState(0);
+  /** 화면 설정 — 글자 크기 · 바탕색(하단 바의 톱니바퀴) */
+  const view = useExamView();
+  /** 체크해 둔 문항 ID — 셋트는 가입 전이라 저장하지 않는다. 화면을 떠나면 사라진다 */
+  const [marks, setMarks] = useState<string[]>([]);
+  const toggleMark = (id: string) =>
+    setMarks((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
 
   const meta = subjects.find((s) => s.id === subject)!;
   const order = examOrderOf(subject);
@@ -542,17 +554,19 @@ function TrialRun({
   const question = screen?.[0] ?? null;
   const goTo = (q: Question) =>
     setIndex(isFree(q) ? screens.findIndex((sc) => sc.includes(q)) : screens.length);
-  const doneCount = free.filter((q) => isAnswered(q, answers[q.id])).length;
 
   return (
     /* 머리는 응시 존 레이아웃이 한 줄로 세운다(ExamStatusBar) — 여기서 또 그리지 않는다.
        실제 응시와 셋트가 띠 수부터 다르면, 가입 전에 본 화면과 가입한 뒤 받는 화면이
        같은 시험으로 읽히지 않는다 */
-    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
+    <div
+      className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-exam-bg"
+      style={paperStyle(view.paper)}
+    >
       {/* 본문 — 좌: 자료(보기) / 가운데: 문제 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
         {question ? (
-          <>
+          <TextZoomProvider scale={view.scale}>
             <BriefPanel
               brief={question.brief}
               range={setRange(order, question)}
@@ -570,10 +584,12 @@ function TrialRun({
                   value={answers[q.id]}
                   onAnswer={(v) => onAnswer(q.id, v)}
                   watermark={watermark}
+                  marked={marks.includes(q.id)}
+                  onMark={() => toggleMark(q.id)}
                 />
               )}
             />
-          </>
+          </TextZoomProvider>
         ) : (
           <Wall subjectName={meta.name} offGrade={offGrade} />
         )}
@@ -585,51 +601,48 @@ function TrialRun({
           isCurrent={(q) => !!screen && screen.includes(q)}
           isDone={(q) => isFree(q) && isAnswered(q, answers[q.id])}
           isLocked={(q) => !isFree(q)}
+          isMarked={(q) => marks.includes(q.id)}
           /* 잠긴 번호를 누르면 가입을 권하는 끝 화면으로 간다 */
           onPick={goTo}
-          doneLabel="답한 문항"
+          doneLabel="푼 문항"
           doneVerb="응답함"
-          footnote={
-            offGrade
-              ? undefined
-              : `점선 번호(문항 ${free.length + 1}~)는 회원가입 후 무료 진단에서 풀 수 있습니다.`
-          }
+          leftLabel="안 푼 문항"
+          /* 「점선 번호(문항 5~)는 회원가입 후 …」 안내는 걷었다(2026-10-28 요청) */
         />
       </div>
 
-      {/* 하단 바 */}
-      <div className="shrink-0 border-t border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          {/* 나가기는 헤더 오른쪽 위에 있다(ExamStatusBar) */}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
-              응답 {doneCount}/{free.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => (index === 0 ? onBack() : setIndex(index - 1))}
-              className={btnGhost}
-            >
-              이전
+      {/* 하단 바 — 왼쪽 끝에 화면 설정(그 안에 나가기), 가운데에 이전 · 다음, 오른쪽 끝(이동판
+          아래)에 제출하기 */}
+      <PageNav
+        settings={
+          <ExamSettings
+            open={view.open}
+            onOpenChange={view.setOpen}
+            scale={view.scale}
+            onScale={view.setScale}
+            paper={view.paper}
+            onPaper={view.setPaper}
+          />
+        }
+        onPrev={() => (index === 0 ? onBack() : setIndex(index - 1))}
+        onNext={() => setIndex(index + 1)}
+        nextDisabled={index === screens.length - 1}
+        /* 셋트도 「제출하기」라 부른다 — 풀다가 내 보는 것이다(2026-10-28 요청). 끝 화면(가입 권유)에
+           들어선 뒤에는 낼 것이 없다 */
+        submit={atWall ? undefined : { label: "제출하기", onClick: () => setIndex(screens.length) }}
+        next={
+          !atWall ? undefined : offGrade ? (
+            <button type="button" onClick={() => closeExamWindow()} className={navPrimary}>
+              창 닫기
             </button>
-            {!atWall ? (
-              <button type="button" onClick={() => setIndex(index + 1)} className={btnPrimary}>
-                {index === screens.length - 1 ? "셋트 마치기" : "다음"}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : offGrade ? (
-              <button type="button" onClick={() => closeExamWindow()} className={btnPrimary}>
-                창 닫기
-              </button>
-            ) : (
-              <button type="button" onClick={() => openInMain("/signup")} className={btnPrimary}>
-                회원가입
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+          ) : (
+            <button type="button" onClick={() => openInMain("/signup")} className={navPrimary}>
+              회원가입
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )
+        }
+      />
     </div>
   );
 }
@@ -687,7 +700,7 @@ export function ExitDialog({
  * 접수할 진단이 없는 학년에게는 「가입하면 이어진다」고 말하지 않는다. 가입해도 그 학년에
  * 열린 진단이 없어 방금 푼 네 문항이 갈 곳이 없다 — 지킬 수 없는 말로 가입을 권하게 된다.
  */
-function Wall({ subjectName, offGrade }: { subjectName: string; offGrade: string | null }) {
+export function Wall({ subjectName, offGrade }: { subjectName: string; offGrade: string | null }) {
   return (
     <div className="order-2 flex items-center px-6 py-10 lg:order-1 lg:col-span-2 lg:overflow-y-auto">
       <div className={`mx-auto w-full max-w-xl p-8 text-center md:p-10 ${panel}`}>

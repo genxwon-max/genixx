@@ -262,6 +262,7 @@ function answersOf(
 
 const submitted = (answers: Record<string, number | string>, at: string): SubjectRecord => ({
   answers,
+  marks: [],
   status: "submitted",
   startedAt: at,
   submittedAt: at,

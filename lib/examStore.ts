@@ -68,6 +68,11 @@ export type ExamStatus = "ready" | "in-progress" | "submitted" | "forfeited";
 export type SubjectRecord = {
   /** 문항 ID → 선택한 보기 index(객관식) 또는 작성한 글(서술형) */
   answers: Record<string, number | string>;
+  /**
+   * 응시 중에 학생이 체크해 둔 문항 ID — 다시 볼 문항의 표시일 뿐 채점 · 리포트는 읽지 않는다.
+   * 옛 기록에는 없어 normalize가 빈 목록으로 채운다.
+   */
+  marks: string[];
   status: ExamStatus;
   startedAt: string | null;
   submittedAt: string | null;
@@ -205,6 +210,7 @@ export type ExamRecord = {
 
 const emptySubject: SubjectRecord = {
   answers: {},
+  marks: [],
   status: "ready",
   startedAt: null,
   submittedAt: null,
@@ -497,6 +503,16 @@ export function setAnswer(
   });
 }
 
+/** 문항 체크를 켜고 끈다 — 답처럼 응시 기록에 남아, 창을 새로 열어도 그대로다 */
+export function toggleMark(studentId: string, subject: SubjectId, questionId: string) {
+  const rec = readRecord(studentId).subjects[subject];
+  patchSubject(studentId, subject, {
+    marks: rec.marks.includes(questionId)
+      ? rec.marks.filter((id) => id !== questionId)
+      : [...rec.marks, questionId],
+  });
+}
+
 /**
  * 응시 시작 — 이때의 제한 시간을 기록에 박아 둔다.
  *
@@ -553,6 +569,7 @@ export function forfeitSubject(studentId: string, subject: SubjectId) {
   const rec = readRecord(studentId).subjects[subject];
   patchSubject(studentId, subject, {
     answers: {},
+    marks: [],
     status: "forfeited",
     submittedAt: new Date().toISOString(),
     attemptsLeft: Math.max(0, rec.attemptsLeft - 1),
@@ -567,6 +584,7 @@ export function restartSubject(studentId: string, subject: SubjectId) {
   if (rec.attemptsLeft <= 0) return;
   patchSubject(studentId, subject, {
     answers: {},
+    marks: [],
     status: "ready",
     startedAt: null,
     submittedAt: null,
@@ -667,6 +685,7 @@ export function forfeitFree(studentId: string) {
   const at = new Date().toISOString();
   patchAll(studentId, (rec) => ({
     answers: {},
+    marks: [],
     status: "forfeited",
     submittedAt: at,
     attemptsLeft: Math.max(0, rec.attemptsLeft - 1),
@@ -682,6 +701,7 @@ export function restartFree(studentId: string) {
   if (SUBJECT_IDS.some((id) => current.subjects[id].attemptsLeft <= 0)) return;
   patchAll(studentId, () => ({
     answers: {},
+    marks: [],
     status: "ready",
     startedAt: null,
     submittedAt: null,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import {
   FREE_LIMIT_MIN,
   SUBJECT_IDS,
@@ -19,21 +20,24 @@ import {
 import { evalName } from "@/lib/examCatalog";
 import { matchBank, matchQuestion, slotBank, slotQuestion } from "@/lib/examDesign";
 import { designLinks } from "@/lib/designScreens";
-import { ArrowRight } from "@/components/Icons";
 import {
   BriefPanel,
   ForfeitDialog,
   ForfeitedPanel,
+  PageNav,
   QuestionBody,
   QuestionPad,
   ScreenColumn,
+  TextZoomProvider,
+  paperStyle,
+  type ExamPaper,
+  type ExamTextScale,
   isAnswered,
   setRange,
 } from "@/components/exam/ExamSession";
 import { ExitDialog, TrialStart } from "@/components/exam/TrialSession";
 import type { MatchPick } from "@/components/exam/MatchAnswer";
 import { watermarkOf } from "@/components/exam/ExamWatermark";
-import { btnGhost, btnPrimary } from "@/components/exam/ui";
 import ExamFrame from "../ExamFrame";
 
 /**
@@ -58,8 +62,8 @@ import ExamFrame from "../ExamFrame";
 /** 예시로 굳힌 진단 — 2026학년도 4분기 · 초등 4학년 (학생 대시보드 디자인의 「지금 응시 중인 진단」과 같다) */
 const ROUND = "2026-4";
 const TRACK = "e4";
-const SEASON = "2026학년도 4분기";
-const NAME = evalName(ROUND, TRACK);
+export const SEASON = "2026학년도 4분기";
+export const NAME = evalName(ROUND, TRACK);
 const watermark = watermarkOf(SEASON);
 
 const noop = () => {};
@@ -67,7 +71,7 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
 const clockText = (sec: number) => `${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}`;
 
 /** 앞에서부터 n문항을 답한 것으로 적는다 — 고르는 문항만. 쓰는 문항은 비워 둔다 */
-const answered = (list: Question[], n: number): Record<string, number | string> =>
+export const answered = (list: Question[], n: number): Record<string, number | string> =>
   Object.fromEntries(
     list
       .slice(0, n)
@@ -78,7 +82,7 @@ const answered = (list: Question[], n: number): Record<string, number | string> 
 /* ───────────────────────── 응시 화면 본문 ───────────────────────── */
 
 /** 자료 | 문항 | 문항 이동판 + 하단 바 — 실제 응시 화면과 같은 틀이다 */
-function Sheet({
+export function Sheet({
   order,
   open,
   padList,
@@ -86,9 +90,16 @@ function Sheet({
   at,
   answers,
   grouped = false,
-  footnote,
   lastLabel,
   matchPick = null,
+  marks,
+  onMark = noop,
+  textScale = "base",
+  paper = "white",
+  settings,
+  onSubmit = noop,
+  wall,
+  next,
 }: {
   /** 번호를 매기는 차례 */
   order: Question[];
@@ -101,77 +112,104 @@ function Sheet({
   at: number;
   answers: Record<string, number | string>;
   grouped?: boolean;
-  footnote?: string;
-  /** 마지막 화면의 단추 이름 — 「제출하기」 · 「셋트 마치기」 */
-  lastLabel: string;
+  /** 하단 바 오른쪽 끝 단추의 이름 — 「제출하기」. 없으면 두지 않는다 */
+  lastLabel?: string;
   /** 선 잇기에서 고른 항목 — 주소가 정한다. 없으면 아무것도 고르지 않은 채로 둔다 */
   matchPick?: MatchPick | null;
+  /**
+   * 체크해 둔 문항 ID — 넘기면 문항의 체크 단추와 이동판의 체크 표시 · 수가 선다
+   * (/design2의 CBT 디자인, components/design/screens/Cbt.tsx)
+   */
+  marks?: string[];
+  /** 체크 단추를 눌렀을 때 — 디자인은 다음 상태의 주소로 간다 */
+  onMark?: (q: Question) => void;
+  /** 화면 설정에서 고른 글자 크기 · 바탕색 */
+  textScale?: ExamTextScale;
+  paper?: ExamPaper;
+  /** 하단 바 왼쪽 끝의 톱니바퀴(ExamSettings) — 넘기지 않으면 두지 않는다 */
+  settings?: ReactNode;
+  /** 「제출하기」를 눌렀을 때 — 디자인은 다음 상태의 주소로 간다 */
+  onSubmit?: () => void;
+  /**
+   * 자료 · 문항 칸 대신 세울 끝 화면 — 셋트를 낸 뒤의 가입 권유(TrialSession의 Wall).
+   * 이때는 지금 문항이 없어 이동판에 짚은 번호가 없다
+   */
+  wall?: ReactNode;
+  /** 하단 바의 「다음」 자리에 대신 세울 단추 — 끝 화면의 「회원가입」 */
+  next?: ReactNode;
 }) {
-  const screen = screens[at];
+  const screen = screens[Math.min(at, screens.length - 1)];
   const question = screen[0];
+  const here = (q: Question) => !wall && screen.includes(q);
   const isOpen = (q: Question) => open.includes(q);
-  const doneCount = open.filter((q) => isAnswered(q, answers[q.id])).length;
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
+    <div
+      className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-exam-bg"
+      style={paperStyle(paper)}
+    >
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
-        <BriefPanel brief={question.brief} range={setRange(order, question)} watermark={watermark} />
-        <ScreenColumn
-          order={order}
-          screen={screen}
-          watermark={watermark}
-          renderQuestion={(q) => (
-            <QuestionBody
-              key={q.id}
-              q={q}
-              num={order.indexOf(q) + 1}
-              value={answers[q.id]}
-              onAnswer={noop}
+        {wall ?? (
+          <TextZoomProvider scale={textScale}>
+            <BriefPanel
+              brief={question.brief}
+              range={setRange(order, question)}
               watermark={watermark}
-              matchPick={matchPick}
             />
-          )}
-        />
+            <ScreenColumn
+              order={order}
+              screen={screen}
+              watermark={watermark}
+              renderQuestion={(q) => (
+                <QuestionBody
+                  key={q.id}
+                  q={q}
+                  num={order.indexOf(q) + 1}
+                  value={answers[q.id]}
+                  onAnswer={noop}
+                  watermark={watermark}
+                  matchPick={matchPick}
+                  marked={marks?.includes(q.id)}
+                  onMark={marks ? () => onMark(q) : undefined}
+                />
+              )}
+            />
+          </TextZoomProvider>
+        )}
         <QuestionPad
           list={padList}
           grouped={grouped}
-          isHere={(q) => q.setId === question.setId && isOpen(q)}
-          isCurrent={(q) => screen.includes(q)}
+          isHere={(q) => !wall && q.setId === question.setId && isOpen(q)}
+          isCurrent={here}
           isDone={(q) => isOpen(q) && isAnswered(q, answers[q.id])}
           isLocked={(q) => !isOpen(q)}
+          isMarked={marks ? (q) => marks.includes(q.id) : undefined}
           onPick={noop}
-          doneLabel="답한 문항"
+          doneLabel="푼 문항"
           doneVerb="응답함"
-          footnote={footnote}
+          leftLabel="안 푼 문항"
         />
       </div>
 
-      <div className="shrink-0 border-t border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          <div className="ml-auto flex items-center gap-2">
-            <span className="mr-1 hidden text-[12px] font-bold tabular-nums text-exam-muted md:block">
-              응답 {doneCount}/{open.length}
-            </span>
-            <button type="button" className={btnGhost}>
-              이전
-            </button>
-            <button type="button" className={btnPrimary}>
-              {at === screens.length - 1 ? lastLabel : "다음"}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      <PageNav
+        onPrev={noop}
+        onNext={noop}
+        prevDisabled={at === 0}
+        nextDisabled={at === screens.length - 1}
+        submit={lastLabel ? { label: lastLabel, onClick: onSubmit } : undefined}
+        settings={settings}
+        next={next}
+      />
     </div>
   );
 }
 
 /* ───────────────────────── 비회원 · 셋트 ───────────────────────── */
 
-const TRIAL_SUBJECT = "math" as const;
-const trialOrder = examOrderOf(TRIAL_SUBJECT);
-const trialOpen = trialOrder.slice(0, tierCount("set", TRIAL_SUBJECT, TRIAL_SUBJECT));
-const trialScreens = screensOf(TRIAL_SUBJECT)
+export const TRIAL_SUBJECT = "math" as const;
+export const trialOrder = examOrderOf(TRIAL_SUBJECT);
+export const trialOpen = trialOrder.slice(0, tierCount("set", TRIAL_SUBJECT, TRIAL_SUBJECT));
+export const trialScreens = screensOf(TRIAL_SUBJECT)
   .map((sc) => sc.filter((q) => trialOpen.includes(q)))
   .filter((sc) => sc.length > 0);
 
@@ -198,8 +236,7 @@ export function ExamTrial({ state }: { state: string }) {
         screens={trialScreens}
         at={Math.min(1, trialScreens.length - 1)}
         answers={answered(trialOpen, 1)}
-        footnote={`점선 번호(문항 ${trialOpen.length + 1}~)는 회원가입 후 무료 진단에서 풀 수 있습니다.`}
-        lastLabel="셋트 마치기"
+        lastLabel="제출하기"
       />
       {state === "exit" && (
         <ExitDialog
@@ -214,15 +251,15 @@ export function ExamTrial({ state }: { state: string }) {
 
 /* ───────────────────────── 회원 · 무료 진단 ───────────────────────── */
 
-const freeList = freeOrder();
-const freeScreens = SUBJECT_IDS.flatMap((id) =>
+export const freeList = freeOrder();
+export const freeScreens = SUBJECT_IDS.flatMap((id) =>
   screensOf(id)
     .map((sc) => sc.filter((q) => freeList.includes(q)))
     .filter((sc) => sc.length > 0),
 );
-const FREE_TITLE = "무료 진단";
+export const FREE_TITLE = "무료 진단";
 /** 60분 가운데 41분 27초가 남았다 */
-const FREE_REMAIN = 41 * 60 + 27;
+export const FREE_REMAIN = 41 * 60 + 27;
 
 export function ExamFree({ state }: { state: string }) {
   const router = useRouter();
@@ -257,7 +294,6 @@ export function ExamFree({ state }: { state: string }) {
         at={Math.min(5, freeScreens.length - 1)}
         answers={answered(freeList, 6)}
         grouped
-        footnote="유료 진단으로 접수하면 과목마다 문항이 더 열립니다."
         lastLabel="제출하기"
       />
       {state === "exit" && (
@@ -274,15 +310,15 @@ export function ExamFree({ state }: { state: string }) {
 
 /* ───────────────────────── 회원 · 유료 진단 ───────────────────────── */
 
-const PAID_SUBJECT = "math" as const;
-const paidMeta = subjectOf(PAID_SUBJECT)!;
-const paidList = tierQuestions("paid", PAID_SUBJECT);
-const paidFull = examOrderOf(PAID_SUBJECT);
-const paidScreens = screensOf(PAID_SUBJECT)
+export const PAID_SUBJECT = "math" as const;
+export const paidMeta = subjectOf(PAID_SUBJECT)!;
+export const paidList = tierQuestions("paid", PAID_SUBJECT);
+export const paidFull = examOrderOf(PAID_SUBJECT);
+export const paidScreens = screensOf(PAID_SUBJECT)
   .map((sc) => sc.filter((q) => paidList.includes(q)))
   .filter((sc) => sc.length > 0);
 /** 23분 10초가 남았다 */
-const PAID_REMAIN = 23 * 60 + 10;
+export const PAID_REMAIN = 23 * 60 + 10;
 
 export function ExamPaid({ state }: { state: string }) {
   const router = useRouter();
