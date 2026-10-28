@@ -254,6 +254,9 @@ function subscribe(onChange: () => void) {
   };
 }
 
+/** 처음 값 그대로의 검사지 — 디자인 보기(/design2/admin2/rotation)가 저장소를 읽지 않고 그린다 */
+export const seedForms = SEED;
+
 export function useForms(): ExamForm[] {
   return useSyncExternalStore(subscribe, read, () => SEED);
 }

@@ -110,6 +110,12 @@ export const admin2Nav: Admin2NavGroup[] = [
       { code: "EXP-02", label: "문항 출제", href: "/admin2/authoring", live: "drafts" },
       { code: "EXP-03", label: "문항 검수", href: "/admin2/review", live: "review" },
       { code: "ADM-04", label: "문항 은행", href: "/admin2/items" },
+      /*
+       * 문항 회전 · 앵커 — 「이 문항을 다음 회차에도 넣어도 되는가」. 쌓인 문항(은행)을 보고 회차에 담기(편성)
+       * 전에 여는 자리라 은행 바로 아래다. 옛 콘솔의 /admin/items/rotation이 9월 27일 함께 사라졌던 것을
+       * 다시 세웠다(2026-10-28).
+       */
+      { code: "ADM-04-4", label: "문항 회전", href: "/admin2/rotation" },
     ],
   },
   {
@@ -138,6 +144,11 @@ export const admin2Nav: Admin2NavGroup[] = [
     items: [
       { code: "ADM-05", label: "진단 회차", href: "/admin2/rounds" },
       { code: "ADM-04-3", label: "진단별 문항관리", href: "/admin2/forms" },
+      /*
+       * 응시 화면 보호 — 바꾸는 것이 문항이 아니라 응시 환경이라 회차 쪽에 둔다. 옛 콘솔의 /admin/rounds/security가
+       * 9월 27일 함께 사라졌던 것을 다시 세웠다(2026-10-28).
+       */
+      { code: "ADM-05-3", label: "응시 화면 보호", href: "/admin2/security" },
     ],
   },
   {
@@ -220,6 +231,20 @@ export const admin2Nav: Admin2NavGroup[] = [
       { code: "EXP-06-3", label: "내 상담", href: "/admin2/counsel", expertOnly: true },
       { code: "EXP-06-4", label: "내 상담 일정", href: "/admin2/counsel/schedule", expertOnly: true },
     ],
+  },
+  {
+    /*
+     * 학생 · 학부모 · 지도교사 설문 — 응시와 함께 받는 관찰 자료.
+     *
+     * 처음에는 「문항관리」에 두었다(설문도 측정 도구라 출제 권한이 고치고 검수 권한이 발행한다). 사용자가
+     * 따로 묶음을 세우라고 해 그룹을 떼었다(2026-10-28). 설문은 문항과 달리 회차에 담지 않고, 면담 ·
+     * 리포트에서 읽히는 자료라 면담 관리 다음, 리포트 관리 앞에 둔다.
+     *
+     * 옛 콘솔의 「설문 원본」(/admin/surveys)이 9월 27일 콘솔을 걷어 낼 때 함께 사라졌던 것을 다시
+     * 세웠다. 설문마다 이 서비스의 설문지로 받거나(직접 입력) 구글 설문 같은 바깥 설문 주소를 넣는다.
+     */
+    label: "설문 관리",
+    items: [{ code: "ADM-14", label: "설문지", href: "/admin2/surveys" }],
   },
   {
     /*

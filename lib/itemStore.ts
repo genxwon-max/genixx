@@ -2007,6 +2007,9 @@ const SEED: ItemDraft[] = withCodes([...SEED_RAW, ...SET_SEEDS].map(fill));
  */
 export const seedItem = (id: string): ItemDraft | null => SEED.find((i) => i.id === id) ?? null;
 
+/** 처음 값 그대로의 문항 전부 — 디자인 보기(/design2/admin2/rotation)가 저장소를 읽지 않고 그린다 */
+export const seedItems = SEED;
+
 const KEY = "genixx.items";
 const EVENT = "genixx:items-change";
 

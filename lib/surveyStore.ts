@@ -87,7 +87,33 @@ export type SurveyForm = {
   items: SurveyItem[];
   choices: SurveyChoice[];
   opens: SurveyOpen[];
+  /**
+   * 응답을 어디서 받는가 (2026-10-28) — 없으면 직접 입력이다(그 전에 발행한 판 · 기록의 판).
+   *
+   *   form  이 서비스의 설문지로 받는다 — 위 문항들이 응답자에게 나간다
+   *   link  구글 설문 같은 바깥 설문으로 받는다 — 응답자에게는 link를 여는 단추가 나간다
+   *
+   * 링크로 받은 답은 바깥 서비스에 쌓이고 이 서비스로 들어오지 않는다. 응답자가 「제출했어요」를
+   * 누른 것만 남아(lib/examStore.ts setSurvey), 제출 여부는 세지만 답 내용은 리포트가 읽지 못한다.
+   * 문항은 지우지 않고 그대로 둔다 — 직접 입력으로 되돌리면 다시 나간다.
+   */
+  mode?: SurveyMode;
+  /** 바깥 설문 주소 — mode가 link일 때만 쓴다 */
+  link?: string;
 };
+
+export type SurveyMode = "form" | "link";
+
+export const surveyModeLabel: Record<SurveyMode, string> = {
+  form: "직접 입력",
+  link: "외부 설문 링크",
+};
+
+/** 판의 응답 방식 — 칸이 없는 옛 판은 직접 입력이다 */
+export const modeOf = (form: Pick<SurveyForm, "mode">): SurveyMode => form.mode ?? "form";
+
+/** 바깥 설문 주소로 쓸 수 있는가 — http(s)로 시작하는 주소 */
+export const isSurveyLink = (v: string | undefined) => /^https?:\/\/\S+\.\S+/.test((v ?? "").trim());
 
 /** 저장 단위 — 갈래와 학년대를 함께 묶은 열쇠 (`guardian:e34`) */
 export type SurveyDocId = `${SurveyKey}:${SurveyBand}`;
@@ -166,6 +192,8 @@ function seedForm(key: SurveyKey, band: SurveyBand): SurveyForm {
     who: c.who,
     desc: c.desc,
     note: c.note,
+    mode: "form",
+    link: "",
     items: c.items.map((i) => ({ ...i, id: at(i.no) })),
     choices: c.choices.map((ch) => ({ ...ch, id: at(ch.no) })),
     opens: c.opens.map((o) => ({
@@ -218,6 +246,17 @@ const SEED_LOG: SurveyLogEntry[] = surveyDocIds.map((id) => ({
   lines: [],
   snapshot: seedForm(...split(id)),
 }));
+
+/** 처음 판과 그 기록 — 디자인 보기(/design2/admin2/surveys)가 저장소를 읽지 않고 그린다 */
+export const seedSurveyDocs = SEED;
+export const seedSurveyLog = SEED_LOG;
+
+/** 주소에 서는 열쇠 — `guardian:e34`의 쌍점은 주소에 두기 거북해 `guardian-e34`로 적는다 */
+export const surveySlugOf = (id: SurveyDocId) => id.replace(":", "-");
+export const surveyDocIdOf = (slug: string): SurveyDocId | null => {
+  const id = slug.replace("-", ":") as SurveyDocId;
+  return surveyDocIds.includes(id) ? id : null;
+};
 
 /**
  * 저장 열쇠에 씨앗 판 번호를 붙인다.
@@ -657,7 +696,7 @@ export function revertTo(id: SurveyDocId, entryId: string, by: string, reason: s
 
 /* ───────────────────────── 견주기 ───────────────────────── */
 
-const FIELDS: [keyof Omit<SurveyForm, "items" | "choices" | "opens">, string][] = [
+const FIELDS: ["title" | "who" | "desc" | "note", string][] = [
   ["title", "제목"],
   ["who", "응답자"],
   ["desc", "안내문"],
@@ -674,6 +713,14 @@ const cut = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n)}…` : s || 
  */
 export function diffForms(before: SurveyForm, after: SurveyForm): string[] {
   const lines: string[] = [];
+
+  /* 응답 방식이 갈리면 응답자가 받는 것이 통째로 바뀐다 — 맨 앞에 적는다 */
+  if (modeOf(before) !== modeOf(after)) {
+    lines.push(`응답 방식 — ${surveyModeLabel[modeOf(before)]} → ${surveyModeLabel[modeOf(after)]}`);
+  }
+  if ((before.link ?? "") !== (after.link ?? "")) {
+    lines.push(`외부 설문 링크 — 「${cut(before.link ?? "", 40)}」 → 「${cut(after.link ?? "", 40)}」`);
+  }
 
   for (const [k, label] of FIELDS) {
     if (before[k] !== after[k]) lines.push(`${label} — 「${cut(before[k])}」 → 「${cut(after[k])}」`);
@@ -756,6 +803,18 @@ export function draftChanges(doc: SurveyDoc): string[] {
 export function publishWarnings(doc: SurveyDoc, answered: number): string[] {
   const w: string[] = [];
   const d = doc.draft;
+
+  /* 바깥 설문은 문항이 나가지 않으므로 문항 점검을 하지 않는다 — 주소와 받는 범위만 짚는다 */
+  if (modeOf(d) === "link") {
+    if (!isSurveyLink(d.link)) w.push("외부 설문 링크가 비어 있거나 주소 꼴(https://…)이 아닙니다. 응답자가 설문을 열지 못합니다.");
+    w.push(
+      "외부 설문의 답은 이 서비스로 들어오지 않습니다. 응답자가 「제출했어요」를 누른 것만 남고, 답 내용은 리포트의 설문 점수에 들어가지 않습니다.",
+    );
+    if (modeOf(doc.live) !== "link" && answered > 0) {
+      w.push(`이미 이 설문에 ${answered}건이 직접 입력으로 들어와 있습니다. 앞으로의 응답은 외부 설문에 쌓입니다.`);
+    }
+    return w;
+  }
 
   const blank = d.items.filter((i) => !i.text.trim()).length;
   if (blank > 0) w.push(`빈 문항이 ${blank}건 있습니다. 그대로 발행하면 응답자에게 빈 줄로 보입니다.`);

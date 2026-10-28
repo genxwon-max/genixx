@@ -9,6 +9,8 @@ import {
   type SurveyKey,
 } from "@/lib/examStore";
 import {
+  isSurveyLink,
+  modeOf,
   useSurveyDoc,
   type SurveyChoice,
   type SurveyDoc,
@@ -16,7 +18,7 @@ import {
   type SurveyOpen,
 } from "@/lib/surveyStore";
 import { bandFromGrade } from "@/lib/surveyBands";
-import { findById } from "@/lib/roster";
+import { findById, formatCode } from "@/lib/roster";
 import { CheckIcon } from "@/components/Icons";
 import { btnDisabled, btnGhost, btnPrimary } from "./ui";
 
@@ -137,6 +139,18 @@ export default function SurveyForm({
     );
   }
 
+  /* 바깥 설문(구글 설문 등)으로 받는 판 — 문항 대신 여는 단추와 「제출했어요」를 둔다 */
+  if (modeOf(config) === "link") {
+    return (
+      <LinkSurvey
+        doc={doc}
+        studentName={student?.name}
+        studentCode={student ? formatCode(student.code) : null}
+        onDone={() => setSurvey(studentId, surveyKey, "done", doc.liveVersion, { items: {} })}
+      />
+    );
+  }
+
   const submit = () => {
     if (!complete) {
       setWarn(true);
@@ -246,6 +260,79 @@ export default function SurveyForm({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * 바깥 설문으로 받는 판 (2026-10-28).
+ *
+ * 관리자가 설문 관리(ADM-14)에서 응답 방식을 「외부 설문 링크」로 두면, 문항 대신 그 설문을 새 창으로 여는
+ * 단추가 선다. 답은 바깥 서비스에 쌓여 이 창은 냈는지 알 수 없다 — 그래서 다 낸 뒤 「제출했어요」를 눌러
+ * 달라고 하고, 그것을 제출로 적는다. 바깥 설문 쪽에서 누구의 답인지 가려야 하므로 학생 이름과 접속코드를
+ * 함께 보여 준다.
+ */
+export function LinkSurvey({
+  doc,
+  studentName,
+  studentCode,
+  onDone,
+}: {
+  doc: SurveyDoc;
+  studentName?: string;
+  studentCode: string | null;
+  onDone: () => void;
+}) {
+  const link = doc.live.link ?? "";
+  const ready = isSurveyLink(link);
+  const [opened, setOpened] = useState(false);
+  return (
+    <Page>
+      <PopupHeader doc={doc} studentName={studentName} askingNow={false} />
+      <div className={card}>
+        <h2 className="text-[17px] font-bold text-soft-ink">이 설문은 구글 설문 같은 바깥 설문으로 받습니다</h2>
+        <ol className="mt-3 space-y-1.5 text-[13px] leading-relaxed text-soft-muted">
+          <li>1. 「설문 열기」를 누르면 새 창에서 설문이 열립니다.</li>
+          <li>
+            2. 설문에서 학생 이름{studentName ? <b className="text-soft-ink"> {studentName}</b> : null}
+            {studentCode ? (
+              <>
+                과 접속코드 <b className="tabular-nums text-soft-ink">{studentCode}</b>
+              </>
+            ) : null}
+            를 물으면 그대로 적어 주세요.
+          </li>
+          <li>3. 설문을 다 낸 뒤 이 창으로 돌아와 「제출했어요」를 눌러 주세요.</li>
+        </ol>
+        {ready ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpened(true)}
+            className={`mt-5 w-full ${btnPrimary}`}
+          >
+            설문 열기
+          </a>
+        ) : (
+          <p className="mt-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+            설문 주소가 아직 준비되지 않았습니다. 잠시 뒤 다시 열어 주세요.
+          </p>
+        )}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button type="button" onClick={() => window.close()} className={btnGhost}>
+          나중에 하기
+        </button>
+        <button
+          type="button"
+          onClick={() => ready && onDone()}
+          aria-disabled={!ready}
+          className={ready ? (opened ? btnPrimary : btnGhost) : btnDisabled}
+        >
+          제출했어요
+        </button>
+      </div>
+    </Page>
   );
 }
 
