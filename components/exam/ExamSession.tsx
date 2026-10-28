@@ -70,6 +70,7 @@ import { quarterLabel, seasonOf, trackOf } from "@/lib/examCatalog";
 import { formatCode, useRoster } from "@/lib/roster";
 import { useWallet } from "@/lib/ticketStore";
 import ExamCover from "./ExamCover";
+import ExamPrecheck from "./ExamPrecheck";
 import { ItemWatermark, watermarkOf } from "./ExamWatermark";
 import { addSpoken, DictateBar, DictateButton, ImageAnswer, ListenClip } from "./AnswerMedia";
 import MatchAnswer, { type MatchPick } from "./MatchAnswer";
@@ -296,6 +297,8 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
   const [entered, setEntered] = useState(false);
   /** 화면 설정 — 글자 크기 · 바탕색(하단 바의 톱니바퀴) */
   const view = useExamView();
+  /** 응시 전 점검(듣기 · 말하기 · 화면 사용법)을 지났는지 — 마쳤거나 건너뛰었으면 표지로 */
+  const [prechecked, setPrechecked] = useState(false);
 
   /**
    * 이 판이 여는 문항과 손잡이 — 과목 하나이거나 무료 진단 스물이다.
@@ -414,6 +417,18 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
           </Link>
         </div>
       </div>
+    );
+  }
+
+  /* 응시 전 점검 — 표지보다 먼저 선다. 이미 시작한 판에 다시 들어온 아이는 건너뛴다(점검은
+     시간이 흐르기 전에만 의미가 있다) */
+  if (!entered && !prechecked && !sheet.startedAt) {
+    return (
+      <ExamPrecheck
+        limitText={`${limitMin}분`}
+        onDone={() => setPrechecked(true)}
+        onSkip={() => setPrechecked(true)}
+      />
     );
   }
 
@@ -1096,16 +1111,52 @@ function StartGate({
   const { applied, season } = useApplied(studentId);
   const grade = applied ? trackOf(applied.track).grades : (student?.grade ?? "-");
 
+  return (
+    <StartCover
+      subject={scope.kind === "free" ? null : scope.subject}
+      title={title}
+      season={season}
+      grade={grade}
+      student={student ? { name: student.name, code: formatCode(student.code) } : null}
+      note={note}
+      onStart={onStart}
+    />
+  );
+}
+
+/**
+ * 표지를 그리는 쪽 — 값만 받는다. 디자인 보기(/design2/exam/session/cover)가 예시 학생을 적어 넘긴다.
+ */
+export function StartCover({
+  subject,
+  title,
+  season,
+  grade,
+  student,
+  note,
+  onStart,
+}: {
+  /** 유료 진단의 과목 — 무료 진단이면 null */
+  subject: SubjectId | null;
+  title: string;
+  /** 「2026학년도 4분기」 */
+  season: string;
+  grade: string;
+  /** 이름과 접속코드(「S8QN-4TKD」) — 아직 읽지 못했으면 null */
+  student: { name: string; code: string } | null;
+  note?: string | null;
+  onStart: () => void;
+}) {
+  const free = subject === null;
   /* 과목마다 따로 들어가는 유료 진단은 과목 차례가 곧 교시다 */
-  const period =
-    scope.kind === "free" ? 1 : subjects.findIndex((x) => x.id === scope.subject) + 1;
+  const period = free ? 1 : subjects.findIndex((x) => x.id === subject) + 1;
 
   return (
     <div className="container-x flex min-h-full items-start justify-center py-8">
       <div className="w-full max-w-[900px]">
         <ExamCover
           badge={`제${period}교시`}
-          headline={`${season} GENIXX 재능 진단 ${scope.kind === "free" ? "무료" : title} 문항지`}
+          headline={`${season} GENIXX 재능 진단 ${free ? "무료" : title} 문항지`}
           title={assessment.name}
           watermark={watermarkOf(season)}
           notice="(이 면의 인적사항이 맞는지 확인한 뒤 아래 버튼을 눌러 시작해 주세요. 시작하면 전체화면으로 바뀌고 제한 시간이 흐르기 시작합니다.)"
@@ -1133,7 +1184,7 @@ function StartGate({
                 {
                   kind: "value",
                   key: "id",
-                  text: student ? formatCode(student.code) : "-",
+                  text: student?.code ?? "-",
                   muted: !student,
                   width: "sm:min-w-[8.5rem]",
                 },
@@ -1145,15 +1196,15 @@ function StartGate({
                 /* 무료 진단은 과목을 고르는 시험이 아니라 셋을 한 판으로 보는 시험이다.
                    그 줄이 말해야 하는 것은 **지금 무료로 보고 있다**는 것 하나라, 과목 칸
                    (국어·수학·과학)을 세우지 않고 「무료 응시」 한 칸만 둔다 */
-                { kind: "label", text: scope.kind === "free" ? "무료 응시" : "응시 과목" },
+                { kind: "label", text: free ? "무료 응시" : "응시 과목" },
                 /* 고르는 칸이 아니다 — 무엇을 보는지 적어 둘 뿐이다 */
-                ...(scope.kind === "free"
+                ...(free
                   ? []
                   : subjects.map((x) => ({
                       kind: "value" as const,
                       key: x.id,
                       text: x.short,
-                      on: scope.subject === x.id,
+                      on: subject === x.id,
                     }))),
               ],
             },

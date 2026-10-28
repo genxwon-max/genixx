@@ -169,7 +169,7 @@ export const addSpoken = (written: string, spoken: string) =>
  *
  * 음성 인식이 없는 브라우저(파이어폭스)에서는 supported가 false다 — 단추를 세우지 않는다.
  */
-function useDictation(onText: (text: string) => void) {
+export function useDictation(onText: (text: string) => void) {
   const supported = useSyncExternalStore(
     subscribeNever,
     () => recognizerOf() !== null,
@@ -533,7 +533,7 @@ function PauseIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function StopIcon(props: SVGProps<SVGSVGElement>) {
+export function StopIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...stroke} {...props}>
       <rect x="6" y="6" width="12" height="12" rx="1" />
@@ -541,7 +541,7 @@ function StopIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function MicIcon(props: SVGProps<SVGSVGElement>) {
+export function MicIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...stroke} {...props}>
       <rect x="9" y="3" width="6" height="11" rx="3" />

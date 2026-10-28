@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FREE_LIMIT_MIN, subjectOf, subjects, type Question } from "@/lib/exam";
+import { FREE_LIMIT_MIN, subjectOf, subjects, tierQuestions, type Question } from "@/lib/exam";
+import { flowStudent } from "./studentFlow";
 import { designLinks } from "@/lib/designScreens";
 import {
   ExamSettings,
@@ -9,6 +10,7 @@ import {
   ForfeitedPanel,
   ReflectAskDialog,
   ReflectionStep,
+  StartCover,
   SubmitDialog,
   Submitted,
   isAnswered,
@@ -17,6 +19,7 @@ import {
   type ReflectionSheet,
 } from "@/components/exam/ExamSession";
 import { ExitDialog, TrialStart, Wall } from "@/components/exam/TrialSession";
+import ExamPrecheck, { PRECHECK_SENTENCE, type PrecheckState } from "@/components/exam/ExamPrecheck";
 import ExamFrame from "../ExamFrame";
 import {
   FREE_REMAIN,
@@ -342,6 +345,87 @@ export function CbtReflect({ state }: { state: string }) {
         onLater={() => go("later")}
         view={view}
         initialIndex={state === "write/blank" ? blankAt : 0}
+      />
+    </ExamFrame>
+  );
+}
+
+/* ───────────────────────── 응시 전 점검 ───────────────────────── */
+
+/**
+ * 응시 전 점검 — 응시 창을 열면 표지(문항지 첫 장)보다 먼저 서는 다섯 단계(components/exam/ExamPrecheck.tsx).
+ * 회원 무료 · 유료 진단이 같고, 셋트(비회원)는 제한 시간 · 응시 기회가 없어 안내 한 줄과 마지막 확인
+ * 두 줄이 다르다(trial · trial/confirm). 상태마다 단계와 점검 결과를 적어 두었고, 그 뒤로는 실제처럼
+ * 눌러 볼 수 있다(저장되지 않는다).
+ */
+const precheckStates: Record<string, Partial<PrecheckState>> = {
+  "": { step: 0 },
+  listen: { step: 1 },
+  "listen/ok": { step: 1, listen: "ok" },
+  "listen/no": { step: 1, listen: "no" },
+  speak: { step: 2, listen: "ok" },
+  "speak/listening": { step: 2, listen: "ok", speak: "listening" },
+  "speak/ok": { step: 2, listen: "ok", speak: "ok", heard: PRECHECK_SENTENCE.replace(".", "") },
+  "speak/error": {
+    step: 2,
+    listen: "ok",
+    speak: "error",
+    error: "마이크 사용이 차단되어 있습니다. 주소창 왼쪽의 마이크 권한을 허용한 뒤 다시 눌러 주세요.",
+  },
+  "speak/unsupported": { step: 2, listen: "ok", speak: "unsupported" },
+  guide: { step: 3, listen: "ok", speak: "ok" },
+  confirm: { step: 4, listen: "ok", speak: "ok", checks: [true, true, false, false, false] },
+  "confirm/done": { step: 4, listen: "ok", speak: "ok", checks: [true, true, true, true, true] },
+  trial: { step: 0 },
+  "trial/confirm": { step: 4, listen: "ok", speak: "ok", checks: [true, true, false, false, false] },
+};
+
+export function CbtPrecheck({ state }: { state: string }) {
+  const router = useRouter();
+  const trial = state.startsWith("trial");
+  const p = plans[trial ? "trial" : "paid"];
+  /* 마치거나 건너뛰면 표지(문항지 첫 장)로 간다 */
+  const next = () =>
+    router.push(trial ? designLinks("cbt-trial")("left") : designLinks("cbt-cover")());
+  return (
+    <ExamFrame name={NAME} subject={trial ? null : p.subject} closable>
+      <ExamPrecheck
+        key={state}
+        limitText={trial ? null : `${paidMeta.limitMin}분`}
+        initial={precheckStates[state] ?? {}}
+        onDone={next}
+        onSkip={next}
+      />
+    </ExamFrame>
+  );
+}
+
+/* ───────────────────────── 회원 표지 ───────────────────────── */
+
+/**
+ * 회원 응시의 표지(문항지 첫 장) — 응시 전 점검을 마치거나 건너뛰면 선다. 「진단 시작」을 눌러야 전체화면으로
+ * 바뀌고 시간이 흐른다. 유료 진단은 과목 차례가 교시(수학 제2교시), 무료 진단은 늘 제1교시이고 과목 칸 대신
+ * 「무료 응시」 한 칸이다. 학생은 학생 대시보드 디자인의 예시(이서준 · 초등 4학년)와 같다.
+ */
+export function CbtCover({ state }: { state: string }) {
+  const router = useRouter();
+  const free = state === "free";
+  const p = plans[free ? "free" : "paid"];
+  return (
+    <ExamFrame name={NAME} subject={p.subject} closable>
+      <StartCover
+        subject={free ? null : "math"}
+        title={p.title}
+        season={SEASON}
+        grade={flowStudent.grade}
+        student={{ name: flowStudent.name, code: flowStudent.code }}
+        note={
+          free
+            ? subjects.map((x) => x.short + " " + tierQuestions("free", x.id).length).join(" · ") +
+              "문항을 한 번에 이어서 풉니다. 과목을 따로 고르지 않습니다."
+            : null
+        }
+        onStart={() => router.push(designLinks(free ? "cbt-free" : "cbt-paid")())}
       />
     </ExamFrame>
   );
