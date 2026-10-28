@@ -26,7 +26,6 @@ import GradingChecks from "@/components/design/screens/GradingChecks";
 import GradingMembers from "@/components/design/screens/GradingMembers";
 import InterviewDetail from "@/components/design/screens/InterviewDetail";
 import ItemPreviewScreen from "@/components/design/screens/ItemPreviewScreen";
-import ItemCard from "@/components/design/screens/ItemCard";
 import ItemSlots, { ItemSlotsSet } from "@/components/design/screens/ItemSlots";
 import InterviewRecord from "@/components/design/screens/InterviewRecord";
 import Mails from "@/components/design/screens/Mails";
@@ -104,7 +103,6 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "item-preview": ItemPreviewScreen,
   "item-slots": ItemSlots,
   "item-slots-set": ItemSlotsSet,
-  "item-card": ItemCard,
   schedulers: Schedulers,
   "privacy-purge": PrivacyPurge,
   "my-counsel": MyCounselStatus,
