@@ -15,7 +15,8 @@ export default function DesignIndex({
 }: {
   area: DesignArea;
   title: string;
-  lead: React.ReactNode;
+  /** 제목 아래 소개 — 없으면 두지 않는다(/design2) */
+  lead?: React.ReactNode;
 }) {
   const list0 = screensIn(area);
   const total = list0.reduce((sum, s) => sum + s.states.length, 0);
@@ -23,7 +24,7 @@ export default function DesignIndex({
   return (
     <main className="mx-auto w-full max-w-[72rem] px-5 py-10 text-slate-900 sm:px-8">
       <h1 className="text-[26px] font-bold tracking-tight">{title}</h1>
-      <div className="mt-2.5 max-w-3xl text-[14px] leading-[1.8] text-slate-600">{lead}</div>
+      {lead && <div className="mt-2.5 max-w-3xl text-[14px] leading-[1.8] text-slate-600">{lead}</div>}
       <p className="mt-1.5 text-[13px] text-slate-500">
         화면 {list0.length}개 · 주소 {total}개
       </p>
