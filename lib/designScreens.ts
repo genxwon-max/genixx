@@ -970,6 +970,26 @@ export const designScreens: DesignScreen[] = [
       { slug: "done", name: "해석까지 낸 뒤", who: "학생 · 유료" },
     ],
   },
+  /* ── 내 진단 · 진단 한 건의 응시 현황을 표 대신 카드로(2026-10-28 사용자 물음) ── */
+  {
+    id: "student-exam-cards",
+    area: "design2",
+    zone: "student",
+    name: "내 진단 · 진단 한 건 · 응시 현황 카드",
+    wbs: "v4/new/32 · v4/new/20",
+    real: "/student/exams/[회차]/[학년]",
+    base: "/student/exams",
+    states: [
+      { slug: "2026-4/e4", name: "시작 전", who: "학생 · 유료", note: "과목 카드 셋 — 과목 이름과 진행 상태 딱지 · 문항 수와 제한 시간 · 푼 문항 막대 · 「진단 시작」 · 이미지 없음 · 설문 제출 현황 표는 없다" },
+      { slug: "2026-4/e4/doing", name: "한 과목 제출 · 한 과목 푸는 중", who: "학생 · 유료", note: "국어 해석 미작성(「해석 작성」) · 수학 진행중 5/11(「이어서 풀기」) · 과학 미시작" },
+      { slug: "2026-4/e4/submitted", name: "과목을 모두 제출", who: "학생 · 유료", note: "「제출 완료」가 눌린다 — 누르면 설문을 확인하는 창" },
+      { slug: "2026-4/e4/final/missing", name: "제출 완료 확인 창 · 학부모 설문이 빠짐", who: "학생 · 유료", popup: true, note: "학생 · 학부모 설문을 냈는지만 확인 · 「지금 설문하기」 · 빠져도 제출할 수 있다" },
+      { slug: "2026-4/e4/final", name: "제출 완료 확인 창 · 설문을 모두 냄", who: "학생 · 유료", popup: true },
+      { slug: "2026-4/e4/free", name: "무료 진단 · 시작 전", who: "학생 · 무료", note: "시험 하나라 카드 한 장 — 줄을 다 차지하지 않고 세 칸 중 한 칸 크기" },
+      { slug: "2026-4/e4/free/submitted", name: "무료 진단 · 20문항 제출", who: "학생 · 무료" },
+      { slug: "2026-4/e4/guardian", name: "보호자가 학생 접속코드로 들어옴", who: "보호자", note: "카드 단추가 「열람 불가」" },
+    ],
+  },
   {
     id: "schedulers",
     zone: "admin2",

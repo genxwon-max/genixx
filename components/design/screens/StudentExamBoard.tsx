@@ -510,10 +510,13 @@ function List({ empty = false }: { empty?: boolean }) {
 
 /* ───────────────────────── 진단 한 건 ───────────────────────── */
 
-function Detail({ view }: { view: View }) {
+function Detail({ view, cards = false }: { view: View; cards?: boolean }) {
   const router = useRouter();
   const { diag, stage, board } = view;
-  const [head, body] = nowOf(view);
+  const [head, said] = nowOf(view);
+  /* 카드 시안에서는 「아래 표」가 아니라 「아래 카드」다 */
+  const body = cards ? said.replace("아래 표", "아래 카드") : said;
+  const showNow = !cards || stage === "reviewing" || stage === "published";
   const lead = [
     tierOf(diag.reg.tier).label,
     view.period,
@@ -544,31 +547,34 @@ function Detail({ view }: { view: View }) {
         </section>
       )}
 
-      {/* 지금 어디까지 했는가 — 굵은 한 줄과 할 일 한 줄 */}
-      <section
-        className={`${cardBox} ${view.photo ? "mt-4" : "mt-7"} flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6`}
-      >
-        <div className="min-w-[15rem] flex-1">
-          <p className="text-[16.5px] font-bold text-soft-ink">{head}</p>
-          <p className="mt-1 text-[13.5px] leading-[1.7] text-soft-muted">{body}</p>
-        </div>
-        {stage === "reviewing" && (
-          /* 사진 요청이 있으면 그쪽이 지금 할 일이다 — 이 단추는 한 단계 낮춘다 */
-          <Link href={answersHref} className={view.photo ? btnQuiet : btnGo}>
-            정답과 해설 보기 →
-          </Link>
-        )}
-        {stage === "published" && (
-          <div className="flex flex-wrap gap-2.5">
-            <Link href={answersHref} className={btnQuiet}>
-              정답과 해설
-            </Link>
-            <Link href={board.resultHref ?? "/design/student/results/child"} className={btnGo}>
-              결과 보기 →
-            </Link>
+      {/* 지금 어디까지 했는가 — 굵은 한 줄과 할 일 한 줄. 카드 시안에서는 응시하는 동안 걷는다(사용자 지시) —
+          카드의 상태 딱지와 단추가 같은 말을 한다. 최종 제출 뒤의 「정답과 해설 · 결과 보기」 칸은 남긴다 */}
+      {showNow && (
+        <section
+          className={`${cardBox} ${view.photo ? "mt-4" : "mt-7"} flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6`}
+        >
+          <div className="min-w-[15rem] flex-1">
+            <p className="text-[16.5px] font-bold text-soft-ink">{head}</p>
+            <p className="mt-1 text-[13.5px] leading-[1.7] text-soft-muted">{body}</p>
           </div>
-        )}
-      </section>
+          {stage === "reviewing" && (
+            /* 사진 요청이 있으면 그쪽이 지금 할 일이다 — 이 단추는 한 단계 낮춘다 */
+            <Link href={answersHref} className={view.photo ? btnQuiet : btnGo}>
+              정답과 해설 보기 →
+            </Link>
+          )}
+          {stage === "published" && (
+            <div className="flex flex-wrap gap-2.5">
+              <Link href={answersHref} className={btnQuiet}>
+                정답과 해설
+              </Link>
+              <Link href={board.resultHref ?? "/design/student/results/child"} className={btnGo}>
+                결과 보기 →
+              </Link>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* 판 — 응시하는 곳. 최종 제출을 마친 진단은 접어 둔다 */}
       {board.resultHref ? (
@@ -577,20 +583,22 @@ function Detail({ view }: { view: View }) {
             제출한 과목 · 설문 보기
           </summary>
           <div className="border-t border-soft-line px-5 py-6 sm:px-7">
-            <Board b={board} />
+            <Board b={board} cards={cards} />
           </div>
         </details>
       ) : (
-        <div className={`${cardBox} mt-4 px-5 py-6 sm:px-7 sm:py-7`}>
-          <Board b={board} />
+        <div className={`${cardBox} ${showNow ? "mt-4" : view.photo ? "mt-4" : "mt-7"} px-5 py-6 sm:px-7 sm:py-7`}>
+          <Board b={board} cards={cards} />
         </div>
       )}
 
       {view.popup === "final" && (
         <FinalDialog
-          /* 내지 않은 설문 — 실제 화면은 응시 기록에서 센다 */
-          missing={surveyKeys.filter((k) => !board.surveys[k].done)}
-          onCancel={() => router.push(to("2026-4/e4/submitted"))}
+          /* 내지 않은 설문 — 실제 화면은 응시 기록에서 센다. 카드 시안은 학생 · 학부모 설문만 본다 */
+          missing={surveyKeys.filter(
+            (k) => !board.surveys[k].done && (!cards || k !== "teacher"),
+          )}
+          onCancel={() => router.push((cards ? cardsTo : to)("2026-4/e4/submitted"))}
           onConfirm={() => router.push(waitHref)}
           onSurvey={noop}
         />
@@ -664,7 +672,7 @@ const finalOff =
  * 과목을 응시하는 판 — 실제 판(components/exam/StatusTable.tsx)을 다른 화면 안에 넣었을 때의
  * 모양이다. 과목별 응시 현황 표 · 설문 제출 현황 표 · 최종 제출 줄이 차례로 놓인다.
  */
-function Board({ b }: { b: BoardData }) {
+function Board({ b, cards = false }: { b: BoardData; cards?: boolean }) {
   const free = !!b.free;
   const finalized = !!b.resultHref;
   /* 최종 제출은 답안이 다 나왔으면 눌린다 — 해석은 선택이라 막지 않고, 빠진 것만 말한다 */
@@ -686,7 +694,7 @@ function Board({ b }: { b: BoardData }) {
   const sub = b.closed
     ? ""
     : !finalized && examDone && noReflection > 0
-      ? "해석은 선택이지만, 적힌 만큼 진단이 정확해집니다. 위 표의 「해석 작성」에서 이어서 쓸 수 있습니다."
+      ? `해석은 선택이지만, 적힌 만큼 진단이 정확해집니다. 위 ${cards ? "카드" : "표"}의 「해석 작성」에서 이어서 쓸 수 있습니다.`
       : "최종 제출 후에는 답안을 수정할 수 없습니다.";
 
   return (
@@ -710,188 +718,195 @@ function Board({ b }: { b: BoardData }) {
           note={
             free
               ? `무료 진단은 과목을 고르지 않고 ${freeCount}문항을 한 번에 이어서 풉니다. 응시 버튼을 누르면 별도 창이 열립니다.`
-              : `지금 ${tierOf("paid").label}으로 응시하고 있습니다. 과목마다 따로 응시하며, 문항 수와 제한 시간은 아래 표에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`
+              : `지금 ${tierOf("paid").label}으로 응시하고 있습니다. 과목마다 따로 응시하며, 문항 수와 제한 시간은 아래 ${cards ? "카드" : "표"}에 적었습니다. 응시 버튼을 누르면 별도 창이 열립니다.`
           }
         >
           진단 응시 현황
         </SectionTitle>
 
-        <div className="overflow-x-auto">
-          <table className={govTable}>
-            <caption className="sr-only">{free ? "무료 진단 응시 현황" : "과목별 응시 현황"}</caption>
-            <colgroup>
-              <col className="w-[110px]" />
-              <col />
-              <col className="w-[80px]" />
-              <col className="w-[90px]" />
-              <col className="w-[100px]" />
-              <col className="w-[150px]" />
-              <col className="w-[110px]" />
-            </colgroup>
-            <thead>
-              <tr>
-                {["구분", "진단 과목", "문항수", "제한시간", "진행상태", "제출일시", "응시"].map((h) => (
-                  <th key={h} className={th}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {b.lines.map((l, i) => {
-                const st = stateText[l.state];
-                return (
-                  <tr key={l.name}>
-                    {/* 무료 진단은 한 번에 보는 진단 하나라 한 줄이다. 유료 진단은 과목마다 한 줄이다 */}
-                    {free ? (
-                      <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`}>무료 진단</td>
-                    ) : (
-                      i === 0 && (
+        {cards ? (
+          <SubjectCards b={b} session={session} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className={govTable}>
+              <caption className="sr-only">{free ? "무료 진단 응시 현황" : "과목별 응시 현황"}</caption>
+              <colgroup>
+                <col className="w-[110px]" />
+                <col />
+                <col className="w-[80px]" />
+                <col className="w-[90px]" />
+                <col className="w-[100px]" />
+                <col className="w-[150px]" />
+                <col className="w-[110px]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  {["구분", "진단 과목", "문항수", "제한시간", "진행상태", "제출일시", "응시"].map((h) => (
+                    <th key={h} className={th}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {b.lines.map((l, i) => {
+                  const st = stateText[l.state];
+                  return (
+                    <tr key={l.name}>
+                      {/* 무료 진단은 한 번에 보는 진단 하나라 한 줄이다. 유료 진단은 과목마다 한 줄이다 */}
+                      {free ? (
+                        <td className={`${td} bg-slate-50/60 font-bold text-soft-ink`}>무료 진단</td>
+                      ) : (
+                        i === 0 && (
+                          <td
+                            className={`${td} bg-slate-50/60 font-bold text-soft-ink`}
+                            rowSpan={b.lines.length}
+                          >
+                            필수 과목
+                          </td>
+                        )
+                      )}
+                      <td className={`${tdStrong} text-left`}>
+                        {l.name}
+                        {free && (
+                          <span className="ml-2 text-[12px] font-medium text-soft-muted">
+                            한 번에 이어서 응시
+                          </span>
+                        )}
+                      </td>
+                      <td className={`${td} tabular-nums`}>
+                        {l.answered}/{l.total}
+                      </td>
+                      <td className={`${td} tabular-nums`}>{l.limit}분</td>
+                      <td className={td}>
+                        <span className={st.className}>{st.label}</span>
+                      </td>
+                      <td className={`${td} tabular-nums`}>{l.at ?? "-"}</td>
+                      <td className={td}>
+                        {b.guardian ? (
+                          <span className={btnSmMuted}>열람 불가</span>
+                        ) : l.state === "reflecting" ? (
+                          <button type="button" className={btnSm}>
+                            해석 작성
+                          </button>
+                        ) : l.state === "submitted" ? (
+                          <span className={btnSmMuted}>완료</span>
+                        ) : b.closed ? (
+                          /* 실제 판에는 없는 표시 — 기간이 끝난 진단은 응시 단추를 두지 않는다 */
+                          <span className="whitespace-nowrap text-[12px]">응시 기간 종료</span>
+                        ) : (
+                          <button type="button" onClick={() => examWindow(session)} className={btnSm}>
+                            {l.answered > 0 ? "이어서" : "진단 시작"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* 표 2 — 설문. 카드 시안(/design2)에서는 걷는다 — 설문을 냈는지는 「제출 완료」의 확인 창이
+          묻는다 */}
+      {!cards && (
+        <section className="mt-9">
+          <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 학부모 설문은 1부이며 어머니·아버지 중 한 분이 대표로 답하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
+            설문 제출 현황
+          </SectionTitle>
+
+          <div className="overflow-x-auto">
+            <table className={govTable}>
+              <caption className="sr-only">학생·보호자·교사 설문 제출 현황</caption>
+              <colgroup>
+                <col className="w-[110px]" />
+                <col />
+                <col className="w-[130px]" />
+                <col className="w-[100px]" />
+                <col className="w-[150px]" />
+                <col className="w-[170px]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  {["구분", "설문 종류", "대상", "진행상태", "제출일시", "작성 · 문자"].map((h) => (
+                    <th key={h} className={th}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {surveyKeys.map((key, i) => {
+                  const meta = surveyMeta[key];
+                  const s = b.surveys[key];
+                  const st = stateText[s.done ? "done" : "none"];
+                  return (
+                    <tr key={key}>
+                      {i === 0 && (
                         <td
                           className={`${td} bg-slate-50/60 font-bold text-soft-ink`}
-                          rowSpan={b.lines.length}
+                          rowSpan={surveyKeys.length}
                         >
-                          필수 과목
+                          선택 설문
                         </td>
-                      )
-                    )}
-                    <td className={`${tdStrong} text-left`}>
-                      {l.name}
-                      {free && (
-                        <span className="ml-2 text-[12px] font-medium text-soft-muted">
-                          한 번에 이어서 응시
-                        </span>
                       )}
-                    </td>
-                    <td className={`${td} tabular-nums`}>
-                      {l.answered}/{l.total}
-                    </td>
-                    <td className={`${td} tabular-nums`}>{l.limit}분</td>
-                    <td className={td}>
-                      <span className={st.className}>{st.label}</span>
-                    </td>
-                    <td className={`${td} tabular-nums`}>{l.at ?? "-"}</td>
-                    <td className={td}>
-                      {b.guardian ? (
-                        <span className={btnSmMuted}>열람 불가</span>
-                      ) : l.state === "reflecting" ? (
-                        <button type="button" className={btnSm}>
-                          해석 작성
-                        </button>
-                      ) : l.state === "submitted" ? (
-                        <span className={btnSmMuted}>완료</span>
-                      ) : b.closed ? (
-                        /* 실제 판에는 없는 표시 — 기간이 끝난 진단은 응시 단추를 두지 않는다 */
-                        <span className="whitespace-nowrap text-[12px]">응시 기간 종료</span>
-                      ) : (
-                        <button type="button" onClick={() => examWindow(session)} className={btnSm}>
-                          {l.answered > 0 ? "이어서" : "진단 시작"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* 표 2 — 설문 */}
-      <section className="mt-9">
-        <SectionTitle note="학생 설문은 본인이 이 화면에서 바로 작성합니다. 학부모 설문은 1부이며 어머니·아버지 중 한 분이 대표로 답하셔도 됩니다. 설문 링크를 문자로 보내면 받은 분이 로그인 없이 자기 휴대전화에서 작성합니다. 낸 뒤에도 다시 열어 고칠 수 있습니다.">
-          설문 제출 현황
-        </SectionTitle>
-
-        <div className="overflow-x-auto">
-          <table className={govTable}>
-            <caption className="sr-only">학생·보호자·교사 설문 제출 현황</caption>
-            <colgroup>
-              <col className="w-[110px]" />
-              <col />
-              <col className="w-[130px]" />
-              <col className="w-[100px]" />
-              <col className="w-[150px]" />
-              <col className="w-[170px]" />
-            </colgroup>
-            <thead>
-              <tr>
-                {["구분", "설문 종류", "대상", "진행상태", "제출일시", "작성 · 문자"].map((h) => (
-                  <th key={h} className={th}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {surveyKeys.map((key, i) => {
-                const meta = surveyMeta[key];
-                const s = b.surveys[key];
-                const st = stateText[s.done ? "done" : "none"];
-                return (
-                  <tr key={key}>
-                    {i === 0 && (
-                      <td
-                        className={`${td} bg-slate-50/60 font-bold text-soft-ink`}
-                        rowSpan={surveyKeys.length}
-                      >
-                        선택 설문
+                      <td className={`${tdStrong} text-left`}>{meta.label}</td>
+                      <td className={td}>{meta.who}</td>
+                      <td className={td}>
+                        <span className={st.className}>{st.label}</span>
                       </td>
-                    )}
-                    <td className={`${tdStrong} text-left`}>{meta.label}</td>
-                    <td className={td}>{meta.who}</td>
-                    <td className={td}>
-                      <span className={st.className}>{st.label}</span>
-                    </td>
-                    <td className={`${td} tabular-nums`}>{s.done ?? "-"}</td>
-                    <td className={td}>
-                      {s.done ? (
-                        /* 낸 뒤에도 고치는 길과 처음부터 다시 하는 길이 있다 */
-                        <span className="inline-flex flex-col items-center gap-0.5">
-                          <button type="button" className={btnSm}>
-                            수정하기
-                          </button>
-                          <button type="button" className={textBtn}>
-                            처음부터 다시
-                          </button>
-                        </span>
-                      ) : isSelfSurvey(key) ? (
-                        /* 학생 설문은 보낼 곳이 없다 — 본인이 여기서 바로 연다 */
-                        <button type="button" className={btnSm}>
-                          설문 작성
-                        </button>
-                      ) : s.sent ? (
-                        /* 이미 보냈으면 보냈다는 표시와 다시 보내는 길만 작게 둔다 */
-                        <span className="inline-flex flex-col items-center gap-0.5">
-                          <span className="text-[12px] font-bold text-emerald-700">
-                            발송완료 <span className="font-medium tabular-nums">{s.sent}</span>
+                      <td className={`${td} tabular-nums`}>{s.done ?? "-"}</td>
+                      <td className={td}>
+                        {s.done ? (
+                          /* 낸 뒤에도 고치는 길과 처음부터 다시 하는 길이 있다 */
+                          <span className="inline-flex flex-col items-center gap-0.5">
+                            <button type="button" className={btnSm}>
+                              수정하기
+                            </button>
+                            <button type="button" className={textBtn}>
+                              처음부터 다시
+                            </button>
                           </span>
-                          <button type="button" className={textBtn}>
-                            다시 보내기
+                        ) : isSelfSurvey(key) ? (
+                          /* 학생 설문은 보낼 곳이 없다 — 본인이 여기서 바로 연다 */
+                          <button type="button" className={btnSm}>
+                            설문 작성
                           </button>
-                        </span>
-                      ) : key === "guardian" && b.smsHref ? (
-                        <Link href={b.smsHref} className={btnSm}>
-                          문자 보내기
-                        </Link>
-                      ) : (
-                        <button type="button" className={btnSm}>
-                          문자 보내기
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        ) : s.sent ? (
+                          /* 이미 보냈으면 보냈다는 표시와 다시 보내는 길만 작게 둔다 */
+                          <span className="inline-flex flex-col items-center gap-0.5">
+                            <span className="text-[12px] font-bold text-emerald-700">
+                              발송완료 <span className="font-medium tabular-nums">{s.sent}</span>
+                            </span>
+                            <button type="button" className={textBtn}>
+                              다시 보내기
+                            </button>
+                          </span>
+                        ) : key === "guardian" && b.smsHref ? (
+                          <Link href={b.smsHref} className={btnSm}>
+                            문자 보내기
+                          </Link>
+                        ) : (
+                          <button type="button" className={btnSm}>
+                            문자 보내기
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-        <p className="mt-3 text-[12px] leading-relaxed text-soft-muted">
-          설문은 필수가 아닙니다. 다만 제출된 설문이 많을수록 결과 해석의 근거가 넓어지며, 리포트의
-          &lsquo;발견의 순간&rsquo;과 발현 조건 항목은 보호자 설문이 있어야 제공됩니다.
-        </p>
-      </section>
+          <p className="mt-3 text-[12px] leading-relaxed text-soft-muted">
+            설문은 필수가 아닙니다. 다만 제출된 설문이 많을수록 결과 해석의 근거가 넓어지며, 리포트의
+            &lsquo;발견의 순간&rsquo;과 발현 조건 항목은 보호자 설문이 있어야 제공됩니다.
+          </p>
+        </section>
+      )}
 
       {/* 최종 제출 */}
       <div className="mt-9 flex flex-wrap items-center justify-between gap-4 border-t border-soft-line pt-6">
@@ -925,5 +940,119 @@ function Board({ b }: { b: BoardData }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────── 응시 현황 · 카드 (/design2) ───────────────────────── */
+
+/**
+ * 내 진단 · 진단 한 건 — 응시 현황을 표 대신 카드로 (2026-10-28 사용자 물음 「카드 형태로 하는 건 별로일까?
+ * 임시로 이미지가 있다고 가정하고」 → /design2에 견줘 볼 수 있게 세움).
+ *
+ * 과목 셋이 저마다 할 일 하나(진단 시작 · 이어서 · 해석 작성)를 가진 판이라 카드가 맞는다 — 「구분 · 필수 과목」
+ * 칸이 없어도 되고, 단추가 카드 아래 한 자리에 모인다. 카드는 늘 세 칸 크기다 — 무료 진단은 시험 하나라 카드가
+ * 한 장이지만 줄을 다 차지하지 않고 한 칸 크기로 선다(사용자 지시). 설문은
+ * 문자 보내기 · 다시 보내기 같은 손잡이가 많아 표 그대로 두었다(뒤에 걷음 — 아래 cardViews). 처음에는
+ * 카드 위에 임시 이미지 자리를 두었다가 사용자 말로 뺐다 — 진행 상태 딱지는 과목 이름 오른쪽에 선다.
+ */
+export function StudentExamCards({ state }: { state: string }) {
+  const view = cardViews[state] ?? views[state] ?? doing;
+  return <Detail key={state} view={view} cards />;
+}
+
+const cardsTo = designLinks("student-exam-cards");
+
+/**
+ * 카드 시안의 최종 제출 — 설문 표가 없으니 「제출 완료」의 확인 창이 학생 · 학부모 설문을 냈는지 묻는다.
+ *   submitted     과목을 모두 냈고 학생 설문만 냈다 → 「제출 완료」가 final/missing으로
+ *   final         학생 · 학부모 설문을 모두 냈다 → 「모든 설문이 제출되었습니다」
+ *   final/missing 학부모 설문이 빠졌다 → 「지금 설문하기」
+ */
+const cardViews: Record<string, View> = {
+  "2026-4/e4/submitted": {
+    ...submitted,
+    board: { ...submitted.board, finalHref: cardsTo("2026-4/e4/final/missing") },
+  },
+  "2026-4/e4/final": { ...complete, popup: "final" },
+  "2026-4/e4/final/missing": { ...submitted, popup: "final" },
+};
+
+/** 진행 상태 딱지 — 과목 이름 오른쪽 */
+const cardTag: Record<LineState, string> = {
+  submitted: "bg-emerald-50 text-emerald-700",
+  reflecting: "bg-amber-50 text-amber-700",
+  "in-progress": "bg-amber-50 text-amber-700",
+  ready: "bg-slate-100 text-soft-muted",
+};
+
+function SubjectCards({ b, session }: { b: BoardData; session: string }) {
+  const free = !!b.free;
+  return (
+    /* 늘 세 칸 — 무료 진단처럼 카드가 하나여도 한 칸 크기로 선다 */
+    <ul className="grid gap-4 sm:grid-cols-3">
+      {b.lines.map((l) => {
+        const st = stateText[l.state];
+        const pct = l.total ? Math.round((l.answered / l.total) * 100) : 0;
+        const action = b.guardian ? (
+          <span className={`${btnSmMuted} w-full py-2.5 text-[13px]`}>열람 불가</span>
+        ) : l.state === "reflecting" ? (
+          <button type="button" className={`${btnGo} w-full`}>
+            해석 작성
+          </button>
+        ) : l.state === "submitted" ? (
+          <span className={`${btnSmMuted} w-full py-2.5 text-[13px]`}>완료</span>
+        ) : b.closed ? (
+          <span className={`${btnSmMuted} w-full py-2.5 text-[13px]`}>응시 기간 종료</span>
+        ) : (
+          <button type="button" onClick={() => examWindow(session)} className={`${btnGo} w-full`}>
+            {l.answered > 0 ? "이어서 풀기" : "진단 시작"}
+          </button>
+        );
+        return (
+          <li key={l.name} className="flex flex-col rounded-[14px] border border-soft-line bg-white">
+            <div className="flex flex-1 flex-col p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[17px] font-bold text-soft-ink">{free ? "무료 진단" : l.name}</p>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-bold ${cardTag[l.state]}`}
+                >
+                  {st.label}
+                </span>
+              </div>
+              <p className="mt-0.5 text-[12.5px] tabular-nums text-soft-muted">
+                {free ? `${l.name} · ` : ""}
+                {l.total}문항 · {l.limit}분{free ? " · 한 번에 이어서 응시" : ""}
+              </p>
+
+              {/* 얼마나 풀었나 */}
+              <div className="mt-4">
+                <div className="flex items-baseline justify-between text-[12px] tabular-nums">
+                  <span className="text-soft-muted">푼 문항</span>
+                  <span className="font-bold text-soft-ink">
+                    {l.answered} / {l.total}
+                  </span>
+                </div>
+                <div
+                  className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${free ? "무료 진단" : l.name} 푼 문항`}
+                >
+                  <div className="h-full rounded-full bg-soft-primary" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+
+              <p className="mt-3 min-h-[1.25rem] text-[12px] tabular-nums text-soft-muted">
+                {l.at ? `제출 ${l.at}` : l.state === "in-progress" ? "푸는 중 — 이어서 풀 수 있습니다" : ""}
+              </p>
+
+              <div className="mt-auto pt-3">{action}</div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
