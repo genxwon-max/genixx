@@ -280,9 +280,29 @@ const FILTERS: Filter<ItemDraft>[] = [
 
 type TabId = "all" | ItemState | "conflict";
 
-export default function ItemBank() {
-  const items = useItems();
+/** 고른 문항으로 비슷한 문항을 만들러 가는 곳 — AI 출제 판이 그 문항을 원본으로 고른 채 열린다 */
+const similarHref = (ids: string[]) => `/admin2/authoring?similar=${ids.join(",")}`;
+
+export default function ItemBank({
+  items: given,
+  chosen: startChosen = [],
+  hrefOf = similarHref,
+}: {
+  /** 늘어놓을 문항 — 디자인 보기만 넘긴다. 없으면 저장소의 문항 */
+  items?: ItemDraft[];
+  /** 처음부터 골라 둔 줄 — 디자인 보기만 넘긴다 */
+  chosen?: string[];
+  /** 「비슷한 문항 만들기」가 가는 곳 */
+  hrefOf?: (ids: string[]) => string;
+} = {}) {
+  const stored = useItems();
+  const items = given ?? stored;
   const [tab, setTab] = useState<TabId>("all");
+  /*
+   * 고른 줄 — 비슷한 문항을 만들 원본(2026-10-28). 고르는 표가 된 것은 「여럿 골라 비슷한 문항을 바로
+   * 만든다」가 이 목록에서 하는 일이 되었기 때문이다. 탭을 옮겨도 고른 것은 남는다.
+   */
+  const [chosen, setChosen] = useState<string[]>(startChosen);
 
   /* 기본 줄 순서 — 손이 가야 하는 상태를 위로. 같은 상태끼리는 코드 오름차순으로 못
      박는다. 저장소 배열 순서 그대로 두면 문항을 하나 만들 때마다 표가 다르게 서서
@@ -362,6 +382,25 @@ export default function ItemBank() {
         csv={ITEM_CSV}
         empty={current.empty}
         showCount={false}
+        selection={{
+          chosen,
+          onToggle: (id) =>
+            setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id])),
+          onToggleMany: (keys, on) =>
+            setChosen((c) => (on ? [...new Set([...c, ...keys])] : c.filter((id) => !keys.includes(id)))),
+          labelOf: (r) => r.code || r.id,
+        }}
+        toolbarExtra={
+          chosen.length > 0 ? (
+            <Link href={hrefOf(chosen)} className="a2-btn a2-btn-primary">
+              고른 {chosen.length}개로 비슷한 문항 만들기
+            </Link>
+          ) : (
+            <span className="a2-btn" aria-disabled title="표에서 원본으로 쓸 문항을 체크로 고르세요">
+              비슷한 문항 만들기
+            </span>
+          )
+        }
       />
     </>
   );

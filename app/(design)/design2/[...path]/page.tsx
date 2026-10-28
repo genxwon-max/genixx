@@ -6,6 +6,7 @@ import ItemCard from "@/components/design/screens/ItemCard";
 import { StudentExamCards } from "@/components/design/screens/StudentExamBoard";
 import SurveyAdmin, { SurveyLinkPopup } from "@/components/design/screens/SurveyAdmin";
 import { ItemRotation, ScreenGuard } from "@/components/design/screens/RotationGuard";
+import { AiAuthoring, ItemBankSimilar } from "@/components/design/screens/AiAuthoring";
 import {
   CbtCover,
   CbtFree,
@@ -38,6 +39,8 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "student-exam-cards": StudentExamCards,
   "survey-admin": SurveyAdmin,
   "survey-link-popup": SurveyLinkPopup,
+  "ai-authoring": AiAuthoring,
+  "item-bank-similar": ItemBankSimilar,
   "item-rotation": ItemRotation,
   "screen-guard": ScreenGuard,
 };
