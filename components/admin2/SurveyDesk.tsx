@@ -6,10 +6,15 @@ import {
   MAX_ITEMS,
   MAX_UPLOAD_BYTES,
   actionLabel,
+  blocksOf,
   diffForms,
   draftChanges,
   isSurveyLink,
   modeOf,
+  sectionsOf,
+  surveyKeyShort,
+  surveyKindLabel,
+  surveyKinds,
   surveyModeLabel,
   type SurveyMode,
   parseSurveyFile,
@@ -20,19 +25,33 @@ import {
   type SurveyDoc,
   type SurveyForm,
   type SurveyItem,
+  type SurveyKind,
   type SurveyLogEntry,
+  type NewSurvey,
+  type SurveyDocs,
   type SurveyOpen,
+  type SurveySection,
 } from "@/lib/surveyStore";
+import { SurveyPreview, surveyScale } from "@/components/exam/SurveyForm";
 import ReasonDialog from "./ReasonDialog";
+import SurveyCreateDialog from "./SurveyCreateDialog";
 import TableBox from "./TableBox";
 import { Body, PageHead, Panel, Status, Tab } from "./ui";
 
 /**
- * ADM-14 설문 관리 — 한 벌(갈래 × 학년대)을 고치고 발행하는 자리.
+ * ADM-14 설문지 한 벌을 고치고 발행하는 자리.
  *
  * 옛 콘솔의 설문 원본(components/admin/SurveyEditor.tsx, 2026-09-27 걷어 냄)을 이 콘솔의 모양으로
- * 다시 세웠다(2026-10-28). 그사이 설문지가 v1.0으로 바뀌어 묻는 방식이 셋(5점 척도 · 모두 고르기 ·
- * 서술)이 되었으므로 문항 탭도 셋이다.
+ * 다시 세웠다(2026-10-28).
+ *
+ * ── 응답자 창의 차례대로 고친다 (2026-10-28 사용자 요청) ──
+ * 처음에는 묻는 방식마다 탭을 갈라(척도 · 고르기 · 서술) 문항을 한 줄씩 적었다. 그러면 응답자가 받는 설문
+ * (/survey/[갈래] — 표지 → 응답 방법 → 구역마다 문항 카드)과 고치는 화면의 모양이 따로 놀아, 새로 만든
+ * 설문지가 어떤 설문이 되는지 알 수 없었다. 그래서 탭을 응답자 창의 차례로 다시 짰다.
+ *
+ *   설문 양식   응답 방식 · 표지(제목 · 응답자 · 안내문) · 응답 방법과 고지 문구 · 구역 구성
+ *   상세 설문   구역마다 그 방식의 문항 카드 — 구역 안에서 더하고 옮기고 지운다
+ *   미리보기    응답자 창과 같은 조각(components/exam/SurveyForm.tsx SurveyPreview)으로 초안 · 나가는 판
  *
  * ── 초안과 나가는 판 ──
  * 고치는 것은 모두 **초안**이고 고치는 즉시 저장된다. 응답자 화면은 「발행」을 눌러야 바뀐다 — 한 벌만
@@ -48,13 +67,12 @@ import { Body, PageHead, Panel, Status, Tab } from "./ui";
  * 벌과 손잡이(act)를 넘기고, 디자인 보기(/design2/admin2/surveys/…)는 값과 다음 상태로 가는 손잡이를 넘긴다.
  */
 
-export type SurveyTab = "items" | "choices" | "opens" | "texts" | "upload" | "log";
+export type SurveyTab = "form" | "detail" | "preview" | "upload" | "log";
 
 const tabs: { id: SurveyTab; label: string }[] = [
-  { id: "items", label: "척도 문항" },
-  { id: "choices", label: "고르기 문항" },
-  { id: "opens", label: "서술 문항" },
-  { id: "texts", label: "안내 문구" },
+  { id: "form", label: "설문 양식" },
+  { id: "detail", label: "상세 설문" },
+  { id: "preview", label: "미리보기" },
   { id: "upload", label: "파일로 올리기" },
   { id: "log", label: "변경 기록" },
 ];
@@ -63,29 +81,47 @@ const tabs: { id: SurveyTab; label: string }[] = [
 export type SurveyActs = {
   patch: (patch: Partial<SurveyForm>) => void;
   patchItem: (id: string, patch: Partial<Omit<SurveyItem, "id">>) => void;
-  addItem: () => void;
+  /** 그 구역(이름)에 문항을 더한다 */
+  addItem: (section: string) => void;
   removeItem: (id: string) => void;
   moveItem: (id: string, dir: 1 | -1) => void;
   patchChoice: (id: string, patch: Partial<Omit<SurveyChoice, "id">>) => void;
-  addChoice: () => void;
+  addChoice: (section: string) => void;
   removeChoice: (id: string) => void;
   patchOpen: (id: string, patch: Partial<Omit<SurveyOpen, "id">>) => void;
-  addOpen: () => void;
+  addOpen: (section: string) => void;
   removeOpen: (id: string) => void;
   moveEntry: (list: "choices" | "opens", id: string, dir: 1 | -1) => void;
+  addSection: (kind: SurveyKind) => void;
+  /** 구역 이름 · 도움말 — 같은 방식의 다른 구역과 이름이 겹치면 고치지 않고 false */
+  patchSection: (id: string, patch: Partial<Pick<SurveySection, "title" | "hint">>) => boolean;
+  moveSection: (id: string, dir: 1 | -1) => void;
+  removeSection: (id: string) => void;
   /** 다른 학년대에도 이 문항 쓰기 — 맞춘 벌 수를 돌려준다 */
   copyToOtherBands: () => number;
   upload: (texts: string[], mode: "append" | "replace", fileName: string) => void;
   discard: () => void;
   publish: (reason: string) => void;
   revert: (entryId: string, reason: string) => void;
+  /** 관리용 이름 고치기 */
+  rename: (name: string) => void;
+  /** 이 설문지를 응답자에게 내보낸다 — 같은 응답자 · 학년대에서 쓰던 것은 보관으로 */
+  activate: (reason: string) => void;
+  /** 복사해 새로 만들기 — 만들지 못했으면 까닭을 돌려준다(만든 뒤 옮겨 가는 일은 부르는 쪽이 한다) */
+  create: (spec: NewSurvey) => string | null;
 };
 
 /** 열려 있는 확인 창 */
-export type SurveyAsk = null | { mode: "publish" } | { mode: "revert"; entryId: string };
+export type SurveyAsk =
+  | null
+  | { mode: "publish" }
+  | { mode: "revert"; entryId: string }
+  | { mode: "activate" }
+  | { mode: "copy" };
 
 export default function SurveyDesk({
   doc,
+  docs,
   log,
   answered,
   mayEdit,
@@ -93,11 +129,13 @@ export default function SurveyDesk({
   by,
   back,
   acts,
-  tab: startTab = "items",
+  tab: startTab = "form",
   ask: startAsk = null,
   onTab,
 }: {
   doc: SurveyDoc;
+  /** 모든 설문지 — 「복사해 새로 만들기」 창과 「사용하기」 창이 지금 쓰는 설문지를 찾는다 */
+  docs: SurveyDocs;
   /** 이 벌의 기록 — 늦은 것이 위 */
   log: SurveyLogEntry[];
   /** 이 갈래로 이미 들어온 응답 수 — 발행 전에 짚는다 */
@@ -121,30 +159,47 @@ export default function SurveyDesk({
   const d = doc.draft;
   const mode = modeOf(d);
 
-  /* 외부 설문 링크로 받을 때는 문항이 나가지 않는다 — 문항 탭을 걷고 안내 문구 · 기록만 남긴다.
-     문항은 지우지 않으므로 직접 입력으로 되돌리면 그대로 다시 선다 */
-  const shown = mode === "link" ? tabs.filter((t) => t.id === "texts" || t.id === "log") : tabs;
+  /* 외부 설문 링크로 받을 때는 문항이 나가지 않는다 — 상세 설문 · 파일 탭을 걷는다. 문항은 지우지 않으므로
+     직접 입력으로 되돌리면 그대로 다시 선다 */
+  const shown =
+    mode === "link" ? tabs.filter((t) => t.id !== "detail" && t.id !== "upload") : tabs;
   const want = onTab ? startTab : tabState;
   const tab = shown.some((t) => t.id === want) ? want : shown[0].id;
   const goTab = (t: SurveyTab) => (onTab ? onTab(t) : setTab(t));
   const revertEntry = ask?.mode === "revert" ? log.find((e) => e.id === ask.entryId) : undefined;
+  /* 같은 응답자 · 학년대에서 지금 쓰는 설문지 — 이 설문지를 사용하면 보관으로 돌아간다 */
+  const inUse = Object.values(docs).find(
+    (x) => x.key === doc.key && x.band === doc.band && x.active,
+  );
 
-  const counts: Record<SurveyTab, number | undefined> = {
-    items: d.items.length,
-    choices: d.choices.length,
-    opens: d.opens.length,
-    texts: undefined,
-    upload: undefined,
+  const counts: Partial<Record<SurveyTab, number>> = {
+    detail: d.items.length + d.choices.length + d.opens.length,
     log: log.length,
   };
 
   return (
     <>
       <PageHead
-        title={`${band.label} ${d.title || doc.live.title}`}
+        title={doc.name}
         back={back}
         actions={
           <>
+            {doc.active ? <Status tone="ok">사용 중</Status> : <Status tone="muted">보관</Status>}
+            {mayEdit && (
+              <button type="button" className="a2-btn" onClick={() => setAsk({ mode: "copy" })}>
+                복사해 새로 만들기
+              </button>
+            )}
+            {!doc.active && (
+              <button
+                type="button"
+                className="a2-btn"
+                disabled={!mayPublish}
+                onClick={() => setAsk({ mode: "activate" })}
+              >
+                이 설문지 사용하기
+              </button>
+            )}
             {mayEdit && changes.length > 0 && (
               <button type="button" className="a2-btn" onClick={acts.discard}>
                 고친 것 버리기
@@ -173,17 +228,19 @@ export default function SurveyDesk({
       />
 
       <Body className="grid gap-3">
-        <ModePanel
-          mode={mode}
-          link={d.link ?? ""}
-          mayEdit={mayEdit}
-          onMode={(m) => acts.patch({ mode: m })}
-          onLink={(v) => acts.patch({ link: v })}
-        />
+        {tab === "form" && (
+          <ModePanel
+            mode={mode}
+            link={d.link ?? ""}
+            mayEdit={mayEdit}
+            onMode={(m) => acts.patch({ mode: m })}
+            onLink={(v) => acts.patch({ link: v })}
+          />
+        )}
 
         <Panel
           title={tabs.find((t) => t.id === tab)!.label}
-          meta={`${doc.code} · 지금 나가는 판 v${doc.liveVersion} · 발행 ${doc.publishedAt} · ${doc.publishedBy}`}
+          meta={`${surveyKeyShort[doc.key]} · ${band.label} · ${doc.code} · 판 v${doc.liveVersion} · 발행 ${doc.publishedAt} · ${doc.publishedBy}`}
           actions={
             changes.length > 0 ? (
               <Status tone="warn">발행하지 않은 수정 {changes.length}곳</Status>
@@ -192,15 +249,18 @@ export default function SurveyDesk({
             )
           }
         >
-          {!mayEdit && (
+          {!mayEdit && tab !== "preview" && (
             <p className="a2-note mb-3">
               보기만 할 수 있습니다. 고치는 것은 문항 작성 권한이 있는 사람이 합니다.
             </p>
           )}
-          {tab === "items" && <Items doc={doc} acts={acts} mayEdit={mayEdit} />}
-          {tab === "choices" && <Choices doc={doc} acts={acts} mayEdit={mayEdit} />}
-          {tab === "opens" && <Opens doc={doc} acts={acts} mayEdit={mayEdit} />}
-          {tab === "texts" && <Texts doc={doc} acts={acts} mayEdit={mayEdit} />}
+          {tab === "form" && (
+            <FormTab doc={doc} acts={acts} mayEdit={mayEdit} onDetail={() => goTab("detail")} />
+          )}
+          {tab === "detail" && (
+            <DetailTab doc={doc} acts={acts} mayEdit={mayEdit} onForm={() => goTab("form")} />
+          )}
+          {tab === "preview" && <PreviewTab doc={doc} changed={changes.length > 0} />}
           {tab === "upload" && <Upload doc={doc} acts={acts} mayEdit={mayEdit} />}
           {tab === "log" && (
             <History
@@ -213,10 +273,46 @@ export default function SurveyDesk({
         </Panel>
       </Body>
 
+      {ask?.mode === "activate" && (
+        <ReasonDialog
+          title={`「${doc.name}」을 사용합니다`}
+          lead={`누르는 즉시 ${surveyKeyShort[doc.key]} · ${band.label} 응답자에게 이 설문지의 v${doc.liveVersion}이 나갑니다. 지금 쓰는 설문지는 보관으로 돌아가고 지우지 않습니다. 발행하지 않은 수정은 나가지 않습니다.`}
+          lines={
+            inUse && inUse.id !== doc.id ? [`사용 중 — 「${inUse.name}」 → 「${doc.name}」`] : []
+          }
+          warnings={
+            changes.length > 0
+              ? [
+                  `발행하지 않은 수정이 ${changes.length}곳 있습니다. 먼저 발행해야 응답자에게 나갑니다.`,
+                ]
+              : []
+          }
+          confirmLabel="기록을 남기고 사용하기"
+          onClose={() => setAsk(null)}
+          onConfirm={(reason) => {
+            acts.activate(reason);
+            setAsk(null);
+          }}
+        />
+      )}
+
+      {ask?.mode === "copy" && (
+        <SurveyCreateDialog
+          docs={docs}
+          start={{ key: doc.key, band: doc.band, from: doc.id, name: `${doc.name} 복사` }}
+          onClose={() => setAsk(null)}
+          onCreate={acts.create}
+        />
+      )}
+
       {ask?.mode === "publish" && (
         <ReasonDialog
-          title={`${band.label} ${doc.live.title} — v${doc.liveVersion + 1}로 발행합니다`}
-          lead={`누르는 즉시 이 학년대 응답자의 화면이 새 판으로 바뀝니다. 다른 학년대는 그대로입니다. ${by} 님의 이름과 사유가 변경 기록과 감사 로그에 남습니다.`}
+          title={`${doc.name} — v${doc.liveVersion + 1}로 발행합니다`}
+          lead={
+            doc.active
+              ? `누르는 즉시 이 학년대 응답자의 화면이 새 판으로 바뀝니다. 다른 학년대는 그대로입니다. ${by} 님의 이름과 사유가 변경 기록과 감사 로그에 남습니다.`
+              : `이 설문지는 보관 중이라 응답자 화면은 바뀌지 않습니다. 「이 설문지 사용하기」를 눌러야 나갑니다. ${by} 님의 이름과 사유가 변경 기록과 감사 로그에 남습니다.`
+          }
           lines={changes}
           warnings={publishWarnings(doc, answered)}
           confirmLabel="기록을 남기고 발행"
@@ -295,8 +391,8 @@ function ModePanel({
       </div>
       {mode === "form" ? (
         <p className="a2-hint mt-2">
-          이 서비스의 설문지로 받습니다. 아래 문항이 응답자에게 나가고, 답은 리포트의 설문 점수에
-          들어갑니다.
+          이 서비스의 설문지로 받습니다. 아래 양식과 상세 설문의 문항이 응답자에게 나가고, 답은
+          리포트의 설문 점수에 들어갑니다.
         </p>
       ) : (
         <div className="mt-3 grid gap-2">
@@ -337,8 +433,8 @@ function ModePanel({
               <b>답은 이 서비스로 들어오지 않습니다.</b> 응답자 창에는 이 설문을 여는 단추와
               「제출했어요」가 서고, 제출 여부만 남습니다. 답 내용은 바깥 설문에서 모아 보셔야 하고
               리포트의 설문 점수에는 들어가지 않습니다. 누구의 답인지 가리도록 바깥 설문에 학생
-              이름과 접속코드를 묻는 칸을 두세요 — 응답자 창이 그 두 값을 보여 줍니다. 아래 문항은
-              그대로 남아 있어 직접 입력으로 되돌리면 다시 나갑니다.
+              이름과 접속코드를 묻는 칸을 두세요 — 응답자 창이 그 두 값을 보여 줍니다. 상세 설문의
+              문항은 그대로 남아 있어 직접 입력으로 되돌리면 다시 나갑니다.
             </span>
           </p>
         </div>
@@ -355,12 +451,14 @@ function RowTools({
   onUp,
   onDown,
   onRemove,
+  removeLabel = "삭제",
 }: {
   first: boolean;
   last: boolean;
   onUp: () => void;
   onDown: () => void;
   onRemove: () => void;
+  removeLabel?: string;
 }) {
   return (
     <div className="flex shrink-0 gap-1">
@@ -383,7 +481,7 @@ function RowTools({
         ↓
       </button>
       <button type="button" className="a2-btn a2-btn-sm a2-btn-danger" onClick={onRemove}>
-        삭제
+        {removeLabel}
       </button>
     </div>
   );
@@ -407,89 +505,377 @@ function Small({
   );
 }
 
-/* ───────────────────────── 척도 문항 ───────────────────────── */
+/** 설문 양식 안의 한 덩이 — 응답자 창의 카드 한 장에 맞선다 */
+function Part({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[4px] border border-(--a2-line)">
+      <header className="border-b border-(--a2-line) px-3 py-2">
+        <h3 className="a2-t-sm font-bold">{title}</h3>
+        {hint && <p className="a2-t-xs mt-0.5 text-(--a2-ink-3)">{hint}</p>}
+      </header>
+      <div className="p-3">{children}</div>
+    </section>
+  );
+}
 
-function Items({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayEdit: boolean }) {
-  const [askCopy, setAskCopy] = useState(false);
-  const [copied, setCopied] = useState<number | null>(null);
-  const items = doc.draft.items;
+/* ───────────────────────── 설문 양식 ───────────────────────── */
+
+/**
+ * 응답자 창의 틀 — 맨 위 표지 카드, 응답 방법 카드, 그리고 구역 머리들의 차례. 문항 글은 상세 설문에서
+ * 적는다. 구역 이름은 응답자 창의 구역 머리에 그대로 서고, 문항이 없는 구역은 응답자에게 보이지 않는다.
+ */
+function FormTab({
+  doc,
+  acts,
+  mayEdit,
+  onDetail,
+}: {
+  doc: SurveyDoc;
+  acts: SurveyActs;
+  mayEdit: boolean;
+  onDetail: () => void;
+}) {
+  const d = doc.draft;
+  const blocks = blocksOf(d);
+  const [askDrop, setAskDrop] = useState<string | null>(null);
 
   return (
-    <div>
+    <div className="grid gap-3">
+      <Small label="설문지 이름 — 관리용 · 응답자에게는 아래 제목이 보입니다 · 고치는 즉시 저장">
+        <input
+          className="a2-input"
+          value={doc.name}
+          disabled={!mayEdit}
+          onChange={(e) => acts.rename(e.target.value)}
+        />
+      </Small>
+
+      <Part title="1. 표지" hint="응답자 창 맨 위 카드 — 제목 · 안내문 · 대상 학생과 응답자">
+        <div className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Small label="제목">
+              <input
+                className="a2-input"
+                value={d.title}
+                disabled={!mayEdit}
+                onChange={(e) => acts.patch({ title: e.target.value })}
+              />
+            </Small>
+            <Small label="응답자">
+              <input
+                className="a2-input"
+                value={d.who}
+                disabled={!mayEdit}
+                onChange={(e) => acts.patch({ who: e.target.value })}
+                placeholder="보호자"
+              />
+            </Small>
+          </div>
+          <Small label="안내문">
+            <textarea
+              rows={3}
+              className="a2-textarea"
+              value={d.desc}
+              disabled={!mayEdit}
+              onChange={(e) => acts.patch({ desc: e.target.value })}
+            />
+          </Small>
+        </div>
+      </Part>
+
+      <Part
+        title="2. 응답 방법"
+        hint="5점 척도 문항이 있을 때 표지 아래에 섭니다 — 눈금 글은 설문지 v1.0에 적힌 그대로라 고치지 않습니다"
+      >
+        <ol className="flex flex-wrap gap-x-4 gap-y-1">
+          {surveyScale.map((label, v) => (
+            <li key={label} className="flex items-center gap-1.5 a2-t-sm">
+              <span className="a2-mono grid h-5 w-5 place-items-center rounded-full border border-(--a2-line) a2-t-xs">
+                {v + 1}
+              </span>
+              {label}
+            </li>
+          ))}
+        </ol>
+        <Small label="고지 문구 — 눈금 아래에 붙습니다 · 개인정보 안내와 어긋나지 않게" className="mt-3">
+          <textarea
+            rows={3}
+            className="a2-textarea"
+            value={d.note}
+            disabled={!mayEdit}
+            onChange={(e) => acts.patch({ note: e.target.value })}
+          />
+        </Small>
+      </Part>
+
+      <Part
+        title="3. 구역 구성"
+        hint="응답자 창은 이 차례대로 구역을 쌓습니다. 구역 하나는 한 가지 방식으로 묻고, 문항은 상세 설문에서 구역마다 넣습니다"
+      >
+        {blocks.length === 0 ? (
+          <p className="a2-hint py-4 text-center">구역이 없습니다. 아래에서 더하세요.</p>
+        ) : (
+          <ol className="grid gap-2">
+            {blocks.map((b, n) => (
+              <li key={b.section.id} className="rounded-[4px] border-l-4 border-(--a2-accent) bg-(--a2-row) p-2.5">
+                <div className="flex flex-wrap items-end gap-2">
+                  <span className="a2-mono w-6 pb-1.5 text-right a2-t-sm font-bold text-(--a2-ink-3)">
+                    {n + 1}
+                  </span>
+                  <Small label="구역 이름" className="min-w-[12rem] flex-1">
+                    <SectionTitle
+                      key={`${b.section.id}|${b.section.title}`}
+                      section={b.section}
+                      disabled={!mayEdit}
+                      onCommit={(title) => acts.patchSection(b.section.id, { title })}
+                    />
+                  </Small>
+                  <div className="grid gap-1">
+                    <span className="a2-label">묻는 방식</span>
+                    <span className="flex h-[2.125rem] items-center gap-2">
+                      <Status tone="info">{surveyKindLabel[b.kind]}</Status>
+                      <span className="a2-t-xs tabular-nums text-(--a2-ink-3)">
+                        문항 {b.rows.length}
+                      </span>
+                    </span>
+                  </div>
+                  {mayEdit && (
+                    <RowTools
+                      first={n === 0}
+                      last={n === blocks.length - 1}
+                      onUp={() => acts.moveSection(b.section.id, -1)}
+                      onDown={() => acts.moveSection(b.section.id, 1)}
+                      onRemove={() =>
+                        b.rows.length > 0 ? setAskDrop(b.section.id) : acts.removeSection(b.section.id)
+                      }
+                    />
+                  )}
+                </div>
+                <Small label="구역 도움말 — 구역 이름 아래 한 줄 · 비워 두어도 됩니다" className="mt-2 pl-8">
+                  <input
+                    className="a2-input"
+                    value={b.section.hint}
+                    disabled={!mayEdit}
+                    onChange={(e) => acts.patchSection(b.section.id, { hint: e.target.value })}
+                  />
+                </Small>
+                {askDrop === b.section.id && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-8">
+                    <span className="a2-t-sm font-bold text-(--a2-danger)">
+                      이 구역의 문항 {b.rows.length}개도 함께 지워집니다.
+                    </span>
+                    <button
+                      type="button"
+                      className="a2-btn a2-btn-sm a2-btn-danger"
+                      onClick={() => {
+                        acts.removeSection(b.section.id);
+                        setAskDrop(null);
+                      }}
+                    >
+                      구역과 문항 지우기
+                    </button>
+                    <button type="button" className="a2-btn a2-btn-sm" onClick={() => setAskDrop(null)}>
+                      그만두기
+                    </button>
+                  </div>
+                )}
+                {b.rows.length === 0 && (
+                  <p className="a2-t-xs mt-1.5 pl-8 text-(--a2-warn)">
+                    문항이 없어 응답자에게 보이지 않습니다 —{" "}
+                    <button type="button" className="underline" onClick={onDetail}>
+                      상세 설문에서 문항 넣기
+                    </button>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+        {mayEdit && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {surveyKinds.map((k) => (
+              <button key={k} type="button" className="a2-btn" onClick={() => acts.addSection(k)}>
+                + {surveyKindLabel[k]} 구역
+              </button>
+            ))}
+          </div>
+        )}
+      </Part>
+    </div>
+  );
+}
+
+/**
+ * 구역 이름 칸 — 다 적고 칸을 떠날 때(또는 Enter) 고친다. 한 글자마다 고치면 「새 구역 2」를 「새 구역」으로
+ * 지우는 사이에 이웃 구역과 이름이 겹쳐 두 구역의 문항이 섞인다. 겹치면 고치지 않고 알린다.
+ */
+function SectionTitle({
+  section,
+  disabled,
+  onCommit,
+}: {
+  section: SurveySection;
+  disabled: boolean;
+  onCommit: (title: string) => boolean;
+}) {
+  const [text, setText] = useState(section.title);
+  const [error, setError] = useState<string | null>(null);
+  const commit = () => {
+    const t = text.trim();
+    if (t === section.title) return setText(t);
+    if (!t) return setError("구역 이름을 적어 주세요.");
+    if (!onCommit(t)) setError(`같은 ${surveyKindLabel[section.kind]} 구역에 이미 있는 이름입니다.`);
+  };
+  return (
+    <>
+      <input
+        className="a2-input"
+        value={text}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        placeholder="예) 자녀의 재능·역량 관찰"
+      />
+      {error && <span className="a2-t-xs font-bold text-(--a2-danger)">{error}</span>}
+    </>
+  );
+}
+
+/* ───────────────────────── 상세 설문 ───────────────────────── */
+
+/**
+ * 구역마다 그 방식의 문항 카드. 응답자 창과 같은 차례로 서고, 문항은 제 구역 안에서만 옮긴다. 다른 구역으로
+ * 보내려면 문항의 「구역」을 바꾼다.
+ */
+function DetailTab({
+  doc,
+  acts,
+  mayEdit,
+  onForm,
+}: {
+  doc: SurveyDoc;
+  acts: SurveyActs;
+  mayEdit: boolean;
+  onForm: () => void;
+}) {
+  const [askCopy, setAskCopy] = useState(false);
+  const [copied, setCopied] = useState<number | null>(null);
+  const d = doc.draft;
+  const blocks = blocksOf(d);
+  const sections = sectionsOf(d);
+  const titlesOf = (kind: SurveyKind) => sections.filter((s) => s.kind === kind).map((s) => s.title);
+
+  if (blocks.length === 0) {
+    return (
+      <div className="py-6 text-center">
+        <p className="a2-hint">구역이 없습니다. 설문 양식에서 구역을 먼저 더하세요.</p>
+        <button type="button" className="a2-btn mt-3" onClick={onForm}>
+          설문 양식으로
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
       <p className="a2-hint">
-        5점 척도로 답합니다. 최대 {MAX_ITEMS}개 · 측정 역량이 빈 문항은 점수에 들어가지 않습니다.
+        5점 척도는 다 답해야 제출되고 역량 점수가 됩니다(최대 {MAX_ITEMS}개 · 측정 역량이 빈 문항은
+        점수에 들어가지 않음). 모두 고르기 · 서술은 비워 두어도 제출되는 참고 자료입니다. 구역을
+        더하거나 이름을 바꾸는 것은 설문 양식에서 합니다.
       </p>
 
-      <ol className="mt-3 grid gap-2">
-        {items.map((item, n) => (
-          <li key={item.id} className="rounded-[4px] border border-(--a2-line) p-3">
-            <div className="flex flex-wrap items-end gap-2">
-              <span className="a2-mono w-6 pb-1.5 text-right a2-t-sm font-bold text-(--a2-ink-3)">
-                {n + 1}
-              </span>
-              <Small label="번호" className="w-20">
-                <input
-                  className="a2-input"
-                  value={item.no}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchItem(item.id, { no: e.target.value })}
-                  placeholder="P01"
-                />
-              </Small>
-              <Small label="구역" className="min-w-[10rem] flex-1">
-                <input
-                  className="a2-input"
-                  value={item.section}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchItem(item.id, { section: e.target.value })}
-                />
-              </Small>
-              <Small label="측정 역량" className="min-w-[10rem] flex-1">
-                <input
-                  className="a2-input"
-                  value={item.group}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchItem(item.id, { group: e.target.value })}
-                  placeholder="C01 논리적 사고"
-                />
-              </Small>
-              {mayEdit && (
-                <RowTools
-                  first={n === 0}
-                  last={n === items.length - 1}
-                  onUp={() => acts.moveItem(item.id, -1)}
-                  onDown={() => acts.moveItem(item.id, 1)}
-                  onRemove={() => acts.removeItem(item.id)}
-                />
-              )}
-            </div>
-            <textarea
-              rows={2}
-              className="a2-textarea mt-2"
-              value={item.text}
-              disabled={!mayEdit}
-              onChange={(e) => acts.patchItem(item.id, { text: e.target.value })}
-              placeholder="예) 아이는 관심 있는 주제를 만나면 시키지 않아도 오래 파고듭니다."
-              aria-label={`${n + 1}번 문항`}
-            />
-          </li>
-        ))}
-      </ol>
-
-      {items.length === 0 && (
-        <p className="a2-hint py-6 text-center">문항이 없습니다. 아래에서 더하세요.</p>
-      )}
+      {blocks.map((b, n) => (
+        <section key={b.section.id} className="rounded-[4px] border border-(--a2-line)">
+          <header className="flex flex-wrap items-center gap-2 border-b border-l-4 border-(--a2-line) border-l-(--a2-accent) px-3 py-2">
+            <span className="a2-mono a2-t-xs text-(--a2-ink-3)">구역 {n + 1}</span>
+            <h3 className="a2-t-sm font-bold">{b.section.title || "(이름 없는 구역)"}</h3>
+            <Status tone="info">{surveyKindLabel[b.kind]}</Status>
+            <span className="a2-t-xs tabular-nums text-(--a2-ink-3)">문항 {b.rows.length}</span>
+            {b.section.hint && (
+              <span className="a2-t-xs basis-full text-(--a2-ink-3)">{b.section.hint}</span>
+            )}
+          </header>
+          <div className="p-3">
+            {b.rows.length === 0 && (
+              <p className="a2-hint pb-2">
+                이 구역에 문항이 없습니다 — 응답자에게는 보이지 않습니다.
+              </p>
+            )}
+            <ol className="grid gap-2">
+              {b.kind === "scale" &&
+                b.rows.map((item, i) => (
+                  <ScaleRow
+                    key={item.id}
+                    item={item}
+                    n={i}
+                    last={i === b.rows.length - 1}
+                    sections={titlesOf("scale")}
+                    acts={acts}
+                    mayEdit={mayEdit}
+                  />
+                ))}
+              {b.kind === "choice" &&
+                b.rows.map((c, i) => (
+                  <ChoiceRow
+                    key={c.id}
+                    choice={c}
+                    n={i}
+                    last={i === b.rows.length - 1}
+                    sections={titlesOf("choice")}
+                    acts={acts}
+                    mayEdit={mayEdit}
+                  />
+                ))}
+              {b.kind === "open" &&
+                b.rows.map((o, i) => (
+                  <OpenRow
+                    key={o.id}
+                    open={o}
+                    n={i}
+                    last={i === b.rows.length - 1}
+                    sections={titlesOf("open")}
+                    acts={acts}
+                    mayEdit={mayEdit}
+                  />
+                ))}
+            </ol>
+            {mayEdit && (
+              <button
+                type="button"
+                className="a2-btn mt-2"
+                disabled={b.kind === "scale" && d.items.length >= MAX_ITEMS}
+                onClick={() =>
+                  b.kind === "scale"
+                    ? acts.addItem(b.section.title)
+                    : b.kind === "choice"
+                      ? acts.addChoice(b.section.title)
+                      : acts.addOpen(b.section.title)
+                }
+              >
+                + 이 구역에 {surveyKindLabel[b.kind]} 문항 추가
+              </button>
+            )}
+          </div>
+        </section>
+      ))}
 
       {mayEdit && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            className="a2-btn"
-            disabled={items.length >= MAX_ITEMS}
-            onClick={acts.addItem}
-          >
-            + 문항 추가
-          </button>
+        <div className="flex flex-wrap items-center gap-1.5">
           {askCopy ? (
             <button
               type="button"
@@ -509,13 +895,13 @@ function Items({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayEd
         </div>
       )}
       {askCopy && (
-        <p className="mt-2 a2-t-sm font-bold text-(--a2-danger)">
-          다른 학년대 초안의 척도 · 고르기 · 서술 문항이 이 벌과 똑같이 바뀝니다. 나가는 판은
-          그대로라, 학년대마다 따로 발행해야 응답자에게 나갑니다.
+        <p className="a2-t-sm font-bold text-(--a2-danger)">
+          다른 학년대에서 사용 중인 설문지 초안의 구역과 문항이 이 설문지와 똑같이 바뀝니다. 나가는
+          판은 그대로라, 학년대마다 따로 발행해야 응답자에게 나갑니다.
         </p>
       )}
       {copied !== null && (
-        <p className="a2-note mt-2">
+        <p className="a2-note">
           다른 학년대 {copied}곳의 초안을 이 문항으로 맞췄습니다. 목록에서 그 학년대를 열어 확인한
           뒤 발행하세요.
         </p>
@@ -524,204 +910,310 @@ function Items({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayEd
   );
 }
 
-/* ───────────────────────── 고르기 문항 ───────────────────────── */
-
-function Choices({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayEdit: boolean }) {
-  const list = doc.draft.choices;
+/** 문항 카드의 머리 줄 — 차례 · 번호 · (척도면 측정 역량) · 구역 · 손잡이 */
+function RowHead({
+  n,
+  last,
+  no,
+  section,
+  sections,
+  mayEdit,
+  onNo,
+  onSection,
+  onMove,
+  onRemove,
+  children,
+}: {
+  n: number;
+  last: boolean;
+  no: string;
+  section: string;
+  sections: string[];
+  mayEdit: boolean;
+  onNo: (v: string) => void;
+  onSection: (v: string) => void;
+  onMove: (dir: 1 | -1) => void;
+  onRemove: () => void;
+  children?: React.ReactNode;
+}) {
   return (
-    <div>
-      <p className="a2-hint">
-        해당하는 것을 모두 고르는 문항입니다. 점수로 세지 않고 해석 · 면담의 참고 자료가 됩니다.
-      </p>
-      <ol className="mt-3 grid gap-2">
-        {list.map((c, n) => (
-          <li key={c.id} className="rounded-[4px] border border-(--a2-line) p-3">
-            <div className="flex flex-wrap items-end gap-2">
-              <span className="a2-mono w-6 pb-1.5 text-right a2-t-sm font-bold text-(--a2-ink-3)">
-                {n + 1}
-              </span>
-              <Small label="번호" className="w-20">
-                <input
-                  className="a2-input"
-                  value={c.no}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchChoice(c.id, { no: e.target.value })}
-                />
-              </Small>
-              <Small label="구역" className="min-w-[10rem] flex-1">
-                <input
-                  className="a2-input"
-                  value={c.section}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchChoice(c.id, { section: e.target.value })}
-                />
-              </Small>
-              {mayEdit && (
-                <RowTools
-                  first={n === 0}
-                  last={n === list.length - 1}
-                  onUp={() => acts.moveEntry("choices", c.id, -1)}
-                  onDown={() => acts.moveEntry("choices", c.id, 1)}
-                  onRemove={() => acts.removeChoice(c.id)}
-                />
-              )}
-            </div>
-            <Small label="질문" className="mt-2">
-              <input
-                className="a2-input"
-                value={c.label}
-                disabled={!mayEdit}
-                onChange={(e) => acts.patchChoice(c.id, { label: e.target.value })}
-              />
-            </Small>
-            <Small
-              label={`보기 — 한 줄에 하나 · ${c.options.filter((o) => o.trim()).length}개`}
-              className="mt-2"
-            >
-              <textarea
-                rows={Math.max(3, c.options.length)}
-                className="a2-textarea"
-                value={c.options.join("\n")}
-                disabled={!mayEdit}
-                onChange={(e) => acts.patchChoice(c.id, { options: e.target.value.split("\n") })}
-              />
-            </Small>
-          </li>
-        ))}
-      </ol>
-      {list.length === 0 && <p className="a2-hint py-6 text-center">고르기 문항이 없습니다.</p>}
+    <div className="flex flex-wrap items-end gap-2">
+      <span className="a2-mono w-6 pb-1.5 text-right a2-t-sm font-bold text-(--a2-ink-3)">
+        {n + 1}
+      </span>
+      <Small label="번호" className="w-20">
+        <input
+          className="a2-input"
+          value={no}
+          disabled={!mayEdit}
+          onChange={(e) => onNo(e.target.value)}
+          placeholder="P01"
+        />
+      </Small>
+      {children}
+      {sections.length > 1 && (
+        <Small label="구역" className="min-w-[10rem] flex-1">
+          <select
+            className="a2-select"
+            value={section}
+            disabled={!mayEdit}
+            onChange={(e) => onSection(e.target.value)}
+          >
+            {sections.map((t) => (
+              <option key={t} value={t}>
+                {t || "(이름 없는 구역)"}
+              </option>
+            ))}
+          </select>
+        </Small>
+      )}
       {mayEdit && (
-        <button type="button" className="a2-btn mt-3" onClick={acts.addChoice}>
-          + 고르기 문항 추가
-        </button>
+        <div className="ml-auto">
+          <RowTools
+            first={n === 0}
+            last={last}
+            onUp={() => onMove(-1)}
+            onDown={() => onMove(1)}
+            onRemove={onRemove}
+          />
+        </div>
       )}
     </div>
   );
 }
 
-/* ───────────────────────── 서술 문항 ───────────────────────── */
+type RowProps = {
+  n: number;
+  last: boolean;
+  sections: string[];
+  acts: SurveyActs;
+  mayEdit: boolean;
+};
 
-function Opens({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayEdit: boolean }) {
-  const list = doc.draft.opens;
+function ScaleRow({ item, n, last, sections, acts, mayEdit }: RowProps & { item: SurveyItem }) {
   return (
-    <div>
-      <p className="a2-hint">
-        글로 답하는 문항입니다. 점수로 세지 않고, 쓴 표현 그대로 리포트에 인용될 수 있습니다.
-      </p>
-      <ol className="mt-3 grid gap-2">
-        {list.map((o, n) => (
-          <li key={o.id} className="rounded-[4px] border border-(--a2-line) p-3">
-            <div className="flex flex-wrap items-end gap-2">
-              <span className="a2-mono w-6 pb-1.5 text-right a2-t-sm font-bold text-(--a2-ink-3)">
-                {n + 1}
-              </span>
-              <Small label="번호" className="w-20">
-                <input
-                  className="a2-input"
-                  value={o.no}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchOpen(o.id, { no: e.target.value })}
-                />
-              </Small>
-              <Small label="구역" className="min-w-[10rem] flex-1">
-                <input
-                  className="a2-input"
-                  value={o.section}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchOpen(o.id, { section: e.target.value })}
-                />
-              </Small>
-              {mayEdit && (
-                <RowTools
-                  first={n === 0}
-                  last={n === list.length - 1}
-                  onUp={() => acts.moveEntry("opens", o.id, -1)}
-                  onDown={() => acts.moveEntry("opens", o.id, 1)}
-                  onRemove={() => acts.removeOpen(o.id)}
-                />
-              )}
-            </div>
-            <Small label="질문" className="mt-2">
-              <input
-                className="a2-input"
-                value={o.label}
-                disabled={!mayEdit}
-                onChange={(e) => acts.patchOpen(o.id, { label: e.target.value })}
-              />
-            </Small>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <Small label="도움말">
-                <input
-                  className="a2-input"
-                  value={o.hint}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchOpen(o.id, { hint: e.target.value })}
-                />
-              </Small>
-              <Small label="예시글">
-                <input
-                  className="a2-input"
-                  value={o.placeholder}
-                  disabled={!mayEdit}
-                  onChange={(e) => acts.patchOpen(o.id, { placeholder: e.target.value })}
-                />
-              </Small>
-            </div>
-          </li>
-        ))}
-      </ol>
-      {list.length === 0 && <p className="a2-hint py-6 text-center">서술 문항이 없습니다.</p>}
-      {mayEdit && (
-        <button type="button" className="a2-btn mt-3" onClick={acts.addOpen}>
-          + 서술 문항 추가
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ───────────────────────── 안내 문구 ───────────────────────── */
-
-function Texts({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayEdit: boolean }) {
-  const d = doc.draft;
-  return (
-    <div className="grid gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Small label="제목">
+    <li className="rounded-[4px] border border-(--a2-line) p-3">
+      <RowHead
+        n={n}
+        last={last}
+        no={item.no}
+        section={item.section}
+        sections={sections}
+        mayEdit={mayEdit}
+        onNo={(no) => acts.patchItem(item.id, { no })}
+        onSection={(section) => acts.patchItem(item.id, { section })}
+        onMove={(dir) => acts.moveItem(item.id, dir)}
+        onRemove={() => acts.removeItem(item.id)}
+      >
+        <Small label="측정 역량" className="min-w-[10rem] flex-1">
           <input
             className="a2-input"
-            value={d.title}
+            value={item.group}
             disabled={!mayEdit}
-            onChange={(e) => acts.patch({ title: e.target.value })}
+            onChange={(e) => acts.patchItem(item.id, { group: e.target.value })}
+            placeholder="C01 논리적 사고"
           />
         </Small>
-        <Small label="응답자">
+      </RowHead>
+      <textarea
+        rows={2}
+        className="a2-textarea mt-2"
+        value={item.text}
+        disabled={!mayEdit}
+        onChange={(e) => acts.patchItem(item.id, { text: e.target.value })}
+        placeholder="예) 아이는 관심 있는 주제를 만나면 시키지 않아도 오래 파고듭니다."
+        aria-label={`${n + 1}번 문항`}
+      />
+      {/* 응답자가 받는 눈금 — 고치는 칸이 아니라 이 문항이 어떻게 답해지는지 보여 준다 */}
+      <div aria-hidden className="mt-2 flex items-center gap-2 a2-t-xs text-(--a2-ink-4)">
+        <span>{surveyScale[0]}</span>
+        {surveyScale.map((l, v) => (
+          <span
+            key={l}
+            className="a2-mono grid h-5 w-5 place-items-center rounded-full border border-(--a2-line)"
+          >
+            {v + 1}
+          </span>
+        ))}
+        <span>{surveyScale[surveyScale.length - 1]}</span>
+      </div>
+    </li>
+  );
+}
+
+function ChoiceRow({ choice: c, n, last, sections, acts, mayEdit }: RowProps & { choice: SurveyChoice }) {
+  const setOption = (i: number, v: string) =>
+    acts.patchChoice(c.id, { options: c.options.map((o, k) => (k === i ? v : o)) });
+  return (
+    <li className="rounded-[4px] border border-(--a2-line) p-3">
+      <RowHead
+        n={n}
+        last={last}
+        no={c.no}
+        section={c.section}
+        sections={sections}
+        mayEdit={mayEdit}
+        onNo={(no) => acts.patchChoice(c.id, { no })}
+        onSection={(section) => acts.patchChoice(c.id, { section })}
+        onMove={(dir) => acts.moveEntry("choices", c.id, dir)}
+        onRemove={() => acts.removeChoice(c.id)}
+      />
+      <Small label="질문" className="mt-2">
+        <input
+          className="a2-input"
+          value={c.label}
+          disabled={!mayEdit}
+          onChange={(e) => acts.patchChoice(c.id, { label: e.target.value })}
+          placeholder="예) 나는 다음 활동을 좋아한다."
+        />
+      </Small>
+      <div className="mt-2 grid gap-1">
+        <span className="a2-label">보기 — 응답자는 해당되는 것을 모두 고릅니다 · {c.options.filter((o) => o.trim()).length}개</span>
+        <ul className="grid gap-1 sm:grid-cols-2">
+          {c.options.map((o, i) => (
+            <li key={i} className="flex items-center gap-1.5">
+              <span aria-hidden className="h-3.5 w-3.5 shrink-0 rounded-[2px] border-2 border-(--a2-ink-4)" />
+              <input
+                className="a2-input"
+                value={o}
+                disabled={!mayEdit}
+                onChange={(e) => setOption(i, e.target.value)}
+                placeholder={`보기 ${i + 1}`}
+                aria-label={`보기 ${i + 1}`}
+              />
+              {mayEdit && (
+                <button
+                  type="button"
+                  className="a2-btn a2-btn-sm"
+                  aria-label={`보기 ${i + 1} 지우기`}
+                  onClick={() => acts.patchChoice(c.id, { options: c.options.filter((_, k) => k !== i) })}
+                >
+                  ×
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {mayEdit && (
+          <button
+            type="button"
+            className="a2-btn a2-btn-sm justify-self-start"
+            onClick={() => acts.patchChoice(c.id, { options: [...c.options, ""] })}
+          >
+            + 보기 추가
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function OpenRow({ open: o, n, last, sections, acts, mayEdit }: RowProps & { open: SurveyOpen }) {
+  return (
+    <li className="rounded-[4px] border border-(--a2-line) p-3">
+      <RowHead
+        n={n}
+        last={last}
+        no={o.no}
+        section={o.section}
+        sections={sections}
+        mayEdit={mayEdit}
+        onNo={(no) => acts.patchOpen(o.id, { no })}
+        onSection={(section) => acts.patchOpen(o.id, { section })}
+        onMove={(dir) => acts.moveEntry("opens", o.id, dir)}
+        onRemove={() => acts.removeOpen(o.id)}
+      />
+      <Small label="질문" className="mt-2">
+        <input
+          className="a2-input"
+          value={o.label}
+          disabled={!mayEdit}
+          onChange={(e) => acts.patchOpen(o.id, { label: e.target.value })}
+          placeholder="예) 자녀가 유난히 오래 몰입하는 활동은 무엇입니까?"
+        />
+      </Small>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <Small label="도움말 — 질문 아래 한 줄">
           <input
             className="a2-input"
-            value={d.who}
+            value={o.hint}
             disabled={!mayEdit}
-            onChange={(e) => acts.patch({ who: e.target.value })}
+            onChange={(e) => acts.patchOpen(o.id, { hint: e.target.value })}
+          />
+        </Small>
+        <Small label="예시글 — 빈 답 칸에 흐리게">
+          <input
+            className="a2-input"
+            value={o.placeholder}
+            disabled={!mayEdit}
+            onChange={(e) => acts.patchOpen(o.id, { placeholder: e.target.value })}
+            placeholder="내 답변"
           />
         </Small>
       </div>
-      <Small label="안내문">
-        <textarea
-          rows={3}
-          className="a2-textarea"
-          value={d.desc}
-          disabled={!mayEdit}
-          onChange={(e) => acts.patch({ desc: e.target.value })}
-        />
-      </Small>
-      <Small label="고지 문구 — 개인정보 안내와 어긋나지 않게">
-        <textarea
-          rows={3}
-          className="a2-textarea"
-          value={d.note}
-          disabled={!mayEdit}
-          onChange={(e) => acts.patch({ note: e.target.value })}
-        />
-      </Small>
+    </li>
+  );
+}
+
+/* ───────────────────────── 미리보기 ───────────────────────── */
+
+/**
+ * 응답자 창을 그대로 띄운다 — 같은 조각이라 여기서 보이는 것이 응답자가 받는 것이다. 발행하지 않은 수정이
+ * 있으면 초안과 지금 나가는 판을 바꿔 볼 수 있다. 눌러 보고 적어 볼 수 있지만 저장되지 않는다.
+ */
+function PreviewTab({ doc, changed }: { doc: SurveyDoc; changed: boolean }) {
+  const [which, setWhich] = useState<"draft" | "live">("draft");
+  const form = which === "draft" ? doc.draft : doc.live;
+  const version = which === "draft" && changed ? doc.liveVersion + 1 : doc.liveVersion;
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        {changed ? (
+          <div role="radiogroup" aria-label="미리 볼 판" className="flex gap-1.5">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={which === "draft"}
+              onClick={() => setWhich("draft")}
+              className={which === "draft" ? "a2-btn a2-btn-dark" : "a2-btn"}
+            >
+              고치는 중인 초안 · 발행하면 v{doc.liveVersion + 1}
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={which === "live"}
+              onClick={() => setWhich("live")}
+              className={which === "live" ? "a2-btn a2-btn-dark" : "a2-btn"}
+            >
+              지금 나가는 판 v{doc.liveVersion}
+            </button>
+          </div>
+        ) : (
+          <Status tone="muted">초안과 나가는 판 v{doc.liveVersion}이 같습니다</Status>
+        )}
+        <span className="a2-hint">
+          응답자 창 그대로입니다. 눌러 보고 적어 볼 수 있지만 저장되지 않습니다.
+          {!doc.active && " 이 설문지는 보관 중이라 지금은 응답자에게 나가지 않습니다."}
+        </span>
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-[4px] border border-(--a2-line)">
+        <div className="flex items-center gap-2 border-b border-(--a2-line) px-3 py-1.5 a2-t-xs text-(--a2-ink-3)">
+          <span aria-hidden className="flex gap-1">
+            <span className="h-2 w-2 rounded-full bg-(--a2-line)" />
+            <span className="h-2 w-2 rounded-full bg-(--a2-line)" />
+            <span className="h-2 w-2 rounded-full bg-(--a2-line)" />
+          </span>
+          응답자 창 · /survey/{doc.key}
+        </div>
+        <div
+          key={which}
+          className="h-[70vh] min-h-[520px] overflow-y-auto bg-exam-bg text-exam-text"
+        >
+          <SurveyPreview form={form} version={version} studentName="(예시 학생)" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -770,8 +1262,9 @@ function Upload({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayE
   return (
     <div>
       <p className="a2-hint">
-        한 줄에 척도 문항 하나로 읽습니다. 줄 앞의 「1.」 「-」 같은 번호는 떼어 냅니다. CSV · TXT ·
-        TSV · JSON, {Math.round(MAX_UPLOAD_BYTES / 1024)}KB까지. 이 학년대의 초안에만 들어갑니다.
+        한 줄에 5점 척도 문항 하나로 읽습니다. 줄 앞의 「1.」 「-」 같은 번호는 떼어 냅니다. CSV · TXT ·
+        TSV · JSON, {Math.round(MAX_UPLOAD_BYTES / 1024)}KB까지. 이 설문지의 초안에만 들어가고, 붙이면 마지막
+        척도 문항의 구역에, 바꾸면 첫 척도 구역에 들어갑니다.
       </p>
       <div
         onDragOver={(e) => {
@@ -866,7 +1359,14 @@ function Upload({ doc, acts, mayEdit }: { doc: SurveyDoc; acts: SurveyActs; mayE
 
 /* ───────────────────────── 변경 기록 ───────────────────────── */
 
-const actionTone = { publish: "ok", revert: "warn", upload: "info", discard: "muted" } as const;
+const actionTone = {
+  publish: "ok",
+  revert: "warn",
+  upload: "info",
+  discard: "muted",
+  create: "info",
+  activate: "ok",
+} as const;
 
 function History({
   entries,
