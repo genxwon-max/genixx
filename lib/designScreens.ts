@@ -65,16 +65,27 @@ export type DesignState = {
   note?: string;
 };
 
+/**
+ * 디자인을 모아 두는 구역 — 주소 맨 앞이 된다.
+ *
+ *   design   지금까지의 디자인 전부
+ *   design2  2026-10-28 원안지 양식(10.22) 수정분만 따로(사용자 요청). 이번에 고친 화면을 그 전 디자인과
+ *            섞지 않고 한 곳에서 넘기려는 것이다
+ */
+export type DesignArea = "design" | "design2";
+
 export type DesignScreen = {
-  /** 화면 컴포넌트를 찾는 열쇠 (app/(design)/design/[...path]/page.tsx) */
+  /** 화면 컴포넌트를 찾는 열쇠 (app/(design)/design/[...path]/page.tsx · design2/[...path]/page.tsx) */
   id: string;
+  /** 어느 구역의 디자인인가 — 적지 않으면 /design */
+  area?: DesignArea;
   zone: DesignZone;
   name: string;
   /** WBS v4.3 번호 */
   wbs: string;
   /** 실제 서비스에서 이 화면이 놓일 주소 */
   real: string;
-  /** 디자인 주소 — 앞에 /design이 붙는다 */
+  /** 디자인 주소 — 앞에 /design(또는 area)이 붙는다 */
   base: string;
   states: DesignState[];
 };
@@ -831,6 +842,7 @@ export const designScreens: DesignScreen[] = [
   /* ── 문항 상세에 원안지 양식(10.22)의 항목을 얹음(2026-10-28) — 화면 모양은 그대로 ── */
   {
     id: "item-card",
+    area: "design2",
     zone: "admin2",
     name: "문항 상세 · 원안지 양식(10.22) 항목",
     wbs: "ADM-04-1",
@@ -1012,9 +1024,12 @@ export const designScreens: DesignScreen[] = [
   },
 ];
 
-/** 상태의 주소 — /design/admin2/approvals/EX-2610-004/approve */
+/** 상태의 주소 — /design/admin2/approvals/EX-2610-004/approve · /design2/admin2/items/IT-2702 */
 export const designHref = (screen: DesignScreen, slug: string) =>
-  `/design${screen.base}${slug ? `/${slug}` : ""}`;
+  `/${screen.area ?? "design"}${screen.base}${slug ? `/${slug}` : ""}`;
+
+/** 그 구역의 화면들 */
+export const screensIn = (area: DesignArea) => designScreens.filter((s) => (s.area ?? "design") === area);
 
 export const designScreenOf = (id: string) => designScreens.find((s) => s.id === id)!;
 
@@ -1026,17 +1041,20 @@ export const designLinks = (id: string) => {
 
 export type DesignHit = { screen: DesignScreen; state: DesignState };
 
-/** 주소(앞의 /design을 뗀 것)로 화면과 상태를 찾는다 */
-export function findDesign(path: string): DesignHit | null {
-  const full = `/design/${path}`;
-  for (const screen of designScreens) {
+/** 주소(앞의 /design · /design2를 뗀 것)로 그 구역의 화면과 상태를 찾는다 */
+export function findDesign(path: string, area: DesignArea = "design"): DesignHit | null {
+  const full = `/${area}/${path}`;
+  for (const screen of screensIn(area)) {
     const state = screen.states.find((s) => designHref(screen, s.slug) === full);
     if (state) return { screen, state };
   }
   return null;
 }
 
-/** 열리는 주소 전부 — 앞의 /design/을 뗀 조각 배열 */
-export const designPaths = designScreens.flatMap((screen) =>
-  screen.states.map((s) => designHref(screen, s.slug).slice("/design/".length).split("/")),
-);
+/** 그 구역에서 열리는 주소 전부 — 앞의 /design/을 뗀 조각 배열 */
+export const designPathsOf = (area: DesignArea) =>
+  screensIn(area).flatMap((screen) =>
+    screen.states.map((s) => designHref(screen, s.slug).slice(`/${area}/`.length).split("/")),
+  );
+
+export const designPaths = designPathsOf("design");
