@@ -40,6 +40,7 @@ import {
   type SurveyKey,
 } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
+import { gradeLabels, gradeValue } from "@/lib/childOptions";
 import { surveyWindow } from "@/lib/popup";
 import SectionTitle from "./SectionTitle";
 import Toast from "./Toast";
@@ -56,6 +57,7 @@ import {
   tdStrong,
   th,
 } from "./ui";
+import GradeOptions from "@/components/GradeOptions";
 
 type Mode = Owner;
 
@@ -310,13 +312,19 @@ export default function StudentRegistrar({
                   <label htmlFor="r-grade" className={fieldLabel}>
                     학년 <span className="font-normal text-soft-muted">(선택)</span>
                   </label>
-                  <input
+                  <select
                     id="r-grade"
                     value={form.grade ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
-                    placeholder="초등 4학년"
                     className={`mt-2 ${input}`}
-                  />
+                  >
+                    <option value="">선택 안 함</option>
+                    {/* 앞서 손으로 적어 둔 값도 잃지 않게 그대로 한 줄 세운다 */}
+                    {form.grade && !gradeLabels.includes(form.grade) && (
+                      <option value={form.grade}>{form.grade}</option>
+                    )}
+                    <GradeOptions valueOf={gradeValue.long} />
+                  </select>
                 </div>
                 {isDirector && (
                   <div>

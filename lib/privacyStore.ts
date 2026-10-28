@@ -261,8 +261,8 @@ function build(): PrivacyRow[] {
   }
 
   for (const s of students) {
-    /* 학년으로 만 14세 미만을 가른다 — 초등은 전부 미만이라 법정대리인 동의가 필수다 */
-    const minor = !s.grade.startsWith("중") && !s.grade.startsWith("고");
+    /* 학년으로 만 14세 미만을 가른다 — 초등과 중1(만 13세)은 미만이라 법정대리인 동의가 필수다 */
+    const minor = s.grade.startsWith("초") || s.grade === "중1";
     const guardianOk = minor ? (r() > 0.06 ? "granted" : "none") : "none";
     const log: ConsentLog[] = [
       {

@@ -591,7 +591,8 @@ export type LiveInput = {
   typeDesc?: string;
 };
 
-const gradeShortOf = (grade: string) => grade.replace(/^(초등|중등|중학교|고등)\s*/, "") || grade;
+const gradeShortOf = (grade: string) =>
+  grade.replace(/^(초등학교|초등|중등|중학교|고등학교|고등)\s*/, "") || grade;
 
 /**
  * 예시 보고서를 바탕으로, 응시 기록에서 계산할 수 있는 값만 바꿔 끼운다.

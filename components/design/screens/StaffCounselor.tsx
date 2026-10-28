@@ -157,6 +157,7 @@ const cols: Col<Row>[] = [
     head: "최근 접속",
     width: "6.5rem",
     nowrap: true,
+    csv: (r) => r.lastSeen,
     cell: (r) => <span className="a2-mono a2-t-sm">{r.lastSeen}</span>,
   },
 ];

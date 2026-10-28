@@ -19,6 +19,7 @@
  * 말하는 셈이 된다.
  */
 
+import { gradeGroups, gradeValue } from "./childOptions";
 import { orgs as seedOrgs, staff as seedStaff, type OrgRow, type StaffRoleId } from "./admin";
 
 /* ───────────────────────── 씨앗 고정 난수 ───────────────────────── */
@@ -125,10 +126,35 @@ export const REGIONS = [
 
 const MAILS = ["gmail.com", "naver.com", "daum.net", "kakao.com", "hanmail.net"] as const;
 
-/** 학년 넷 — 진단평가 대상(초3~6)과 같다. 목록의 거르개는 「등장한 학년」만 쓰지만, 상세의
-    학년 고르개는 이 전부를 쓴다 — 아무도 없는 학년으로 진급한 학생을 옮길 자리가 없으면
-    그 칸은 못 고치는 칸이다 */
-export const GRADES = ["초3", "초4", "초5", "초6"] as const;
+/**
+ * 학년 열둘 — 초1~6 · 중1~3 · 고1~3(2026-10-28 사용자: 「모든 학년 선택은 이 열둘」). 상세의 학년 고르개와
+ * 목록의 학년 거르개가 이 전부를 쓴다 — 아무도 없는 학년으로 진급한 학생을 옮길 자리가 없으면 그 칸은 못
+ * 고치는 칸이다. 예시 학생은 지금처럼 진단 대상(초3~6) 안에서 뽑는다(SEED_GRADES).
+ */
+export const GRADES = [
+  "초1", "초2", "초3", "초4", "초5", "초6",
+  "중1", "중2", "중3",
+  "고1", "고2", "고3",
+] as const;
+
+const SEED_GRADES = ["초3", "초4", "초5", "초6"] as const;
+
+/** 거르개 선택지 — 「초등학교 ㄴ 1학년」처럼 학교급 아래에 묶는다(값은 「초1」) */
+export const gradeFilterOptions = (extra: string[] = []) => [
+  ...gradeGroups(gradeValue.short).flatMap((g) =>
+    g.options.map((o) => ({ value: o.value, label: o.label, group: g.label })),
+  ),
+  /* 열둘 밖의 글자가 데이터에 있으면 그대로 뒤에 세운다 — 거르지 못하는 줄이 생기지 않게 */
+  ...extra
+    .filter((v, i, all) => !(GRADES as readonly string[]).includes(v) && all.indexOf(v) === i)
+    .map((v) => ({ value: v, label: v })),
+];
+
+/** 초1 → 고3 차례. 「고 · 중 · 초」 가나다순으로는 학년이 뒤집힌다. 목록에 없는 글자는 맨 뒤 */
+export const gradeRank = (g: string) => {
+  const at = (GRADES as readonly string[]).indexOf(g);
+  return at < 0 ? GRADES.length : at;
+};
 
 /** 아이디 앞 두 글자만 남기고 가린 형태. 실제 이름과 이어지지 않게 따로 뽑는다 */
 const MAIL_HEADS = [
@@ -346,7 +372,7 @@ function makeStudents(count: number, from: readonly Omit<ParentRow, "kids">[]): 
         "",
       ),
       school: pick(r, SCHOOLS),
-      grade: pick(r, GRADES),
+      grade: pick(r, SEED_GRADES),
       guardian: parent.name,
       guardianId: parent.id,
       exam,

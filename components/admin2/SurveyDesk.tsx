@@ -1385,7 +1385,7 @@ function History({
       <p className="a2-hint mb-2">
         발행한 판은 그때 내보낸 설문 전체를 함께 보관해, 언제든 그 판으로 되돌릴 수 있습니다.
       </p>
-      <TableBox>
+      <TableBox download={"설문지 변경 기록"}>
         <table className="a2-table">
           <thead>
             <tr>

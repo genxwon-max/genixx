@@ -153,6 +153,7 @@ const cols: Col<Row>[] = [
     width: "6.5rem",
     nowrap: true,
     hide: "sm",
+    csv: (r) => r.role,
     cell: (r) => <Tag>{r.role}</Tag>,
   },
   {
@@ -209,6 +210,7 @@ const cols: Col<Row>[] = [
     width: "7rem",
     nowrap: true,
     hide: "lg",
+    csv: (r) => r.ip,
     cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.ip}</span>,
   },
 ];

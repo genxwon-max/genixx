@@ -74,6 +74,7 @@ const cols: Col<AuditRow>[] = [
     width: "4.5rem",
     nowrap: true,
     hide: "sm",
+    csv: (r) => roleOf(r.role).short,
     cell: (r) => <Tag>{roleOf(r.role).short}</Tag>,
   },
   {
@@ -134,6 +135,7 @@ const cols: Col<AuditRow>[] = [
     width: "7rem",
     nowrap: true,
     hide: "lg",
+    csv: (r) => r.ip,
     cell: (r) => <span className="a2-mono a2-t-sm text-(--a2-ink-3)">{r.ip}</span>,
   },
 ];

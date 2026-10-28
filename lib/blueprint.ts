@@ -1,3 +1,5 @@
+import { gradeGroups, gradeValue } from "./childOptions";
+
 /**
  * 출제 발주서 Ver.4.1 — 문항 카드 명세.
  *
@@ -492,7 +494,11 @@ export const boundaryRules = [
 
 /* ───────────────────────── 학년 · 성취기준 (§7.2) ───────────────────────── */
 
-export type GradeBand = "1-2" | "3-4" | "5-6";
+/**
+ * 2026-10-28부터 중 · 고등학교 학년군도 둔다(사용자: 「모든 학년 선택은 초1~6 · 중1~3 · 고1~3」). 성취기준
+ * 코드 접두는 2022 개정 교육과정대로 중학교 9, 고등학교 10(공통) · 12(선택)다.
+ */
+export type GradeBand = "1-2" | "3-4" | "5-6" | "7-9" | "10-12";
 
 /**
  * 성취기준 코드가 묶는 학년군 — 코드 접두(2 · 4 · 6)가 여기서 나온다.
@@ -523,8 +529,22 @@ const BAND_12 = {
   note: "성취기준 코드가 [2XX]로 시작합니다. 한글 읽기·셈이 막 자리 잡는 때라 발문을 짧게 씁니다.",
 };
 
-/** 세 학년군 전부 — 코드 대조처럼 학년군을 가리지 않고 찾아야 하는 자리가 쓴다 */
-export const allGradeBands = [BAND_12, ...gradeBands];
+const BAND_MID = {
+  id: "7-9" as GradeBand,
+  label: "중학교 1~3학년",
+  prefix: "9",
+  note: "성취기준 코드가 [9XX]로 시작합니다.",
+};
+
+const BAND_HIGH = {
+  id: "10-12" as GradeBand,
+  label: "고등학교 1~3학년",
+  prefix: "10",
+  note: "공통 과목은 [10XX], 선택 과목은 [12XX]로 시작합니다.",
+};
+
+/** 학년군 전부 — 코드 대조처럼 학년군을 가리지 않고 찾아야 하는 자리가 쓴다 */
+export const allGradeBands = [BAND_12, ...gradeBands, BAND_MID, BAND_HIGH];
 
 export const gradeBandOf = (id: GradeBand) => allGradeBands.find((g) => g.id === id)!;
 
@@ -537,27 +557,43 @@ export const gradeBandOf = (id: GradeBand) => allGradeBands.find((g) => g.id ===
  * 학년군(GradeBand)은 버리지 않는다. 성취기준 코드는 교육과정이 두 학년씩 묶어 매기므로
  * ([4국04-02]는 3·4학년 공통) 코드 대조는 여전히 학년군으로 한다 — bandOfGrade.
  */
-export type GradeNo = 1 | 2 | 3 | 4 | 5 | 6;
+/**
+ * 1 ~ 6은 초등학교, 7 ~ 9는 중학교 1 ~ 3학년, 10 ~ 12는 고등학교 1 ~ 3학년이다(2026-10-28). 숫자 하나로 두어
+ * 정렬 · 비교가 그대로 되고, 앞서 저장한 1 ~ 6은 뜻이 바뀌지 않는다.
+ */
+export type GradeNo = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
-export const grades: GradeNo[] = [1, 2, 3, 4, 5, 6];
+export const grades: GradeNo[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-export const gradeText = (g: GradeNo) => `${g}학년`;
+/** 「초3」 · 「중1」 · 「고2」 — 표 · 고르개에 쓰는 짧은 이름 */
+export const gradeText = (g: GradeNo) => (g <= 6 ? `초${g}` : g <= 9 ? `중${g - 6}` : `고${g - 9}`);
 
-export const gradeOptions = grades.map((g) => ({ value: String(g), label: gradeText(g) }));
+/** 「초등 3학년」 · 「중등 1학년」 · 「고등 2학년」 — 학생 명부(lib/childOptions.ts)와 같은 꼴 */
+export const gradeLong = (g: GradeNo) =>
+  g <= 6 ? `초등 ${g}학년` : g <= 9 ? `중등 ${g - 6}학년` : `고등 ${g - 9}학년`;
 
-export const bandOfGrade = (g: GradeNo): GradeBand => (g <= 2 ? "1-2" : g <= 4 ? "3-4" : "5-6");
+/** 거르개 선택지 — 학교급 아래에 학년(「초등학교 ㄴ 1학년」, 2026-10-28) */
+export const gradeOptions = gradeGroups(gradeValue.no).flatMap((g) =>
+  g.options.map((o) => ({ value: String(o.value), label: o.label, group: g.label })),
+);
+
+export const bandOfGrade = (g: GradeNo): GradeBand =>
+  g <= 2 ? "1-2" : g <= 4 ? "3-4" : g <= 6 ? "5-6" : g <= 9 ? "7-9" : "10-12";
 
 /** 학년군의 앞 학년 — 학년 없이 학년군만 적힌 옛 값을 읽을 때 쓴다 */
-export const firstGradeOf = (band: GradeBand): GradeNo => (band === "1-2" ? 1 : band === "3-4" ? 3 : 5);
+export const firstGradeOf = (band: GradeBand): GradeNo =>
+  band === "1-2" ? 1 : band === "3-4" ? 3 : band === "5-6" ? 5 : band === "7-9" ? 7 : 10;
 
 /**
- * 적힌 글자에서 학년을 읽는다 — 「초등 4학년」 → 4, 「초등 3~4학년」 → 3(앞 학년).
+ * 적힌 글자에서 학년을 읽는다 — 「초등 4학년」 → 4, 「중등 2학년」 · 「중2」 → 8, 「초등 3~4학년」 → 3(앞 학년).
  * 못 읽으면 학년군의 앞 학년.
  */
 export function gradeFrom(text: string | undefined, band: GradeBand): GradeNo {
-  const m = /([1-6])/.exec(text ?? "");
-  const g = m ? (Number(m[1]) as GradeNo) : firstGradeOf(band);
-  return bandOfGrade(g) === band ? g : firstGradeOf(band);
+  const t = text ?? "";
+  const m = /([1-6])/.exec(t);
+  const n = m ? Number(m[1]) : 0;
+  const g = (/중/.test(t) && n >= 1 && n <= 3 ? n + 6 : /고/.test(t) && n >= 1 && n <= 3 ? n + 9 : n) as GradeNo;
+  return g && bandOfGrade(g) === band ? g : firstGradeOf(band);
 }
 
 /**
@@ -565,14 +601,16 @@ export function gradeFrom(text: string | undefined, band: GradeBand): GradeNo {
  *
  * 발주서 §7.2: 코드 없는 문항은 접수 반려. 학년 접두 숫자가 맞아야 한다.
  */
-const CODE_RE = /^\[?([246])([가-힣]{1,3})(\d{2})-(\d{2})\]?$/;
+const CODE_RE = /^\[?(2|4|6|9|10|12)([가-힣]{1,4}\d?)-?(\d{2})-(\d{2})\]?$/;
 
 export function checkStandardCode(code: string, band: GradeBand) {
   const t = code.trim();
   if (!t) return { ok: false, why: "성취기준 코드가 없습니다. 코드 없는 문항은 접수 반려됩니다." };
   const m = CODE_RE.exec(t);
   if (!m) return { ok: false, why: "형식이 맞지 않습니다. [4국04-02]처럼 적어 주세요." };
-  if (m[1] !== gradeBandOf(band).prefix) {
+  /* 고등학교는 공통(10)과 선택(12) 두 접두를 함께 받는다 */
+  const ok = band === "10-12" ? m[1] === "10" || m[1] === "12" : m[1] === gradeBandOf(band).prefix;
+  if (!ok) {
     return {
       ok: false,
       why: `${gradeBandOf(band).label}은 [${gradeBandOf(band).prefix}XX] 코드를 씁니다. 학년을 벗어난 코드입니다.`,
@@ -586,6 +624,8 @@ export const codeSamples: Record<GradeBand, string[]> = {
   "1-2": ["[2국02-01]", "[2수01-03]", "[2슬01-01]"],
   "3-4": ["[4국04-02]", "[4수01-10]", "[4과10-01]"],
   "5-6": ["[6국02-03]", "[6수01-07]", "[6과03-01]"],
+  "7-9": ["[9국01-01]", "[9수01-02]", "[9과01-03]"],
+  "10-12": ["[10공국1-01-01]", "[10공수1-01-01]", "[12화작01-01]"],
 };
 
 /* ───────────────────────── Ⅱ. 제출 전 자가 체크리스트 ───────────────────────── */

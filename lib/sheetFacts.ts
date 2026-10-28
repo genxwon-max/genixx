@@ -20,16 +20,13 @@ import { axes } from "./result";
  */
 
 /** 채점 자료는 학년을 「초4」로, 리포트는 「초등 4학년」으로 적는다 */
-const GRADE_LONG: Record<string, string> = {
-  초3: "초등 3학년",
-  초4: "초등 4학년",
-  초5: "초등 5학년",
-  초6: "초등 6학년",
-  중1: "중학교 1학년",
-  중2: "중학교 2학년",
+export const gradeLong = (short: string) => {
+  /* 초1~6 · 중1~3 · 고1~3 (2026-10-28 — 학년 열둘) */
+  const m = /^([초중고])([1-6])$/.exec(short);
+  if (!m) return short;
+  const level = { 초: "초등", 중: "중학교", 고: "고등학교" }[m[1] as "초" | "중" | "고"];
+  return `${level} ${m[2]}학년`;
 };
-
-export const gradeLong = (short: string) => GRADE_LONG[short] ?? short;
 
 export type SubjectScore = { subject: SubjectId; got: number; max: number; score: number };
 

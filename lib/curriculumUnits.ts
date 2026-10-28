@@ -241,7 +241,17 @@ export const unitNoOf = (u: TextbookUnit) => (u.no === null ? "" : String(u.no).
 export type UnitScope = GradeBand | GradeNo;
 
 const scopeGrades = (scope: UnitScope): number[] =>
-  typeof scope === "number" ? [scope] : scope === "1-2" ? [1, 2] : scope === "3-4" ? [3, 4] : [5, 6];
+  typeof scope === "number"
+    ? [scope]
+    : scope === "1-2"
+      ? [1, 2]
+      : scope === "3-4"
+        ? [3, 4]
+        : scope === "5-6"
+          ? [5, 6]
+          : scope === "7-9"
+            ? [7, 8, 9]
+            : [10, 11, 12];
 
 /** 학년에 드는 단원 — 과목 → 학년 → 학기 → 교과서 차례 */
 export function unitsForBand(scope: UnitScope): TextbookUnit[] {

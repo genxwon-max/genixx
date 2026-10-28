@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import DataTable, { type Col, type Filter } from "@/components/admin2/DataTable";
 import { Status } from "@/components/admin2/ui";
 import { studentAccountTone } from "@/lib/admin2";
-import { userStateLabel, type StudentRow } from "@/lib/adminUsers";
+import { gradeFilterOptions, gradeRank, userStateLabel, type StudentRow } from "@/lib/adminUsers";
 
 /*
  * ADM-02-1의 표. DataTable이 함수 prop(cell·value·match)을 받으므로 클라이언트다.
@@ -38,8 +38,6 @@ import { userStateLabel, type StudentRow } from "@/lib/adminUsers";
  *   글자로만 적고 정렬·거르개로 다룬다.
  */
 
-/** 초3 → 중1 순. 「중」이 「초」보다 앞서는 가나다순으로는 학년이 뒤집힌다 */
-const gradeRank = (g: string) => (g.startsWith("초") ? 0 : 10) + Number(g.replace(/\D/g, ""));
 
 const cols: Col<StudentRow>[] = [
   {
@@ -151,7 +149,6 @@ export default function StudentsTable({ rows, empty }: { rows: StudentRow[]; emp
   /* 거르개 값은 데이터에서 뽑는다 — userStateLabel의 다섯 상태를 그대로 세우면
      학생에게는 없는 「승인 대기·정지·탈퇴」가 골라도 늘 0줄인 선택지로 남는다. */
   const filters = useMemo<Filter<StudentRow>[]>(() => {
-    const grades = [...new Set(rows.map((r) => r.grade))].sort((a, b) => gradeRank(a) - gradeRank(b));
     const states = [...new Set(rows.map((r) => r.state))];
 
     /* 응시 상태는 머리의 탭이 맡는다(StudentsView). 같은 조건을 두 군데서 걸면
@@ -160,7 +157,8 @@ export default function StudentsTable({ rows, empty }: { rows: StudentRow[]; emp
       {
         id: "grade",
         label: "학년",
-        options: grades.map((v) => ({ value: v, label: v })),
+        /* 학년은 열둘을 모두 세운다(2026-10-28) — 지금 없는 학년도 고를 수 있어야 「없다」를 확인한다 */
+        options: gradeFilterOptions(rows.map((r) => r.grade)),
         match: (r, v) => r.grade === v,
       },
       {

@@ -112,6 +112,7 @@ export default function RotationBoard({
       width: "6rem",
       num: true,
       sort: (r) => r.runs,
+      csv: (r) => r.runs,
       cell: (r) => `${r.runs}회`,
     },
     {
@@ -126,6 +127,7 @@ export default function RotationBoard({
       width: "5.5rem",
       num: true,
       sort: (r) => r.item.correctRate ?? -1,
+      csv: (r) => (r.item.correctRate == null ? "" : `${Math.round(r.item.correctRate)}%`),
       cell: (r) => (r.item.correctRate == null ? "—" : `${Math.round(r.item.correctRate)}%`),
     },
     {
@@ -142,6 +144,7 @@ export default function RotationBoard({
       width: "9rem",
       nowrap: true,
       sort: (r) => (r.item.anchor ? 0 : r.rest ? 2 : 1),
+      csv: (r) => (r.item.anchor ? "계속 넣습니다" : r.rest ? "한 회차 쉬게 하세요" : "넣어도 됩니다"),
       cell: (r) =>
         r.item.anchor ? (
           <Status tone="info">계속 넣습니다</Status>

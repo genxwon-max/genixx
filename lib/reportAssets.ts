@@ -249,8 +249,12 @@ export const templateGrades: { id: TemplateGrade; label: string; short: string; 
 
 /** 옛 학년대 → 그 학년대에 드는 학년 */
 export const gradesOfBand: Record<SurveyBand, TemplateGrade[]> = {
+  e12: [],
   e34: ["e3", "e4"],
   e56: ["e5", "e6"],
+  /* 설문 학년대가 다섯이 된 뒤(2026-10-28)에도 리포트 문구는 진단 대상(초3~6)만 둔다 */
+  m13: [],
+  h13: [],
 };
 
 /**
