@@ -383,6 +383,14 @@ function readStore(): Store {
 }
 
 /**
+ * 한 갈래(학생 · 학부모 · 지도교사)의 설문을 낸 응시 기록 수 — 설문 관리(ADM-14)가 발행 전에
+ * 「이미 들어온 응답이 있다」를 짚는 값이다. 학년대까지 가르지 않는다 — 응시 기록에는 학년대가 없다.
+ */
+export function surveyDoneCount(key: SurveyKey): number {
+  return Object.values(readStore()).filter((r) => r?.surveys?.[key] === "done").length;
+}
+
+/**
  * 한 평가의 기록. reg가 null이면 접수가 없는 아이의 기록(학생 ID 열쇠)이다.
  *
  * 갈래는 접수 기록과 맞춘다 — 유료로 접수한 평가의 기록이 「무료」로 남아 있으면 문항이 덜

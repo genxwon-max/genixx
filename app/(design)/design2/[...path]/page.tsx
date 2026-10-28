@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { designPathsOf, findDesign } from "@/lib/designScreens";
 import ItemCard from "@/components/design/screens/ItemCard";
 import { StudentExamCards } from "@/components/design/screens/StudentExamBoard";
+import SurveyAdmin, { SurveyLinkPopup } from "@/components/design/screens/SurveyAdmin";
+import { ItemRotation, ScreenGuard } from "@/components/design/screens/RotationGuard";
 import {
   CbtCover,
   CbtFree,
@@ -34,6 +36,10 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "cbt-paid": CbtPaid,
   "cbt-reflect": CbtReflect,
   "student-exam-cards": StudentExamCards,
+  "survey-admin": SurveyAdmin,
+  "survey-link-popup": SurveyLinkPopup,
+  "item-rotation": ItemRotation,
+  "screen-guard": ScreenGuard,
 };
 
 export const dynamicParams = false;
