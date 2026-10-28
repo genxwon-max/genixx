@@ -9,13 +9,15 @@ import {
   type SurveyKey,
 } from "@/lib/examStore";
 import {
+  blocksOf,
   isSurveyLink,
   modeOf,
   useSurveyDoc,
   type SurveyChoice,
-  type SurveyDoc,
+  type SurveyForm as SurveyFormValue,
   type SurveyItem,
   type SurveyOpen,
+  type SurveySection,
 } from "@/lib/surveyStore";
 import { bandFromGrade } from "@/lib/surveyBands";
 import { findById, formatCode } from "@/lib/roster";
@@ -23,7 +25,7 @@ import { CheckIcon } from "@/components/Icons";
 import { btnDisabled, btnGhost, btnPrimary } from "./ui";
 
 /** 설문지 v1.0의 5점 척도. 눈금 글도 설문지에 적힌 그대로다. */
-const scale = ["전혀 그렇지 않다", "그렇지 않은 편이다", "보통이다", "그런 편이다", "매우 그렇다"];
+export const surveyScale = ["전혀 그렇지 않다", "그렇지 않은 편이다", "보통이다", "그런 편이다", "매우 그렇다"];
 
 /* ───────────────────────── 이 화면만의 모양 ─────────────────────────
 
@@ -84,21 +86,18 @@ export default function SurveyForm({
   const config = doc.live;
   /* 앞서 낸 답 — 다시 열었을 때 이것이 첫 값이 된다. 모두 열쇠로 담는다 */
   const saved = record.surveyAnswers[surveyKey];
-  const [answers, setAnswers] = useState<Record<string, number>>(() => ({ ...saved?.items }));
-  const [picks, setPicks] = useState<Record<string, string[]>>(() => ({ ...saved?.choices }));
-  const [texts, setTexts] = useState<Record<string, string>>(() => ({ ...saved?.texts }));
-  const [warn, setWarn] = useState(false);
-
   const done = record.surveys[surveyKey] === "done";
-  /* 지금 판에 있는 문항만 센다 — 지워진 문항의 옛 답이 남아 있어도 「다 답했다」가 되지 않는다 */
-  const answered = config.items.filter((it) => answers[it.id] !== undefined).length;
-  const complete = answered === config.items.length;
 
   if (hydrated && done) {
     return (
       <Page>
         {/* 다 낸 자리에서는 필수 안내를 걷는다 — 이제 답할 것이 없다 */}
-        <PopupHeader doc={doc} studentName={student?.name} askingNow={false} />
+        <PopupHeader
+          form={config}
+          version={doc.liveVersion}
+          studentName={student?.name}
+          askingNow={false}
+        />
         <div className={`mt-3 text-center ${card} py-10`}>
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-emerald-600">
             <CheckIcon className="h-7 w-7" />
@@ -123,12 +122,7 @@ export default function SurveyForm({
             </button>
             <button
               type="button"
-              onClick={() => {
-                reopenSurvey(studentId, surveyKey, false);
-                setAnswers({});
-                setPicks({});
-                setTexts({});
-              }}
+              onClick={() => reopenSurvey(studentId, surveyKey, false)}
               className="text-[12px] text-soft-muted hover:underline"
             >
               처음부터 다시 답하기
@@ -143,7 +137,8 @@ export default function SurveyForm({
   if (modeOf(config) === "link") {
     return (
       <LinkSurvey
-        doc={doc}
+        form={config}
+        version={doc.liveVersion}
         studentName={student?.name}
         studentCode={student ? formatCode(student.code) : null}
         onDone={() => setSurvey(studentId, surveyKey, "done", doc.liveVersion, { items: {} })}
@@ -151,22 +146,101 @@ export default function SurveyForm({
     );
   }
 
+  return (
+    <FormScreen
+      /* 앞서 낸 답은 저장소를 읽은 뒤에야 보인다 — 읽고 나면 그 답으로 다시 연다 */
+      key={hydrated ? "ready" : "first"}
+      form={config}
+      version={doc.liveVersion}
+      studentName={student?.name}
+      saved={saved}
+      onSubmit={(answers) =>
+        setSurvey(studentId, surveyKey, "done", doc.liveVersion, answers)
+      }
+    />
+  );
+}
+
+/**
+ * 관리자 화면의 설문 미리보기 (ADM-14, 2026-10-28).
+ *
+ * 응답자 창과 **같은 조각**으로 그린다 — 미리보기를 따로 그리면 둘이 조금씩 어긋나고, 어긋난 미리보기는
+ * 없느니만 못하다. 눌러 보고 적어 볼 수 있지만 아무것도 저장하지 않는다. 「설문 제출」은 빈 척도 문항을
+ * 짚는 것까지 실제와 같고, 다 채우면 저장하지 않았다고만 알린다.
+ */
+export function SurveyPreview({
+  form,
+  version,
+  studentName,
+}: {
+  form: SurveyFormValue;
+  version: number;
+  studentName?: string;
+}) {
+  if (modeOf(form) === "link") {
+    return (
+      <LinkSurvey form={form} version={version} studentName={studentName} studentCode="000-000" onDone={() => {}} preview />
+    );
+  }
+  return <FormScreen form={form} version={version} studentName={studentName} preview />;
+}
+
+type Answers = {
+  items: Record<string, number>;
+  choices?: Record<string, string[]>;
+  texts?: Record<string, string>;
+};
+
+/**
+ * 문항을 받는 화면 — 응답자 창과 관리자 미리보기가 함께 쓴다.
+ *
+ * 구역 차례(lib/surveyStore.ts blocksOf)대로 구역 머리와 문항 카드를 쌓는다. 구역 하나는 한 가지 방식으로
+ * 묻고, 문항이 없는 구역은 그리지 않는다.
+ */
+function FormScreen({
+  form,
+  version,
+  studentName,
+  saved,
+  onSubmit,
+  preview = false,
+}: {
+  form: SurveyFormValue;
+  version: number;
+  studentName?: string;
+  saved?: Answers;
+  onSubmit?: (answers: Required<Answers>) => void;
+  /** 관리자 미리보기 — 창을 닫거나 저장하지 않는다 */
+  preview?: boolean;
+}) {
+  const [answers, setAnswers] = useState<Record<string, number>>(() => ({ ...saved?.items }));
+  const [picks, setPicks] = useState<Record<string, string[]>>(() => ({ ...saved?.choices }));
+  const [texts, setTexts] = useState<Record<string, string>>(() => ({ ...saved?.texts }));
+  const [warn, setWarn] = useState(false);
+  const [tried, setTried] = useState(false);
+
+  const blocks = blocksOf(form).filter((b) => b.rows.length > 0);
+  /* 화면에 서는 차례대로의 척도 문항 — 지운 문항의 옛 답이 남아 있어도 「다 답했다」가 되지 않는다 */
+  const scaleRows = blocks.flatMap((b) => (b.kind === "scale" ? b.rows : []));
+  const answered = scaleRows.filter((it) => answers[it.id] !== undefined).length;
+  const complete = answered === scaleRows.length;
+
   const submit = () => {
     if (!complete) {
       setWarn(true);
       return;
     }
-    setSurvey(studentId, surveyKey, "done", doc.liveVersion, {
-      items: answers,
-      choices: picks,
-      texts,
-    });
+    if (preview) {
+      setTried(true);
+      return;
+    }
+    onSubmit?.({ items: answers, choices: picks, texts });
   };
 
   /* 안 답한 첫 문항으로 보내 준다. 서른 줄에서 빠뜨린 한 줄을 눈으로 찾게 두면
      그 사람은 제출을 포기한다. */
   const jumpToFirstBlank = () => {
-    const miss = config.items.find((it) => answers[it.id] === undefined);
+    const miss = scaleRows.find((it) => answers[it.id] === undefined);
     if (!miss) return;
     document.getElementById(`item-${miss.id}`)?.scrollIntoView({
       behavior: "smooth",
@@ -182,56 +256,80 @@ export default function SurveyForm({
             <span
               className="block h-full rounded-full bg-soft-primary transition-[width]"
               style={{
-                width: `${config.items.length ? (answered / config.items.length) * 100 : 0}%`,
+                width: `${scaleRows.length ? (answered / scaleRows.length) * 100 : 0}%`,
               }}
             />
           </span>
           <p className="shrink-0 text-[12px] font-semibold tabular-nums text-soft-muted">
-            {answered} / {config.items.length}
+            {answered} / {scaleRows.length}
           </p>
         </div>
       </div>
 
       <Page>
-        <PopupHeader doc={doc} studentName={student?.name} />
+        <PopupHeader form={form} version={version} studentName={studentName} />
 
-        <ScaleLegend note={config.note} />
+        {scaleRows.length > 0 && <ScaleLegend note={form.note} />}
 
-        <ScaleSection
-          items={config.items}
-          answers={answers}
-          onPick={(id, v) => {
-            setWarn(false);
-            setAnswers((a) => ({ ...a, [id]: v }));
-          }}
-        />
+        {blocks.map((b) => (
+          <div key={b.section.id} className="space-y-3">
+            <SectionHead title={b.section.title} hint={b.section.hint} />
+            {b.kind === "scale" &&
+              b.rows.map((item) => (
+                <ScaleCard
+                  key={item.id}
+                  item={item}
+                  value={answers[item.id]}
+                  onPick={(v) => {
+                    setWarn(false);
+                    setTried(false);
+                    setAnswers((a) => ({ ...a, [item.id]: v }));
+                  }}
+                />
+              ))}
+            {b.kind === "choice" &&
+              b.rows.map((c) => (
+                <ChoiceCard
+                  key={c.id}
+                  choice={c}
+                  picked={picks[c.id] ?? []}
+                  onToggle={(option) =>
+                    setPicks((p) => {
+                      const had = p[c.id] ?? [];
+                      return {
+                        ...p,
+                        [c.id]: had.includes(option)
+                          ? had.filter((o) => o !== option)
+                          : [...had, option],
+                      };
+                    })
+                  }
+                />
+              ))}
+            {b.kind === "open" &&
+              b.rows.map((o) => (
+                <OpenCard
+                  key={o.id}
+                  open={o}
+                  value={texts[o.id] ?? ""}
+                  onWrite={(v) => setTexts((t) => ({ ...t, [o.id]: v }))}
+                />
+              ))}
+          </div>
+        ))}
 
-        <ChoiceSection
-          choices={config.choices}
-          picks={picks}
-          onToggle={(id, option) =>
-            setPicks((p) => {
-              const had = p[id] ?? [];
-              return {
-                ...p,
-                [id]: had.includes(option) ? had.filter((o) => o !== option) : [...had, option],
-              };
-            })
-          }
-        />
-
-        <OpenSection
-          opens={config.opens}
-          texts={texts}
-          onWrite={(id, v) => setTexts((t) => ({ ...t, [id]: v }))}
-        />
+        {blocks.length === 0 && (
+          <p className={`${card} text-center text-[13px] text-soft-muted`}>
+            아직 문항이 없습니다.
+          </p>
+        )}
 
         {warn && (
           <div
             role="alert"
             className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-[13px] leading-relaxed text-rose-700"
           >
-            아직 답하지 않은 문항이 {config.items.length - answered}개 있습니다. 5점 척도 문항은
+            아직 답하지 않은 문항이 {scaleRows.length - answered}개 있습니다. 5점 척도 문항은
             모두 답해야 제출할 수 있습니다.
             <button
               type="button"
@@ -242,11 +340,23 @@ export default function SurveyForm({
             </button>
           </div>
         )}
+        {tried && (
+          <p
+            role="status"
+            className="mt-3 rounded-lg border border-soft-line bg-white px-5 py-4 text-[13px] leading-relaxed text-soft-muted"
+          >
+            미리보기라 제출하지 않았습니다. 응답자 창에서는 여기서 제출이 끝납니다.
+          </p>
+        )}
       </Page>
 
       <div className="sticky bottom-0 border-t border-soft-line bg-white px-4 py-3">
         <div className="mx-auto flex w-full max-w-[640px] gap-2">
-          <button type="button" onClick={() => window.close()} className={`flex-1 ${btnGhost}`}>
+          <button
+            type="button"
+            onClick={() => !preview && window.close()}
+            className={`flex-1 ${btnGhost}`}
+          >
             나중에 하기
           </button>
           <button
@@ -272,22 +382,27 @@ export default function SurveyForm({
  * 함께 보여 준다.
  */
 export function LinkSurvey({
-  doc,
+  form,
+  version,
   studentName,
   studentCode,
   onDone,
+  preview = false,
 }: {
-  doc: SurveyDoc;
+  form: SurveyFormValue;
+  version: number;
   studentName?: string;
   studentCode: string | null;
   onDone: () => void;
+  /** 관리자 미리보기 — 창을 닫지 않는다 */
+  preview?: boolean;
 }) {
-  const link = doc.live.link ?? "";
+  const link = form.link ?? "";
   const ready = isSurveyLink(link);
   const [opened, setOpened] = useState(false);
   return (
     <Page>
-      <PopupHeader doc={doc} studentName={studentName} askingNow={false} />
+      <PopupHeader form={form} version={version} studentName={studentName} askingNow={false} />
       <div className={card}>
         <h2 className="text-[17px] font-bold text-soft-ink">이 설문은 구글 설문 같은 바깥 설문으로 받습니다</h2>
         <ol className="mt-3 space-y-1.5 text-[13px] leading-relaxed text-soft-muted">
@@ -320,7 +435,7 @@ export function LinkSurvey({
         )}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <button type="button" onClick={() => window.close()} className={btnGhost}>
+        <button type="button" onClick={() => !preview && window.close()} className={btnGhost}>
           나중에 하기
         </button>
         <button
@@ -346,11 +461,13 @@ function Page({ children }: { children: React.ReactNode }) {
 }
 
 function PopupHeader({
-  doc,
+  form,
+  version,
   studentName,
   askingNow = true,
 }: {
-  doc: SurveyDoc;
+  form: SurveyFormValue;
+  version: number;
   studentName?: string;
   /** 지금 답을 받고 있는가 — 다 낸 화면에서는 필수 안내를 걷는다 */
   askingNow?: boolean;
@@ -361,17 +478,17 @@ function PopupHeader({
       <div className="h-2.5 bg-soft-primary" />
       <div className="px-5 py-5">
         <h1 className="text-[22px] font-bold leading-snug tracking-tight text-soft-ink">
-          {doc.live.title}
+          {form.title}
         </h1>
-        <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">{doc.live.desc}</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-soft-muted">{form.desc}</p>
         <div className="mt-4 border-t border-soft-line pt-3 text-[12px] text-soft-muted">
           <p>
             대상 학생 <b className="text-soft-ink">{studentName ?? "-"}</b> · 응답자{" "}
-            {doc.live.who}
+            {form.who}
           </p>
           {/* 판 번호를 여기 적어 둔다. 응답자에게는 쓸모없어 보여도, 문의가 들어왔을 때
               「어느 판을 보고 계셨는지」를 화면 사진 한 장으로 알 수 있다. */}
-          <p className="mt-1 tabular-nums">설문 v{doc.liveVersion}</p>
+          <p className="mt-1 tabular-nums">설문 v{version}</p>
           {askingNow && (
             <p className="mt-2 text-rose-600">
               <span aria-hidden>*</span> 표시는 반드시 답해야 하는 문항입니다
@@ -397,7 +514,7 @@ function ScaleLegend({ note }: { note: string }) {
         각 문장을 읽고 평소에 가장 가까운 번호를 고르세요. 맞고 틀리는 답은 없습니다.
       </p>
       <ol className="mt-3 grid gap-1.5">
-        {scale.map((label, v) => (
+        {surveyScale.map((label, v) => (
           <li key={label} className="flex items-center gap-2.5">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-slate-300 text-[11px] font-bold tabular-nums text-soft-muted">
               {v + 1}
@@ -417,96 +534,74 @@ function ScaleLegend({ note }: { note: string }) {
    설문지가 문항을 구역으로 묶어 두었고, 그 묶음이 곧 「무엇을 묻는 대목인가」다.
    서른 줄을 한 덩어리로 흘려 두면 어디까지 왔는지 알 수 없다. */
 
-/** 이어지는 같은 구역끼리 묶는다. 차례를 흩지 않으려고 정렬하지 않는다. */
-function groupBySection<T extends { section: string }>(list: T[]): [string, T[]][] {
-  const out: [string, T[]][] = [];
-  for (const v of list) {
-    const last = out[out.length - 1];
-    if (last && last[0] === v.section) last[1].push(v);
-    else out.push([v.section, [v]]);
-  }
-  return out;
-}
-
 /** 구역 머리 — 왼쪽 세로 띠 하나로 카드 사이에서 갈라진다 */
-function SectionHead({ title, hint }: { title: string; hint?: string }) {
-  if (!title) return null;
+function SectionHead({ title, hint }: Pick<SurveySection, "title" | "hint">) {
+  if (!title && !hint) return null;
   return (
     <div className="overflow-hidden rounded-lg border border-soft-line bg-white">
       <div className="border-l-4 border-soft-primary px-4 py-3.5">
-        <h2 className="text-[15px] font-bold text-soft-ink">{title}</h2>
+        {title && <h2 className="text-[15px] font-bold text-soft-ink">{title}</h2>}
         {hint && <p className="mt-1 text-[12px] leading-relaxed text-soft-muted">{hint}</p>}
       </div>
     </div>
   );
 }
 
-function ScaleSection({
-  items,
-  answers,
+function ScaleCard({
+  item,
+  value,
   onPick,
 }: {
-  items: SurveyItem[];
-  answers: Record<string, number>;
-  onPick: (id: string, v: number) => void;
+  item: SurveyItem;
+  value: number | undefined;
+  onPick: (v: number) => void;
 }) {
   return (
-    <>
-      {groupBySection(items).map(([section, rows]) => (
-        <div key={section || "-"} className="space-y-3">
-          <SectionHead title={section} />
-          {rows.map((item) => (
-            <section key={item.id} id={`item-${item.id}`} className={card}>
-              <p className="text-[15px] font-medium leading-relaxed text-soft-ink">
-                {item.text}
-                <span aria-hidden className="ml-1 text-rose-600">
-                  *
-                </span>
-              </p>
-              {/* 문항 번호와 재는 칸. 응답자가 고르는 데 쓰는 값은 아니지만, 문의가 들어왔을 때
-                  「몇 번이 이상하다」로 말이 통한다. 눈에 띄지 않게 회색으로만 둔다. */}
-              {(item.no || item.group) && (
-                <p className="mt-1.5 text-[11px] tabular-nums text-slate-400">
-                  {[item.no, item.group].filter(Boolean).join(" · ")}
-                </p>
-              )}
+    <section id={`item-${item.id}`} className={card}>
+      <p className="text-[15px] font-medium leading-relaxed text-soft-ink">
+        {item.text}
+        <span aria-hidden className="ml-1 text-rose-600">
+          *
+        </span>
+      </p>
+      {/* 문항 번호와 재는 칸. 응답자가 고르는 데 쓰는 값은 아니지만, 문의가 들어왔을 때
+          「몇 번이 이상하다」로 말이 통한다. 눈에 띄지 않게 회색으로만 둔다. */}
+      {(item.no || item.group) && (
+        <p className="mt-1.5 text-[11px] tabular-nums text-slate-400">
+          {[item.no, item.group].filter(Boolean).join(" · ")}
+        </p>
+      )}
 
-              {/* 양 끝 말을 눈금 위에 둔다. 왼쪽·오른쪽에 세우면 좁은 창에서 눈금이
-                  찌그러지는데, 이 창은 620px이고 팝업이 막히면 더 좁아질 수도 있다. */}
-              <div className="mt-4 flex justify-between px-1 text-[11px] text-soft-muted">
-                <span>{scale[0]}</span>
-                <span>{scale[scale.length - 1]}</span>
-              </div>
-              <div className="mt-1 grid grid-cols-5">
-                {scale.map((label, v) => {
-                  const on = answers[item.id] === v;
-                  return (
-                    <label
-                      key={label}
-                      title={label}
-                      className="flex cursor-pointer flex-col items-center gap-1.5 rounded-md py-2 transition-colors hover:bg-soft-primary-soft"
-                    >
-                      <span className="text-[12px] font-medium tabular-nums text-soft-muted">
-                        {v + 1}
-                      </span>
-                      <input
-                        type="radio"
-                        name={`q-${item.id}`}
-                        checked={on}
-                        onChange={() => onPick(item.id, v)}
-                        aria-label={`${v + 1} ${label}`}
-                        className="sr-only"
-                      />
-                      <Radio on={on} />
-                    </label>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-      ))}
-    </>
+      {/* 양 끝 말을 눈금 위에 둔다. 왼쪽·오른쪽에 세우면 좁은 창에서 눈금이
+          찌그러지는데, 이 창은 620px이고 팝업이 막히면 더 좁아질 수도 있다. */}
+      <div className="mt-4 flex justify-between px-1 text-[11px] text-soft-muted">
+        <span>{surveyScale[0]}</span>
+        <span>{surveyScale[surveyScale.length - 1]}</span>
+      </div>
+      <div className="mt-1 grid grid-cols-5">
+        {surveyScale.map((label, v) => {
+          const on = value === v;
+          return (
+            <label
+              key={label}
+              title={label}
+              className="flex cursor-pointer flex-col items-center gap-1.5 rounded-md py-2 transition-colors hover:bg-soft-primary-soft"
+            >
+              <span className="text-[12px] font-medium tabular-nums text-soft-muted">{v + 1}</span>
+              <input
+                type="radio"
+                name={`q-${item.id}`}
+                checked={on}
+                onChange={() => onPick(v)}
+                aria-label={`${v + 1} ${label}`}
+                className="sr-only"
+              />
+              <Radio on={on} />
+            </label>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -528,59 +623,48 @@ function Radio({ on }: { on: boolean }) {
   );
 }
 
-function ChoiceSection({
-  choices,
-  picks,
+function ChoiceCard({
+  choice: c,
+  picked,
   onToggle,
 }: {
-  choices: SurveyChoice[];
-  picks: Record<string, string[]>;
-  onToggle: (id: string, option: string) => void;
+  choice: SurveyChoice;
+  picked: string[];
+  onToggle: (option: string) => void;
 }) {
-  if (choices.length === 0) return null;
+  /* 빈 보기는 그리지 않는다 — 관리자가 「+ 보기 추가」만 눌러 둔 자리다 */
+  const options = c.options.filter((o) => o.trim());
   return (
-    <>
-      {groupBySection(choices).map(([section, rows]) => (
-        <div key={section || "-"} className="space-y-3">
-          <SectionHead title={section} hint="해당되는 것을 모두 고르세요. 없으면 비워 두어도 됩니다." />
-          {rows.map((c) => {
-            const on = picks[c.id] ?? [];
-            return (
-              <section key={c.id} className={card}>
-                <p className="text-[15px] font-medium leading-relaxed text-soft-ink">{c.label}</p>
-                <div className="mt-3 grid gap-0.5">
-                  {c.options.map((option) => {
-                    const picked = on.includes(option);
-                    return (
-                      <label
-                        key={option}
-                        className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-2 transition-colors hover:bg-soft-primary-soft"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={picked}
-                          onChange={() => onToggle(c.id, option)}
-                          className="sr-only"
-                        />
-                        <span
-                          aria-hidden
-                          className={`grid h-[19px] w-[19px] shrink-0 place-items-center rounded-[3px] border-2 transition-colors ${
-                            picked ? "border-soft-primary bg-soft-primary" : "border-slate-400"
-                          }`}
-                        >
-                          {picked && <CheckIcon className="h-3 w-3 text-white" />}
-                        </span>
-                        <span className="text-[14px] leading-relaxed text-soft-ink">{option}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      ))}
-    </>
+    <section className={card}>
+      <p className="text-[15px] font-medium leading-relaxed text-soft-ink">{c.label}</p>
+      <div className="mt-3 grid gap-0.5">
+        {options.map((option) => {
+          const on = picked.includes(option);
+          return (
+            <label
+              key={option}
+              className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-2 transition-colors hover:bg-soft-primary-soft"
+            >
+              <input
+                type="checkbox"
+                checked={on}
+                onChange={() => onToggle(option)}
+                className="sr-only"
+              />
+              <span
+                aria-hidden
+                className={`grid h-[19px] w-[19px] shrink-0 place-items-center rounded-[3px] border-2 transition-colors ${
+                  on ? "border-soft-primary bg-soft-primary" : "border-slate-400"
+                }`}
+              >
+                {on && <CheckIcon className="h-3 w-3 text-white" />}
+              </span>
+              <span className="text-[14px] leading-relaxed text-soft-ink">{option}</span>
+            </label>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -632,50 +716,33 @@ function GrowingText({
   );
 }
 
-function OpenSection({
-  opens,
-  texts,
+function OpenCard({
+  open: o,
+  value,
   onWrite,
 }: {
-  opens: SurveyOpen[];
-  texts: Record<string, string>;
-  onWrite: (id: string, v: string) => void;
+  open: SurveyOpen;
+  value: string;
+  onWrite: (v: string) => void;
 }) {
-  if (opens.length === 0) return null;
   return (
-    <>
-      {groupBySection(opens).map(([section, rows]) => (
-        <div key={section || "-"} className="space-y-3">
-          <SectionHead title={section} hint="점수에 반영되지 않습니다. 비워 두어도 제출됩니다." />
-          {rows.map((o) => {
-            const value = texts[o.id] ?? "";
-            return (
-              <section key={o.id} className={card}>
-                <label
-                  htmlFor={`open-${o.id}`}
-                  className="block text-[15px] font-medium leading-relaxed text-soft-ink"
-                >
-                  {o.label}
-                </label>
-                {o.hint && (
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-soft-muted">{o.hint}</p>
-                )}
-                <GrowingText
-                  id={`open-${o.id}`}
-                  value={value}
-                  onChange={(v) => onWrite(o.id, v)}
-                  placeholder={o.placeholder || "내 답변"}
-                />
-                {value.length > 0 && (
-                  <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400">
-                    {value.length}자
-                  </p>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      ))}
-    </>
+    <section className={card}>
+      <label
+        htmlFor={`open-${o.id}`}
+        className="block text-[15px] font-medium leading-relaxed text-soft-ink"
+      >
+        {o.label}
+      </label>
+      {o.hint && <p className="mt-1.5 text-[12px] leading-relaxed text-soft-muted">{o.hint}</p>}
+      <GrowingText
+        id={`open-${o.id}`}
+        value={value}
+        onChange={onWrite}
+        placeholder={o.placeholder || "내 답변"}
+      />
+      {value.length > 0 && (
+        <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400">{value.length}자</p>
+      )}
+    </section>
   );
 }
