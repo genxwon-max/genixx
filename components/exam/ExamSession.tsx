@@ -385,6 +385,7 @@ export default function ExamSession({ scope }: { scope: ExamScope }) {
       <ReflectionStep
         sheet={sheet}
         watermark={watermark}
+        view={view}
         onLater={async () => {
           await leaveFullscreen();
           setReflect("later");
@@ -945,6 +946,7 @@ export function ExamSettings({
   paper,
   onPaper,
   onExit = askExamExit,
+  exitLabel = "나가기",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -954,6 +956,8 @@ export function ExamSettings({
   onPaper: (paper: ExamPaper) => void;
   /** 「나가기」 — 넘기지 않으면 응시 화면에 나갈지 묻는 신호를 보낸다 */
   onExit?: () => void;
+  /** 맨 아래 단추의 이름 — 해석 화면은 「나중에 이어서 하기」 */
+  exitLabel?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onOpenChange);
@@ -1042,7 +1046,7 @@ export function ExamSettings({
               }}
               className="inline-flex h-9 w-full items-center justify-center rounded-[2px] border border-exam-line bg-exam-panel text-[13px] font-semibold text-exam-text transition-colors hover:bg-exam-raised"
             >
-              나가기
+              {exitLabel}
             </button>
           </div>
         </div>
@@ -1183,6 +1187,25 @@ function StartGate({
 
 /* ───────────────────────── 제출 후 해석 작성 ───────────────────────── */
 
+/** 해석 화면이 읽고 고치는 것 — 실제 응시 판(Sheet)이 그대로 맞고, 디자인 보기는 값을 적어 넘긴다 */
+export type ReflectionSheet = Pick<
+  Sheet,
+  | "title"
+  | "list"
+  | "screens"
+  | "grouped"
+  | "answers"
+  | "marks"
+  | "reflections"
+  | "reflectionPicks"
+  | "reflect"
+  | "pick"
+  | "finish"
+>;
+
+/** 화면 설정(글자 크기 · 바탕색 · 설정 창 열림) — useExamView가 돌려주는 것 */
+export type ExamView = ReturnType<typeof useExamView>;
+
 /**
  * 제출 후 해석 작성.
  *
@@ -1215,21 +1238,36 @@ function StartGate({
  *
  * 정답은 알려 주지 않는다. 맞았는지 틀렸는지를 먼저 알려 주면 아이는 자기 생각을 적는
  * 대신 오답 노트를 쓴다. 여기서 받고 싶은 것은 채점 결과가 아니라 그때의 생각이다.
+ *
+ * ── 응시 화면과 맞춤 (2026-10-28 요청) ──
+ * 세 칸 · 문항 이동판 · 하단 바(왼쪽 톱니바퀴 · 가운데 이전 · 다음 · 오른쪽 「해석 제출하기」)가
+ * 응시 때와 같다. 설정도 응시 때 고른 글자 크기 · 바탕색을 그대로 이어받는다. 다른 것은 셋 —
+ * 낸 답이 잠겨 있고 그 아래 해석 칸이 붙는다, 이동판이 「해석을 남긴 문항」을 센다(응시 때 체크한
+ * 표시는 그대로 보여, 다시 보려던 문항을 찾아 쓸 수 있다), 설정 창 맨 아래가 「나가기」가 아니라
+ * 「나중에 이어서 하기」다 — 해석은 저장되어 있어 나가도 잃는 것이 없다.
+ *
+ * 예전 머리의 띠(「제출 완료 · 해석 작성 (선택)」 · 「작성 0 / 11」)와 하단 바 왼쪽의 남은 수
+ * 안내는 걷었다 — 응시 화면에 없는 줄이고, 같은 수를 이동판 아래가 센다.
  */
-function ReflectionStep({
+export function ReflectionStep({
   sheet,
   watermark,
   onLater,
+  view,
+  initialIndex = 0,
 }: {
-  sheet: Sheet;
+  sheet: ReflectionSheet;
   /** 응시 때와 같은 문항이다 — 같은 워터마크가 겹친다 */
   watermark: string;
   onLater: () => void;
+  view: ExamView;
+  /** 처음 펼 화면의 차례 — 디자인 보기가 상태마다 다른 문항을 연다 */
+  initialIndex?: number;
 }) {
   /* 응시 때와 같은 차례·같은 번호로 되짚는다 — 판이 열지 않은 문항은 풀지 않았으므로 없다 */
   const order = sheet.list;
   const screens = sheet.screens;
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(initialIndex);
 
   const screen = screens[Math.min(index, screens.length - 1)];
   const question = screen[0];
@@ -1239,58 +1277,46 @@ function ReflectionStep({
      것은 다른데, 글만 받으면 둘이 똑같이 빈칸으로 남는다. */
   const written = (q: Question) =>
     Boolean(sheet.reflectionPicks[q.id]) || (sheet.reflections[q.id] ?? "").trim().length >= 5;
-  const writtenCount = order.filter(written).length;
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          <div className="flex min-w-0 items-baseline gap-3">
-            <p className="truncate text-[14px] font-bold tracking-tight text-exam-text">
-              {sheet.title}
-            </p>
-            <span className="hidden shrink-0 text-[12px] text-exam-muted sm:inline">
-              제출 완료 · 해석 작성 (선택)
-            </span>
-          </div>
-          <p className="shrink-0 text-[12px] font-medium tabular-nums text-exam-muted">
-            작성 {writtenCount} / {order.length}
-          </p>
-        </div>
-      </div>
-
+    <div
+      className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-exam-bg"
+      style={paperStyle(view.paper)}
+    >
       {/* 본문 — 좌: 자료(보기) / 가운데: 문항과 그 아래 해석 / 우: 문항 이동판 */}
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_14rem] lg:overflow-hidden">
-        <BriefPanel
-          brief={question.brief}
-          range={setRange(order, question)}
-          watermark={watermark}
-        />
+        <TextZoomProvider scale={view.scale}>
+          <BriefPanel
+            brief={question.brief}
+            range={setRange(order, question)}
+            watermark={watermark}
+          />
 
-        <ScreenColumn
-          order={order}
-          screen={screen}
-          watermark={watermark}
-          renderQuestion={(q) => (
-            <div key={q.id}>
-              {/* 문항과 낸 답 — 응시 때와 같은 모양, 다만 잠겨 있다.
-                  fieldset의 disabled 하나로 안의 칸이 모두 잠긴다. 잠긴 모양을 따로
-                  그리지 않는 까닭은, 그리는 순간 아이가 아까 본 시험지와 다른 것이
-                  되기 때문이다 */}
-              <fieldset disabled className="block [&_label]:cursor-default">
-                <QuestionBody
-                  q={q}
-                  num={order.indexOf(q) + 1}
-                  value={sheet.answers[q.id]}
-                  onAnswer={() => {}}
-                  watermark={watermark}
-                />
-              </fieldset>
+          <ScreenColumn
+            order={order}
+            screen={screen}
+            watermark={watermark}
+            renderQuestion={(q) => (
+              <div key={q.id}>
+                {/* 문항과 낸 답 — 응시 때와 같은 모양, 다만 잠겨 있다.
+                    fieldset의 disabled 하나로 안의 칸이 모두 잠긴다. 잠긴 모양을 따로
+                    그리지 않는 까닭은, 그리는 순간 아이가 아까 본 시험지와 다른 것이
+                    되기 때문이다 */}
+                <fieldset disabled className="block [&_label]:cursor-default">
+                  <QuestionBody
+                    q={q}
+                    num={order.indexOf(q) + 1}
+                    value={sheet.answers[q.id]}
+                    onAnswer={() => {}}
+                    watermark={watermark}
+                  />
+                </fieldset>
 
-              <ReflectionBlock sheet={sheet} q={q} />
-            </div>
-          )}
-        />
+                <ReflectionBlock sheet={sheet} q={q} />
+              </div>
+            )}
+          />
+        </TextZoomProvider>
 
         <QuestionPad
           list={order}
@@ -1298,58 +1324,39 @@ function ReflectionStep({
           isHere={(q) => screen.includes(q)}
           isCurrent={(q) => q.id === question.id}
           isDone={written}
+          isMarked={(q) => sheet.marks.includes(q.id)}
           onPick={(q) => setIndex(screens.findIndex((sc) => sc.includes(q)))}
           doneLabel="해석을 남긴 문항"
           doneVerb="작성함"
         />
       </div>
 
-      {/* 하단 바 */}
-      <div className="shrink-0 border-t border-exam-line bg-exam-panel">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-6 lg:px-10">
-          <p className="hidden text-[12px] leading-tight text-exam-muted sm:block">
-            {writtenCount === order.length
-              ? "모든 문항에 해석을 남겼습니다."
-              : `${order.length - writtenCount}문항이 비어 있습니다. 비워 두어도 마칠 수 있습니다.`}
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onLater} className={btnGhost}>
-              나중에 이어서
-            </button>
-            <button
-              type="button"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              disabled={index === 0}
-              className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-40`}
-            >
-              이전
-            </button>
-            {isLast ? (
-              <button
-                type="button"
-                onClick={async () => {
-                  await leaveFullscreen();
-                  sheet.finish();
-                }}
-                className={btnPrimary}
-              >
-                해석 제출하고 마치기
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIndex((i) => Math.min(screens.length - 1, i + 1))}
-                className={btnPrimary}
-              >
-                다음
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* 하단 바 — 응시 화면과 같다. 「나중에 이어서 하기」는 톱니바퀴 안 맨 아래에 있다 */}
+      <PageNav
+        onPrev={() => setIndex((i) => Math.max(0, i - 1))}
+        prevDisabled={index === 0}
+        onNext={() => setIndex((i) => Math.min(screens.length - 1, i + 1))}
+        nextDisabled={isLast}
+        submit={{
+          label: "해석 제출하기",
+          onClick: async () => {
+            await leaveFullscreen();
+            sheet.finish();
+          },
+        }}
+        settings={
+          <ExamSettings
+            open={view.open}
+            onOpenChange={view.setOpen}
+            scale={view.scale}
+            onScale={view.setScale}
+            paper={view.paper}
+            onPaper={view.setPaper}
+            onExit={onLater}
+            exitLabel="나중에 이어서 하기"
+          />
+        }
+      />
     </div>
   );
 }
@@ -1364,7 +1371,7 @@ function ReflectionStep({
  * 하나가 한 화면을 먹고, 세트에서 문항 넷이 함께 서는 판에서는 해석 칸만으로 화면이
  * 가득 찬다.
  */
-function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
+function ReflectionBlock({ sheet, q }: { sheet: ReflectionSheet; q: Question }) {
   const value = sheet.answers[q.id];
   const picked = q.type === "choice" && typeof value === "number" ? value : null;
   const essayText = q.type === "essay" ? answerText(q, value) : "";
@@ -1450,7 +1457,7 @@ function ReflectionBlock({ sheet, q }: { sheet: Sheet; q: Question }) {
 }
 
 /** 낭독기에 읽히는 문항 번호 */
-function order0(sheet: Sheet, q: Question) {
+function order0(sheet: ReflectionSheet, q: Question) {
   return sheet.list.indexOf(q) + 1;
 }
 
@@ -1519,8 +1526,17 @@ export function SubmitDialog({
  * 색면을 깔지 않는다. 시험을 막 끝낸 아이가 보는 화면이라 노란 상자가 서면 「잘못했다」로
  * 읽힌다. 해석을 미루는 것은 잘못이 아니다.
  */
-function ReflectAskDialog({ onDo, onLater }: { onDo: () => void; onLater: () => void }) {
-  const [pressed, setPressed] = useState(false);
+export function ReflectAskDialog({
+  onDo,
+  onLater,
+  again = false,
+}: {
+  onDo: () => void;
+  onLater: () => void;
+  /** 처음부터 「한 번만 더 여쭙습니다」로 연다 — 디자인 보기가 「안 하기」를 누른 뒤를 굳힐 때 */
+  again?: boolean;
+}) {
+  const [pressed, setPressed] = useState(again);
 
   return (
     <div
@@ -1672,7 +1688,7 @@ function useCloseExam() {
  * 해석을 남긴 사람과 미룬 사람에게 다른 말을 한다. 미룬 사람에게 「모두 저장되었습니다」라고
  * 하면 할 일이 끝난 것으로 읽혀, 평가 판에 남아 있는 「해석 작성」이 왜 켜져 있는지 알 수 없다.
  */
-function Submitted({
+export function Submitted({
   title,
   pending = false,
   onReflect,

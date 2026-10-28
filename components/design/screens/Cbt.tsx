@@ -7,9 +7,14 @@ import {
   ExamSettings,
   ForfeitDialog,
   ForfeitedPanel,
+  ReflectAskDialog,
+  ReflectionStep,
   SubmitDialog,
+  Submitted,
   isAnswered,
   navPrimary,
+  type ExamView,
+  type ReflectionSheet,
 } from "@/components/exam/ExamSession";
 import { ExitDialog, TrialStart, Wall } from "@/components/exam/TrialSession";
 import ExamFrame from "../ExamFrame";
@@ -215,7 +220,7 @@ function Cbt({ kind, state }: { kind: Kind; state: string }) {
           subjectName={p.title}
           unanswered={p.open.filter((q) => !isAnswered(q, p.answers[q.id])).length}
           onCancel={() => go("marked")}
-          onConfirm={() => {}}
+          onConfirm={() => router.push(designLinks("cbt-reflect")())}
         />
       )}
       {state === "exit" &&
@@ -243,4 +248,101 @@ export function CbtFree({ state }: { state: string }) {
 
 export function CbtPaid({ state }: { state: string }) {
   return <Cbt kind="paid" state={state} />;
+}
+
+/* ───────────────────────── 제출한 뒤 · 해석 작성 ───────────────────────── */
+
+/**
+ * 제출한 뒤의 해석 작성(자가성찰) — 회원 무료 · 유료 진단이 같다. 여기서는 유료 진단 수학으로 굳혔다
+ * (위 「CBT · 회원 유료 진단」의 제출 확인 창에서 「제출하기」를 누른 뒤).
+ *
+ *   ""              제출 직후 · 해석을 쓸지 묻는 창
+ *   again           「안 하기」를 누른 뒤 · 한 번 더 권함
+ *   later           나중에 하기로 한 뒤
+ *   write           해석 작성 · 고른 문항(1번) — 응시 화면과 같은 틀
+ *   write/picked    이유를 고른 뒤 — 1번은 고르고 2 · 3번은 글로 남김
+ *   write/blank     답하지 않은 문항 — 묻는 말과 고를 이유가 달라진다
+ *   write/settings  화면 설정 창 — 맨 아래가 「나중에 이어서 하기」
+ *   done            해석까지 낸 뒤
+ */
+const reflectPlan = plans.paid;
+const reflectMarks = reflectPlan.marks;
+const firstBlank = reflectPlan.open.find((q) => !isAnswered(q, reflectPlan.answers[q.id]));
+const blankAt = Math.max(
+  0,
+  reflectPlan.screens.findIndex((sc) => !!firstBlank && sc.includes(firstBlank)),
+);
+const firstThree = reflectPlan.open.slice(0, 3);
+
+export function CbtReflect({ state }: { state: string }) {
+  const router = useRouter();
+  const to = designLinks("cbt-reflect");
+  const go = (slug: string) => router.push(to(slug));
+  const p = reflectPlan;
+
+  /* ── 해석 작성 전후 — 마친 자리와 묻는 창 ── */
+  if (state === "" || state === "again" || state === "later" || state === "done") {
+    return (
+      <ExamFrame name={NAME} subject={p.subject}>
+        <Submitted
+          title={p.title}
+          pending={state !== "done"}
+          onReflect={state === "done" ? undefined : () => go("write")}
+        />
+        {(state === "" || state === "again") && (
+          <ReflectAskDialog
+            /* 주소가 바뀌면 창을 새로 연다 — 「한 번 더」는 주소가 정한다 */
+            key={state}
+            again={state === "again"}
+            onDo={() => go("write")}
+            onLater={() => go("later")}
+          />
+        )}
+      </ExamFrame>
+    );
+  }
+
+  /* ── 해석 작성 ── */
+  const picked = state === "write/picked";
+  const sheet: ReflectionSheet = {
+    title: p.title,
+    list: p.order,
+    screens: p.screens,
+    grouped: p.grouped,
+    answers: p.answers,
+    marks: reflectMarks,
+    reflectionPicks: picked ? { [firstThree[0].id]: "c1" } : {},
+    reflections: picked
+      ? Object.fromEntries(
+          firstThree.slice(1).map((q) => [q.id, "표에서 수가 두 배씩 늘어나는 것을 보고 썼어요."]),
+        )
+      : {},
+    reflect: () => {},
+    /* 고르면 「이유를 고른 뒤」로 */
+    pick: () => {
+      if (state === "write") go("write/picked");
+    },
+    finish: () => go("done"),
+  };
+  const view: ExamView = {
+    scale: "base",
+    setScale: () => {},
+    paper: "white",
+    setPaper: () => {},
+    open: state === "write/settings",
+    setOpen: (open) => go(open ? "write/settings" : "write"),
+  };
+
+  return (
+    <ExamFrame name={NAME} subject={p.subject}>
+      <ReflectionStep
+        key={state}
+        sheet={sheet}
+        watermark={watermarkOf(SEASON)}
+        onLater={() => go("later")}
+        view={view}
+        initialIndex={state === "write/blank" ? blankAt : 0}
+      />
+    </ExamFrame>
+  );
 }
