@@ -5,6 +5,7 @@ import { designPathsOf, findDesign } from "@/lib/designScreens";
 import FormsMinutes from "@/components/design/screens/FormsMinutes";
 import StudentApplyFee from "@/components/design/screens/StudentApplyFee";
 import StudentDashboard from "@/components/design/screens/StudentDashboard";
+import StudentsCreate from "@/components/design/screens/StudentsCreate";
 import "@/app/(admin2)/admin2.css";
 
 /**
@@ -22,6 +23,7 @@ const screens: Record<string, React.ComponentType<{ state: string }>> = {
   "student-dashboard": StudentDashboard,
   "student-apply-fee": StudentApplyFee,
   "admin-forms-minutes": FormsMinutes,
+  "admin-students-create": StudentsCreate,
 };
 
 export const dynamicParams = false;

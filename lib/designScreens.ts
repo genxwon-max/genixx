@@ -1020,6 +1020,27 @@ export const designScreens: DesignScreen[] = [
       { slug: "paid", name: "응시료 · 유료만", who: "학생" },
     ],
   },
+  /* ── 학생·접속코드 — 관리자가 학생을 직접 만든다: 한 명씩 · 명단 파일(2026-11-09 사용자 요청) ── */
+  {
+    id: "admin-students-create",
+    area: "design3",
+    zone: "admin2",
+    name: "학생·접속코드 · 학생 등록 (한 명씩 · 명단 파일)",
+    wbs: "ADM-02-1",
+    real: "/admin2/students",
+    base: "/admin2/students",
+    states: [
+      { slug: "", name: "목록", note: "머리에 「명단 파일로 등록」 · 「+ 학생 등록」" },
+      { slug: "new", name: "학생 등록 창 · 빈 양식", popup: true, note: "이름 · 생년월일 · 학교 · 학년 · 등록 경로 · 보호자 연결(기본 「연결 안 함」) · 만들어질 접속코드" },
+      { slug: "new/filled", name: "학생 등록 창 · 채운 양식", popup: true, note: "설문 응답으로 받은 학생 · 보호자 없이" },
+      { slug: "new/guardian", name: "학생 등록 창 · 새 보호자 만들기", popup: true, note: "보호자 이름 · 휴대전화 — 보호자 회원도 함께 만든다" },
+      { slug: "new/done", name: "등록 완료 창", popup: true, note: "접속코드 크게 · 코드 복사 · 안내문 인쇄 · 「한 명 더 등록」" },
+      { slug: "bulk", name: "명단 파일 창 · 올리기 전", popup: true, note: "양식 CSV · 엑셀 · 칸(필수 넷 · 보호자 둘) · 끌어 놓는 자리" },
+      { slug: "bulk/review", name: "명단 파일 창 · 명단 확인", popup: true, note: "12줄 — 틀린 줄 2(빠짐) · 이미 있는 학생 의심 1(「그래도 등록」) · 줄마다 만들어질 접속코드" },
+      { slug: "bulk/done", name: "명단 파일 창 · 등록 완료", popup: true, note: "9명 · 접속코드 명단 CSV · 엑셀 다운로드" },
+      { slug: "created", name: "목록 · 명단으로 만든 뒤", note: "맨 위에 방금 만든 학생 · 보호자 「연결 안 함」" },
+    ],
+  },
   /* ── 진단별 문항관리 · 회차 — 과목별 평가 시간 입력(2026-11-09 사용자 요청) ── */
   {
     id: "admin-forms-minutes",
