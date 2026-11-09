@@ -5,9 +5,10 @@ import { useRef, useState } from "react";
 import { useAdminPrefs } from "@/lib/adminStore";
 import { useForms } from "@/lib/formStore";
 import { useItems } from "@/lib/itemStore";
-import { planOf, slotsFor, slotsOf, usePlans, useRounds } from "@/lib/roundPlanStore";
+import { planOf, slotsFor, slotsOf, subjectsFor, usePlans, useRounds } from "@/lib/roundPlanStore";
 import FormSlot from "@/components/admin2/FormSlot";
 import { Body, PageHead, Panel } from "@/components/admin2/ui";
+import SubjectMinutes from "./SubjectMinutes";
 
 /**
  * ADM-04-3 상세 — **한 회차, 과목 탭 하나에 검사지 한 벌**.
@@ -94,6 +95,19 @@ export default function RoundFormsView({ id, subject }: { id: string; subject?: 
           </>
         }
       />
+
+      {/* 과목별 평가 시간 — 탭 위에 둔다. 세 과목을 견주며 정하는 값이라 탭 하나 안에 넣지 않는다.
+          key에 저장된 값을 넣어, 저장한 뒤 초안이 새 값에서 다시 선다 */}
+      <Body className="pb-0">
+        <SubjectMinutes
+          key={JSON.stringify(plan.minutes ?? {})}
+          roundId={round.id}
+          roundLabel={round.label}
+          plan={plan}
+          subjects={subjectsFor(plan)}
+          by={by}
+        />
+      </Body>
 
       {/* 밑줄 탭 — 과목 하나가 검사지 한 벌.
           role="tab"을 붙이지 않았다. 진짜 탭 묶음은 화살표 키로 옮겨 다니는 초점 관리까지

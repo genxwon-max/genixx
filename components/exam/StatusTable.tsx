@@ -15,6 +15,7 @@ import {
   allSubmitted,
   finalize,
   isSelfSurvey,
+  limitOf,
   missingSurveys,
   reopenSurvey,
   resetRecord,
@@ -320,7 +321,7 @@ export default function StatusTable({
                     <td className={`${td} tabular-nums`}>
                       {/* 이미 시작했다면 그 아이가 받은 시간을 적는다. 지금 설정을 적으면
                           45분에 푼 아이의 기록에 20분이라고 남는다. */}
-                      {off && !rec.startedAt ? "—" : `${rec.limitMin ?? config.limits[s.id]}분`}
+                      {off && !rec.startedAt ? "—" : `${rec.limitMin ?? limitOf(studentId, s.id, reg?.round)}분`}
                     </td>
                     <td className={td}>
                       {off && rec.status === "ready" ? (

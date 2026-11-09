@@ -139,7 +139,7 @@ export function Head({
   back,
 }: {
   title: string;
-  lead?: string;
+  lead?: React.ReactNode;
   right?: React.ReactNode;
   back?: { href: string; label: string };
 }) {

@@ -15,6 +15,7 @@ import { formGradeOf, formItems, type ExamForm } from "./formStore";
    자릿점이 갈린다(lib/productStore.ts의 won) */
 import { won } from "./productStore";
 import { detailIsEmpty, type DetailMode } from "./richText";
+import { subjects } from "./exam";
 import type { ItemDraft } from "./itemStore";
 
 /**
@@ -40,7 +41,7 @@ import type { ItemDraft } from "./itemStore";
  *   문항이 조용히 갈라진다.
  */
 
-export type PlanAction = "open" | "close" | "finish" | "reopen" | "period" | "price";
+export type PlanAction = "open" | "close" | "finish" | "reopen" | "period" | "price" | "minutes";
 
 export const planActions: Record<PlanAction, string> = {
   open: "회차 열기",
@@ -49,6 +50,7 @@ export const planActions: Record<PlanAction, string> = {
   reopen: "응시 다시 열기",
   period: "응시 기간 변경",
   price: "응시료 변경",
+  minutes: "평가 시간 변경",
 };
 
 /**
@@ -58,7 +60,7 @@ export const planActions: Record<PlanAction, string> = {
  * 거치지만 기간과 값은 판 위에서 고쳐 저장하는 값이라 물을 것이 없다. 한 union으로 묶어
  * 두었더니 대화상자 문구표가 쓰지도 않을 기간 칸을 요구했다.
  */
-export type PlanGateAction = Exclude<PlanAction, "period" | "price">;
+export type PlanGateAction = Exclude<PlanAction, "period" | "price" | "minutes">;
 
 export type PlanLog = { at: string; by: string; action: PlanAction; text: string };
 
@@ -165,6 +167,16 @@ export type RoundPlan = {
   price?: number;
   /** 할인가. 없거나 null이면 정가 그대로 받는다 */
   salePrice?: number | null;
+  /**
+   * 과목별 평가 시간(분) — 진단별 문항관리(ADM-04-3)의 회차 화면에서 과목마다 적는다(2026-11-09 사용자 요청).
+   *
+   * 응시료처럼 회차가 든다. 3회차 국어는 40분, 4회차 국어는 30분일 수 있고, 두 회차 결과를 견줄 때
+   * 「시간이 달랐다」가 그 회차에 남아 있어야 한다.
+   *
+   * ⚠ 없는 과목은 기본 시간(lib/exam.ts의 limitMin)으로 읽는다 — minutesOf. 값을 넣기 전에 만든
+   *   회차가 빈칸으로 보이면 시간이 없는 회차로 읽힌다.
+   */
+  minutes?: Partial<Record<ItemDraft["subject"], number>>;
 /**
    * 이번 회차가 보는 학년 — **하나**.
    *
@@ -889,6 +901,59 @@ export function setRoundPrice(
   if (priceOf(before) === next.price && (before.salePrice ?? null) === next.salePrice) return;
   const text = `${priceLine(before)} → ${priceLine(next)}`;
   patch(id, next, { by, action: "price", text: why ? `${text} — ${why}` : text });
+}
+
+/* ───────────────────────── 과목별 평가 시간 ───────────────────────── */
+
+/** 적을 수 있는 평가 시간(분) — 회차 시험 설정(lib/roundStore.ts LIMITS)과 같은 한계 */
+export const MINUTES_RANGE = { min: 5, max: 180, step: 5 } as const;
+
+/** 과목의 기본 시간 — 회차에 적지 않았을 때 읽는 값(lib/exam.ts) */
+export const defaultMinutes = (subject: ItemDraft["subject"]) =>
+  subjects.find((s) => s.short === subject)?.limitMin ?? 40;
+
+/** 이 회차에서 그 과목의 평가 시간(분) */
+export const minutesOf = (plan: RoundPlan, subject: ItemDraft["subject"]) =>
+  plan.minutes?.[subject] ?? defaultMinutes(subject);
+
+/** 저장소를 훅 밖에서 — 응시를 시작할 때 그 회차의 시간을 박아 두는 데 쓴다(examStore) */
+export const roundMinutesOf = (roundId: string, subject: ItemDraft["subject"]) =>
+  minutesOf(planOf(read(), roundId), subject);
+
+export function checkMinutes(next: Partial<Record<ItemDraft["subject"], number>>): string[] {
+  return Object.entries(next).flatMap(([subject, v]) =>
+    Number.isInteger(v) && v! >= MINUTES_RANGE.min && v! <= MINUTES_RANGE.max
+      ? []
+      : [`${subject} 평가 시간은 ${MINUTES_RANGE.min}분 이상 ${MINUTES_RANGE.max}분 이하로 적어 주세요.`],
+  );
+}
+
+/**
+ * 과목별 평가 시간을 고친다 — 바뀐 과목만 「국어 40분 → 30분」으로 기록에 남긴다.
+ *
+ * 이미 응시를 시작한 학생의 시계는 줄지 않는다 — 시작할 때의 시간이 응시 기록에 박힌다
+ * (examStore.startSubject). 열린 회차의 시간을 고치면 그 뒤에 시작하는 과목부터 새 시간이다.
+ */
+export function setRoundMinutes(
+  id: string,
+  next: Partial<Record<ItemDraft["subject"], number>>,
+  by: string,
+) {
+  if (checkMinutes(next).length > 0) return;
+  const before = planOf(read(), id);
+  const moved = (Object.keys(next) as ItemDraft["subject"][]).filter(
+    (s) => minutesOf(before, s) !== next[s],
+  );
+  if (moved.length === 0) return;
+  patch(
+    id,
+    { minutes: { ...before.minutes, ...next } },
+    {
+      by,
+      action: "minutes",
+      text: moved.map((s) => `${s} ${minutesOf(before, s)}분 → ${next[s]}분`).join(" · "),
+    },
+  );
 }
 
 /** 마감을 되돌린다 — 마감 시각을 지우되 되돌린 사실은 기록에 남는다 */

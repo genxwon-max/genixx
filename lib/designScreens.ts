@@ -71,8 +71,9 @@ export type DesignState = {
  *   design   지금까지의 디자인 전부
  *   design2  2026-10-28 원안지 양식(10.22) 수정분만 따로(사용자 요청). 이번에 고친 화면을 그 전 디자인과
  *            섞지 않고 한 곳에서 넘기려는 것이다
+ *   design3  2026-11-09 학생 홈(/student)을 대시보드로 다시 짠 시안(사용자 요청)
  */
-export type DesignArea = "design" | "design2";
+export type DesignArea = "design" | "design2" | "design3";
 
 export type DesignScreen = {
   /** 화면 컴포넌트를 찾는 열쇠 (app/(design)/design/[...path]/page.tsx · design2/[...path]/page.tsx) */
@@ -990,6 +991,52 @@ export const designScreens: DesignScreen[] = [
       { slug: "2026-4/e4/guardian", name: "보호자가 학생 접속코드로 들어옴", who: "보호자", note: "카드 단추가 「열람 불가」" },
     ],
   },
+  /* ── 학생 홈 · 대시보드 — 위에 진단을 몇 번 봤는지, 아래에 지금까지 본 진단 목록(2026-11-09 사용자 요청) ── */
+  {
+    id: "student-dashboard",
+    area: "design3",
+    zone: "student",
+    name: "학생 홈 · 대시보드",
+    wbs: "ACC-03",
+    real: "/student",
+    base: "/student",
+    states: [
+      { slug: "", name: "본 진단이 있음", who: "학생", note: "위에 본 진단 수 · 결과 받은 진단 · 응시 중인 진단 · 아래에 지금까지 본 진단 목록" },
+      { slug: "empty", name: "아직 본 진단이 없음", who: "학생", note: "숫자는 모두 0 · 목록 자리에 「진단 접수하기」" },
+    ],
+  },
+  /* ── 진단 접수 · 응시료로 거르기 — 검색 칸에 전체 · 무료 · 유료 체크 단추(2026-11-09 사용자 요청) ── */
+  {
+    id: "student-apply-fee",
+    area: "design3",
+    zone: "student",
+    name: "진단 접수 · 응시료 조회 조건",
+    wbs: "v4/new/22",
+    real: "/student/apply",
+    base: "/student/apply",
+    states: [
+      { slug: "", name: "응시료 · 전체", who: "학생", note: "검색 칸 맨 앞에 전체 · 무료 · 유료 — 누르면 바로 걸린다" },
+      { slug: "free", name: "응시료 · 무료만", who: "학생", note: "응시료 칸이 「무료」인 진단 · 목록 머리에 「· 무료」" },
+      { slug: "paid", name: "응시료 · 유료만", who: "학생" },
+    ],
+  },
+  /* ── 진단별 문항관리 · 회차 — 과목별 평가 시간 입력(2026-11-09 사용자 요청) ── */
+  {
+    id: "admin-forms-minutes",
+    area: "design3",
+    zone: "admin2",
+    name: "진단별 문항관리 · 회차 · 과목별 평가 시간",
+    wbs: "ADM-04-3",
+    real: "/admin2/forms/[회차]",
+    base: "/admin2/forms/2026-4",
+    states: [
+      { slug: "", name: "기본 시간", note: "회차 제목 아래 · 과목 탭 위에 과목마다 「□□ 분」 · 누르면 10 · 20 · 30 · 40 · 45 · 50 · 60 · 90 · 120분 고르개 · 탭에도 시간" },
+      { slug: "edited", name: "고친 뒤 · 저장 전", note: "국어 30분 · 과학 90분 — 바뀐 칸 테두리 · 「되돌리기」 · 「시간 저장」" },
+      { slug: "saved", name: "저장한 뒤", note: "머리에 「국어 30분 · 수학 40분 · 과학 90분 · 합계 160분」 · 회차 기록에 남음" },
+      { slug: "error", name: "범위를 벗어난 값", note: "5분 ~ 180분 · 「시간 저장」이 막힌다" },
+      { slug: "open", name: "응시 진행중인 회차에서 고침", note: "이미 시작한 학생의 시간은 그대로라는 안내" },
+    ],
+  },
   /* ── 설문 관리(ADM-14) — 9월 27일 옛 콘솔과 함께 사라졌던 화면을 /admin2에 다시 세움(2026-10-28) ── */
   {
     id: "survey-admin",
@@ -1294,3 +1341,15 @@ export const designPathsOf = (area: DesignArea) =>
   );
 
 export const designPaths = designPathsOf("design");
+
+/**
+ * /design3 화면의 단추가 가는 곳 — 같은 화면이 /design2에 있으면 그쪽으로, 없으면 /design 그대로
+ * (2026-11-09 사용자 요청 「/design3의 버튼 연동은 /design2로」). /design2에 화면이 늘면 단추도 따라간다.
+ *
+ *   via2("/design/student/exams/2026-4/e4/doing") → "/design2/student/exams/2026-4/e4/doing"
+ *   via2("/design/student/results/2026-3/e4")     → 그대로(/design2에 결과 화면이 없다)
+ */
+export function via2(href: string) {
+  const rest = href.startsWith("/design/") ? href.slice("/design/".length) : null;
+  return rest !== null && findDesign(rest, "design2") ? `/design2/${rest}` : href;
+}

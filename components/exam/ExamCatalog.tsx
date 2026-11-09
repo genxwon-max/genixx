@@ -3,7 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
-import { examDiscounted, examFeeText, useCatalogRounds, type CatalogRound } from "@/lib/catalogRounds";
+import {
+  examDiscounted,
+  examFee,
+  examFeeText,
+  useCatalogRounds,
+  type CatalogRound,
+} from "@/lib/catalogRounds";
 import { FREE_TOTAL, SET_QUESTIONS, assessment, questionCount } from "@/lib/exam";
 import {
   availabilityLabel,
@@ -54,6 +60,14 @@ import { btnBox, btnBoxDisabled } from "./ui";
 type Filter = "all" | TrackId;
 type View = "list" | "card";
 type StatusFilter = "all" | Availability;
+/** 응시료로 거르기 — 무료는 응시료가 0원인 회차다(할인가가 있으면 할인가로 본다) */
+export type FeeFilter = "all" | "free" | "paid";
+
+const feeOptions: { id: FeeFilter; label: string }[] = [
+  { id: "all", label: "전체" },
+  { id: "free", label: "무료" },
+  { id: "paid", label: "유료" },
+];
 
 /** 한 쪽에 싣는 수 — 카드는 세 줄로 떨어지게 아홉 */
 const PAGE_SIZE: Record<View, number> = { list: 10, card: 9 };
@@ -253,15 +267,22 @@ export function CatalogView({
   actionOf,
   onApply,
   initial,
+  feeFilter = false,
 }: CatalogProps & {
   rounds: CatalogRound[];
-  /** 처음에 걸어 둘 보기 방식과 검색어 — 디자인 보기가 「카드로 보기」 · 「찾는 진단 없음」을 주소로 굳힌다 */
-  initial?: { view?: View; query?: string };
+  /** 처음에 걸어 둘 보기 방식 · 검색어 · 응시료 — 디자인 보기가 「카드로 보기」 · 「찾는 진단 없음」을 주소로 굳힌다 */
+  initial?: { view?: View; query?: string; fee?: FeeFilter };
+  /**
+   * 검색 칸 맨 앞에 응시료(전체 · 무료 · 유료) 고르개를 세운다 — 아직은 /design3의 진단 접수 시안만 켠다
+   * (2026-11-09 사용자 요청). 끄면 지금 목록 그대로다
+   */
+  feeFilter?: boolean;
 }) {
   const skin = skins[skinId];
 
   const [filter, setFilter] = useState<Filter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [fee, setFee] = useState<FeeFilter>(initial?.fee ?? "all");
   /* 입력 중인 검색어와 실제로 건 검색어를 가른다 — 한 글자마다 목록이 흔들리면 쪽 번호도 함께 흔들린다 */
   const [draft, setDraft] = useState(initial?.query ?? "");
   const [query, setQuery] = useState(initial?.query ?? "");
@@ -283,6 +304,7 @@ export function CatalogView({
     )
     .filter((it) => filter === "all" || it.track.id === filter)
     .filter((it) => status === "all" || it.round.availability === status)
+    .filter((it) => fee === "all" || (examFee(it.round) === 0) === (fee === "free"))
     .filter(
       (it) =>
         !q || `${it.name} ${trackLabel(it.track.id)} ${it.track.short}`.toLowerCase().includes(q),
@@ -300,8 +322,9 @@ export function CatalogView({
   const offset = (current - 1) * size;
   const items = all.slice(offset, offset + size);
 
-  const touched = status !== "all" || query !== "" || draft !== "";
+  const touched = status !== "all" || fee !== "all" || query !== "" || draft !== "";
   const filterLabel = filter === "all" ? "전체" : trackLabel(filter);
+  const feeLabel = fee === "free" ? "무료" : fee === "paid" ? "유료" : "";
 
   const search = (e: FormEvent) => {
     e.preventDefault();
@@ -329,6 +352,16 @@ export function CatalogView({
           onSubmit={search}
           className={`flex flex-wrap items-end gap-x-3 gap-y-3 px-5 py-4 ${skin.search}`}
         >
+          {feeFilter && (
+            <FeePicker
+              skin={skin}
+              fee={fee}
+              onPick={(f) => {
+                setFee(f);
+                setPage(1);
+              }}
+            />
+          )}
           <Field label="접수 상태" htmlFor="apply-status">
             <select
               id="apply-status"
@@ -368,6 +401,7 @@ export function CatalogView({
               type="button"
               onClick={() => {
                 setStatus("all");
+                setFee("all");
                 setDraft("");
                 setQuery("");
                 setPage(1);
@@ -386,6 +420,12 @@ export function CatalogView({
         >
           <p className="text-[14px] text-soft-muted">
             <b className="font-semibold text-soft-ink">{filterLabel}</b>
+            {feeLabel && (
+              <>
+                {" "}
+                · <span className="text-soft-ink">{feeLabel}</span>
+              </>
+            )}
             {query && (
               <>
                 {" "}
@@ -453,6 +493,66 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+/**
+ * 응시료 고르개 — 전체 · 무료 · 유료 중 하나. 셋 중 하나만 걸리므로 속은 라디오이고, 겉은 체크 표시가 붙는
+ * 알약 단추다. 다른 칸처럼 「검색」을 누르지 않아도 바로 걸린다 — 접수 상태 고르개와 같다.
+ *
+ * 검색 칸의 한 줄을 통째로 차지한다 — 접수 상태 · 검색어와 한 줄에 두면 검색어 칸이 좁아지고 「초기화」가
+ * 혼자 다음 줄로 떨어진다.
+ */
+function FeePicker({
+  skin,
+  fee,
+  onPick,
+}: {
+  skin: Skin;
+  fee: FeeFilter;
+  onPick: (f: FeeFilter) => void;
+}) {
+  return (
+    <fieldset className="flex w-full flex-col gap-1.5 border-b border-slate-100 pb-3">
+      <legend className="mb-1.5 text-[12px] font-bold text-soft-muted">응시료</legend>
+      <div className="flex h-10 items-center gap-1.5">
+        {feeOptions.map((o) => {
+          const on = fee === o.id;
+          return (
+            <label
+              key={o.id}
+              className={`inline-flex h-10 cursor-pointer items-center gap-1.5 border px-3.5 text-[14px] transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-soft-primary/40 ${skin.chip} ${
+                on
+                  ? "border-soft-primary bg-soft-primary-soft font-semibold text-soft-primary"
+                  : "border-soft-line bg-white text-soft-ink hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="apply-fee"
+                value={o.id}
+                checked={on}
+                onChange={() => onPick(o.id)}
+                className="sr-only"
+              />
+              <span
+                aria-hidden
+                className={`flex h-4 w-4 items-center justify-center rounded-full border ${
+                  on ? "border-soft-primary bg-soft-primary text-white" : "border-slate-300 bg-white"
+                }`}
+              >
+                {on && (
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-2.5 w-2.5">
+                    <path d="M2.5 6.2 5 8.5l4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+              {o.label}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 

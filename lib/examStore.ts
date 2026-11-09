@@ -1,8 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { SUBJECT_IDS, type ExamTier, type SubjectId } from "./exam";
+import { SUBJECT_IDS, subjects, type ExamTier, type SubjectId } from "./exam";
 import { isTrackId, type TrackId } from "./examCatalog";
+import { roundMinutesOf } from "./roundPlanStore";
 import { getExamConfig } from "./roundStore";
 import { getWallet, subscribeWallets, walletsRaw } from "./ticketStore";
 
@@ -337,6 +338,17 @@ export function currentRegOf(studentId: string): RegRef | null {
   return { round: last.round, track: last.track };
 }
 
+/**
+ * 과목의 평가 시간(분) — 그 회차에 적은 값(진단별 문항관리의 회차 화면 · lib/roundPlanStore.ts minutes).
+ * 회차를 모르면(접수 기록이 없는 시연 학생) 회차 시험 설정의 값으로 읽는다.
+ */
+export function limitOf(studentId: string, subject: SubjectId, roundId = currentRegOf(studentId)?.round) {
+  const short = subjects.find((s) => s.id === subject)?.short;
+  return roundId && short
+    ? roundMinutesOf(roundId, short as Parameters<typeof roundMinutesOf>[1])
+    : getExamConfig().limits[subject];
+}
+
 /** 평가마다 나누기 전의 기록(학생 ID 열쇠)이 붙는 평가 — 가장 먼저 접수한 것 */
 export function legacyOwnerOf(studentId: string): RegRef | null {
   const first = getWallet(studentId).used[0];
@@ -506,7 +518,7 @@ export function setAnswer(
   patchSubject(studentId, subject, {
     status: rec.status === "ready" ? "in-progress" : rec.status,
     startedAt: rec.startedAt ?? new Date().toISOString(),
-    limitMin: rec.limitMin ?? getExamConfig().limits[subject],
+    limitMin: rec.limitMin ?? limitOf(studentId, subject),
     answers: { ...rec.answers, [questionId]: value },
   });
 }
@@ -533,7 +545,7 @@ export function startSubject(studentId: string, subject: SubjectId) {
   patchSubject(studentId, subject, {
     status: "in-progress",
     startedAt: new Date().toISOString(),
-    limitMin: getExamConfig().limits[subject],
+    limitMin: limitOf(studentId, subject),
   });
 }
 
