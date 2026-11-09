@@ -53,7 +53,7 @@ const examDesign: Record<string, string> = {
 };
 
 /** 실제 주소로 가는 단추를 디자인 주소로 돌린다 — 디자인이 없는 진단은 실제 주소 그대로 둔다 */
-function inDesign(action: ApplyAction, round: CatalogRound, track: TrackId): ApplyAction {
+export function inDesign(action: ApplyAction, round: CatalogRound, track: TrackId): ApplyAction {
   if (action.kind !== "done") return action;
   const href = examDesign[`${round.id}/${track}/${action.tier}`];
   return href ? { ...action, href } : action;
