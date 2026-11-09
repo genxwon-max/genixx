@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { subjects, type SubjectId } from "./exam";
 import { archivedRounds, availabilityOf, type Availability } from "./examCatalog";
 import { orderWon } from "./orderStore";
-import { periodOf, planOf, subjectsFor, usePlans, useRounds } from "./roundPlanStore";
+import { minutesOf, periodOf, planOf, subjectsFor, usePlans, useRounds } from "./roundPlanStore";
 import { useExamConfig } from "./roundStore";
 
 /**
@@ -77,7 +77,7 @@ export function useCatalogRounds(): CatalogRound[] {
         subjects: subjectsFor(plan).flatMap((name) => {
           const s = subjects.find((x) => x.short === name);
           return s && config.enabled[s.id]
-            ? [{ id: s.id, name: s.short, minutes: config.limits[s.id] }]
+            ? [{ id: s.id, name: s.short, minutes: minutesOf(plan, name) }]
             : [];
         }),
       };

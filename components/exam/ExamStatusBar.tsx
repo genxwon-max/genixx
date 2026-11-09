@@ -14,7 +14,7 @@ import {
 import { evalName, isTrackId } from "@/lib/examCatalog";
 import { designOf, isDesignKind } from "@/lib/examDesign";
 import { useWallet } from "@/lib/ticketStore";
-import { useExamRecord, useHydrated } from "@/lib/examStore";
+import { limitOf, useExamRecord, useHydrated } from "@/lib/examStore";
 import { useSession } from "@/lib/authStore";
 import { useExamConfig } from "@/lib/roundStore";
 import { useExamExitAvailable } from "@/lib/fullscreen";
@@ -204,7 +204,7 @@ export default function ExamStatusBar() {
   const started = rec.startedAt ? new Date(rec.startedAt).getTime() : now;
   const elapsed = Math.max(0, Math.floor((now - started) / 1000));
   /* 시작할 때 박아 둔 값을 쓴다 — 관리자가 도중에 줄여도 이 시계는 줄지 않는다 */
-  const limitMin = rec.limitMin ?? (free ? FREE_LIMIT_MIN : config.limits[subject!]);
+  const limitMin = rec.limitMin ?? (free ? FREE_LIMIT_MIN : limitOf(session?.studentId ?? "demo", subject!));
   const remain = Math.max(0, limitMin * 60 - elapsed);
   const low = remain < config.warnMin * 60;
 
