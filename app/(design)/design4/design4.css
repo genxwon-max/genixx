@@ -1,0 +1,99 @@
+/* /design4 홈 시안 — 이 존에서만 쓰는 색과 폭. (site) 전체에 걸지 않으려고 따로 뗐다. */
+.d4 {
+  --d4-ink: #0f1f4b;
+  --d4-blue: #2457e6;
+  --d4-blue-soft: #eaf0ff;
+  --d4-page: #ffffff;
+  --d4-tint: #f3f6fb;
+  background: var(--d4-page);
+  color: #1e293b;
+
+  /* 공개 사이트에서 옮겨 온 조각이 쓰는 남색(brand-*)을 이 시안의 파랑으로 바꿔 끼운다.
+     Tailwind 4의 색 유틸리티는 var(--color-brand-*)를 읽으므로 이 범위 안에서만 바뀐다. */
+  --color-brand-50: #eff4ff;
+  --color-brand-100: #dfe8fe;
+  --color-brand-200: #c3d4fd;
+  --color-brand-300: #98b6fb;
+  --color-brand-400: #6690f6;
+  --color-brand-500: #3f6ff0;
+  --color-brand-600: #2457e6;
+  --color-brand-700: #1c45c4;
+  --color-brand-800: #1b3a9c;
+  --color-brand-900: #142a66;
+  --color-brand-950: #0f1f4b;
+
+  /* 로그인 · 회원가입 화면(계정 존 사본)이 쓰는 밝은 파랑도 같은 파랑으로 */
+  --color-soft-primary: #2457e6;
+  --color-soft-primary-dark: #1c45c4;
+  --color-soft-primary-soft: #eaf0ff;
+}
+
+.d4-container {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 640px) {
+  .d4-container {
+    padding-inline: 24px;
+  }
+}
+
+/* 큰 판이 넘어갈 때 글과 그림이 살짝 떠오른다 */
+@keyframes d4-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.d4-fade {
+  animation: d4-fade 0.45s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .d4-fade {
+    animation: none;
+  }
+}
+
+/* 큰 판 탭 밑줄이 차오른다 — 다 차면 다음 판(시간은 HeroCarousel이 style로 준다) */
+@keyframes d4-progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+.d4-progress {
+  animation: d4-progress linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .d4-progress {
+    animation: none;
+    width: 100%;
+  }
+}
+
+/* 옮겨 온 화면의 구간 제목 — design4 Chapter 제목과 같은 모양(앞에 파란 막대) */
+.d4-h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.3125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+.d4-h2::before {
+  content: "";
+  width: 5px;
+  height: 1.05em;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--d4-blue);
+}

@@ -1,0 +1,190 @@
+/* /design4 사본 — 공개 사이트 계정 존 그림(components/account/AuthArt.tsx)에서 반짝이 별(✦)만 뺐다.
+   2026-11-12 「AI 아이콘 같은 건 사용 금지」. */
+/**
+ * 회원 유형 카드에 들어가는 플랫 일러스트.
+ *
+ * 외부 이미지를 받지 않고 SVG로 그린다. 카드가 좌우로 놓이므로 두 그림의
+ * 무게중심과 여백을 맞췄고, 색은 두 시안 모두에서 튀지 않는 팔레트로 골랐다.
+ * accent 색만 프롭으로 받아 시안별 주색을 따라간다.
+ */
+
+type Props = { className?: string; accent?: string };
+
+/** 개인 — 보호자와 아이 */
+export function PersonalArt({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="보호자와 아이">
+      {/* 바닥 그림자 */}
+      <ellipse cx="100" cy="126" rx="66" ry="7" fill={accent} opacity="0.1" />
+
+      {/* 보호자 */}
+      <path d="M56 124V96a20 20 0 0 1 40 0v28Z" fill={accent} />
+      <circle cx="76" cy="66" r="15" fill="#fbd7bf" />
+      <path d="M61 64a15 15 0 0 1 30 0c0-11-6-16-15-16S61 53 61 64Z" fill="#3f3d56" />
+      <rect x="68" y="80" width="16" height="9" rx="4" fill="#fbd7bf" />
+
+      {/* 아이 */}
+      <path d="M112 124v-20a15 15 0 0 1 30 0v20Z" fill="#f7b23b" />
+      <circle cx="127" cy="82" r="12" fill="#fbd7bf" />
+      <path d="M115 81a12 12 0 0 1 24 0c0-9-5-13-12-13s-12 4-12 13Z" fill="#5b4636" />
+
+      {/* 손 잡은 선 */}
+      <path
+        d="M94 108c6-4 12-4 18 0"
+        stroke="#fbd7bf"
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* 말풍선 — 재능 신호 */}
+      <rect x="128" y="26" width="52" height="34" rx="9" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      <path d="M142 60l-3 9 11-9Z" fill="#fff" stroke={accent} strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="143" cy="43" r="3.5" fill={accent} />
+      <circle cx="154" cy="43" r="3.5" fill="#f7b23b" />
+      <circle cx="165" cy="43" r="3.5" fill="#4fc08d" />
+
+    </svg>
+  );
+}
+
+/** 기관 — 학교 건물과 학급 */
+export function OrgArt({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="학교와 학급">
+      <ellipse cx="100" cy="126" rx="70" ry="7" fill={accent} opacity="0.1" />
+
+      {/* 건물 본체 */}
+      <rect x="48" y="52" width="104" height="72" rx="6" fill="#fff" stroke={accent} strokeWidth="3" />
+      {/* 지붕 */}
+      <path d="M40 54l60-30 60 30Z" fill={accent} />
+      {/* 깃대 */}
+      <path d="M100 24V10" stroke="#3f3d56" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M101 11h13l-4 5 4 5h-13Z" fill="#f7b23b" />
+
+      {/* 창문 3개 */}
+      <rect x="62" y="68" width="22" height="20" rx="3" fill="#eaf3ff" stroke={accent} strokeWidth="2" />
+      <rect x="89" y="68" width="22" height="20" rx="3" fill="#eaf3ff" stroke={accent} strokeWidth="2" />
+      <rect x="116" y="68" width="22" height="20" rx="3" fill="#eaf3ff" stroke={accent} strokeWidth="2" />
+
+      {/* 문 */}
+      <path d="M88 124v-22a12 12 0 0 1 24 0v22Z" fill="#f7b23b" />
+      <circle cx="106" cy="113" r="2.5" fill="#fff" />
+
+      {/* 학생 둘 */}
+      <circle cx="34" cy="96" r="9" fill="#fbd7bf" />
+      <path d="M23 124v-13a11 11 0 0 1 22 0v13Z" fill="#4fc08d" />
+      <circle cx="166" cy="96" r="9" fill="#fbd7bf" />
+      <path d="M155 124v-13a11 11 0 0 1 22 0v13Z" fill="#e879a6" />
+    </svg>
+  );
+}
+
+/** 카드 제목 옆 원형 화살표 */
+export function ArrowBadge({ color = "#365eef", size = 26 }: { color?: string; size?: number }) {
+  return (
+    <span
+      aria-hidden
+      style={{ width: size, height: size, backgroundColor: color }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-white"
+    >
+      <svg viewBox="0 0 24 24" width={size * 0.58} height={size * 0.58} fill="none">
+        <path
+          d="M9 5l7 7-7 7"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * 빈 상태 — 아직 등록된 아이가 없을 때.
+ * 사람 대신 이름표가 비어 있는 가방을 그린다. 「없다」는 사실만 담고
+ * 아이를 특정 성별·연령으로 그리지 않기 위해서다.
+ */
+export function EmptyChild({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="아직 등록된 아이가 없습니다">
+      <ellipse cx="100" cy="128" rx="52" ry="6" fill={accent} opacity="0.1" />
+
+      {/* 가방 몸통 */}
+      <rect x="62" y="48" width="76" height="76" rx="18" fill={accent} opacity="0.18" />
+      <rect x="62" y="48" width="76" height="76" rx="18" fill="none" stroke={accent} strokeWidth="2.5" />
+      {/* 앞주머니 */}
+      <rect x="76" y="86" width="48" height="30" rx="10" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      {/* 손잡이 */}
+      <path d="M82 48v-8a18 18 0 0 1 36 0v8" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
+      {/* 비어 있는 이름표 */}
+      <rect x="86" y="60" width="28" height="16" rx="5" fill="#fff" stroke={accent} strokeWidth="2" />
+      <path d="M92 68h16" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity="0.35" />
+
+      {/* 더하기 표시 */}
+      <circle cx="140" cy="104" r="15" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      <path d="M140 97v14M133 104h14" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * 학생 — 책상 앞에 앉아 자기 화면을 여는 모습.
+ *
+ * 보호자와 함께 그린 PersonalArt와 구분되어야 해서 사람을 한 명만 둔다. 학생이
+ * 자기 이름으로 가입한다는 것이 이 카드의 요지이기 때문이다. 성별을 읽히지 않도록
+ * 머리 모양은 단순한 덩어리로 두고, 손에는 응시 화면(태블릿)을 들려 준다.
+ */
+export function StudentArt({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="학생">
+      <ellipse cx="100" cy="126" rx="58" ry="7" fill={accent} opacity="0.1" />
+
+      {/* 책상 */}
+      <rect x="46" y="104" width="108" height="7" rx="3.5" fill={accent} opacity="0.25" />
+      <path d="M56 111v13M144 111v13" stroke={accent} strokeWidth="4" strokeLinecap="round" opacity="0.25" />
+
+      {/* 몸 */}
+      <path d="M76 104V84a24 24 0 0 1 48 0v20Z" fill={accent} />
+      {/* 얼굴 */}
+      <circle cx="100" cy="54" r="16" fill="#fbd7bf" />
+      <path d="M84 52a16 16 0 0 1 32 0c0-12-6-17-16-17s-16 5-16 17Z" fill="#3f3d56" />
+      <rect x="92" y="68" width="16" height="9" rx="4" fill="#fbd7bf" />
+
+      {/* 태블릿 — 응시 화면 */}
+      <rect x="84" y="88" width="32" height="24" rx="4" fill="#fff" stroke={accent} strokeWidth="2.5" />
+      <path d="M90 96h20M90 102h13" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+
+      {/* 책 세 권 — 작은 크기에서도 「학생」으로 읽히도록 가방 대신 책을 쌓는다 */}
+      <rect x="26" y="94" width="34" height="6" rx="2" fill="#f7b23b" />
+      <rect x="29" y="88" width="28" height="6" rx="2" fill="#4fc08d" />
+      <rect x="24" y="82" width="32" height="6" rx="2" fill={accent} opacity="0.55" />
+
+    </svg>
+  );
+}
+
+/** 전문가 — 문항지를 든 사람과 확인 표시 */
+export function ExpertArt({ className = "", accent = "#365eef" }: Props) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} role="img" aria-label="문항지를 검토하는 전문가">
+      <ellipse cx="100" cy="126" rx="70" ry="7" fill={accent} opacity="0.1" />
+
+      {/* 문항지 */}
+      <rect x="96" y="30" width="62" height="82" rx="7" fill="#fff" stroke={accent} strokeWidth="3" />
+      <path d="M108 50h38M108 64h38M108 78h24" stroke={accent} strokeWidth="3" strokeLinecap="round" opacity="0.45" />
+      {/* 확인 표시 */}
+      <circle cx="150" cy="104" r="15" fill="#4fc08d" />
+      <path d="M143 104l5 5 9-10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+
+      {/* 사람 */}
+      <circle cx="62" cy="62" r="15" fill="#fbd7bf" />
+      <path d="M49 58a13 13 0 0 1 26 0c-5-6-21-6-26 0Z" fill="#3f3d56" />
+      <path d="M38 124v-20a24 24 0 0 1 48 0v20Z" fill={accent} />
+      {/* 펜을 든 손 */}
+      <path d="M82 100l18-12" stroke="#fbd7bf" strokeWidth="7" strokeLinecap="round" />
+      <path d="M98 90l12-14" stroke="#f7b23b" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}

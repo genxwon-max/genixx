@@ -25,6 +25,8 @@
  * 화면 · 메일 · 알림톡 · 알림 종. 모두 같은 학생의 같은 답을 말한다(components/design/screens/photoFlow.ts).
  */
 
+import { legalGroup, siteMenu } from "@/lib/nav";
+
 export type DesignZone =
   | "account"
   | "exam"
@@ -72,8 +74,10 @@ export type DesignState = {
  *   design2  2026-10-28 원안지 양식(10.22) 수정분만 따로(사용자 요청). 이번에 고친 화면을 그 전 디자인과
  *            섞지 않고 한 곳에서 넘기려는 것이다
  *   design3  2026-11-09 학생 홈(/student)을 대시보드로 다시 짠 시안(사용자 요청)
+ *   design4  2026-11-12 공개 사이트(홈 · 하위 화면 전부)를 공공 교육 포털 모양으로 다시 짠 시안(사용자 요청).
+ *            화면은 app/(design)/design4/(site)/ 아래 실제 주소와 같은 자리에 있다(design4Screens)
  */
-export type DesignArea = "design" | "design2" | "design3";
+export type DesignArea = "design" | "design2" | "design3" | "design4";
 
 export type DesignScreen = {
   /** 화면 컴포넌트를 찾는 열쇠 (app/(design)/design/[...path]/page.tsx · design2/[...path]/page.tsx) */
@@ -1326,6 +1330,7 @@ export const designScreens: DesignScreen[] = [
       { slug: "photo-remind", name: "알림톡 · 답 사진 올릴 기한 하루 전", who: "보호자", note: "그때까지 올라오지 않았을 때만" },
     ],
   },
+  ...design4Screens(),
 ];
 
 /** 상태의 주소 — /design/admin2/approvals/EX-2610-004/approve · /design2/admin2/items/IT-2702 */
@@ -1373,4 +1378,91 @@ export const designPaths = designPathsOf("design");
 export function via2(href: string) {
   const rest = href.startsWith("/design/") ? href.slice("/design/".length) : null;
   return rest !== null && findDesign(rest, "design2") ? `/design2/${rest}` : href;
+}
+
+/**
+ * /design4 — 공개 사이트 전체를 다시 짠 시안(2026-11-12). 메뉴 갈래 하나가 화면 하나이고,
+ * 그 갈래의 하위 화면이 상태 한 줄씩이다. 사이트맵(lib/nav.ts)을 그대로 읽으므로 메뉴가 늘면 목록도 는다.
+ * 번호가 들어가는 주소(참여진 상세 · 공지 · 게시글)는 예시 한 건으로 굳혔다.
+ */
+function design4Screens(): DesignScreen[] {
+  const extra: Record<string, DesignState[]> = {
+    "/about": [{ slug: "team/kim-jiwon", name: "참여진 상세", note: "예시 · 김지원 책임연구원" }],
+    "/community": [
+      { slug: "notice/NT-001", name: "공지사항 · 글 보기", note: "예시 · 첫 공지" },
+      { slug: "board/BD-001", name: "자유게시판 · 글 보기", note: "예시 · 첫 글" },
+      { slug: "board/write", name: "자유게시판 · 글쓰기", note: "로그인 전이면 로그인 안내" },
+    ],
+    "/legal": [{ slug: "", name: "정책 모음", note: "법적 고지 일곱 가지로 가는 카드" }],
+  };
+  const home: DesignScreen = {
+    id: "d4-home",
+    area: "design4",
+    zone: "site",
+    name: "홈",
+    wbs: "PUB-01",
+    real: "/",
+    base: "/home",
+    states: [{ slug: "", name: "첫 화면", note: "큰 안내 판 · 로그인 상자 · 바로가기 셋 · 공지 | 자주 묻는 질문 · 더 알아보기" }],
+  };
+  /* 로그인 · 회원가입 — 공개 사이트 시안과 같은 머리띠 · 푸터를 두른 계정 존 사본(2026-11-12 추가) */
+  const account: DesignScreen[] = [
+    {
+      id: "d4-login",
+      area: "design4",
+      zone: "account",
+      name: "로그인",
+      wbs: "ACC-02",
+      real: "/login/…",
+      base: "/login",
+      states: [
+        { slug: "", name: "로그인", note: "간편 로그인 · 아이디 로그인 · 학생 접속코드로" },
+        { slug: "student", name: "학생 접속코드 로그인", who: "학생", note: "8자리 접속코드 · 생년월일" },
+        { slug: "recover", name: "아이디 · 비밀번호 찾기", note: "이메일 또는 휴대폰 번호로" },
+      ],
+    },
+    {
+      id: "d4-signup",
+      area: "design4",
+      zone: "account",
+      name: "회원가입",
+      wbs: "ACC-01",
+      real: "/signup/…",
+      base: "/signup",
+      states: [
+        { slug: "type", name: "회원 유형 선택", note: "개인(학생 · 학부모·법정대리인) · 전문가" },
+        { slug: "join", name: "정보 입력", note: "휴대폰 본인확인 · 약관 동의" },
+        { slug: "done", name: "가입 완료", note: "정보 입력을 거치지 않고 열면 빈 완료 화면" },
+        { slug: "link", name: "기관 · 진단코드 연결", who: "학생", note: "만 14세 이상 학생 본인 가입 뒤" },
+      ],
+    },
+    {
+      id: "d4-consent",
+      area: "design4",
+      zone: "account",
+      name: "법정대리인 동의",
+      wbs: "ACC-03-1",
+      real: "/consent/guardian?req=…",
+      base: "/consent",
+      states: [{ slug: "guardian", name: "법정대리인 동의", who: "보호자", note: "문자 · 알림톡 링크가 여는 화면 · req 없이 열면 안내" }],
+    },
+  ];
+  return [
+    home,
+    ...account,
+    ...[...siteMenu, legalGroup].map((g) => ({
+      id: `d4-${g.href.slice(1)}`,
+      area: "design4" as const,
+      zone: "site" as const,
+      name: g.label,
+      wbs: g.id,
+      real: `${g.href}/…`,
+      base: g.href,
+      states: [
+        ...(extra[g.href]?.filter((s) => s.slug === "") ?? []),
+        ...g.children.map((c) => ({ slug: c.href.slice(g.href.length + 1), name: c.label, note: c.desc })),
+        ...(extra[g.href]?.filter((s) => s.slug !== "") ?? []),
+      ],
+    })),
+  ];
 }
