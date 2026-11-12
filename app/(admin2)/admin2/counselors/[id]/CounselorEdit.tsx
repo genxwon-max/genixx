@@ -229,7 +229,7 @@ function Editor({
                 style={{ maxWidth: "24rem" }}
                 value={v.org}
                 onChange={(e) => draft.set("org", e.target.value)}
-                placeholder={person?.org ?? "GENIXX 재능연구소"}
+                placeholder={person?.org ?? "모두의재능 연구소"}
               />
             </FormRow>
 

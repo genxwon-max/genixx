@@ -103,7 +103,7 @@ export default function StudentLogin() {
         },
       ],
       "director",
-      "제닉스 영재교육원",
+      "모두의재능 영재교육원",
     );
     created.forEach((s) => grantGuardianConsent(s.id, "휴대전화 본인인증"));
     setDigits(created[0].code.split(""));

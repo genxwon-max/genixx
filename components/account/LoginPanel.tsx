@@ -56,7 +56,7 @@ const demoAccounts: {
     role: "director",
     label: "기관담당자",
     name: "정원장",
-    org: "제닉스 영재교육원",
+    org: "모두의재능 영재교육원",
     desc: "명부·접속코드 관리",
     approved: true,
   },
@@ -107,10 +107,10 @@ export default function LoginPanel({
   /* 시연용 계정으로 바로 들어가기 — demoAccounts와 함께 잠재워 둔다.
   const enterAs = (role: Role, name: string, org?: string, approved?: boolean) => {
     if (mfaRequired.includes(role)) {
-      setPendingMfa({ role, name, email: `${role}@genixx.demo` });
+      setPendingMfa({ role, name, email: `${role}@mojai.kr` });
       return;
     }
-    signIn({ role, name, org, provider: "카카오", email: `${role}@genixx.demo`, approved });
+    signIn({ role, name, org, provider: "카카오", email: `${role}@mojai.kr`, approved });
     router.push(routeAfterLogin(role, approved));
   };
   */
@@ -145,7 +145,7 @@ export default function LoginPanel({
       setPendingMfa({
         role: "expert",
         name: expert.profile.name || local,
-        email: expert.email || `${local}@genixx.demo`,
+        email: expert.email || `${local}@mojai.kr`,
         expertId: expert.id,
         loginId: local,
       });
@@ -163,7 +163,7 @@ export default function LoginPanel({
             : "parent";
 
     if (mfaRequired.includes(role)) {
-      setPendingMfa({ role, name: local, email: `${local}@genixx.demo` });
+      setPendingMfa({ role, name: local, email: `${local}@mojai.kr` });
       return;
     }
     // 교사는 기관담당자가 초대·승인해야 활성화된다. 아이디가 teacher로 시작하면

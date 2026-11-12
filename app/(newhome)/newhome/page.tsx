@@ -9,7 +9,7 @@ import { axes } from "@/lib/result";
 import ClipWall from "@/components/newhome/ClipWall";
 
 export const metadata: Metadata = {
-  /* 루트 레이아웃의 template("%s | GENIXX")가 뒤를 붙인다 */
+  /* 루트 레이아웃의 template("%s | 모두의재능")가 뒤를 붙인다 */
   title: "맞혔는지보다 어떻게 보았는지를 읽습니다",
   description:
     "문항 하나로 시작하는 첫 화면 시안. 5지 선다 한 문제를 풀면 정답 여부와 함께 자료에 밑줄이 그어지고, 그 자리에서 학력·창의성·재능 가운데 무엇이 보이는지 간단 진단서로 보여 줍니다.",

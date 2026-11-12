@@ -247,7 +247,7 @@ function SummaryTwo({ r, foot }: { r: DiagReport; foot: string }) {
       <p className="mt-2 text-[10.5px] leading-[1.6] text-(--rp-muted)">
         2026년 상반기 표준화 표본(초{r.student.gradeShort.replace("학년", "")}{" "}
         {r.norm.toLocaleString()}명) 기준 상대 점수이며, 고정된 능력이나 지능지수를 의미하지
-        않습니다. · support@genixx.kr · {r.no}
+        않습니다. · support@mojai.kr · {r.no}
       </p>
     </Page>
   );

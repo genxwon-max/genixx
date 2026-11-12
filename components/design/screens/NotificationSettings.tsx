@@ -92,7 +92,7 @@ export default function NotificationSettings({ state }: { state: string }) {
           <dl className="mt-4 grid gap-x-4 gap-y-2 border-t border-amber-200 pt-4 text-[13.5px] leading-[1.7] text-amber-900 sm:grid-cols-[5.5rem_1fr]">
             <dt className="font-bold">휴대전화</dt>
             <dd>
-              휴대전화의 「설정」에서 「알림」을 열고, 목록에서 GENIXX를 찾아 「알림 허용」을 켜 주세요.
+              휴대전화의 「설정」에서 「알림」을 열고, 목록에서 모두의재능을 찾아 「알림 허용」을 켜 주세요.
             </dd>
             <dt className="font-bold">컴퓨터</dt>
             <dd>브라우저 주소창 왼쪽의 자물쇠를 누른 뒤 「알림」을 「허용」으로 바꿔 주세요.</dd>

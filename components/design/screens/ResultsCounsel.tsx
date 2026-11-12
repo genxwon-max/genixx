@@ -108,7 +108,7 @@ const sample: SheetData = {
   comments,
   sources: "반영 자료 4종",
   surveys: "참여 설문: 학생 본인 · 보호자 · 담당 교사·교수 · 측정 축 3 / 8",
-  confirmed: "판정 확정 · GENIXX 진단운영팀 · 2026-09-12 14:30",
+  confirmed: "판정 확정 · 모두의재능 진단운영팀 · 2026-09-12 14:30",
 };
 
 /* ───────────────────────── 면담 칸 ───────────────────────── */
@@ -692,7 +692,7 @@ const seojun: SheetData = {
   comments: seojunDoc.blocks.map((b) => [b.title, b.override ?? b.text]),
   sources: "반영 자료 3종",
   surveys: "참여 설문: 학생 본인 · 보호자 · 측정 축 3 / 8",
-  confirmed: `판정 확정 · GENIXX 진단운영팀 · ${seojunDoc.publishedAt ?? ""}`,
+  confirmed: `판정 확정 · 모두의재능 진단운영팀 · ${seojunDoc.publishedAt ?? ""}`,
 };
 
 /**

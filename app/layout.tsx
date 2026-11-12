@@ -25,8 +25,8 @@ const chakra = Chakra_Petch({
 
 export const metadata: Metadata = {
   title: {
-    default: "GENIXX | 아이의 재능을 좌표로 보여주는 진단 플랫폼",
-    template: "%s | GENIXX",
+    default: "모두의재능 | 아이의 재능을 좌표로 보여주는 진단 플랫폼",
+    template: "%s | 모두의재능",
   },
   description:
     "AI 1차 분석과 교육전문가 협진(HITL)으로 학력과 재능을 각각의 축으로 진단하고, 성장 좌표와 실행 가이드를 제공합니다.",

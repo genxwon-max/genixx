@@ -1,7 +1,6 @@
 import Link from "next/link";
 import HeroVisual from "@/components/HeroVisual";
 import StockPhoto from "@/components/StockPhoto";
-import BrandMeaning from "@/components/site/BrandMeaning";
 import SectionHead from "@/components/site/SectionHead";
 import TeamPreview from "@/components/site/TeamPreview";
 import HomeFaq from "@/components/site/HomeFaq";
@@ -219,7 +218,7 @@ export default function HomePage() {
               좌표로 보여드립니다
             </h1>
             <p className="type-lead mt-5 text-slate-600">
-              GENIXX는 학력과 재능을 서로 다른 축으로 나누어 진단합니다. AI가 1차로 분석하고
+              모두의재능은 학력과 재능을 서로 다른 축으로 나누어 진단합니다. AI가 1차로 분석하고
               교육전문가가 협진으로 확정하기 때문에, 결과는 등급이 아니라 &lsquo;지금 어떤 조건에서
               드러나는가&rsquo;에 대한 설명입니다.
             </p>
@@ -403,7 +402,7 @@ export default function HomePage() {
                   같은 축이 아닙니다
                 </>
               }
-              lead="성적이 좋으면 재능이 있고, 성적이 낮으면 재능이 없다는 전제는 데이터로 확인되지 않습니다. GENIXX는 두 축을 따로 재고 교차해서, 지금 무엇을 도와야 하는지를 4분면으로 보여줍니다."
+              lead="성적이 좋으면 재능이 있고, 성적이 낮으면 재능이 없다는 전제는 데이터로 확인되지 않습니다. 모두의재능은 두 축을 따로 재고 교차해서, 지금 무엇을 도와야 하는지를 4분면으로 보여줍니다."
             />
             <Link
               href="/about/talent"
@@ -619,9 +618,6 @@ export default function HomePage() {
 
 
       {/* ───── ⑤ 누가 만들고 누가 판정하는가 ───── */}
-      {/* 브랜드 이름 풀이 */}
-      <BrandMeaning tone="muted" />
-
       {/* 참여진 */}
       <TeamPreview />
 

@@ -285,7 +285,7 @@ export function TrialStart({
 }: {
   /** 「2026학년도 3분기」 */
   season: string;
-  /** 「GENIXX2026」 */
+  /** 「모두의재능2026」 */
   watermark: string;
   onStart: () => void;
 }) {
@@ -296,7 +296,7 @@ export function TrialStart({
             한 장 안에 종이 밖의 단추가 얹힌다 */}
         <ExamCover
           badge="제1교시"
-          headline={`${season} GENIXX 재능 진단 셋트 문항지`}
+          headline={`${season} 모두의재능 진단 셋트 문항지`}
           title={assessment.name}
           watermark={watermark}
           notice={`(아래 버튼을 눌러 시작해 주세요. 학년과 흥미 있는 과목을 먼저 묻고, 이어서 1셋트 ${SET_QUESTIONS}문항이 나옵니다. 시작하면 전체화면으로 바뀝니다.)`}
@@ -346,7 +346,7 @@ function TrialAsk({
   onPrev,
   onNext,
 }: {
-  /** 「GENIXX2026」 — 표지에 깔린 것과 같은 워터마크를 이 종이에도 깐다 */
+  /** 「모두의재능2026」 — 표지에 깔린 것과 같은 워터마크를 이 종이에도 깐다 */
   watermark: string;
   step: 0 | 1;
   grade: GradePick;
@@ -533,7 +533,7 @@ function TrialRun({
   onAnswer,
   onBack,
 }: {
-  /** 「GENIXX2026」 — 자료 상자와 문항 위에 겹쳐 깐다 */
+  /** 「모두의재능2026」 — 자료 상자와 문항 위에 겹쳐 깐다 */
   watermark: string;
   subject: SubjectId;
   /** 접수할 진단이 없는 학년이면 그 이름(「중학교 2학년」) — 가입을 권하는 말이 달라진다 */

@@ -264,7 +264,7 @@ function Detail({ who, slug }: { who: DashWho; slug: Slug }) {
 
           {mode === "대면" && (
             <>
-              <p className="mt-3 text-[15px] font-bold text-soft-ink">GENIXX 재능연구소 2층 면담실 A</p>
+              <p className="mt-3 text-[15px] font-bold text-soft-ink">모두의재능 연구소 2층 면담실 A</p>
               <p className="mt-1 text-[14px] leading-[1.8] text-soft-muted">{company.address}</p>
               {/* 지도 자리 — 실제 서비스에서는 지도 서비스의 지도가 들어온다 */}
               <div
@@ -281,7 +281,7 @@ function Detail({ who, slug }: { who: DashWho; slug: Slug }) {
                 <span className="absolute left-[38%] top-0 h-full w-3 bg-white/80" />
                 <span className="absolute left-[58%] top-[30%] flex -translate-x-1/2 -translate-y-full flex-col items-center">
                   <span className="rounded-full bg-soft-primary px-3 py-1 text-[12px] font-bold text-white shadow">
-                    GENIXX 재능연구소
+                    모두의재능 연구소
                   </span>
                   <span className="h-3 w-3 -translate-y-1.5 rotate-45 bg-soft-primary" />
                 </span>

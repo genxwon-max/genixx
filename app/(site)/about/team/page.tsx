@@ -82,7 +82,7 @@ export default function TeamPage() {
           <Chapter
             no={String(peopleGroups.length + 1).padStart(2, "0")}
             title="역할 분리 원칙"
-            lead="같은 사람이 만들고 같은 사람이 검증하면 오류가 걸러지지 않습니다. GENIXX는 아래 네 가지 경계를 계정 권한 수준에서 분리합니다."
+            lead="같은 사람이 만들고 같은 사람이 검증하면 오류가 걸러지지 않습니다. 모두의재능은 아래 네 가지 경계를 계정 권한 수준에서 분리합니다."
           >
             <ul className="border-b border-brand-100">
               {[

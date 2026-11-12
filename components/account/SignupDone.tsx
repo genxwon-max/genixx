@@ -125,7 +125,7 @@ export default function SignupDone() {
               </h1>
               <p className={`mt-3 text-[14px] leading-[1.7] ${t.muted}`}>
                 {info?.name ? `${info.name}님, ` : ""}
-                GENIXX 회원이 되셨습니다. 아직 로그인 전입니다.
+                모두의재능 회원이 되셨습니다. 아직 로그인 전입니다.
               </p>
             </div>
 

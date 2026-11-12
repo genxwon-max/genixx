@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Wordmark } from "@/components/Logo";
 import Link from "next/link";
 import { roleOf, type StaffRoleId } from "@/lib/admin";
 import { adminSignIn, adminSignOut } from "@/lib/adminStore";
@@ -47,7 +48,7 @@ export default function ConsoleGate({ role, name }: { role: StaffRoleId | null; 
     <div className="flex min-h-screen items-center justify-center bg-(--a2-side) px-4 py-10">
       <div className="w-full max-w-[21rem]">
         <p className="flex items-baseline gap-1.5 text-white">
-          <span className="font-brand text-[1.0625rem] font-semibold leading-none">GENIXX</span>
+          <Wordmark className="text-[1.0625rem]" />
           <span className="a2-t-xs font-bold text-(--a2-side-ink-2)">CONSOLE</span>
         </p>
 

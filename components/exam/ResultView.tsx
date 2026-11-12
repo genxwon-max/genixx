@@ -342,7 +342,7 @@ export default function ResultView({
             판정 확정 ·{" "}
             {report.publishedBy && report.publishedBy !== AUTO_BY
               ? report.publishedBy
-              : "GENIXX 진단운영팀"}{" "}
+              : "모두의재능 진단운영팀"}{" "}
             · {report.publishedAt ?? ""}
           </span>
         </div>

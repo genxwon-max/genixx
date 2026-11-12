@@ -1157,7 +1157,7 @@ export function StartCover({
       <div className="w-full max-w-[900px]">
         <ExamCover
           badge={`제${period}교시`}
-          headline={`${season} GENIXX 재능 진단 ${free ? "무료" : title} 문항지`}
+          headline={`${season} 모두의재능 진단 ${free ? "무료" : title} 문항지`}
           title={assessment.name}
           watermark={watermarkOf(season)}
           notice="(이 면의 인적사항이 맞는지 확인한 뒤 아래 버튼을 눌러 시작해 주세요. 시작하면 전체화면으로 바뀌고 제한 시간이 흐르기 시작합니다.)"
@@ -1880,7 +1880,7 @@ export function BriefPanel({
   brief: Brief;
   range?: string | null;
   /**
-   * 「GENIXX2026」 — 넘기면 자료 상자 위에 겹쳐 깐다(ItemWatermark).
+   * 「모두의재능2026」 — 넘기면 자료 상자 위에 겹쳐 깐다(ItemWatermark).
    * 응시 화면만 넘긴다. 검수 미리보기처럼 시험지가 아닌 자리에는 깔지 않는다.
    */
   watermark?: string;
@@ -2345,7 +2345,7 @@ export function ScreenColumn({
   order: Question[];
   screen: Question[];
   renderQuestion: (q: Question) => ReactNode;
-  /** 「GENIXX2026」 — 넘기면 묶음 머리 자료 위에 겹쳐 깐다. 문항의 것은 QuestionBody가 따로 받는다 */
+  /** 「모두의재능2026」 — 넘기면 묶음 머리 자료 위에 겹쳐 깐다. 문항의 것은 QuestionBody가 따로 받는다 */
   watermark?: string;
 }) {
   const groupBrief = screen[0].groupBrief;
@@ -2405,7 +2405,7 @@ export function QuestionBody({
   value: number | string | undefined;
   /** 답을 어디에 적을지는 부르는 쪽이 정한다 — 응시는 응시 기록에, 셋트는 셋트 저장소에 */
   onAnswer: (value: number | string) => void;
-  /** 「GENIXX2026」 — 넘기면 이 문항 위에 겹쳐 깐다(ItemWatermark). 응시 화면만 넘긴다 */
+  /** 「모두의재능2026」 — 넘기면 이 문항 위에 겹쳐 깐다(ItemWatermark). 응시 화면만 넘긴다 */
   watermark?: string;
   /**
    * 채점한 모양으로 세운다 — 정답과 해설의 「답안 풀이 보기」 창이 넘긴다

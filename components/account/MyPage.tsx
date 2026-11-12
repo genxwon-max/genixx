@@ -337,7 +337,7 @@ function ProfileSection({
           <Row
             variant={variant}
             label="소속"
-            value={session?.org ?? "제닉스 영재교육원"}
+            value={session?.org ?? "모두의재능 영재교육원"}
           />
         )}
       </section>
@@ -601,7 +601,7 @@ function OrgSection({ variant }: { variant: Variant }) {
       )}
 
       <section className={`${t.card} px-5 py-1 sm:px-6`}>
-        <Row variant={variant} label="기관명" value={session?.org ?? "제닉스 영재교육원"} />
+        <Row variant={variant} label="기관명" value={session?.org ?? "모두의재능 영재교육원"} />
         <Row variant={variant} label="기관 유형" value="학원" />
         <Row
           variant={variant}
