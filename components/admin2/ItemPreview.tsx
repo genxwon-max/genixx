@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Wordmark } from "@/components/Logo";
 import {
   assessment,
   flattenSets,
@@ -173,7 +174,7 @@ export default function ItemPreview({
           여기에 시간을 그리면 진짜 응시로 보인다 */}
       <header className="flex h-16 shrink-0 items-center justify-between gap-4 bg-exam-panel px-5 shadow-[inset_0_-1px_0_var(--color-exam-line)] md:px-8">
         <div className="flex items-center gap-3">
-          <span className="font-brand text-[1.0625rem] font-semibold leading-none">GENIXX</span>
+          <Wordmark className="text-[1.0625rem]" />
           <span aria-hidden className="hidden h-5 w-px bg-exam-line sm:block" />
           <span className="hidden whitespace-nowrap text-[13px] font-bold text-exam-muted sm:inline">
             {nav ? nav.title : `${assessment.name} 재능진단`}

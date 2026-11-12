@@ -139,7 +139,7 @@ function SuperMe({ slug }: { slug: string }) {
                 aria-label="이메일"
                 type="email"
                 className="a2-input a2-mono max-w-80"
-                defaultValue={editing ? "seojun.park@genixx.kr" : "admin.park@genixx.kr"}
+                defaultValue={editing ? "seojun.park@mojai.kr" : "admin.park@mojai.kr"}
               />
               {editing && (
                 <span className="a2-t-xs font-bold" style={{ color: "var(--a2-warn)" }}>

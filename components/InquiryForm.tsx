@@ -161,7 +161,7 @@ export default function InquiryForm({
             id="org"
             value={form.org}
             onChange={(e) => set("org", e.target.value)}
-            placeholder="예) 제닉스초등학교"
+            placeholder="예) 모두초등학교"
             className={inputClass}
           />
         </div>

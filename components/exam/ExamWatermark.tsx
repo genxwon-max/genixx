@@ -1,5 +1,5 @@
 /**
- * 시험지 **워터마크** — 비스듬히 깔리는 「GENIXX2026」.
+ * 시험지 **워터마크** — 비스듬히 깔리는 「모두의재능2026」.
  *
  * 표지(ExamCover)에만 있던 것을 문항지에도 깐다. 셋트 · 무료 진단 · 유료 진단이 모두 같은
  * 것을 쓴다. 자리가 둘이다 —
@@ -32,13 +32,13 @@
  */
 
 /**
- * 무늬에 적는 글자 — 「GENIXX2026」.
+ * 무늬에 적는 글자 — 「모두의재능2026」.
  *
  * season은 「2026학년도 3분기」 꼴로 온다. 접수 기록이 없는 계정은 회차 설정의 이름으로
  * 물러서는데, 그것은 관리자가 손으로 적는 글이라 해로 시작하지 않을 수 있다. 그때 앞 네
- * 글자를 그대로 붙이면 「GENIXX파일럿 」 같은 것이 종이마다 깔리므로 해가 없으면 이름만 적는다.
+ * 글자를 그대로 붙이면 「모두의재능파일럿 」 같은 것이 종이마다 깔리므로 해가 없으면 이름만 적는다.
  */
-export const watermarkOf = (season: string) => `GENIXX${/^\d{4}/.exec(season)?.[0] ?? ""}`;
+export const watermarkOf = (season: string) => `MOJAI${/^\d{4}/.exec(season)?.[0] ?? ""}`;
 
 /* 글꼴을 못 박는다 — 명조로 짠 종이(font-myeongjo) 안에 깔려도 표지와 같은 글자여야 한다 */
 const word = "-rotate-[28deg] whitespace-nowrap font-sans font-black tracking-[0.06em]";
@@ -62,7 +62,7 @@ export default function ExamWatermark({
   text,
   tone,
 }: {
-  /** 「GENIXX2026」 — watermarkOf가 만든다 */
+  /** 「모두의재능2026」 — watermarkOf가 만든다 */
   text: string;
   tone: keyof typeof tones;
 }) {

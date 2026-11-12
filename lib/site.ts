@@ -17,6 +17,6 @@ export const company = {
   address: "세종특별자치시 연기면 송마길 57-5, 2층",
   tel: "02-1234-5678",
   fax: "070-4756-6155",
-  email: "contact@genixx.ai",
+  email: "contact@mojai.kr",
   hours: "평일 09:00 ~ 18:00 (점심 12:00 ~ 13:00)",
 };

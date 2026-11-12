@@ -18,7 +18,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "GENIXX 콘솔", template: "%s · GENIXX 콘솔" },
+  title: { default: "모두의재능 콘솔", template: "%s · 모두의재능 콘솔" },
   // 내부 콘솔이므로 검색엔진에 노출하지 않는다
   robots: { index: false, follow: false },
 };

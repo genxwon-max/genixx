@@ -88,7 +88,7 @@ export default function DashFrame({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-soft-line bg-white">
           <div className="flex h-[4rem] items-center gap-3 px-4 sm:px-6">
-            <Link href="/" className="lg:hidden" aria-label="GENIXX 홈">
+            <Link href="/" className="lg:hidden" aria-label="모두의재능 홈">
               <LogoLockup tone="soft" className="text-[1.125rem]" />
             </Link>
             <span className="hidden text-[15px] font-bold lg:inline">{me.name}님</span>

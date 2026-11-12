@@ -306,7 +306,7 @@ function JoinStep({ slug }: { slug: string }) {
                     <input
                       id="pw"
                       type="password"
-                      defaultValue={bad ? "1234" : full || half ? "Genixx!2026" : ""}
+                      defaultValue={bad ? "1234" : full || half ? "Mojai!2026" : ""}
                       placeholder="비밀번호를 입력하세요."
                       className={`${t.field} pr-12`}
                     />
@@ -326,7 +326,7 @@ function JoinStep({ slug }: { slug: string }) {
                     <input
                       id="pw2"
                       type="password"
-                      defaultValue={bad ? "12345" : full || half ? "Genixx!2026" : ""}
+                      defaultValue={bad ? "12345" : full || half ? "Mojai!2026" : ""}
                       placeholder="비밀번호를 한번 더 입력해 주세요."
                       className={`${t.field} pr-12`}
                     />

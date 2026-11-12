@@ -55,7 +55,7 @@ const talks: Record<string, Talk> = {
     ],
     button: "사진 다시 올리기",
     sms: [
-      "[GENIXX] 답 사진을 다시 올려 주세요",
+      "[모두의재능] 답 사진을 다시 올려 주세요",
       `${student.name} 학생의 「${diag.name}」 ${question.label} 답 사진이 흐려서 채점자가 답을 읽지 못했습니다. 처음 쓴 종이를 밝은 곳에서 그대로 다시 찍어 10/17(토) 23:59까지 올려 주세요.`,
       AGAIN_URL,
       "기한까지 올리지 않으면 지금 사진으로 채점합니다.",
@@ -74,7 +74,7 @@ const talks: Record<string, Talk> = {
     ],
     button: "사진 다시 올리기",
     sms: [
-      "[GENIXX] 답 사진 올릴 기한이 하루 남았습니다",
+      "[모두의재능] 답 사진 올릴 기한이 하루 남았습니다",
       `${student.name} 학생의 ${question.label} 답 사진이 아직 올라오지 않았습니다. 10/17(토) 23:59까지 올려 주세요.`,
       AGAIN_URL,
     ],
@@ -157,7 +157,7 @@ function TalkScreen({ talk }: { talk: Talk }) {
         <span aria-hidden className="text-[16px] text-slate-700">
           ‹
         </span>
-        <span className="text-[15px] font-bold text-slate-900">GENIXX</span>
+        <span className="text-[15px] font-bold text-slate-900">모두의재능</span>
       </div>
       <div className="flex gap-2 px-3 pb-8 pt-4">
         <span
@@ -167,7 +167,7 @@ function TalkScreen({ talk }: { talk: Talk }) {
           GX
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[12.5px] text-slate-700">GENIXX</p>
+          <p className="text-[12.5px] text-slate-700">모두의재능</p>
           <div className="mt-1 flex items-end gap-1.5">
             <div className="w-full max-w-[16.5rem] overflow-hidden rounded-[12px] bg-white">
               <p className="bg-[#fee500] px-3.5 py-2 text-[12.5px] font-bold text-[#3c1e1e]">알림톡 도착</p>

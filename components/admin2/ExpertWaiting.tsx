@@ -1,6 +1,7 @@
 "use client";
 
 import type { ExpertAccount } from "@/lib/expertAccounts";
+import { Wordmark } from "@/components/Logo";
 
 /**
  * 가입 승인을 기다리는 전문가가 콘솔에서 보는 화면.
@@ -51,7 +52,7 @@ export default function ExpertWaiting({
     <div className="flex min-h-screen items-center justify-center bg-(--a2-side) px-4 py-10">
       <div className="w-full max-w-[26rem]">
         <p className="flex items-baseline gap-1.5 text-white">
-          <span className="font-brand text-[1.0625rem] font-semibold leading-none">GENIXX</span>
+          <Wordmark className="text-[1.0625rem]" />
           <span className="a2-t-xs font-bold text-(--a2-side-ink-2)">CONSOLE</span>
         </p>
 

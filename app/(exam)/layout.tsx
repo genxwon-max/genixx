@@ -51,7 +51,7 @@ export default function ExamLayout({ children }: LayoutProps<"/">) {
           높이는 이 한 줄(h-16)이 정한다 — 응시 화면은 「화면 높이 − 4rem」으로 판을 짠다 */}
       <header className="sticky top-0 z-40 shrink-0 bg-exam-panel shadow-[inset_0_-1px_0_var(--color-exam-line)]">
         <div className="container-x flex h-16 items-center justify-between gap-4">
-          {/* 왼쪽 — 플랫폼(GENIXX) 옆에 지금 보는 검사 이름(TalentMe)을 붙인다.
+          {/* 왼쪽 — 플랫폼(모두의재능) 옆에 지금 보는 검사 이름(TalentMe)을 붙인다.
               응시 중에는 감춘다. 그 자리에 평가명 · 과목 · 남은 시간이 대신 선다 */}
           <ExamSiteBrand>
             <div className="flex items-center gap-3">

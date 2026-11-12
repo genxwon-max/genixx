@@ -4,7 +4,7 @@ import { Aside, Chapter } from "@/components/site/Article";
 
 const title = "우리가 보는 '재능'";
 const lead =
-  "재능은 타고난 등급이 아니라, 조건이 맞았을 때 드러나는 행동입니다. GENIXX는 재능을 8개 영역과 4단계 처리위계의 좌표로 정의합니다.";
+  "재능은 타고난 등급이 아니라, 조건이 맞았을 때 드러나는 행동입니다. 모두의재능은 재능을 8개 영역과 4단계 처리위계의 좌표로 정의합니다.";
 
 export const metadata: Metadata = { title, description: lead };
 

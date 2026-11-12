@@ -59,22 +59,22 @@ const parent = "김지은 <jieun.kim@example.com>";
 
 const mails: Record<string, Mail> = {
   verify: {
-    subject: "[GENIXX] 이메일 인증번호를 확인해 주세요",
+    subject: "[모두의재능] 이메일 인증번호를 확인해 주세요",
     preview: "인증번호 482 913 · 10분 안에 입력해 주세요.",
     to: parent,
     title: "이메일 인증번호",
-    body: ["안녕하세요. GENIXX 회원가입을 위한 인증번호입니다.", "가입 화면에 아래 숫자 6자리를 입력해 주세요."],
+    body: ["안녕하세요. 모두의재능 회원가입을 위한 인증번호입니다.", "가입 화면에 아래 숫자 6자리를 입력해 주세요."],
     code: { label: "인증번호", value: "482 913", note: "10분 동안만 쓸 수 있습니다." },
     notes: ["직접 요청하지 않으셨다면 이 메일을 무시해 주세요. 인증번호를 입력하지 않으면 가입되지 않습니다."],
     required: true,
   },
   welcome: {
-    subject: "[GENIXX] 가입을 환영합니다",
+    subject: "[모두의재능] 가입을 환영합니다",
     preview: "이제 학생을 등록하고 진단을 접수할 수 있습니다.",
     to: parent,
     title: "가입이 완료되었습니다",
     body: [
-      "김지은님, GENIXX에 오신 것을 환영합니다.",
+      "김지은님, 모두의재능에 오신 것을 환영합니다.",
       "먼저 진단을 받을 학생을 등록해 주세요. 등록하면 학생이 로그인할 때 쓰는 접속코드가 발급됩니다.",
     ],
     rows: [
@@ -86,7 +86,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "reset-password": {
-    subject: "[GENIXX] 비밀번호 재설정 안내",
+    subject: "[모두의재능] 비밀번호 재설정 안내",
     preview: "아래 버튼으로 새 비밀번호를 정해 주세요. 30분 동안 쓸 수 있습니다.",
     to: parent,
     title: "비밀번호를 다시 정해 주세요",
@@ -96,7 +96,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "student-registered": {
-    subject: "[GENIXX] 김서아 학생이 등록되었습니다",
+    subject: "[모두의재능] 김서아 학생이 등록되었습니다",
     preview: "접속코드가 발급되었습니다. 학생 화면에서 확인해 주세요.",
     to: parent,
     title: "학생이 등록되었습니다",
@@ -112,7 +112,7 @@ const mails: Record<string, Mail> = {
     cta: { label: "접속코드 확인하기", href: "/my/children" },
   },
   "exam-applied": {
-    subject: "[GENIXX] 진단 접수가 완료되었습니다",
+    subject: "[모두의재능] 진단 접수가 완료되었습니다",
     preview: "2026 4분기 초3 진단 · 10.31(토)까지 응시할 수 있습니다.",
     to: parent,
     title: "진단 접수가 완료되었습니다",
@@ -126,7 +126,7 @@ const mails: Record<string, Mail> = {
     cta: { label: "응시 안내 보기", href: "/exam/guide" },
   },
   "payment-done": {
-    subject: "[GENIXX] 결제가 완료되었습니다 (39,000원)",
+    subject: "[모두의재능] 결제가 완료되었습니다 (39,000원)",
     preview: "2026 4분기 초3 진단 응시권 · 주문번호 GX2026-000148",
     to: parent,
     title: "결제가 완료되었습니다",
@@ -144,7 +144,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "exam-open": {
-    subject: "[GENIXX] 오늘부터 진단에 응시할 수 있습니다",
+    subject: "[모두의재능] 오늘부터 진단에 응시할 수 있습니다",
     preview: "2026 4분기 초3 진단 · 10.31(토)까지",
     to: parent,
     title: "응시가 시작되었습니다",
@@ -157,7 +157,7 @@ const mails: Record<string, Mail> = {
     cta: { label: "학생 로그인 화면 열기", href: "/login/student" },
   },
   "exam-remind": {
-    subject: "[GENIXX] 아직 끝내지 않은 과목이 있습니다",
+    subject: "[모두의재능] 아직 끝내지 않은 과목이 있습니다",
     preview: "김서아 학생 · 수학 · 과학이 남았습니다. 10.31(토)까지 응시해 주세요.",
     to: parent,
     title: "아직 끝내지 않은 과목이 있습니다",
@@ -171,7 +171,7 @@ const mails: Record<string, Mail> = {
     cta: { label: "진행 상황 보기", href: "/my" },
   },
   "report-published": {
-    subject: "[GENIXX] 김도현 학생의 진단 결과가 나왔습니다",
+    subject: "[모두의재능] 김도현 학생의 진단 결과가 나왔습니다",
     preview: "전문가가 확정한 결과를 지금 확인할 수 있습니다.",
     to: parent,
     title: "진단 결과가 발행되었습니다",
@@ -188,7 +188,7 @@ const mails: Record<string, Mail> = {
     notes: ["결과에는 점수와 재능 유형이 담겨 있어 메일에는 적지 않습니다. 로그인한 뒤 확인해 주세요."],
   },
   "photo-request": {
-    subject: `[GENIXX] ${photoFlow.student.name} 학생의 수학 답 사진을 다시 올려 주세요 (${photoFlow.request.dueShort}까지)`,
+    subject: `[모두의재능] ${photoFlow.student.name} 학생의 수학 답 사진을 다시 올려 주세요 (${photoFlow.request.dueShort}까지)`,
     preview: "사진이 흐려서 채점자가 답을 읽지 못했습니다. 처음 쓴 종이를 다시 찍어 올려 주세요.",
     to: photoTo,
     title: "답 사진을 다시 올려 주세요",
@@ -211,7 +211,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "photo-remind": {
-    subject: "[GENIXX] 내일까지 답 사진을 다시 올려 주세요",
+    subject: "[모두의재능] 내일까지 답 사진을 다시 올려 주세요",
     preview: `${photoFlow.student.name} 학생 · ${photoFlow.question.label} · ${photoFlow.request.dueText}까지`,
     to: photoTo,
     title: "답 사진 올릴 기한이 하루 남았습니다",
@@ -228,7 +228,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "photo-received": {
-    subject: "[GENIXX] 다시 올리신 답 사진을 받았습니다",
+    subject: "[모두의재능] 다시 올리신 답 사진을 받았습니다",
     preview: `${photoFlow.student.name} 학생 · ${photoFlow.question.label} · 채점을 이어서 합니다.`,
     to: photoTo,
     title: "다시 올리신 사진을 받았습니다",
@@ -241,7 +241,7 @@ const mails: Record<string, Mail> = {
     notes: ["사진을 잘못 보내셨다면 기한(10.17 토 23:59) 안에 1:1 문의로 알려 주세요."],
   },
   "counsel-confirmed": {
-    subject: "[GENIXX] 면담 예약이 확정되었습니다 (10.15 목 14:00)",
+    subject: "[모두의재능] 면담 예약이 확정되었습니다 (10.15 목 14:00)",
     preview: "김지원 전문가 · 화상 면담 60분 · 예약번호 CS-2610-0012",
     to: parent,
     title: "면담 예약이 확정되었습니다",
@@ -259,7 +259,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "counsel-changed": {
-    subject: "[GENIXX] 면담 일정이 바뀌었습니다",
+    subject: "[모두의재능] 면담 일정이 바뀌었습니다",
     preview: "10.15(목) 14:00 → 10.16(금) 10:00 · 김지원 전문가",
     to: parent,
     title: "면담 일정이 바뀌었습니다",
@@ -275,7 +275,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "counsel-remind": {
-    subject: "[GENIXX] 내일 14:00에 면담이 있습니다",
+    subject: "[모두의재능] 내일 14:00에 면담이 있습니다",
     preview: "김지원 전문가 · 화상 면담 · 10분 전부터 들어오실 수 있습니다.",
     to: parent,
     title: "내일 면담이 있습니다",
@@ -289,7 +289,7 @@ const mails: Record<string, Mail> = {
     notes: ["지금부터는 취소해도 환불 정책에 따라 일부만 환불될 수 있습니다."],
   },
   "inquiry-answered": {
-    subject: "[GENIXX] 문의하신 내용에 답변드렸습니다",
+    subject: "[모두의재능] 문의하신 내용에 답변드렸습니다",
     preview: "「접속코드를 잃어버렸어요」 문의에 답변이 등록되었습니다.",
     to: parent,
     title: "문의에 답변드렸습니다",
@@ -303,7 +303,7 @@ const mails: Record<string, Mail> = {
     notes: ["답변 내용에는 개인정보가 포함될 수 있어 메일에는 적지 않습니다."],
   },
   "leave-requested": {
-    subject: "[GENIXX] 회원 탈퇴가 접수되었습니다",
+    subject: "[모두의재능] 회원 탈퇴가 접수되었습니다",
     preview: "30일 뒤(11.10)에 계정이 삭제됩니다. 그 전에는 다시 로그인해 되돌릴 수 있습니다.",
     to: parent,
     title: "회원 탈퇴가 접수되었습니다",
@@ -321,7 +321,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "expert-applied": {
-    subject: "[GENIXX] 전문가 가입 신청이 접수되었습니다",
+    subject: "[모두의재능] 전문가 가입 신청이 접수되었습니다",
     preview: "운영진이 확인한 뒤 승인 결과를 알려 드립니다. 보통 1~2 영업일이 걸립니다.",
     to: "한지수 <jisu.han@example.com>",
     title: "전문가 가입 신청이 접수되었습니다",
@@ -340,7 +340,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "expert-approved": {
-    subject: "[GENIXX] 전문가 회원 가입이 승인되었습니다",
+    subject: "[모두의재능] 전문가 회원 가입이 승인되었습니다",
     preview: "출제자 · 상담사 권한이 부여되었습니다. 로그인하면 받은 권한의 화면이 열립니다.",
     to: "한지수 <jisu.han@example.com>",
     title: "전문가 회원 가입이 승인되었습니다",
@@ -358,7 +358,7 @@ const mails: Record<string, Mail> = {
     required: true,
   },
   "expert-rejected": {
-    subject: "[GENIXX] 전문가 가입 신청 결과를 알려 드립니다",
+    subject: "[모두의재능] 전문가 가입 신청 결과를 알려 드립니다",
     preview: "이번 신청은 승인되지 않았습니다. 사유를 확인하신 뒤 다시 신청하실 수 있습니다.",
     to: "한지수 <jisu.han@example.com>",
     title: "가입 신청이 승인되지 않았습니다",
@@ -387,7 +387,7 @@ export default function Mails({ state }: { state: string }) {
       <dl className="mx-auto w-full max-w-[600px] rounded-lg border border-slate-200 bg-white px-5 py-4 text-[13px]">
         {[
           ["제목", m.subject],
-          ["보낸 사람", "GENIXX <no-reply@genixx.kr>"],
+          ["보낸 사람", "모두의재능 <no-reply@mojai.kr>"],
           ["받는 사람", m.to],
           ["미리보기 글", m.preview],
         ].map(([k, v], i) => (

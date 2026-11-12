@@ -139,7 +139,7 @@ const logOf: Record<View, Log[]> = {
 };
 
 /** 알림 발송 창의 미리보기 — 신청자에게 가는 글 */
-const preview = `[GENIXX] 면담 예약이 확정되었습니다.
+const preview = `[모두의재능] 면담 예약이 확정되었습니다.
 
 학생: 신유나 (초5)
 일시: ${WHEN} · 화상 60분

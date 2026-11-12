@@ -1,6 +1,6 @@
 /**
  * 헤더/푸터 메뉴 정의.
- * 출처: GENIXX 플랫폼 사이트맵·메뉴 정의서 — 4장 공개 존(PUB) / 5장 계정 존(ACC).
+ * 출처: 모두의재능 플랫폼 사이트맵·메뉴 정의서 — 4장 공개 존(PUB) / 5장 계정 존(ACC).
  * 화면 ID를 주석으로 남겨 후속 기능정의서와 대조할 수 있게 한다.
  */
 
@@ -22,7 +22,7 @@ export type MenuGroup = {
 export const menu: MenuGroup[] = [
   {
     id: "PUB-02",
-    label: "GENIXX 소개",
+    label: "모두의재능 소개",
     href: "/about",
     summary: "우리가 무엇을 재능이라 부르고, 그것을 어떻게 확인하는지",
     children: [

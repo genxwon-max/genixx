@@ -347,7 +347,7 @@ export default function PhotoAgainLink({ state }: { state: string }) {
             <PhotoAgainBody
               stage={stage}
               who="guardian"
-              links={{ picked: to("picked"), before: to(), sent: to("sent"), out: { href: "/", label: "GENIXX 홈으로" } }}
+              links={{ picked: to("picked"), before: to(), sent: to("sent"), out: { href: "/", label: "모두의재능 홈으로" } }}
             />
           </div>
         </div>

@@ -83,9 +83,9 @@ function Cover({ r }: { r: DiagReport }) {
     <section className="rp-page" aria-label="표지">
       <div className="flex items-baseline justify-between border-b border-(--rp-rule) pb-2.5">
         <span className="text-[17px] font-bold text-(--rp-ink)">
-          제닉스{" "}
+          모두의재능{" "}
           <span className="ml-1 text-[10px] font-medium tracking-[0.2em] text-(--rp-muted)">
-            GENIXX
+            MOJAI
           </span>
         </span>
         <span className="text-[11px] text-(--rp-muted)">다차원 재능 진단</span>
@@ -927,7 +927,7 @@ function Home({ r, foot }: { r: DiagReport; foot: string }) {
         {r.norm.toLocaleString()}명 기준 상대 평가 결과입니다. 백분위는 진단 시점의 수행을 나타내며
         지능지수나 장래 성취를 예측하지 않습니다. 서술형은 전문가 2인 독립 채점 후 불일치 시 제3
         위원이 조정했습니다. 채점자 간 일치도 {r.reliability.agreement}. · 재진단 권장 2027년 2월 ·
-        support@genixx.kr · {r.no}
+        support@mojai.kr · {r.no}
       </p>
     </Page>
   );

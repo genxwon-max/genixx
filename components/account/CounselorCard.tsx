@@ -199,7 +199,7 @@ export function CounselorDetail({ c, onClose }: { c: Counselor; onClose: () => v
           ))}
         </Block>
 
-        <Block title="GENIXX에서 맡는 일">
+        <Block title="모두의재능에서 맡는 일">
           {c.person.duty.map((line) => (
             <li key={line}>{line}</li>
           ))}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Wordmark } from "@/components/Logo";
 import { admin2Nav } from "@/lib/admin2";
 
 /**
@@ -116,7 +117,7 @@ export default function ConsoleFrame({
         <aside className="a2-side sticky top-(--a2-top) hidden h-(--a2-screen) w-[216px] shrink-0 flex-col bg-(--a2-side) lg:flex">
           <div className="flex h-10 items-center gap-2 border-b border-(--a2-side-line) px-3">
             <Link href="/admin2" className="flex items-baseline gap-1.5 text-white">
-              <span className="font-brand text-[0.9375rem] font-semibold leading-none">GENIXX</span>
+              <Wordmark className="text-[0.9375rem]" />
               <span className="a2-t-xs font-bold text-(--a2-side-ink-2)">CONSOLE</span>
             </Link>
           </div>

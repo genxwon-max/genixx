@@ -36,7 +36,7 @@ export default async function PersonPage({ params }: PageProps<"/about/team/[id]
         <div className="container-x py-10 md:py-14">
           <nav aria-label="현재 위치" className="type-meta flex flex-wrap items-center gap-2 text-slate-500">
             <Link href="/about" className="hover:text-brand-700">
-              GENIXX 소개
+              모두의재능 소개
             </Link>
             <span aria-hidden>›</span>
             <Link href="/about/team" className="hover:text-brand-700">
@@ -100,7 +100,7 @@ export default async function PersonPage({ params }: PageProps<"/about/team/[id]
             </div>
 
             <div>
-              <h2 className="type-h2 font-black text-brand-950">GENIXX에서 만든 것</h2>
+              <h2 className="type-h2 font-black text-brand-950">모두의재능에서 만든 것</h2>
               <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                 {person.works.map((w) => (
                   <li

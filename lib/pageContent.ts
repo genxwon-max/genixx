@@ -22,11 +22,11 @@ export type PageContent = {
 };
 
 export const pageContent: Record<string, PageContent> = {
-  /* ─────────────── PUB-02 GENIXX 소개 ─────────────── */
+  /* ─────────────── PUB-02 모두의재능 소개 ─────────────── */
   "/about/theory": {
     id: "PUB-02-3",
     title: "이론적 근거",
-    lead: "GENIXX의 진단 구조는 특정 이론 하나에 기대지 않고, 재능 연구에서 반복 검증된 프레임을 교차해 설계했습니다.",
+    lead: "모두의재능의 진단 구조는 특정 이론 하나에 기대지 않고, 재능 연구에서 반복 검증된 프레임을 교차해 설계했습니다.",
     blocks: [
       {
         kind: "table",
@@ -250,7 +250,7 @@ export const pageContent: Record<string, PageContent> = {
   "/legal/terms": {
     id: "PUB-08-1",
     title: "이용약관",
-    lead: "GENIXX 서비스 이용 조건과 회원의 권리·의무를 정한 문서입니다.",
+    lead: "모두의재능 서비스 이용 조건과 회원의 권리·의무를 정한 문서입니다.",
     blocks: [
       {
         kind: "points",
@@ -452,7 +452,7 @@ export const pageContent: Record<string, PageContent> = {
   "/legal/youth": {
     id: "PUB-08-7",
     title: "청소년보호정책",
-    lead: "GENIXX 이용자의 대부분은 미성년자입니다. 그래서 청소년 보호는 부가 조항이 아니라 서비스 설계의 전제입니다.",
+    lead: "모두의재능 이용자의 대부분은 미성년자입니다. 그래서 청소년 보호는 부가 조항이 아니라 서비스 설계의 전제입니다.",
     blocks: [
       {
         kind: "points",
@@ -496,7 +496,7 @@ export const pageContent: Record<string, PageContent> = {
         head: ["구분", "내용"],
         rows: [
           ["청소년보호 책임자", "박두희 (대표)"],
-          ["연락처", "02-1234-5678 / contact@genixx.ai"],
+          ["연락처", "02-1234-5678 / contact@mojai.kr"],
           ["처리 절차", "접수 → 사실 확인 → 조치 → 신고자·보호자 통지"],
         ],
       },
@@ -540,7 +540,7 @@ export const pageContent: Record<string, PageContent> = {
       },
       {
         kind: "note",
-        text: "제안은 contact@genixx.ai로 보내 주세요. 회사 소개, 제휴 형태, 아동 데이터 취급 여부를 함께 적어 주시면 검토가 빠릅니다.",
+        text: "제안은 contact@mojai.kr로 보내 주세요. 회사 소개, 제휴 형태, 아동 데이터 취급 여부를 함께 적어 주시면 검토가 빠릅니다.",
       },
     ],
   },

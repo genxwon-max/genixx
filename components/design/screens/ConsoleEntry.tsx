@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Wordmark } from "@/components/Logo";
 import { blankExpertProfile, type ExpertAccount } from "@/lib/expertAccounts";
 import { designLinks } from "@/lib/designScreens";
 import ExpertWaiting from "@/components/admin2/ExpertWaiting";
@@ -71,7 +72,7 @@ export function ConsoleLogin({ state }: { state: string }) {
     <div className="flex min-h-screen items-center justify-center bg-(--a2-side) px-4 py-10">
       <div className="w-full max-w-[21rem]">
         <p className="flex items-baseline gap-1.5 text-white">
-          <span className="font-brand text-[1.0625rem] font-semibold leading-none">GENIXX</span>
+          <Wordmark className="text-[1.0625rem]" />
           <span className="a2-t-xs font-bold text-(--a2-side-ink-2)">CONSOLE</span>
         </p>
 

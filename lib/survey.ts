@@ -14,8 +14,8 @@ import type { SurveyKey } from "./examStore";
  *
  * 학생·학부모 문항은 지어낸 것이 아니라 의뢰인이 준 설문지 두 건을 그대로 옮긴 것이다.
  *
- *   GENIXX 학생 재능진단 설문지 v1.0   (Student Talent Diagnostic Questionnaire)
- *   GENIXX 학부모 재능진단 설문지 v1.0 (Parent Talent Diagnostic Questionnaire)
+ *   모두의재능 학생 재능진단 설문지 v1.0   (Student Talent Diagnostic Questionnaire)
+ *   모두의재능 학부모 재능진단 설문지 v1.0 (Parent Talent Diagnostic Questionnaire)
  *
  * 그래서 문항 글은 손대지 않는다. 표현이 어색해 보여도 그것이 원본이고, 재는 도구의
  * 글을 우리가 다듬으면 그때부터 이 응답은 그 설문지의 응답이 아니게 된다. 고칠 일이
