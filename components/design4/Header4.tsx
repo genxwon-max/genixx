@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronDown, LockKeyhole, Menu, UserPlus, X } from "lucide-react";
+import { ChevronDown, LockKeyhole, LogOut, Menu, UserPlus, UserRound, X } from "lucide-react";
 import { LogoLockup } from "@/components/Logo";
 import { usePathname } from "next/navigation";
 import { legalGroup, siteMenu } from "@/lib/nav";
-import { D4_HOME, d4, groupOf, realOf } from "./paths";
+import { D4_HOME, d4, groupOf, isMemberView, realOf } from "./paths";
+
+/** 로그인한 뒤 머리띠에 적을 예시 회원 — 홈의 회원 상자(Home4)와 같은 사람 */
+const memberName = "김보호";
 
 /**
  * /design4 머리띠 — 공공 교육 포털처럼 두 줄로 나눈다.
@@ -30,7 +33,10 @@ export default function Header4({ menu = true }: { menu?: boolean }) {
   const [panel, setPanel] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [mobileGroup, setMobileGroup] = useState<string | null>(groups[0].id);
-  const current = groupOf(realOf(usePathname())).group?.id;
+  const pathname = usePathname();
+  const current = groupOf(realOf(pathname)).group?.id;
+  /* 로그인한 뒤의 화면(/design4/home/member)이면 로그인 · 회원가입 대신 이름 · 내 페이지 · 로그아웃 */
+  const signedIn = isMemberView(pathname);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -74,12 +80,28 @@ export default function Header4({ menu = true }: { menu?: boolean }) {
             <Link href="/design4/login/student" className="mr-1 hidden rounded-lg bg-slate-900 px-3 py-2 text-[13px] font-bold text-white hover:bg-slate-700 sm:block">
               학생 접속코드로 진단하기
             </Link>
-            <Link href="/design4/login" aria-label="로그인" title="로그인" className={iconBtn}>
-              <LockKeyhole className="h-4 w-4" />
-            </Link>
-            <Link href="/design4/signup/type" aria-label="회원가입" title="회원가입" className={iconBtn}>
-              <UserPlus className="h-4 w-4" />
-            </Link>
+            {signedIn ? (
+              <>
+                <span className="mr-1 hidden text-[13.5px] text-slate-600 md:block">
+                  <b className="font-bold text-slate-900">{memberName}</b>님
+                </span>
+                <Link href="/my" aria-label="내 페이지" title="내 페이지" className={iconBtn}>
+                  <UserRound className="h-4 w-4" />
+                </Link>
+                <Link href={D4_HOME} aria-label="로그아웃" title="로그아웃" className={iconBtn}>
+                  <LogOut className="h-4 w-4" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/design4/login" aria-label="로그인" title="로그인" className={iconBtn}>
+                  <LockKeyhole className="h-4 w-4" />
+                </Link>
+                <Link href="/design4/signup/type" aria-label="회원가입" title="회원가입" className={iconBtn}>
+                  <UserPlus className="h-4 w-4" />
+                </Link>
+              </>
+            )}
             <button
               type="button"
               aria-label="메뉴 열기"
@@ -171,12 +193,28 @@ export default function Header4({ menu = true }: { menu?: boolean }) {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2 border-b border-slate-100 p-4">
-            <Link href="/design4/login" className="rounded-lg bg-slate-900 py-3 text-center text-[14px] font-bold text-white">
-              로그인
-            </Link>
-            <Link href="/design4/signup/type" className="rounded-lg border border-slate-200 py-3 text-center text-[14px] font-bold text-slate-800">
-              회원가입
-            </Link>
+            {signedIn ? (
+              <>
+                <p className="col-span-2 pb-1 text-[14px] text-slate-600">
+                  <b className="font-bold text-slate-900">{memberName}</b>님, 반갑습니다.
+                </p>
+                <Link href="/my" className="rounded-lg bg-slate-900 py-3 text-center text-[14px] font-bold text-white">
+                  내 페이지
+                </Link>
+                <Link href={D4_HOME} className="rounded-lg border border-slate-200 py-3 text-center text-[14px] font-bold text-slate-800">
+                  로그아웃
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/design4/login" className="rounded-lg bg-slate-900 py-3 text-center text-[14px] font-bold text-white">
+                  로그인
+                </Link>
+                <Link href="/design4/signup/type" className="rounded-lg border border-slate-200 py-3 text-center text-[14px] font-bold text-slate-800">
+                  회원가입
+                </Link>
+              </>
+            )}
             <Link href="/design4/login/student" className="col-span-2 rounded-lg bg-[var(--d4-blue-soft)] py-3 text-center text-[14px] font-bold text-[var(--d4-blue)]">
               학생 접속코드로 진단하기
             </Link>

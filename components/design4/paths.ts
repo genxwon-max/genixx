@@ -12,16 +12,23 @@ import { legalGroup, siteMenu } from "@/lib/nav";
 const PUBLIC = /^\/(about|service|sample|insight|support|partner|community|legal|login|signup|consent)(\/|$|#|\?)/;
 
 export const D4_HOME = "/design4/home";
+/** 로그인한 뒤의 홈(2026-11-16) — 실제 주소는 홈(/) 그대로이고, 머리띠 · 오른쪽 상자만 회원 모양이 된다 */
+export const D4_MEMBER = "/design4/home/member";
 
 export function d4(href: string) {
   if (href === "/") return D4_HOME;
   return PUBLIC.test(href) ? `/design4${href}` : href;
 }
 
+/** 로그인한 뒤의 모양으로 그릴 주소인가 — 지금은 로그인 뒤 홈 하나 */
+export function isMemberView(pathname: string) {
+  return pathname === D4_MEMBER;
+}
+
 /** /design4 주소에서 실제 서비스 주소를 되찾는다 */
 export function realOf(pathname: string) {
   const rest = pathname.replace(/^\/design4/, "");
-  return rest === "/home" ? "/" : rest || "/";
+  return rest === "/home" || rest === "/home/member" ? "/" : rest || "/";
 }
 
 /** 머리띠 · 왼쪽 메뉴가 읽는 갈래 — 공개 사이트 일곱 갈래 + 법적 고지 */
