@@ -1403,7 +1403,10 @@ function design4Screens(): DesignScreen[] {
     wbs: "PUB-01",
     real: "/",
     base: "/home",
-    states: [{ slug: "", name: "첫 화면", note: "큰 안내 판 · 로그인 상자 · 바로가기 셋 · 공지 | 자주 묻는 질문 · 더 알아보기" }],
+    states: [
+      { slug: "", name: "첫 화면", note: "큰 안내 판 · 로그인 상자 · 바로가기 셋 · 공지 | 자주 묻는 질문 · 더 알아보기" },
+      { slug: "member", name: "첫 화면 · 로그인 뒤", who: "학부모", note: "로그인 상자 대신 자녀 진단 현황 · 내 페이지 · 머리띠에 이름 · 로그아웃" },
+    ],
   };
   /* 로그인 · 회원가입 — 공개 사이트 시안과 같은 머리띠 · 푸터를 두른 계정 존 사본(2026-11-12 추가) */
   const account: DesignScreen[] = [
