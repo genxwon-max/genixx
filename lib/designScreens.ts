@@ -25,7 +25,8 @@
  * 화면 · 메일 · 알림톡 · 알림 종. 모두 같은 학생의 같은 답을 말한다(components/design/screens/photoFlow.ts).
  */
 
-import { legalGroup, siteMenu } from "@/lib/nav";
+import { siteMenu } from "@/lib/nav";
+import { d4LegalGroup } from "@/lib/design4Legal";
 
 export type DesignZone =
   | "account"
@@ -1393,7 +1394,7 @@ function design4Screens(): DesignScreen[] {
       { slug: "board/BD-001", name: "자유게시판 · 글 보기", note: "예시 · 첫 글" },
       { slug: "board/write", name: "자유게시판 · 글쓰기", note: "로그인 전이면 로그인 안내" },
     ],
-    "/legal": [{ slug: "", name: "정책 모음", note: "법적 고지 일곱 가지로 가는 카드" }],
+    "/legal": [{ slug: "", name: "정책 모음", note: "문서 열 가지를 세 묶음 목록으로 · 시행일" }],
   };
   const home: DesignScreen = {
     id: "d4-home",
@@ -1453,7 +1454,7 @@ function design4Screens(): DesignScreen[] {
   return [
     home,
     ...account,
-    ...[...siteMenu, legalGroup].map((g) => ({
+    ...[...siteMenu, d4LegalGroup].map((g) => ({
       id: `d4-${g.href.slice(1)}`,
       area: "design4" as const,
       zone: "site" as const,
