@@ -10,6 +10,7 @@ import { enterExpertConsole } from "@/lib/expertConsole";
 import { ChevronLeft } from "lucide-react";
 import SocialButton from "@/components/account/SocialButton";
 import AuthCard, { d4Field, d4Primary, d4Secondary } from "./AuthCard";
+import AuthTabs from "./AuthTabs";
 
 /** 가입 때 만든 아이디 규칙과 같다 (components/account/SignupFlow.tsx) */
 const idRe = /^[a-z][a-z0-9_]{3,19}$/;
@@ -200,7 +201,7 @@ export default function LoginPanel({
 
   return (
     <AuthCard>
-      <LoginTabs />
+      <AuthTabs />
 
       {byId && (
         <button
@@ -323,20 +324,6 @@ export default function LoginPanel({
         </Link>
       </div>
     </AuthCard>
-  );
-}
-
-/** 오른쪽 판 맨 위 — 로그인 | 회원가입 */
-function LoginTabs() {
-  return (
-    <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-center text-[14.5px] font-bold">
-      <span aria-current="page" className="rounded-lg bg-white py-2.5 text-slate-900 shadow-sm">
-        로그인
-      </span>
-      <Link href="/design4/signup/type" className="rounded-lg py-2.5 text-slate-500 hover:text-slate-900">
-        회원가입
-      </Link>
-    </div>
   );
 }
 

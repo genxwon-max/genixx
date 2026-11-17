@@ -203,12 +203,11 @@ export default function SignupType({
 
   return (
     <div className={`min-h-full ${t.page}`}>
-      <div className="container-x pt-14 pb-24">
-        <p className={t.crumb}>홈 &gt; 회원가입</p>
-
-        {/* 탭은 좁은 폼 폭에 맞춰 가운데 */}
-        <div className={`mt-7 ${t.column}`}>
-          <AuthTabs />
+      {/* 위쪽은 로그인 화면과 맞춘다(2026-11-17) — 「홈 > 회원가입」 줄을 걷고, 탭을 로그인 판 안의
+          탭과 같은 폭(400px) · 같은 높이에 세운다. 아래 카드 · 가입 수단은 그대로 */}
+      <div className="container-x pt-[4.75rem] pb-24 md:pt-28">
+        <div className="mx-auto w-full max-w-[400px]">
+          <AuthTabs onTint />
         </div>
 
         <div className={`${shell} mt-12`}>
