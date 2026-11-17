@@ -5,17 +5,21 @@ import { usePathname } from "next/navigation";
 import { themeOf } from "@/lib/authVariant";
 
 /**
- * 로그인 / 회원가입 전환 탭.
- * 폼 상단에 붙고 아래로 가로선이 지나간다. 선택된 쪽만 굵은 글씨 + 파란 밑줄.
+ * 로그인 / 회원가입 전환 탭 — 회색 바탕에 고른 쪽만 흰 알약.
+ * 로그인(LoginPanel)과 회원가입(SignupType)이 같은 탭을 쓴다. 회원가입만 밑줄 탭이라
+ * 두 화면 위쪽이 달라 보인다는 말에 로그인 쪽 모양으로 맞췄다(2026-11-17).
  *
- * 두 주소는 각각 하나뿐이다 — /login 과 /signup/type. 한때는 시안 비교용으로
- * /login1·/login2·/signup1·/signup2가 함께 있어서 「지금 있는 자리에 맞는 짝」을
- * 계산했지만, 둥글둥글로 확정하면서 그 갈래를 지웠다.
+ * 두 주소는 각각 하나뿐이다 — /login 과 /signup/type.
  */
 
 const t = themeOf(2);
 
-export default function AuthTabs() {
+export default function AuthTabs({
+  /** 흰 판 밖(옅은 파랑 바탕)에 놓일 때 — 회색 바가 바탕에 묻히지 않게 한 단계 진하게 */
+  onTint = false,
+}: {
+  onTint?: boolean;
+}) {
   const pathname = usePathname();
   const onSignup = pathname.startsWith("/design4/signup");
 
@@ -25,14 +29,19 @@ export default function AuthTabs() {
   ];
 
   return (
-    <nav aria-label="로그인 또는 회원가입" className={t.tabBar}>
+    <nav
+      aria-label="로그인 또는 회원가입"
+      className={`grid grid-cols-2 rounded-xl p-1 text-center text-[14.5px] font-bold ${
+        onTint ? "bg-slate-200/70" : "bg-slate-100"
+      }`}
+    >
       {tabs.map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}
           aria-current={tab.active ? "page" : undefined}
-          className={`flex-1 py-3.5 text-center text-[16px] transition-colors ${
-            tab.active ? t.tabOn : t.tabOff
+          className={`rounded-lg py-2.5 transition-colors ${
+            tab.active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
           }`}
         >
           {tab.label}
