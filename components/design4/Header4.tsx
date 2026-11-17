@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { ChevronDown, LockKeyhole, LogOut, Menu, UserPlus, UserRound, X } from "lucide-react";
 import { LogoLockup } from "@/components/Logo";
 import { usePathname } from "next/navigation";
-import { legalGroup, siteMenu } from "@/lib/nav";
+import { siteMenu } from "@/lib/nav";
+import { d4LegalGroup } from "@/lib/design4Legal";
 import { D4_HOME, d4, groupOf, isMemberView, realOf } from "./paths";
 
 /** 로그인한 뒤 머리띠에 적을 예시 회원 — 홈의 회원 상자(Home4)와 같은 사람 */
@@ -220,7 +221,7 @@ export default function Header4({ menu = true }: { menu?: boolean }) {
             </Link>
           </div>
           <ul className="flex-1 overflow-y-auto">
-            {[...groups, legalGroup].map((g) => {
+            {[...groups, d4LegalGroup].map((g) => {
               const open = mobileGroup === g.id;
               return (
                 <li key={g.id} className="border-b border-slate-100">

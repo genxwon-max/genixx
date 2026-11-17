@@ -27,10 +27,8 @@ export default function Frame4({ children }: { children: React.ReactNode }) {
         <nav aria-label={`${group.label} 메뉴`} className="min-w-0">
           {/* 넓은 화면 — 갈래 이름 상자 + 하위 화면 목록 */}
           <div className="hidden overflow-hidden rounded-[22px] bg-white shadow-[0_6px_24px_-10px_rgba(15,31,75,0.22)] ring-1 ring-slate-100 lg:block">
-            <p
-              className="m-3 rounded-2xl px-4 py-5 text-center text-[17px] font-bold text-white"
-              style={{ background: "linear-gradient(135deg,#3f72f2 0%,#1c45c4 100%)" }}
-            >
+            {/* 갈래 이름 상자 — 진한 파랑 그라데이션이 너무 튄다는 말에 옅은 파랑 바탕 + 남색 글씨로(2026-11-17) */}
+            <p className="m-3 rounded-2xl bg-[var(--d4-blue-soft)] px-4 py-5 text-center text-[17px] font-bold text-[var(--d4-ink)]">
               {group.label}
             </p>
             <ul className="px-4 pb-5 pt-1">

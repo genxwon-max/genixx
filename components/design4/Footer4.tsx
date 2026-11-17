@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { LogoLockup } from "@/components/Logo";
-import { policyLinks } from "@/lib/nav";
+import { d4PolicyLinks } from "@/lib/design4Legal";
 import { company } from "@/lib/site";
 import { d4 } from "./paths";
 
 /**
  * /design4 푸터 — 어두운 바탕 한 판. 위에 로고 · 주소 · 연락처 · 사업자 정보,
- * 가는 줄 아래에 정책 링크와 저작권. 정책 띠는 공개 사이트와 같은 목록(policyLinks)을 읽는다.
+ * 가는 줄 아래에 정책 링크와 저작권. 정책 띠는 design4 정책 목록(d4PolicyLinks — 지식재산 · 전자금융거래 · 이메일무단수집거부까지)을 읽는다.
  */
 export default function Footer4() {
   return (
@@ -33,7 +33,7 @@ export default function Footer4() {
 
         <div className="mt-8 flex flex-col gap-4 border-t border-white/10 pt-6 md:flex-row md:items-center md:justify-between">
           <ul className="flex flex-wrap gap-x-6 gap-y-2">
-            {policyLinks.map((l) => (
+            {d4PolicyLinks.map((l) => (
               <li key={l.href}>
                 <Link
                   href={d4(l.href)}

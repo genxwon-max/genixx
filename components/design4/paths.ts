@@ -1,4 +1,5 @@
-import { legalGroup, siteMenu } from "@/lib/nav";
+import { siteMenu } from "@/lib/nav";
+import { d4LegalGroup } from "@/lib/design4Legal";
 
 /**
  * /design4 안에서 링크가 어디로 가는가.
@@ -31,8 +32,8 @@ export function realOf(pathname: string) {
   return rest === "/home" || rest === "/home/member" ? "/" : rest || "/";
 }
 
-/** 머리띠 · 왼쪽 메뉴가 읽는 갈래 — 공개 사이트 일곱 갈래 + 법적 고지 */
-export const d4Groups = [...siteMenu, legalGroup];
+/** 머리띠 · 왼쪽 메뉴가 읽는 갈래 — 공개 사이트 일곱 갈래 + 법적 고지(design4는 문서 열 가지, lib/design4Legal.ts) */
+export const d4Groups = [...siteMenu, d4LegalGroup];
 
 export function groupOf(real: string) {
   const group = d4Groups.find((g) => real === g.href || real.startsWith(`${g.href}/`));

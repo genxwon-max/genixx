@@ -97,3 +97,18 @@
   border-radius: 9999px;
   background: var(--d4-blue);
 }
+
+/* 정책 문서 인쇄 — 머리띠 · 왼쪽 메뉴 · 현재 위치 · 푸터 · 문의 상자를 걷고 본문만 */
+@media print {
+  .d4 > header,
+  .d4 > footer,
+  .d4 main nav[aria-label$="메뉴"],
+  .d4 main nav[aria-label="현재 위치"],
+  .d4-noprint {
+    display: none !important;
+  }
+  .d4 main > div {
+    display: block;
+    padding: 0;
+  }
+}
